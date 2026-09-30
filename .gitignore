@@ -1,0 +1,18 @@
+.gradle/
+.idea/
+local.properties
+.DS_Store
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.iml
+
+# Gradle descargado temporalmente por Copilot
+gradle-8.9/
+gradle-download/
+
+# Secrets / local config
+.env
+*.jks
+*.keystore
