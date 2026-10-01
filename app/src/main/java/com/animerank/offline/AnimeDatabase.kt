@@ -9,14 +9,34 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
-class AnimeDatabase(private val context: Context) : SQLiteOpenHelper(context, "anime_rank.db", null, 1) {
+class AnimeDatabase(private val context: Context) : SQLiteOpenHelper(context, "anime_rank.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
+        createTables(db)
+        seedAnime(db)
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        when {
+            oldVersion < 2 -> {
+                // Migration from v1 to v2: add poster_url column
+                try {
+                    db.execSQL("ALTER TABLE anime ADD COLUMN poster_url TEXT")
+                } catch (e: Exception) {
+                    // Column might already exist
+                }
+                // v2: rating table stays the same, PreferencesManager handles category config
+            }
+        }
+    }
+
+    private fun createTables(db: SQLiteDatabase) {
         db.execSQL("""
             CREATE TABLE anime(
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
                 mal_id INTEGER,
-                anilist_id INTEGER
+                anilist_id INTEGER,
+                poster_url TEXT
             )
         """.trimIndent())
         db.execSQL("CREATE INDEX idx_anime_title ON anime(title COLLATE NOCASE)")
@@ -37,10 +57,7 @@ class AnimeDatabase(private val context: Context) : SQLiteOpenHelper(context, "a
                 FOREIGN KEY(anime_id) REFERENCES anime(id) ON DELETE CASCADE
             )
         """.trimIndent())
-        seedAnime(db)
     }
-
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
 
     private fun seedAnime(db: SQLiteDatabase) {
         val jsonText = context.assets.open("anime_catalog.json").use { input ->
@@ -92,7 +109,7 @@ class AnimeDatabase(private val context: Context) : SQLiteOpenHelper(context, "a
                         anilistId = if (c.isNull(3)) null else c.getLong(3),
                         finalScore = if (c.isNull(4)) null else c.getDouble(4),
                         baseScore = if (c.isNull(5)) null else c.getDouble(5),
-                        personalTaste = if (c.isNull(6)) null else c.getDouble(6),
+                        additiveScore = if (c.isNull(6)) null else c.getDouble(6),
                         status = if (c.isNull(7)) null else c.getString(7)
                     ))
                 }
@@ -113,20 +130,20 @@ class AnimeDatabase(private val context: Context) : SQLiteOpenHelper(context, "a
                 "visuals" to if (c.isNull(3)) null else c.getDouble(3),
                 "worldbuilding" to if (c.isNull(4)) null else c.getDouble(4)
             )
-            RatingDraft(scores, c.getDouble(5), c.getString(6), c.getString(7))
+            RatingDraft(scores, additiveScore = c.getDouble(5), notes = c.getString(6), status = c.getString(7))
         }
     }
 
-    fun saveRating(animeId: String, draft: RatingDraft) {
+    fun saveRating(animeId: String, draft: RatingDraft, config: RatingSystemConfig) {
         val values = ContentValues().apply {
             put("anime_id", animeId)
             categorySpecs.forEach { spec ->
                 val score = draft.categoryScores[spec.key]
                 if (score == null) putNull(spec.key) else put(spec.key, score)
             }
-            put("personal_taste", draft.personalTaste)
-            val base = draft.baseScore()
-            val final = draft.finalScore()
+            put("personal_taste", draft.additiveScore)
+            val base = draft.baseScore(config)
+            val final = draft.finalScore(config)
             if (base == null) putNull("base_score") else put("base_score", base)
             if (final == null) putNull("final_score") else put("final_score", final)
             put("notes", draft.notes)

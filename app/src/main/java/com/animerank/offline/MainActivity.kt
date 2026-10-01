@@ -12,12 +12,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +55,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AnimeRankApp(db: AnimeDatabase) {
+    val context = LocalContext.current
+    val prefsManager = remember { PreferencesManager(context) }
     var selected by remember { mutableStateOf<Anime?>(null) }
     var tab by remember { mutableIntStateOf(0) }
     var refresh by remember { mutableIntStateOf(0) }
@@ -61,7 +66,13 @@ fun AnimeRankApp(db: AnimeDatabase) {
             anime = anime,
             initial = db.loadRating(anime.id),
             onBack = { selected = null },
-            onSave = { draft -> db.saveRating(anime.id, draft); refresh++; selected = null },
+            onSave = { draft -> 
+                // Get current config - for now use default, will be enhanced with actual config loading
+                val config = prefsManager.getDefaultRatingConfig()
+                db.saveRating(anime.id, draft, config)
+                refresh++
+                selected = null 
+            },
             onDelete = { db.deleteRating(anime.id); refresh++; selected = null }
         )
         return
@@ -73,7 +84,8 @@ fun AnimeRankApp(db: AnimeDatabase) {
             NavigationBar(containerColor = Panel) {
                 NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Anime") })
                 NavigationBarItem(selected = tab == 1, onClick = { tab = 1 }, icon = { Icon(Icons.Default.EmojiEvents, null) }, label = { Text("Ranking") })
-                NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Info, null) }, label = { Text("Sistema") })
+                NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.EmojiEvents, null) }, label = { Text("Top 3") })
+                NavigationBarItem(selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") })
             }
         }
     ) { padding ->
@@ -81,7 +93,8 @@ fun AnimeRankApp(db: AnimeDatabase) {
             when (tab) {
                 0 -> AnimeListScreen(db, false, refresh, onAnime = { selected = it })
                 1 -> AnimeListScreen(db, true, refresh, onAnime = { selected = it })
-                else -> PhilosophyScreen(db.animeCount())
+                2 -> PodiumScreen(db, refresh)
+                else -> SettingsScreen(prefsManager)
             }
         }
     }
@@ -91,6 +104,7 @@ fun AnimeRankApp(db: AnimeDatabase) {
 private fun AnimeListScreen(db: AnimeDatabase, rankedOnly: Boolean, refresh: Int, onAnime: (Anime) -> Unit) {
     var query by remember { mutableStateOf("") }
     val list = remember(query, rankedOnly, refresh) { db.searchAnime(query, rankedOnly) }
+    val showImages by remember { mutableStateOf(true) } // TODO: Connect to PreferencesManager
 
     Column(Modifier.fillMaxSize().background(Bg).padding(16.dp)) {
         Text(if (rankedOnly) "Mi ranking" else "AnimeRank Offline", fontSize = 28.sp, fontWeight = FontWeight.Bold)
@@ -108,7 +122,7 @@ private fun AnimeListScreen(db: AnimeDatabase, rankedOnly: Boolean, refresh: Int
         Spacer(Modifier.height(12.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(list, key = { it.id }) { anime ->
-                AnimeRow(anime, onClick = { onAnime(anime) })
+                AnimeRow(anime, showImages, onClick = { onAnime(anime) })
             }
             if (list.isEmpty()) item { Text("No hay resultados.", color = Color.Gray, modifier = Modifier.padding(20.dp)) }
         }
@@ -116,19 +130,36 @@ private fun AnimeListScreen(db: AnimeDatabase, rankedOnly: Boolean, refresh: Int
 }
 
 @Composable
-private fun AnimeRow(anime: Anime, onClick: () -> Unit) {
+private fun AnimeRow(anime: Anime, showImages: Boolean, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = Panel),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (showImages) {
+                // Image placeholder
+                Surface(
+                    Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)),
+                    color = Color(0xFF1A1F2E)
+                ) {
+                    Column(
+                        Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.Image, null, modifier = Modifier.size(24.dp), tint = Color.Gray)
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+            }
+            
             Column(Modifier.weight(1f)) {
                 Text(anime.title, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
                 val meta = buildList {
                     anime.status?.let { add(it) }
                     anime.baseScore?.let { add("Calidad %.2f".format(it)) }
-                    anime.personalTaste?.let { if (it > 0) add("Gusto +%.1f".format(it)) }
+                    anime.additiveScore?.let { if (it > 0) add("Gusto +%.1f".format(it)) }
                 }.joinToString(" · ")
                 if (meta.isNotEmpty()) Text(meta, color = Color.Gray, fontSize = 13.sp)
             }
@@ -146,15 +177,19 @@ private fun AnimeRow(anime: Anime, onClick: () -> Unit) {
 private fun RatingScreen(anime: Anime, initial: RatingDraft, onBack: () -> Unit, onSave: (RatingDraft) -> Unit, onDelete: () -> Unit) {
     var draft by remember(anime.id) { mutableStateOf(initial) }
     BackHandler(onBack = onBack)
-    val base = draft.baseScore()
-    val final = draft.finalScore()
+    
+    // Load config from PreferencesManager
+    val config = PreferencesManager(LocalContext.current).getDefaultRatingConfig()
+    val base = draft.baseScore(config)
+    val final = draft.finalScore(config)
+    val stickyEnabled by remember { mutableStateOf(true) } // TODO: Connect to PreferencesManager
 
     Scaffold(
         containerColor = Bg,
         topBar = {
             TopAppBar(
                 title = { Text(anime.title, maxLines = 1) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
             )
         }
@@ -165,25 +200,27 @@ private fun RatingScreen(anime: Anime, initial: RatingDraft, onBack: () -> Unit,
             contentPadding = PaddingValues(bottom = 36.dp)
         ) {
             item {
-                ScoreHeader(base, draft.personalTaste, final)
+                ScoreHeader(base, draft.additiveScore, final, config)
             }
-            items(categorySpecs) { spec ->
-                CategoryEditor(spec, draft.categoryScores[spec.key]) { newValue ->
-                    draft = draft.copy(categoryScores = draft.categoryScores + (spec.key to newValue))
+            items(config.categories.sortedBy { it.order }) { category ->
+                CategoryEditor(category, draft.categoryScores[category.id]) { newValue ->
+                    draft = draft.copy(categoryScores = draft.categoryScores + (category.id to newValue))
                 }
             }
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Gusto personal · +0 a +1", fontWeight = FontWeight.Bold, color = Magenta)
-                        Text("Se suma después de calcular la calidad. Nunca baja la nota.", color = Color.Gray, fontSize = 13.sp)
-                        Slider(
-                            value = draft.personalTaste.toFloat(),
-                            onValueChange = { draft = draft.copy(personalTaste = (it * 10).roundToInt() / 10.0) },
-                            valueRange = 0f..1f,
-                            steps = 9
-                        )
-                        Text("+%.1f".format(draft.personalTaste), fontWeight = FontWeight.Bold)
+            config.additiveBonus?.let { bonus ->
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("${bonus.name} · +0 a +${bonus.maxValue}", fontWeight = FontWeight.Bold, color = Magenta)
+                            Text("Se suma después de calcular la calidad. Nunca baja la nota.", color = Color.Gray, fontSize = 13.sp)
+                            Slider(
+                                value = draft.additiveScore.toFloat(),
+                                onValueChange = { draft = draft.copy(additiveScore = (it * 10).roundToInt() / 10.0) },
+                                valueRange = 0f..bonus.maxValue.toFloat(),
+                                steps = (bonus.maxValue * 10).toInt() - 1
+                            )
+                            Text("+%.1f".format(draft.additiveScore), fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -201,9 +238,19 @@ private fun RatingScreen(anime: Anime, initial: RatingDraft, onBack: () -> Unit,
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Button(onClick = { onSave(draft) }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Save, null); Spacer(Modifier.width(6.dp)); Text("Guardar") }
+                    Button(onClick = { 
+                        onSave(draft) 
+                    }, modifier = Modifier.weight(1f)) { 
+                        Icon(Icons.Default.Save, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Guardar") 
+                    }
                     if (anime.finalScore != null) {
-                        OutlinedButton(onClick = onDelete) { Icon(Icons.Default.Delete, null); Spacer(Modifier.width(6.dp)); Text("Borrar") }
+                        OutlinedButton(onClick = onDelete) { 
+                            Icon(Icons.Default.Delete, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Borrar") 
+                        }
                     }
                 }
             }
@@ -212,7 +259,7 @@ private fun RatingScreen(anime: Anime, initial: RatingDraft, onBack: () -> Unit,
 }
 
 @Composable
-private fun ScoreHeader(base: Double?, taste: Double, final: Double?) {
+private fun ScoreHeader(base: Double?, additive: Double, final: Double?, config: RatingSystemConfig) {
     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(18.dp)) {
             Text("Puntuación", fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -220,7 +267,9 @@ private fun ScoreHeader(base: Double?, taste: Double, final: Double?) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text("Calidad: ${base?.let { "%.2f".format(it) } ?: "—"}", color = Color.LightGray)
-                    Text("Gusto: +%.1f".format(taste), color = Magenta)
+                    if (config.additiveBonus != null) {
+                        Text("${config.additiveBonus.name}: +%.1f".format(additive), color = Magenta)
+                    }
                 }
                 Surface(color = scoreColor(final ?: 0.0), shape = RoundedCornerShape(16.dp)) {
                     Text(final?.let { "%.2f".format(it) } ?: "—", modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp), color = Color.Black, fontWeight = FontWeight.Black, fontSize = 24.sp)
@@ -231,21 +280,19 @@ private fun ScoreHeader(base: Double?, taste: Double, final: Double?) {
 }
 
 @Composable
-private fun CategoryEditor(spec: CategorySpec, score: Double?, onChange: (Double?) -> Unit) {
-    val accent = when (spec.key) {
-        "writing" -> Cyan
-        "characters" -> Magenta
-        "engagement" -> Coral
-        "visuals" -> Orange
-        else -> Mint
+private fun CategoryEditor(category: RatingCategory, score: Double?, onChange: (Double?) -> Unit) {
+    val accent = try {
+        Color(android.graphics.Color.parseColor(category.color))
+    } catch (e: Exception) {
+        Cyan
     }
     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("${spec.title} · ${(spec.weight * 100).toInt()}%", fontWeight = FontWeight.Bold, color = accent, modifier = Modifier.weight(1f))
+                Text("${category.name} · ${category.weight.toInt()}%", fontWeight = FontWeight.Bold, color = accent, modifier = Modifier.weight(1f))
                 TextButton(onClick = { onChange(if (score == null) 5.0 else null) }) { Text(if (score == null) "Activar" else "N/A") }
             }
-            Text(spec.hints.joinToString(" · "), color = Color.Gray, fontSize = 13.sp)
+            Text(category.description, color = Color.Gray, fontSize = 13.sp)
             if (score != null) {
                 Slider(
                     value = score.toFloat(),
@@ -274,6 +321,205 @@ private fun StatusEditor(status: String, onChange: (String) -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 options.forEach { s ->
                     FilterChip(selected = status == s, onClick = { onChange(s) }, label = { Text(s) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PodiumScreen(db: AnimeDatabase, refresh: Int) {
+    val top3 = remember(refresh) { db.searchAnime("", rankedOnly = true, limit = 3) }
+    
+    LazyColumn(
+        Modifier.fillMaxSize().background(Bg).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        item {
+            Text("Top 3 Podium", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text("Your highest rated anime", color = Color.LightGray)
+        }
+        
+        when {
+            top3.isEmpty() -> {
+                item {
+                    Text("No rated anime yet", color = Color.Gray, modifier = Modifier.padding(32.dp))
+                }
+            }
+            top3.size == 1 -> {
+                item {
+                    PodiumItem(anime = top3[0], position = 1, isLarge = true)
+                }
+            }
+            top3.size == 2 -> {
+                item {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        PodiumItem(anime = top3[1], position = 2, isLarge = false, modifier = Modifier.weight(1f))
+                        PodiumItem(anime = top3[0], position = 1, isLarge = true, modifier = Modifier.weight(1.2f))
+                    }
+                }
+            }
+            else -> {
+                item {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        PodiumItem(anime = top3[1], position = 2, isLarge = false, modifier = Modifier.weight(1f))
+                        PodiumItem(anime = top3[0], position = 1, isLarge = true, modifier = Modifier.weight(1.2f))
+                        PodiumItem(anime = top3[2], position = 3, isLarge = false, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PodiumItem(anime: Anime, position: Int, isLarge: Boolean, modifier: Modifier = Modifier) {
+    val posColor = when (position) {
+        1 -> Cyan
+        2 -> Orange
+        else -> Mint
+    }
+    val posLabel = when (position) {
+        1 -> "🥇 #1"
+        2 -> "🥈 #2"
+        else -> "🥉 #3"
+    }
+    
+    Card(
+        modifier = modifier.aspectRatio(if (isLarge) 0.75f else 0.8f),
+        colors = CardDefaults.cardColors(containerColor = Panel),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            Modifier.fillMaxSize().padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Position badge
+            Surface(
+                color = posColor,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    posLabel,
+                    Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (isLarge) 16.sp else 14.sp
+                )
+            }
+            
+            // Poster placeholder
+            Surface(
+                Modifier.fillMaxWidth().aspectRatio(0.7f),
+                color = Color(0xFF1A1F2E),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.Image,
+                        null,
+                        modifier = Modifier.size(if (isLarge) 48.dp else 40.dp),
+                        tint = Color.Gray
+                    )
+                    Text("Poster", color = Color.Gray, fontSize = 11.sp)
+                }
+            }
+            
+            // Anime title and score
+            Text(
+                anime.title,
+                Modifier.fillMaxWidth(),
+                fontSize = if (isLarge) 15.sp else 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            
+            Surface(color = scoreColor(anime.finalScore ?: 0.0), shape = RoundedCornerShape(10.dp)) {
+                Text(
+                    "%.2f".format(anime.finalScore ?: 0.0),
+                    Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (isLarge) 16.sp else 14.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsScreen(prefsManager: PreferencesManager) {
+    val stickyScore by prefsManager.getStickyScore().collectAsState(initial = true)
+    val showImages by prefsManager.getShowImages().collectAsState(initial = true)
+    
+    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Text("Settings", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text("Customize your rating experience", color = Color.LightGray)
+        }
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Display", fontWeight = FontWeight.Bold, color = Cyan)
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Sticky Score Header", fontWeight = FontWeight.SemiBold)
+                            Text("Keep score visible while scrolling", fontSize = 13.sp, color = Color.Gray)
+                        }
+                        Switch(
+                            checked = stickyScore,
+                            onCheckedChange = { 
+                                // Launch coroutine to save preference
+                                // In a real app this would be done via ViewModel/proper coroutine scope
+                            },
+                            modifier = Modifier
+                        )
+                    }
+                    Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Show Images", fontWeight = FontWeight.SemiBold)
+                            Text("Display anime poster thumbnails", fontSize = 13.sp, color = Color.Gray)
+                        }
+                        Switch(checked = showImages, onCheckedChange = { })
+                    }
+                }
+            }
+        }
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Rating System", fontWeight = FontWeight.Bold, color = Magenta)
+                    Text("(Category management coming soon)", color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                    Button(
+                        onClick = { /* TODO: Reset to defaults */ },
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                    ) {
+                        Text("Reset to Defaults")
+                    }
+                }
+            }
+        }
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("About", fontWeight = FontWeight.Bold, color = Mint)
+                    Text("AnimeRank Offline v0.1.0", color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
+                    Text("Offline anime rating system", color = Color.Gray, fontSize = 13.sp)
                 }
             }
         }
