@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private val Bg = Color(0xFF0A0B12)
@@ -65,13 +67,13 @@ fun AnimeRankApp(db: AnimeDatabase) {
         RatingScreen(
             anime = anime,
             initial = db.loadRating(anime.id),
+            prefsManager = prefsManager,
             onBack = { selected = null },
-            onSave = { draft -> 
-                // Get current config - for now use default, will be enhanced with actual config loading
+            onSave = { draft ->
                 val config = prefsManager.getDefaultRatingConfig()
                 db.saveRating(anime.id, draft, config)
                 refresh++
-                selected = null 
+                selected = null
             },
             onDelete = { db.deleteRating(anime.id); refresh++; selected = null }
         )
@@ -84,16 +86,14 @@ fun AnimeRankApp(db: AnimeDatabase) {
             NavigationBar(containerColor = Panel) {
                 NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Anime") })
                 NavigationBarItem(selected = tab == 1, onClick = { tab = 1 }, icon = { Icon(Icons.Default.EmojiEvents, null) }, label = { Text("Ranking") })
-                NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.EmojiEvents, null) }, label = { Text("Top 3") })
-                NavigationBarItem(selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") })
+                NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") })
             }
         }
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                0 -> AnimeListScreen(db, false, refresh, onAnime = { selected = it })
-                1 -> AnimeListScreen(db, true, refresh, onAnime = { selected = it })
-                2 -> PodiumScreen(db, refresh)
+                0 -> AnimeListScreen(db, false, refresh, prefsManager, onAnime = { selected = it })
+                1 -> RankingScreen(db, refresh, prefsManager, onAnime = { selected = it })
                 else -> SettingsScreen(prefsManager)
             }
         }
@@ -101,10 +101,10 @@ fun AnimeRankApp(db: AnimeDatabase) {
 }
 
 @Composable
-private fun AnimeListScreen(db: AnimeDatabase, rankedOnly: Boolean, refresh: Int, onAnime: (Anime) -> Unit) {
+private fun AnimeListScreen(db: AnimeDatabase, rankedOnly: Boolean, refresh: Int, prefsManager: PreferencesManager, onAnime: (Anime) -> Unit) {
     var query by remember { mutableStateOf("") }
     val list = remember(query, rankedOnly, refresh) { db.searchAnime(query, rankedOnly) }
-    val showImages by remember { mutableStateOf(true) } // TODO: Connect to PreferencesManager
+    val showImages by prefsManager.getShowImages().collectAsState(initial = true)
 
     Column(Modifier.fillMaxSize().background(Bg).padding(16.dp)) {
         Text(if (rankedOnly) "Mi ranking" else "AnimeRank Offline", fontSize = 28.sp, fontWeight = FontWeight.Bold)
@@ -130,39 +130,53 @@ private fun AnimeListScreen(db: AnimeDatabase, rankedOnly: Boolean, refresh: Int
 }
 
 @Composable
+private fun RankingScreen(db: AnimeDatabase, refresh: Int, prefsManager: PreferencesManager, onAnime: (Anime) -> Unit) {
+    val showImages by prefsManager.getShowImages().collectAsState(initial = true)
+    val ranked = remember(refresh) { db.searchAnime("", rankedOnly = true, limit = 200) }
+    val top3 = ranked.take(3)
+    val rest = ranked.drop(3)
+
+    LazyColumn(
+        Modifier.fillMaxSize().background(Bg).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item {
+            Text("Ranking", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text("Top 3 y lista completa por puntuación.", color = Color.LightGray)
+            Spacer(Modifier.height(12.dp))
+        }
+        if (top3.isNotEmpty()) {
+            item { Top3Podium(top3) }
+        }
+        items(rest, key = { it.id }) { anime ->
+            AnimeRow(anime, showImages, onClick = { onAnime(anime) })
+        }
+        if (rest.isEmpty()) {
+            item { Text("Todavía no hay valoraciones guardadas.", color = Color.Gray, modifier = Modifier.padding(20.dp)) }
+        }
+    }
+}
+
+@Composable
 private fun AnimeRow(anime: Anime, showImages: Boolean, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = Panel),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (showImages) {
-                // Image placeholder
-                Surface(
-                    Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)),
-                    color = Color(0xFF1A1F2E)
-                ) {
-                    Column(
-                        Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(Icons.Default.Image, null, modifier = Modifier.size(24.dp), tint = Color.Gray)
-                    }
-                }
+                AnimeCover(anime, Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)))
                 Spacer(Modifier.width(12.dp))
             }
-            
-            Column(Modifier.weight(1f)) {
-                Text(anime.title, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
-                val meta = buildList {
-                    anime.status?.let { add(it) }
-                    anime.baseScore?.let { add("Calidad %.2f".format(it)) }
-                    anime.additiveScore?.let { if (it > 0) add("Gusto +%.1f".format(it)) }
-                }.joinToString(" · ")
-                if (meta.isNotEmpty()) Text(meta, color = Color.Gray, fontSize = 13.sp)
-            }
+            Text(
+                anime.title,
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
+            )
             anime.finalScore?.let {
                 Surface(color = scoreColor(it), shape = RoundedCornerShape(12.dp)) {
                     Text("%.2f".format(it), modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontWeight = FontWeight.Bold, color = Color.Black)
@@ -172,17 +186,36 @@ private fun AnimeRow(anime: Anime, showImages: Boolean, onClick: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RatingScreen(anime: Anime, initial: RatingDraft, onBack: () -> Unit, onSave: (RatingDraft) -> Unit, onDelete: () -> Unit) {
+private fun AnimeCover(anime: Anime, modifier: Modifier = Modifier) {
+    val initials = remember(anime.title) {
+        anime.title.split(Regex("""[\s()–-]+"""))
+            .filter { it.isNotBlank() }
+            .take(2)
+            .joinToString("") { it.firstOrNull()?.uppercase() ?: "" }
+            .ifEmpty { "A" }
+    }
+    val base = remember(anime.title) { (anime.title.hashCode() and 0xFFFFFF).toLong() }
+    val startColor = remember(anime.title) { Color((base % 0x1000000L + 0x1A2333L).toInt() or 0xFF000000.toInt()) }
+    val endColor = remember(anime.title) { Color((base * 7 + 0x522B6D).toLong().toInt() or 0xFF000000.toInt()) }
+
+    Box(
+        modifier = modifier.background(brush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(startColor, endColor))),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(initials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun RatingScreen(anime: Anime, initial: RatingDraft, prefsManager: PreferencesManager, onBack: () -> Unit, onSave: (RatingDraft) -> Unit, onDelete: () -> Unit) {
     var draft by remember(anime.id) { mutableStateOf(initial) }
     BackHandler(onBack = onBack)
-    
-    // Load config from PreferencesManager
-    val config = PreferencesManager(LocalContext.current).getDefaultRatingConfig()
+    val config = prefsManager.getDefaultRatingConfig()
     val base = draft.baseScore(config)
     val final = draft.finalScore(config)
-    val stickyEnabled by remember { mutableStateOf(true) } // TODO: Connect to PreferencesManager
+    val stickyScore by prefsManager.getStickyScore().collectAsState(initial = true)
 
     Scaffold(
         containerColor = Bg,
@@ -199,8 +232,10 @@ private fun RatingScreen(anime: Anime, initial: RatingDraft, onBack: () -> Unit,
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 36.dp)
         ) {
-            item {
-                ScoreHeader(base, draft.additiveScore, final, config)
+            if (stickyScore) {
+                stickyHeader { ScoreHeader(base, draft.additiveScore, final, config) }
+            } else {
+                item { ScoreHeader(base, draft.additiveScore, final, config) }
             }
             items(config.categories.sortedBy { it.order }) { category ->
                 CategoryEditor(category, draft.categoryScores[category.id]) { newValue ->
@@ -225,9 +260,6 @@ private fun RatingScreen(anime: Anime, initial: RatingDraft, onBack: () -> Unit,
                 }
             }
             item {
-                StatusEditor(draft.status) { draft = draft.copy(status = it) }
-            }
-            item {
                 OutlinedTextField(
                     value = draft.notes,
                     onValueChange = { draft = draft.copy(notes = it) },
@@ -238,18 +270,16 @@ private fun RatingScreen(anime: Anime, initial: RatingDraft, onBack: () -> Unit,
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Button(onClick = { 
-                        onSave(draft) 
-                    }, modifier = Modifier.weight(1f)) { 
+                    Button(onClick = { onSave(draft) }, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Default.Save, null)
                         Spacer(Modifier.width(6.dp))
-                        Text("Guardar") 
+                        Text("Guardar")
                     }
                     if (anime.finalScore != null) {
-                        OutlinedButton(onClick = onDelete) { 
+                        OutlinedButton(onClick = onDelete) {
                             Icon(Icons.Default.Delete, null)
                             Spacer(Modifier.width(6.dp))
-                            Text("Borrar") 
+                            Text("Borrar")
                         }
                     }
                 }
@@ -312,71 +342,20 @@ private fun CategoryEditor(category: RatingCategory, score: Double?, onChange: (
 }
 
 @Composable
-private fun StatusEditor(status: String, onChange: (String) -> Unit) {
-    val options = listOf("Plan to watch", "Watching", "Completed", "Dropped")
-    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
-        Column(Modifier.padding(16.dp)) {
-            Text("Estado", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                options.forEach { s ->
-                    FilterChip(selected = status == s, onClick = { onChange(s) }, label = { Text(s) })
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PodiumScreen(db: AnimeDatabase, refresh: Int) {
-    val top3 = remember(refresh) { db.searchAnime("", rankedOnly = true, limit = 3) }
-    
-    LazyColumn(
-        Modifier.fillMaxSize().background(Bg).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+private fun Top3Podium(top3: List<Anime>) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.Bottom
     ) {
-        item {
-            Text("Top 3 Podium", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text("Your highest rated anime", color = Color.LightGray)
+        if (top3.size >= 2) {
+            PodiumItem(anime = top3[1], position = 2, isLarge = false, modifier = Modifier.weight(1f))
         }
-        
-        when {
-            top3.isEmpty() -> {
-                item {
-                    Text("No rated anime yet", color = Color.Gray, modifier = Modifier.padding(32.dp))
-                }
-            }
-            top3.size == 1 -> {
-                item {
-                    PodiumItem(anime = top3[0], position = 1, isLarge = true)
-                }
-            }
-            top3.size == 2 -> {
-                item {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        PodiumItem(anime = top3[1], position = 2, isLarge = false, modifier = Modifier.weight(1f))
-                        PodiumItem(anime = top3[0], position = 1, isLarge = true, modifier = Modifier.weight(1.2f))
-                    }
-                }
-            }
-            else -> {
-                item {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        PodiumItem(anime = top3[1], position = 2, isLarge = false, modifier = Modifier.weight(1f))
-                        PodiumItem(anime = top3[0], position = 1, isLarge = true, modifier = Modifier.weight(1.2f))
-                        PodiumItem(anime = top3[2], position = 3, isLarge = false, modifier = Modifier.weight(1f))
-                    }
-                }
-            }
+        if (top3.isNotEmpty()) {
+            PodiumItem(anime = top3[0], position = 1, isLarge = true, modifier = Modifier.weight(1.2f))
+        }
+        if (top3.size >= 3) {
+            PodiumItem(anime = top3[2], position = 3, isLarge = false, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -393,7 +372,7 @@ private fun PodiumItem(anime: Anime, position: Int, isLarge: Boolean, modifier: 
         2 -> "🥈 #2"
         else -> "🥉 #3"
     }
-    
+
     Card(
         modifier = modifier.aspectRatio(if (isLarge) 0.75f else 0.8f),
         colors = CardDefaults.cardColors(containerColor = Panel),
@@ -404,11 +383,7 @@ private fun PodiumItem(anime: Anime, position: Int, isLarge: Boolean, modifier: 
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Position badge
-            Surface(
-                color = posColor,
-                shape = RoundedCornerShape(12.dp)
-            ) {
+            Surface(color = posColor, shape = RoundedCornerShape(12.dp)) {
                 Text(
                     posLabel,
                     Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -417,29 +392,9 @@ private fun PodiumItem(anime: Anime, position: Int, isLarge: Boolean, modifier: 
                     fontSize = if (isLarge) 16.sp else 14.sp
                 )
             }
-            
-            // Poster placeholder
-            Surface(
-                Modifier.fillMaxWidth().aspectRatio(0.7f),
-                color = Color(0xFF1A1F2E),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        Icons.Default.Image,
-                        null,
-                        modifier = Modifier.size(if (isLarge) 48.dp else 40.dp),
-                        tint = Color.Gray
-                    )
-                    Text("Poster", color = Color.Gray, fontSize = 11.sp)
-                }
-            }
-            
-            // Anime title and score
+
+            AnimeCover(anime, Modifier.fillMaxWidth().aspectRatio(0.75f).clip(RoundedCornerShape(12.dp)))
+
             Text(
                 anime.title,
                 Modifier.fillMaxWidth(),
@@ -448,7 +403,7 @@ private fun PodiumItem(anime: Anime, position: Int, isLarge: Boolean, modifier: 
                 maxLines = 2,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
-            
+
             Surface(color = scoreColor(anime.finalScore ?: 0.0), shape = RoundedCornerShape(10.dp)) {
                 Text(
                     "%.2f".format(anime.finalScore ?: 0.0),
@@ -466,7 +421,8 @@ private fun PodiumItem(anime: Anime, position: Int, isLarge: Boolean, modifier: 
 private fun SettingsScreen(prefsManager: PreferencesManager) {
     val stickyScore by prefsManager.getStickyScore().collectAsState(initial = true)
     val showImages by prefsManager.getShowImages().collectAsState(initial = true)
-    
+    val scope = rememberCoroutineScope()
+
     LazyColumn(Modifier.fillMaxSize().background(Bg).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Text("Settings", fontSize = 28.sp, fontWeight = FontWeight.Bold)
@@ -483,11 +439,11 @@ private fun SettingsScreen(prefsManager: PreferencesManager) {
                         }
                         Switch(
                             checked = stickyScore,
-                            onCheckedChange = { 
-                                // Launch coroutine to save preference
-                                // In a real app this would be done via ViewModel/proper coroutine scope
-                            },
-                            modifier = Modifier
+                            onCheckedChange = { value ->
+                                scope.launch {
+                                    prefsManager.setStickyScore(value)
+                                }
+                            }
                         )
                     }
                     Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -495,7 +451,14 @@ private fun SettingsScreen(prefsManager: PreferencesManager) {
                             Text("Show Images", fontWeight = FontWeight.SemiBold)
                             Text("Display anime poster thumbnails", fontSize = 13.sp, color = Color.Gray)
                         }
-                        Switch(checked = showImages, onCheckedChange = { })
+                        Switch(
+                            checked = showImages,
+                            onCheckedChange = { value ->
+                                scope.launch {
+                                    prefsManager.setShowImages(value)
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -506,7 +469,7 @@ private fun SettingsScreen(prefsManager: PreferencesManager) {
                     Text("Rating System", fontWeight = FontWeight.Bold, color = Magenta)
                     Text("(Category management coming soon)", color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
                     Button(
-                        onClick = { /* TODO: Reset to defaults */ },
+                        onClick = { },
                         modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
                     ) {
                         Text("Reset to Defaults")
