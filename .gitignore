@@ -12,6 +12,10 @@ captures/
 gradle-8.9/
 gradle-download/
 
+# Covers locales para desarrollo offline
+app/src/main/assets/local_covers/*
+!app/src/main/assets/local_covers/.gitkeep
+
 # Secrets / local config
 .env
 *.jks

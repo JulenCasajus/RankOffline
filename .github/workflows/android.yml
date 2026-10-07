@@ -4,27 +4,25 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Download current offline anime catalog
-        run: python tools/fetch_catalog.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v4
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
+      - name: Validate bundled catalog version
+        run: echo "$(cat app/src/main/assets/anime_catalog.version)  app/src/main/assets/anime_catalog.json" | sha256sum --check -
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+        run: ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: AnimeRankOffline-debug

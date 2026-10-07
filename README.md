@@ -24,15 +24,15 @@ A category can be marked **N/A**. Its weight is not treated as zero; the remaini
 
 ## Offline catalog
 
-The app itself has **no Internet permission**. Anime titles are bundled into the APK at build time.
+Anime titles are bundled into the APK at build time, so catalog browsing, search, ratings, notes, and settings work offline. Internet access is reserved for explicit cover resolution; scrolling lists does not start network requests. Ratings, notes, and category settings are not sent to cover providers.
 
-The repository includes a small sample asset so it opens immediately. Before making a real APK, run:
+The repository includes the versioned full catalog asset (currently 40,744 entries). Popularity can be refreshed explicitly in the app from Settings; until then, entries without a bundled popularity snapshot fall back to title order. To update the catalog and bundle a complete AniList Top 5000 snapshot deliberately, run:
 
 ```bash
 python tools/fetch_catalog.py
 ```
 
-This downloads AnimeAPI's master array and converts it into `app/src/main/assets/anime_catalog.json`. The database is imported into local SQLite the first time the app starts.
+This downloads AnimeAPI's master array, enriches it with AniList Top 5000 popularity values and stable local ranks, and updates both `anime_catalog.json` and its content-version hash. The command refuses to replace the asset if the Top 5000 response or catalog matching is incomplete. Room upserts a changed asset without deleting ratings, cover metadata, settings, or rankings refreshed in the app; unchanged catalogs are not reimported.
 
 AnimeAPI currently aggregates tens of thousands of anime mappings/titles from multiple databases. Its compiled database is ODbL 1.0 + DbCL 1.0 and requires attribution/share-alike for derived public databases. Keep the attribution if you distribute the full catalog.
 
@@ -40,26 +40,23 @@ AnimeAPI currently aggregates tens of thousands of anime mappings/titles from mu
 
 Recommended: Android Studio, JDK 17, Android SDK 35.
 
-1. Run `python tools/fetch_catalog.py` to bundle the full offline catalog.
-2. Open the project in Android Studio.
-3. Sync Gradle.
-4. Build > Build APK(s).
-
-If you have Gradle 8.9 installed:
+1. Open the project in Android Studio.
+2. Sync Gradle.
+3. Build > Build APK(s).
 
 ```bash
-gradle :app:assembleDebug
+./gradlew assembleDebug
 ```
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## GitHub build
 
-`.github/workflows/android.yml` automatically:
+`.github/workflows/android.yml` builds from the catalog committed with the source and automatically:
 
-1. downloads the current catalog,
-2. builds the Android APK,
-3. uploads the APK as a GitHub Actions artifact.
+1. runs unit tests,
+2. builds with the Gradle Wrapper,
+3. uploads the debug APK as a GitHub Actions artifact.
 
 You can also run it manually from **Actions > Build Android APK > Run workflow**.
 
@@ -67,13 +64,15 @@ You can also run it manually from **Actions > Build Android APK > Run workflow**
 
 - Offline anime catalog + search
 - Automatic ranking by final score
-- 5 weighted quality categories
+- Configurable weighted categories with stable IDs
 - N/A per category with weight renormalization
 - Personal taste bonus from +0.0 to +1.0
 - 0.5-step quality sliders
 - Notes
 - Watch status
-- Local SQLite storage
+- Room storage with explicit non-destructive migrations
+- Always-available on-demand cover downloads and explicit Top 100/500/1000/5000 popularity-and-cover updates
+- Cover preload progress and private cover-cache cleanup
 - Dark/neon UI inspired by the provided rating chart
 
 ## Planned next steps
@@ -81,10 +80,15 @@ You can also run it manually from **Actions > Build Android APK > Run workflow**
 - Backup/import ratings as JSON
 - Favorites and tags
 - Filters by score/status
-- Optional offline cover cache
 - Franchise grouping
 - Release APK signing
 
 ## Data attribution
 
 Catalog build source: AnimeAPI by nattadasu and its upstream/open data sources. Database licensing reported by AnimeAPI: ODbL 1.0 + DbCL 1.0 (with some source components under other compatible licenses). Review the upstream licensing before publishing a redistributed database.
+
+## Architecture and privacy
+
+Compose observes a ViewModel, which delegates to repositories backed by Room and DataStore. Database, catalog, image, and network work runs off the main thread. Ratings, notes, categories, the database, and cached covers remain in app-private storage. Android Auto Backup and cleartext traffic are disabled, and the app contains no analytics.
+
+Database v7 migrates legacy installations explicitly, adding nullable AniList popularity in v6 and a unique nullable local popularity rank in v7. The five legacy score columns become `rating_score` rows keyed by permanent category IDs; no destructive fallback is configured. A complete Top 5000 snapshot can be bundled for offline sorting, while catalog-only assets preserve rankings previously refreshed in the app. Top 100/500/1000/5000 actions transactionally reconcile the requested ranking before downloading only missing covers.

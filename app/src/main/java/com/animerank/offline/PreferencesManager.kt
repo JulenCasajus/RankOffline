@@ -5,8 +5,12 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
@@ -21,7 +25,8 @@ data class RatingCategory(
     val description: String,
     val weight: Double,
     val color: String,
-    val order: Int
+    val order: Int,
+    val active: Boolean = true
 )
 
 @Serializable
@@ -38,64 +43,84 @@ data class RatingSystemConfig(
     val additiveBonus: AdditiveBonus?
 )
 
-class PreferencesManager(private val context: Context) {
-    companion object {
-        private val STICKY_SCORE_KEY = booleanPreferencesKey("sticky_score")
-        private val SHOW_IMAGES_KEY = booleanPreferencesKey("show_images")
-        private val RATING_CONFIG_KEY = stringPreferencesKey("rating_config")
-    }
+object DefaultSettings {
+    val defaultRatingCategories = listOf(
+        RatingCategory("writing", "Writing", "Story, pacing, themes, dialogue, consistency, ending", 35.0, "#19D5E5", 0),
+        RatingCategory("characters", "Characters", "Main cast, side cast, antagonists, development, depth, dynamics", 25.0, "#E04BCF", 1),
+        RatingCategory("engagement", "Engagement", "Emotional impact, entertainment value, viewer investment, tension, atmosphere, memorability", 20.0, "#FF675D", 2),
+        RatingCategory("visuals", "Visuals", "Animation, art style, cinematography, backgrounds, effects, character design", 15.0, "#FFAA55", 3),
+        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, power system, scope, culture, immersion", 5.0, "#62D6C8", 4)
+    )
 
+    val defaultAdditiveBonus = AdditiveBonus("Personal taste", "How much you liked it personally, independent of technical quality", 1.0, "#E04BCF")
+    val defaultRatingConfig = RatingSystemConfig(
+        categories = defaultRatingCategories,
+        additiveBonus = defaultAdditiveBonus
+    )
+}
+
+data class AppSettingsState(
+    val showImages: Boolean = true,
+    val stickyScore: Boolean = true,
+    val ratingConfig: RatingSystemConfig = DefaultSettings.defaultRatingConfig,
+    val settingsLoaded: Boolean = false
+)
+
+class SettingsRepository(private val context: Context) {
     private val json = Json { ignoreUnknownKeys = true }
+    private val updateMutex = Mutex()
 
-    fun getStickyScore(): Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[STICKY_SCORE_KEY] ?: true
-    }
+    private val stickyScoreKey = booleanPreferencesKey("sticky_score")
+    private val showImagesKey = booleanPreferencesKey("show_images")
+    private val ratingConfigKey = stringPreferencesKey("rating_config")
 
-    suspend fun setStickyScore(value: Boolean) {
-        context.dataStore.edit { prefs -> prefs[STICKY_SCORE_KEY] = value }
-    }
+    private val _state = MutableStateFlow(AppSettingsState(settingsLoaded = false))
+    val state: StateFlow<AppSettingsState> = _state.asStateFlow()
 
-    fun getShowImages(): Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[SHOW_IMAGES_KEY] ?: true
-    }
-
-    suspend fun setShowImages(value: Boolean) {
-        context.dataStore.edit { prefs -> prefs[SHOW_IMAGES_KEY] = value }
-    }
-
-    fun getRatingConfig(): Flow<RatingSystemConfig> = context.dataStore.data.map { prefs ->
-        val configJson = prefs[RATING_CONFIG_KEY]
-        if (configJson != null) {
-            try {
-                json.decodeFromString(configJson)
-            } catch (e: Exception) {
-                getDefaultRatingConfig()
-            }
+    suspend fun loadInitialState() {
+        val prefs = context.dataStore.data.first()
+        val ratingJson = prefs[ratingConfigKey]
+        val ratingConfig = if (ratingJson != null) {
+            try { json.decodeFromString<RatingSystemConfig>(ratingJson) } catch (_: Exception) { DefaultSettings.defaultRatingConfig }
         } else {
-            getDefaultRatingConfig()
+            DefaultSettings.defaultRatingConfig
         }
-    }
 
-    suspend fun setRatingConfig(config: RatingSystemConfig) {
-        context.dataStore.edit { prefs ->
-            prefs[RATING_CONFIG_KEY] = json.encodeToString(config)
-        }
-    }
-
-    suspend fun resetRatingConfig() {
-        setRatingConfig(getDefaultRatingConfig())
-    }
-
-    fun getDefaultRatingConfig(): RatingSystemConfig {
-        return RatingSystemConfig(
-            categories = listOf(
-                RatingCategory("writing", "Writing", "Story, pacing, themes, dialogue, consistency, ending", 35.0, "#19D5E5", 0),
-                RatingCategory("characters", "Characters", "Main cast, side cast, antagonists, development, depth, dynamics", 25.0, "#E04BCF", 1),
-                RatingCategory("engagement", "Engagement", "Emotional impact, entertainment value, viewer investment, tension, atmosphere, memorability", 20.0, "#FF675D", 2),
-                RatingCategory("visuals", "Visuals", "Animation, art style, cinematography, backgrounds, effects, character design", 15.0, "#FFAA55", 3),
-                RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, power system, scope, culture, immersion", 5.0, "#62D6C8", 4)
-            ),
-            additiveBonus = AdditiveBonus("Personal taste", "How much you liked it personally, independent of technical quality", 1.0, "#E04BCF")
+        _state.value = AppSettingsState(
+            showImages = prefs[showImagesKey] ?: true,
+            stickyScore = prefs[stickyScoreKey] ?: true,
+            ratingConfig = ratingConfig,
+            settingsLoaded = true
         )
+    }
+
+    suspend fun updateShowImages(value: Boolean) = updateMutex.withLock {
+        _state.value = _state.value.copy(showImages = value)
+        context.dataStore.edit { prefs -> prefs[showImagesKey] = value }
+    }
+
+    suspend fun updateStickyScore(value: Boolean) = updateMutex.withLock {
+        _state.value = _state.value.copy(stickyScore = value)
+        context.dataStore.edit { prefs -> prefs[stickyScoreKey] = value }
+    }
+
+    suspend fun updateRatingConfig(config: RatingSystemConfig) = updateMutex.withLock {
+        _state.value = _state.value.copy(ratingConfig = config)
+        context.dataStore.edit { prefs -> prefs[ratingConfigKey] = json.encodeToString(config) }
+    }
+
+    suspend fun resetToDefaults() = updateMutex.withLock {
+        val config = DefaultSettings.defaultRatingConfig
+        _state.value = _state.value.copy(
+            showImages = true,
+            stickyScore = true,
+            ratingConfig = config,
+            settingsLoaded = true
+        )
+        context.dataStore.edit { prefs ->
+            prefs[showImagesKey] = true
+            prefs[stickyScoreKey] = true
+            prefs[ratingConfigKey] = json.encodeToString(config)
+        }
     }
 }
