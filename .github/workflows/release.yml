@@ -1,0 +1,136 @@
+name: Release RankOffline
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Validate bundled catalog
+        run: |
+          echo "$(cat app/src/main/assets/anime_catalog.version)  app/src/main/assets/anime_catalog.json" \
+            | sha256sum --check -
+
+      - name: Validate tag matches versionName
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)"/\1/p' app/build.gradle.kts)"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          echo "Gradle versionName: $VERSION_NAME"
+          echo "Git tag version:     $TAG_VERSION"
+
+          if [ "$VERSION_NAME" != "$TAG_VERSION" ]; then
+            echo "ERROR: tag v$TAG_VERSION does not match versionName $VERSION_NAME"
+            exit 1
+          fi
+
+      - name: Decode release keystore
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RANKOFFLINE_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > release-ci.jks
+
+      - name: Create signing properties
+        shell: bash
+        env:
+          STORE_PASSWORD: ${{ secrets.RANKOFFLINE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RANKOFFLINE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RANKOFFLINE_KEY_PASSWORD }}
+        run: |
+          {
+            echo "storeFile=release-ci.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Build signed release APK
+        run: ./gradlew assembleRelease
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)"/\1/p' app/build.gradle.kts)"
+
+          if [ -z "$VERSION_NAME" ]; then
+            echo "Could not read versionName"
+            exit 1
+          fi
+
+          echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release APK
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk \
+             "dist/RankOffline-v${{ steps.version.outputs.version }}.apk"
+
+      - name: Verify APK signature
+        shell: bash
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort | tail -1)"
+
+          if [ -z "$APKSIGNER" ]; then
+            echo "apksigner not found"
+            exit 1
+          fi
+
+          "$APKSIGNER" verify \
+            --verbose \
+            --print-certs \
+            "dist/RankOffline-v${{ steps.version.outputs.version }}.apk"
+
+      - name: Upload signed APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RankOffline-v${{ steps.version.outputs.version }}
+          path: dist/RankOffline-v${{ steps.version.outputs.version }}.apk
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/RankOffline-v${{ steps.version.outputs.version }}.apk" \
+            --title "RankOffline $GITHUB_REF_NAME" \
+            --generate-notes
+
+      - name: Remove temporary signing files
+        if: always()
+        shell: bash
+        run: |
+          rm -f release-ci.jks keystore.properties
