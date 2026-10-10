@@ -1,0 +1,164 @@
+<resources>
+    <string name="app_name" translatable="false">RankOffline</string>
+    <string name="nav_anime">Anime</string>
+    <string name="nav_ranking">Ranking</string>
+    <string name="nav_settings">Settings</string>
+    <string name="catalog_local_count">Local catalog: %1$s entries.</string>
+    <string name="search_anime_hint">Search anime…</string>
+    <string name="no_search_results">No results.</string>
+    <string name="ranking_title">Ranking</string>
+    <string name="ranking_description_with_images">Top 3 and full list by score.</string>
+    <string name="ranking_description_without_images">Full list by score.</string>
+    <string name="no_saved_ratings">No ratings saved yet.</string>
+    <string name="sort_most_popular">Most popular</string>
+    <string name="sort_title_ascending" translatable="false">A → Z</string>
+    <string name="sort_title_descending" translatable="false">Z → A</string>
+
+    <string name="cover_download">Download cover</string>
+    <string name="cover_close">Close</string>
+    <string name="cover_delete">Delete cover</string>
+    <string name="cover_delete_title">Delete this cover?</string>
+    <string name="cover_delete_explanation">You can download it again whenever you want.</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_save">Save</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_back">Back</string>
+
+    <string name="rating_title">Rating</string>
+    <string name="rating_simple_instructions">Enter a score from 0 to 10, with up to two decimal places.</string>
+    <string name="rating_simple_example" translatable="false">8.37</string>
+    <string name="rating_simple_error">Use a value from 0.00 to 10.00 with no more than two decimal places.</string>
+    <string name="rating_notes">Notes</string>
+    <string name="rating_notes_hint">What worked, what didn’t, memorable scenes…</string>
+    <string name="score_title">Score</string>
+    <string name="score_quality">Quality: %1$s</string>
+    <string name="score_bonus_value">%1$s: +%2$.1f</string>
+    <string name="score_category_heading">%1$s · %2$d%%</string>
+    <string name="score_activate_category">Enable</string>
+    <string name="score_not_applicable" translatable="false">N/A</string>
+    <string name="score_out_of_ten">%1$.1f / 10</string>
+    <string name="score_not_applicable_explanation">Not applicable: its weight is redistributed among the other categories.</string>
+    <string name="bonus_range">%1$s · +0 to +%2$.1f</string>
+    <string name="bonus_explanation">Added after calculating quality. It never lowers the score.</string>
+    <string name="bonus_current">+%1$.1f</string>
+    <string name="score_flawless">Flawless</string>
+    <string name="score_amazing">Amazing</string>
+    <string name="score_great">Great</string>
+    <string name="score_good">Good</string>
+    <string name="score_decent">Decent</string>
+    <string name="score_average">Average</string>
+    <string name="score_subpar">Subpar</string>
+    <string name="score_poor">Poor</string>
+    <string name="score_bad">Bad</string>
+    <string name="score_unwatchable">Unwatchable</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_general_title">General settings</string>
+    <string name="settings_general_description">Display and behavior</string>
+    <string name="settings_rating_title">Rating settings</string>
+    <string name="settings_rating_description">Categories and scoring system</string>
+    <string name="settings_icon_title">Icon settings</string>
+    <string name="settings_icon_description">Choose the launcher icon</string>
+    <string name="settings_about_title">Licence / About</string>
+    <string name="settings_about_description">App information, credits and licences</string>
+    <string name="settings_open_item">Open %1$s</string>
+
+    <string name="icon_instructions">Choose the icon shown by your Android launcher. Some launchers may take a few seconds to refresh.</string>
+    <string name="icon_content_description">%1$s launcher icon</string>
+    <string name="icon_selected">✓ %1$s</string>
+    <string name="icon_default">Default</string>
+    <string name="icon_blue">Blue</string>
+    <string name="icon_red">Red</string>
+    <string name="icon_green">Green</string>
+    <string name="icon_yellow">Yellow</string>
+
+    <string name="general_display_section">Display</string>
+    <string name="general_sticky_score">Sticky score header</string>
+    <string name="general_sticky_score_description">Keep the score visible while scrolling</string>
+    <string name="general_show_images">Show images</string>
+    <string name="general_show_images_description">Display anime poster thumbnails</string>
+    <string name="language_title">Language</string>
+    <string name="language_description">App interface language</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_french">Français</string>
+    <string name="language_russian">Русский</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_simplified_chinese">简体中文</string>
+    <string name="language_basque">Euskara</string>
+    <string name="language_italian">Italiano</string>
+
+    <string name="covers_popularity_section">Popularity and covers</string>
+    <string name="covers_popularity_description">Refresh the most popular anime and download their covers for offline use.</string>
+    <string name="covers_update_explanation">Each refresh updates popularity and downloads missing covers. Individual covers can also be downloaded by tapping their placeholder.</string>
+    <string name="covers_downloaded_count">Downloaded covers: %1$d</string>
+    <string name="covers_update_top">Refresh Top %1$d</string>
+    <string name="covers_update_top_5000_title">Refresh Top 5000</string>
+    <string name="covers_update_top_5000_warning">This operation may download many covers and use a considerable amount of data and storage.</string>
+    <string name="covers_update_completed">Top %1$d refreshed</string>
+    <string name="covers_update_interrupted">Top %1$d refresh interrupted</string>
+    <string name="covers_updating">Refreshing Top %1$d</string>
+    <string name="popularity_title">Popularity</string>
+    <string name="popularity_updating_progress">Refreshing ranking… %1$d / %2$d</string>
+    <string name="popularity_applying">Applying ranking…</string>
+    <string name="popularity_updated">Popularity updated</string>
+    <string name="popularity_update_failed">Couldn’t update</string>
+    <string name="covers_progress">Covers: %1$d / %2$d</string>
+    <string name="covers_progress_details">%1$d already available · %2$d downloaded · %3$d errors</string>
+    <string name="covers_completed">✓ Covers completed</string>
+    <string name="covers_download_interrupted">Cover download interrupted</string>
+    <string name="covers_clear">Delete downloaded covers</string>
+    <string name="covers_clear_title">Delete downloaded covers?</string>
+    <string name="covers_clear_explanation">The covers can be downloaded again when needed.</string>
+
+    <string name="rating_elaborate">Elaborate rating</string>
+    <string name="rating_elaborate_description">Use categories, weights, N/A, and a bonus when rating</string>
+    <string name="rating_system">Rating system</string>
+    <string name="rating_inactive_categories">Inactive categories</string>
+    <string name="rating_add_category">Add category</string>
+    <string name="rating_reset_defaults">Reset to defaults</string>
+    <string name="rating_new_category_name">New category</string>
+    <string name="rating_new_category_description">Your custom evaluation criterion.</string>
+    <string name="category_name">Name</string>
+    <string name="category_description">Description</string>
+    <string name="category_weight">Weight</string>
+    <string name="category_color">Color</string>
+    <string name="category_tint">Tint</string>
+    <string name="category_writing">Writing</string>
+    <string name="category_writing_description">Story, pacing, themes, dialogue, consistency, ending</string>
+    <string name="category_characters">Characters</string>
+    <string name="category_characters_description">Main cast, side cast, antagonists, development, depth, dynamics</string>
+    <string name="category_engagement">Engagement</string>
+    <string name="category_engagement_description">Emotional impact, entertainment value, viewer investment, tension, atmosphere, memorability</string>
+    <string name="category_visuals">Visuals</string>
+    <string name="category_visuals_description">Animation, art style, cinematography, backgrounds, effects, character design</string>
+    <string name="category_worldbuilding">Worldbuilding</string>
+    <string name="category_worldbuilding_description">Setting, lore, power system, scope, culture, immersion</string>
+    <string name="bonus_personal_taste">Personal taste</string>
+    <string name="bonus_personal_taste_description">How much you liked it personally, independent of technical quality</string>
+
+    <string name="about_version">Version %1$s</string>
+    <string name="about_summary">An offline anime catalog and rating app. Your ratings and preferences are stored locally.</string>
+    <string name="about_licences">Licences</string>
+    <string name="about_rankoffline_licence" translatable="false">RankOffline: MIT License.</string>
+    <string name="about_catalog_licence">Anime catalog: AnimeAPI and upstream data sources; AnimeAPI reports ODbL 1.0 and DbCL 1.0, with some source components under other compatible licences.</string>
+    <string name="about_android_licence">AndroidX, Jetpack Compose, DataStore and Kotlinx Serialization: Apache License 2.0.</string>
+    <string name="about_acknowledgements">Acknowledgements</string>
+    <string name="about_acknowledgements_text">AnimeAPI and its upstream contributors provide catalog mappings. AniList and Jikan provide anime cover metadata when a cover is not already available locally.</string>
+
+    <string name="error_initialize_local_data">Unable to initialize local data.</string>
+    <string name="message_no_internet">No Internet connection</string>
+    <string name="message_cover_not_found">No cover was found for this anime</string>
+    <string name="message_cover_download_failed">Couldn’t download the cover. Try again.</string>
+    <string name="message_cover_deleted">Cover deleted</string>
+    <string name="message_cover_delete_failed">Couldn’t delete the cover</string>
+    <plurals name="message_covers_deleted">
+        <item quantity="one">%1$d cover deleted</item>
+        <item quantity="other">%1$d covers deleted</item>
+    </plurals>
+    <string name="message_top_updated">Top %1$d refreshed</string>
+    <string name="message_top_update_failed">Couldn’t refresh Top %1$d. Try again.</string>
+</resources>

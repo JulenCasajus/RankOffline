@@ -1,4 +1,4 @@
-# AnimeRank Offline
+# RankOffline
 
 Android app (Kotlin + Jetpack Compose) to keep an **offline anime catalog** and rate anime with a quality-first weighted system plus a separate personal-taste bonus.
 
@@ -36,9 +36,21 @@ This downloads AnimeAPI's master array, enriches it with AniList Top 5000 popula
 
 AnimeAPI currently aggregates tens of thousands of anime mappings/titles from multiple databases. Its compiled database is ODbL 1.0 + DbCL 1.0 and requires attribution/share-alike for derived public databases. Keep the attribution if you distribute the full catalog.
 
-## Build locally
+## Instalación
+
+### GitHub Releases
+
+Descarga `RankOffline-vX.Y.Z.apk` desde la sección **Releases** del repositorio e instálalo en Android. Android puede pedir permiso para instalar aplicaciones desde el navegador o gestor de archivos utilizado.
+
+### Obtainium
+
+Añade el repositorio GitHub de RankOffline a Obtainium para recibir las nuevas versiones publicadas mediante GitHub Releases. Las actualizaciones requieren el mismo `applicationId`, la misma clave de firma y un `versionCode` superior.
+
+## Build local
 
 Recommended: Android Studio, JDK 17, Android SDK 35.
+
+The definitive Android application ID and namespace are `org.rankoffline.app`.
 
 1. Open the project in Android Studio.
 2. Sync Gradle.
@@ -49,6 +61,14 @@ Recommended: Android Studio, JDK 17, Android SDK 35.
 ```
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`
+
+Para crear el APK de distribución firmado, configura primero el keystore local siguiendo [docs/RELEASING.md](docs/RELEASING.md) y ejecuta:
+
+```bash
+tools/build_release.sh
+```
+
+El resultado se copia a `dist/RankOffline-v0.1.0.apk`. Las claves y contraseñas de firma nunca deben añadirse al repositorio.
 
 ## GitHub build
 
@@ -74,6 +94,7 @@ You can also run it manually from **Actions > Build Android APK > Run workflow**
 - Always-available on-demand cover downloads and explicit Top 100/500/1000/5000 popularity-and-cover updates
 - Cover preload progress and private cover-cache cleanup
 - Dark/neon UI inspired by the provided rating chart
+- Five selectable launcher icons: Dark (default), Blue, Red, Green, and Yellow
 
 ## Planned next steps
 
@@ -81,7 +102,6 @@ You can also run it manually from **Actions > Build Android APK > Run workflow**
 - Favorites and tags
 - Filters by score/status
 - Franchise grouping
-- Release APK signing
 
 ## Data attribution
 

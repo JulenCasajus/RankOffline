@@ -25,5 +25,5 @@ jobs:
         run: ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: AnimeRankOffline-debug
+          name: RankOffline-debug
           path: app/build/outputs/apk/debug/app-debug.apk

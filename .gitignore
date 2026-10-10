@@ -20,3 +20,5 @@ app/src/main/assets/local_covers/*
 .env
 *.jks
 *.keystore
+keystore.properties
+dist/

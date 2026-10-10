@@ -24,7 +24,7 @@ ANILIST_PAGE_DELAY_SECONDS = 0.75
 MAX_REQUEST_ATTEMPTS = 4
 OUT = Path(__file__).resolve().parents[1] / "app/src/main/assets/anime_catalog.json"
 VERSION_OUT = OUT.with_name("anime_catalog.version")
-USER_AGENT = "AnimeRankOffline/0.1 (+GitHub personal project)"
+USER_AGENT = "RankOffline/0.1 (+GitHub personal project)"
 
 ANILIST_QUERY = """
 query ($page: Int!, $perPage: Int!) {
@@ -124,7 +124,7 @@ def fetch_anilist_popularity() -> list[dict]:
     return result
 
 
-def enrich_popularity(catalog: list[dict], popular: list[dict]) -> tuple[int, int]:
+def enrich_popularity(catalog: list[dict], popular: list[dict]) -> tuple[int, int, list[tuple[int, dict]]]:
     by_anilist: dict[int, list[int]] = {}
     by_mal: dict[int, list[int]] = {}
     for index, item in enumerate(catalog):
@@ -136,6 +136,7 @@ def enrich_popularity(catalog: list[dict], popular: list[dict]) -> tuple[int, in
             by_mal.setdefault(item["malId"], []).append(index)
 
     matched_indexes: set[int] = set()
+    matched_ranks: set[int] = set()
     unmatched: list[tuple[int, dict]] = []
     for rank, item in enumerate(popular, start=1):
         matches = by_anilist.get(item.get("id"), [])
@@ -144,6 +145,7 @@ def enrich_popularity(catalog: list[dict], popular: list[dict]) -> tuple[int, in
             catalog[index]["popularity"] = item.get("popularity")
             catalog[index]["popularityRank"] = rank
             matched_indexes.add(index)
+            matched_ranks.add(rank)
         else:
             unmatched.append((rank, item))
 
@@ -163,15 +165,24 @@ def enrich_popularity(catalog: list[dict], popular: list[dict]) -> tuple[int, in
         if len(matches) != 1:
             continue
         index = matches[0]
-        catalog_anilist_id = catalog[index].get("anilistId")
-        if index in matched_indexes or catalog_anilist_id not in (None, item.get("id")):
+        if index in matched_indexes or by_anilist.get(item.get("id")):
             continue
+        # AniList IDs can be superseded upstream while the MAL identity remains
+        # stable. A unique MAL match with no competing current AniList ID is safe;
+        # update the stale ID so subsequent refreshes match AniList directly.
+        catalog[index]["anilistId"] = item["id"]
         catalog[index]["popularity"] = item.get("popularity")
         catalog[index]["popularityRank"] = rank
         matched_indexes.add(index)
+        matched_ranks.add(rank)
         fallback_matches += 1
 
-    return len(matched_indexes), fallback_matches
+    unresolved = [
+        (rank, item)
+        for rank, item in enumerate(popular, start=1)
+        if rank not in matched_ranks
+    ]
+    return len(matched_indexes), fallback_matches, unresolved
 
 
 def main() -> None:
@@ -197,10 +208,14 @@ def main() -> None:
             "popularityRank": None,
         })
 
-    matched, fallback_matches = enrich_popularity(normalized, popular)
+    matched, fallback_matches, unresolved = enrich_popularity(normalized, popular)
     if matched != ANILIST_LIMIT:
+        valid_ids = sum(isinstance(item.get("id"), int) for item in popular)
         raise SystemExit(
-            f"Catalog only matched {matched:,} of {ANILIST_LIMIT:,} AniList popularity entries; "
+            f"Incomplete catalog enrichment: downloaded={len(popular):,}, "
+            f"valid_ids={valid_ids:,}, matched={matched:,}, "
+            f"unmatched={len(unresolved):,}, "
+            f"unmatched_entries={[(rank, item.get('id'), item.get('idMal')) for rank, item in unresolved]}; "
             "refusing to replace the bundled catalog"
         )
     normalized.sort(key=lambda x: x["title"].casefold())
