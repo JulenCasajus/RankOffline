@@ -1,111 +1,139 @@
 # RankOffline
 
-Android app (Kotlin + Jetpack Compose) to keep an **offline anime catalog** and rate anime with a quality-first weighted system plus a separate personal-taste bonus.
+RankOffline is a **local-first Android app** for browsing an offline anime catalog, rating anime with either a simple score or a configurable weighted system, and building a personal ranking without an account or telemetry.
+
+## Highlights
+
+- **40,742 anime** bundled for offline browsing and search.
+- **Simple rating** from 0 to 10 in 0.5-point steps.
+- **Elaborate rating** with reusable rating profiles, weighted categories, N/A support, and a separate personal-taste bonus.
+- **Custom categories** with editable names, descriptions, colors, and stable IDs.
+- **Custom profiles** with independent category weights; profiles can be created, renamed, edited, and deleted.
+- **Personal ranking** driven by one canonical saved score per anime.
+- Notes and watch status stored locally.
+- Optional cover downloads and explicit Top 100/500/1000/5000 popularity refreshes.
+- Nine UI languages: English, Spanish, German, French, Russian, Japanese, Simplified Chinese, Basque, and Italian.
+- Five selectable launcher icons: Dark, Blue, Red, Green, and Yellow.
+- No analytics, telemetry, account system, or cloud rating storage.
 
 ## Rating system
 
-Base quality score:
+RankOffline supports two rating modes.
 
-- Writing — **35%**
-- Characters — **20%**
-- Visuals — **20%**
-- Worldbuilding — **15%**
-- Audio — **10%**
+### Simple
 
-Personal taste: **+0.0 to +1.0**.
+Choose a score from **0.0 to 10.0** in **0.5** steps. Saving writes that value directly to the canonical final score.
 
-`final = min(10, weighted_quality + personal_taste)`
+### Elaborate
 
-A category can be marked **N/A**. Its weight is not treated as zero; the remaining weights are normalized. This follows the idea of not punishing a work for an element it does not need.
+Rate the configured categories and choose a **rating profile** that determines their relative weights. Categories marked **N/A** are excluded and the remaining applicable weights are normalized.
 
-## Score scale
+The default categories are:
 
-10 Flawless · 9 Amazing · 8 Great · 7 Good · 6 Decent · 5 Average · 4 Subpar · 3 Poor · 2 Bad · 1 Unwatchable
+- Writing
+- Characters
+- Visuals
+- Worldbuilding
+- Audio
+
+The default profiles are designed around what primarily carries a work rather than around anime genres:
+
+- General
+- Narrative
+- Character-driven
+- Visual / Action
+- World / Adventure
+- Atmospheric
+
+A separate personal-taste bonus ranges from **+0.0 to +1.0** in 0.1 steps. The final elaborate score is capped at 10.
+
+Changing a profile later does **not** silently recalculate previously saved anime. A final score only changes when that anime is explicitly saved again.
+
+See [docs/SCORING.md](docs/SCORING.md) for the complete model.
 
 ## Offline catalog
 
-Anime titles are bundled into the APK at build time, so catalog browsing, search, ratings, notes, and settings work offline. Internet access is reserved for explicit cover resolution; scrolling lists does not start network requests. Ratings, notes, and category settings are not sent to cover providers.
+The catalog is bundled into the APK, so browsing, search, ratings, notes, ranking, and settings work offline. Internet access is used only for explicit popularity/cover actions.
 
-The repository includes the versioned full catalog asset (currently 40,744 entries). Popularity can be refreshed explicitly in the app from Settings; until then, entries without a bundled popularity snapshot fall back to title order. To update the catalog and bundle a complete AniList Top 5000 snapshot deliberately, run:
+The bundled catalog currently contains **40,742 unique entries** and a complete local Top 5000 popularity snapshot. Catalog updates are deliberate and versioned.
+
+To rebuild the catalog manually:
 
 ```bash
 python tools/fetch_catalog.py
 ```
 
-This downloads AnimeAPI's master array, enriches it with AniList Top 5000 popularity values and stable local ranks, and updates both `anime_catalog.json` and its content-version hash. The command refuses to replace the asset if the Top 5000 response or catalog matching is incomplete. Room upserts a changed asset without deleting ratings, cover metadata, settings, or rankings refreshed in the app; unchanged catalogs are not reimported.
+The script downloads AnimeAPI's master array, enriches it with AniList Top 5000 popularity data, validates the result, and updates both `anime_catalog.json` and its content-version hash. Do not regenerate the catalog as part of an unrelated change.
 
-AnimeAPI currently aggregates tens of thousands of anime mappings/titles from multiple databases. Its compiled database is ODbL 1.0 + DbCL 1.0 and requires attribution/share-alike for derived public databases. Keep the attribution if you distribute the full catalog.
-
-## Instalación
+## Install
 
 ### GitHub Releases
 
-Descarga `RankOffline-vX.Y.Z.apk` desde la sección **Releases** del repositorio e instálalo en Android. Android puede pedir permiso para instalar aplicaciones desde el navegador o gestor de archivos utilizado.
+Download the latest `RankOffline-vX.Y.Z.apk` from the repository's **Releases** page and install it on Android.
 
 ### Obtainium
 
-Añade el repositorio GitHub de RankOffline a Obtainium para recibir las nuevas versiones publicadas mediante GitHub Releases. Las actualizaciones requieren el mismo `applicationId`, la misma clave de firma y un `versionCode` superior.
+Add this GitHub repository to Obtainium to receive published RankOffline updates automatically. Android updates require the same application ID, the same signing key, and a strictly higher `versionCode`.
 
-## Build local
+## Build locally
 
-Recommended: Android Studio, JDK 17, Android SDK 35.
+Requirements:
 
-The definitive Android application ID and namespace are `org.rankoffline.app`.
+- Android Studio
+- JDK 17
+- Android SDK 35
 
-1. Open the project in Android Studio.
-2. Sync Gradle.
-3. Build > Build APK(s).
+The application ID and namespace are:
+
+```text
+org.rankoffline.app
+```
+
+Build a debug APK with:
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-APK: `app/build/outputs/apk/debug/app-debug.apk`
+Output:
 
-Para crear el APK de distribución firmado, configura primero el keystore local siguiendo [docs/RELEASING.md](docs/RELEASING.md) y ejecuta:
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+For a locally signed release build, configure `keystore.properties` as described in [docs/RELEASING.md](docs/RELEASING.md), then run:
 
 ```bash
 tools/build_release.sh
 ```
 
-El resultado se copia a `dist/RankOffline-v0.1.0.apk`. Las claves y contraseñas de firma nunca deben añadirse al repositorio.
+Local signing files, generated APKs, and credentials are intentionally ignored by Git.
 
-## GitHub build
+## Continuous integration and releases
 
-`.github/workflows/android.yml` builds from the catalog committed with the source and automatically:
+`.github/workflows/android.yml` validates the bundled catalog, runs JVM tests, builds the debug APK, and uploads it as an Actions artifact for pushes to `main` and pull requests.
 
-1. runs unit tests,
-2. builds with the Gradle Wrapper,
-3. uploads the debug APK as a GitHub Actions artifact.
+`.github/workflows/release.yml` builds and verifies the signed release APK using GitHub Actions secrets. A pushed `v*` tag creates the corresponding GitHub Release automatically.
 
-You can also run it manually from **Actions > Build Android APK > Run workflow**.
+See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing setup.
 
-## Current MVP features
+## Documentation
 
-- Offline anime catalog + search
-- Automatic ranking by final score
-- Configurable weighted categories with stable IDs
-- N/A per category with weight renormalization
-- Personal taste bonus from +0.0 to +1.0
-- 0.5-step quality sliders
-- Notes
-- Watch status
-- Room storage with explicit non-destructive migrations
-- Always-available on-demand cover downloads and explicit Top 100/500/1000/5000 popularity-and-cover updates
-- Cover preload progress and private cover-cache cleanup
-- Dark/neon UI inspired by the provided rating chart
-- Five selectable launcher icons: Dark (default), Blue, Red, Green, and Yellow
-
-## Roadmap
-
-See the [RankOffline roadmap](docs/ROADMAP.md) for ideas and possible future work.
+- [Architecture](docs/ARCHITECTURE.md)
+- [Scoring model](docs/SCORING.md)
+- [Releasing](docs/RELEASING.md)
+- [Roadmap](docs/ROADMAP.md)
 
 ## Data attribution
 
-Catalog build source: AnimeAPI by nattadasu and its upstream/open data sources. Database licensing reported by AnimeAPI: ODbL 1.0 + DbCL 1.0 (with some source components under other compatible licenses). Review the upstream licensing before publishing a redistributed database.
+The bundled catalog is built from AnimeAPI by nattadasu and its upstream/open data sources. AnimeAPI reports its compiled database under ODbL 1.0 + DbCL 1.0, with some source components under other compatible licenses. Review upstream licensing before redistributing a derived database and preserve required attribution/share-alike terms.
+
+AniList provides popularity and primary cover metadata. Jikan is used as a cover fallback where needed.
 
 ## Architecture and privacy
 
-Compose observes a ViewModel, which delegates to repositories backed by Room and DataStore. Database, catalog, image, and network work runs off the main thread. Ratings, notes, categories, the database, and cached covers remain in app-private storage. Android Auto Backup and cleartext traffic are disabled, and the app contains no analytics.
+RankOffline uses Jetpack Compose, Room, and DataStore. Ratings, notes, profile/category configuration, the database, and downloaded covers remain in app-private storage.
 
-Database v7 migrates legacy installations explicitly, adding nullable AniList popularity in v6 and a unique nullable local popularity rank in v7. The five legacy score columns become `rating_score` rows keyed by permanent category IDs; no destructive fallback is configured. A complete Top 5000 snapshot can be bundled for offline sorting, while catalog-only assets preserve rankings previously refreshed in the app. Top 100/500/1000/5000 actions transactionally reconcile the requested ranking before downloading only missing covers.
+Android Auto Backup and cleartext traffic are disabled. Network requests are limited to public anime identifiers and cover/popularity metadata; personal ratings and notes are not sent to those services.
+
+The project is licensed under the [MIT License](LICENSE).

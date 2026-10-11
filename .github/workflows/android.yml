@@ -3,27 +3,52 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v4
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Validate bundled catalog version
-        run: echo "$(cat app/src/main/assets/anime_catalog.version)  app/src/main/assets/anime_catalog.json" | sha256sum --check -
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Validate bundled catalog
+        shell: bash
+        run: |
+          echo "$(cat app/src/main/assets/anime_catalog.version)  app/src/main/assets/anime_catalog.json" \
+            | sha256sum --check -
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
+
       - name: Build debug APK
         run: ./gradlew assembleDebug
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
         with:
           name: RankOffline-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
