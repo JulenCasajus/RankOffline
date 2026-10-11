@@ -10,12 +10,12 @@ class ScoreCalculatorTest {
         val scores = mapOf(
             "writing" to 10.0,
             "characters" to 8.0,
-            "engagement" to 6.0,
-            "visuals" to 4.0,
-            "worldbuilding" to 2.0
+            "visuals" to 6.0,
+            "worldbuilding" to 4.0,
+            "audio" to 2.0
         )
         val result = ScoreCalculator.calculate(scores, 0.0, DefaultSettings.defaultRatingConfig)
-        assertEquals(7.4, result.qualityScore!!, 0.0001)
+        assertEquals(7.1, result.qualityScore!!, 0.0001)
     }
 
     @Test
@@ -30,6 +30,32 @@ class ScoreCalculatorTest {
         val config = configOf(category("a", 50.0), category("b", 50.0))
         val result = ScoreCalculator.calculate(mapOf("a" to 8.0, "b" to null), 0.0, config)
         assertEquals(8.0, result.qualityScore!!, 0.0001)
+    }
+
+    @Test
+    fun zeroIsAValidApplicableScoreAndIsDistinctFromNotApplicable() {
+        val config = configOf(category("a", 50.0), category("b", 50.0))
+
+        val zero = ScoreCalculator.calculate(mapOf("a" to 0.0, "b" to 0.0), 0.0, config)
+        val notApplicable = ScoreCalculator.calculate(mapOf("a" to null, "b" to null), 0.0, config)
+
+        assertEquals(0.0, zero.qualityScore!!, 0.0)
+        assertEquals(0.0, zero.finalScore!!, 0.0)
+        assertNull(notApplicable.qualityScore)
+        assertNull(notApplicable.finalScore)
+    }
+
+    @Test
+    fun categoryScoresMustRemainWithinZeroAndTen() {
+        val config = configOf(category("a", 100.0))
+        listOf(0.0, 0.5, 1.0, 9.5, 10.0).forEach { score ->
+            assertEquals(score, ScoreCalculator.calculate(mapOf("a" to score), 0.0, config).finalScore!!, 0.0)
+        }
+        listOf(-0.5, 10.5).forEach { score ->
+            val result = ScoreCalculator.calculate(mapOf("a" to score), 0.0, config)
+            assertNull(result.qualityScore)
+            assertNull(result.finalScore)
+        }
     }
 
     @Test

@@ -7,7 +7,9 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
@@ -26,13 +28,20 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +50,6 @@ import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.flow.collect
 import java.text.NumberFormat
 import java.util.Locale
-import kotlin.math.roundToInt
 import java.util.UUID
 
 private val Bg = Color(0xFF0A0B12)
@@ -51,6 +59,12 @@ private val Magenta = Color(0xFFE04BCF)
 private val Coral = Color(0xFFFF675D)
 private val Orange = Color(0xFFFFAA55)
 private val Mint = Color(0xFF62D6C8)
+private val CategoryColorPalette = listOf(
+    "#EF5350", "#FF675D", "#FF8A65", "#FFAA55", "#FFD54F",
+    "#D4E157", "#81C784", "#4DB6AC", "#62D6C8", "#19D5E5",
+    "#4FC3F7", "#7EC7FF", "#5C6BC0", "#7986CB", "#9575CD",
+    "#BA68C8", "#E04BCF", "#F06292", "#EC407A", "#B0BEC5"
+)
 
 class MainActivity : AppCompatActivity() {
     private val appViewModel: RankOfflineViewModel by viewModels()
@@ -347,6 +361,14 @@ private fun AnimeRow(
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (rank != null) {
+                Box(
+                    modifier = Modifier.width(36.dp).heightIn(min = 52.dp).clickable(onClick = onClick),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Text("${rank}.", color = Color.LightGray, fontWeight = FontWeight.Bold)
+                }
+            }
             if (showImages) {
                 AnimeCover(
                     anime,
@@ -361,9 +383,6 @@ private fun AnimeRow(
                 modifier = Modifier.weight(1f).heightIn(min = 52.dp).clickable(onClick = onClick),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (rank != null) {
-                    Text("${rank}.", color = Color.LightGray, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp))
-                }
                 Text(
                     anime.title,
                     modifier = Modifier.weight(1f),
@@ -565,13 +584,12 @@ private fun RatingScreen(
         if (elaborate && initial.categoryScores.isEmpty()) initial.withDefaultCategoryScores(config) else initial
     }
     var draft by remember(anime.id, defaultDraft) { mutableStateOf(defaultDraft) }
-    var simpleInput by remember(anime.id, initial.finalScore) {
-        mutableStateOf(formatRatingInput(initial.finalScore))
+    var simpleScore by remember(anime.id, initial.finalScore) {
+        mutableDoubleStateOf(snapRatingValue(initial.finalScore ?: 5.0) ?: 5.0)
     }
     BackHandler(onBack = onBack)
     val base = draft.baseScore(config)
     val calculatedFinal = draft.calculatedFinalScore(config)
-    val parsedScore = parseSimpleRating(simpleInput)
     val stickyScore = settings.stickyScore
 
     Scaffold(
@@ -610,11 +628,14 @@ private fun RatingScreen(
                                     color = Magenta
                                 )
                                 Text(stringResource(R.string.bonus_explanation), color = Color.Gray, fontSize = 13.sp)
-                                Slider(
-                                    value = draft.additiveScore.toFloat(),
-                                    onValueChange = { draft = draft.copy(additiveScore = (it * 10).roundToInt() / 10.0) },
-                                    valueRange = 0f..bonus.maxValue.toFloat(),
-                                    steps = (bonus.maxValue * 10).toInt() - 1
+                                DiscreteSlider(
+                                    value = draft.additiveScore,
+                                    onValueChange = { draft = draft.copy(additiveScore = it) },
+                                    min = BONUS_MIN,
+                                    max = BONUS_MAX,
+                                    step = BONUS_STEP,
+                                    accessibilityLabel = localizedBonusName(bonus),
+                                    valueDescription = stringResource(R.string.bonus_current, draft.additiveScore)
                                 )
                                 Text(stringResource(R.string.bonus_current, draft.additiveScore), fontWeight = FontWeight.Bold)
                             }
@@ -632,20 +653,16 @@ private fun RatingScreen(
                                 fontSize = 13.sp,
                                 modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
                             )
-                            OutlinedTextField(
-                                value = simpleInput,
-                                onValueChange = { simpleInput = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text(stringResource(R.string.rating_title)) },
-                                placeholder = { Text(stringResource(R.string.rating_simple_example)) },
-                                singleLine = true,
-                                isError = simpleInput.isNotBlank() && parsedScore == null,
-                                supportingText = {
-                                    if (simpleInput.isNotBlank() && parsedScore == null) {
-                                        Text(stringResource(R.string.rating_simple_error))
-                                    }
-                                },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                            Text(
+                                stringResource(R.string.score_out_of_ten, simpleScore),
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Cyan
+                            )
+                            RatingSlider(
+                                value = simpleScore,
+                                onValueChange = { simpleScore = it },
+                                accessibilityLabel = stringResource(R.string.rating_slider_accessibility)
                             )
                         }
                     }
@@ -665,9 +682,8 @@ private fun RatingScreen(
                     Button(
                         onClick = {
                             if (elaborate) onSaveElaborate(draft)
-                            else parsedScore?.let { onSaveSimple(draft, it) }
+                            else onSaveSimple(draft, simpleScore)
                         },
-                        enabled = elaborate || parsedScore != null,
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Default.Save, null)
@@ -740,11 +756,13 @@ private fun CategoryEditor(category: RatingCategory, score: Double?, onChange: (
             }
             Text(localizedCategoryDescription(category), color = Color.Gray, fontSize = 13.sp)
             if (score != null) {
-                Slider(
-                    value = score.toFloat(),
-                    onValueChange = { onChange((it * 2).roundToInt() / 2.0) },
-                    valueRange = 1f..10f,
-                    steps = 17
+                RatingSlider(
+                    value = score,
+                    onValueChange = onChange,
+                    accessibilityLabel = stringResource(
+                        R.string.rating_category_slider_accessibility,
+                        localizedCategoryName(category)
+                    )
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(scoreLabel(score), color = Color.LightGray, fontSize = 13.sp)
@@ -760,6 +778,96 @@ private fun CategoryEditor(category: RatingCategory, score: Double?, onChange: (
             }
         }
     }
+}
+
+@Composable
+private fun RatingSlider(
+    value: Double,
+    onValueChange: (Double) -> Unit,
+    accessibilityLabel: String,
+    modifier: Modifier = Modifier
+) {
+    val normalizedValue = snapRatingValue(value) ?: RATING_MIN
+    val valueDescription = stringResource(R.string.score_out_of_ten, normalizedValue)
+    DiscreteSlider(
+        value = normalizedValue,
+        onValueChange = onValueChange,
+        min = RATING_MIN,
+        max = RATING_MAX,
+        step = RATING_STEP,
+        accessibilityLabel = accessibilityLabel,
+        valueDescription = valueDescription,
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DiscreteSlider(
+    value: Double,
+    onValueChange: (Double) -> Unit,
+    min: Double,
+    max: Double,
+    step: Double,
+    accessibilityLabel: String,
+    valueDescription: String,
+    modifier: Modifier = Modifier
+) {
+    val normalizedValue = snapDiscreteValue(value, min, max, step) ?: value.coerceIn(min, max)
+    val allValues = remember(min, max, step) { discreteValues(min, max, step) }
+    val tickFractions = remember(allValues) {
+        allValues.drop(1).dropLast(1).map { ((it - min) / (max - min)).toFloat() }
+    }
+    val activeFraction = ((normalizedValue - min) / (max - min)).toFloat().coerceIn(0f, 1f)
+    val activeColor = MaterialTheme.colorScheme.primary
+    val inactiveColor = Color(0xFF4B5268)
+    Slider(
+        value = normalizedValue.toFloat(),
+        onValueChange = { rawValue ->
+            snapDiscreteValue(rawValue.toDouble(), min, max, step)?.let(onValueChange)
+        },
+        valueRange = min.toFloat()..max.toFloat(),
+        steps = allValues.size - 2,
+        track = {
+            Canvas(Modifier.fillMaxWidth().height(16.dp)) {
+                val centerY = size.height / 2f
+                val strokeWidth = 16.dp.toPx()
+                drawLine(
+                    color = inactiveColor,
+                    start = Offset(0f, centerY),
+                    end = Offset(size.width, centerY),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    color = activeColor,
+                    start = Offset(0f, centerY),
+                    end = Offset(size.width * activeFraction, centerY),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
+                val thumbCenterX = size.width * activeFraction
+                drawLine(
+                    color = Bg,
+                    start = Offset(thumbCenterX - 8.dp.toPx(), centerY),
+                    end = Offset(thumbCenterX + 8.dp.toPx(), centerY),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Butt
+                )
+                tickFractions.forEach { fraction ->
+                    drawCircle(
+                        color = if (fraction <= activeFraction) Bg else activeColor,
+                        radius = 2.dp.toPx(),
+                        center = Offset(size.width * fraction, centerY)
+                    )
+                }
+            }
+        },
+        modifier = modifier.semantics {
+            contentDescription = accessibilityLabel
+            stateDescription = valueDescription
+        }
+    )
 }
 
 @Composable
@@ -902,6 +1010,7 @@ private fun SettingsScreen(settings: AppSettingsState, viewModel: RankOfflineVie
             elaborateRatingEnabled = settings.elaborateRatingEnabled,
             onElaborateRatingEnabledChange = viewModel::updateElaborateRatingEnabled,
             onUpdate = viewModel::updateRatingConfig,
+            onDeleteCategory = viewModel::deleteRatingCategory,
             onReset = viewModel::resetRatingConfig,
             onBack = goBack
         )
@@ -1393,6 +1502,7 @@ private fun RatingSettingsScreen(
     elaborateRatingEnabled: Boolean,
     onElaborateRatingEnabledChange: (Boolean) -> Unit,
     onUpdate: (RatingSystemConfig) -> Unit,
+    onDeleteCategory: (RatingCategory, RatingSystemConfig) -> Unit,
     onReset: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -1427,8 +1537,8 @@ private fun RatingSettingsScreen(
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(16.dp)) {
                         Text(stringResource(R.string.rating_system), fontWeight = FontWeight.Bold, color = Magenta)
-                        val activeCategories = ratingConfig.categories.filter { it.active }.sortedBy { it.order }
-                        activeCategories.forEach { category ->
+                        val categories = ratingConfig.categories.filter { it.active }.sortedBy { it.order }
+                        categories.forEach { category ->
                             RatingCategoryEditor(
                                 category = category,
                                 onUpdate = { newCategory ->
@@ -1438,29 +1548,9 @@ private fun RatingSettingsScreen(
                                     onUpdate(ratingConfig.copy(categories = updated.sortedBy { it.order }))
                                 },
                                 onDelete = {
-                                    if (activeCategories.size > 1) {
-                                        val updated = ratingConfig.categories.map {
-                                            if (it.id == category.id) it.copy(active = false) else it
-                                        }
-                                        onUpdate(ratingConfig.copy(categories = updated))
-                                    }
+                                    onDeleteCategory(category, ratingConfig)
                                 }
                             )
-                        }
-                        val inactiveCategories = ratingConfig.categories.filterNot { it.active }.sortedBy { it.order }
-                        if (inactiveCategories.isNotEmpty()) {
-                            Text(stringResource(R.string.rating_inactive_categories), color = Color.Gray, modifier = Modifier.padding(top = 12.dp))
-                            inactiveCategories.forEach { category ->
-                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(localizedCategoryName(category), modifier = Modifier.weight(1f), color = Color.LightGray)
-                                    TextButton(onClick = {
-                                        val updated = ratingConfig.categories.map {
-                                            if (it.id == category.id) it.copy(active = true) else it
-                                        }
-                                        onUpdate(ratingConfig.copy(categories = updated))
-                                    }) { Text(stringResource(R.string.action_restore)) }
-                                }
-                            }
                         }
                         val newCategoryName = stringResource(R.string.rating_new_category_name)
                         val newCategoryDescription = stringResource(R.string.rating_new_category_description)
@@ -1573,6 +1663,9 @@ private fun RatingCategoryEditor(category: RatingCategory, onUpdate: (RatingCate
     } catch (_: Exception) {
         Color.White
     }
+    var showColorPicker by remember(category.id) { mutableStateOf(false) }
+    var showDeleteConfirmation by remember(category.id) { mutableStateOf(false) }
+    val colorContentDescription = stringResource(R.string.category_color_content_description)
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Panel.copy(alpha = 0.92f)),
@@ -1588,7 +1681,7 @@ private fun RatingCategoryEditor(category: RatingCategory, onUpdate: (RatingCate
                     modifier = Modifier.weight(1f),
                     singleLine = true
                 )
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = { showDeleteConfirmation = true }) {
                     Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
                 }
             }
@@ -1600,33 +1693,155 @@ private fun RatingCategoryEditor(category: RatingCategory, onUpdate: (RatingCate
             )
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
                 Text(stringResource(R.string.category_weight), color = accent, fontWeight = FontWeight.Bold, modifier = Modifier.width(64.dp))
-                Slider(
-                    value = category.weight.toFloat().coerceIn(0f, 100f),
-                    onValueChange = { onUpdate(category.copy(weight = it.toDouble())) },
-                    valueRange = 0f..100f,
+                DiscreteSlider(
+                    value = category.weight,
+                    onValueChange = { onUpdate(category.copy(weight = it)) },
+                    min = WEIGHT_MIN,
+                    max = WEIGHT_MAX,
+                    step = WEIGHT_STEP,
+                    accessibilityLabel = stringResource(R.string.category_weight_slider_accessibility),
+                    valueDescription = stringResource(R.string.category_weight_percent, category.weight.toInt()),
                     modifier = Modifier.weight(1f)
                 )
-                Text("${category.weight.toInt()}%", modifier = Modifier.width(54.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                Text(
+                    stringResource(R.string.category_weight_percent, category.weight.toInt()),
+                    modifier = Modifier.width(54.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.category_color), color = Color.LightGray, modifier = Modifier.width(52.dp))
                 Box(
-                    modifier = Modifier.size(28.dp).background(swatch, RoundedCornerShape(8.dp))
-                )
-                Spacer(Modifier.width(8.dp))
-                OutlinedButton(
-                    onClick = {
-                        val nextColor = if (listOf("#19D5E5", "#E04BCF", "#FF675D", "#FFAA55", "#62D6C8", "#7EC7FF").contains(category.color)) {
-                            "#7EC7FF"
-                        } else {
-                            "#19D5E5"
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(swatch)
+                        .border(1.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                        .clickable { showColorPicker = true }
+                        .semantics {
+                            contentDescription = colorContentDescription
                         }
-                        onUpdate(category.copy(color = nextColor))
-                    }
-                ) { Text(stringResource(R.string.category_tint)) }
+                )
             }
         }
     }
+    if (showColorPicker) {
+        CategoryColorPickerDialog(
+            initialColor = category.color,
+            onDismiss = { showColorPicker = false },
+            onApply = { color ->
+                category.withHexColor(color)?.let(onUpdate)
+                showColorPicker = false
+            }
+        )
+    }
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text(stringResource(R.string.category_delete_title)) },
+            text = {
+                Text(stringResource(R.string.category_delete_explanation, localizedCategoryName(category)))
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmation = false
+                    onDelete()
+                }) {
+                    Text(stringResource(R.string.action_delete), color = Coral)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun CategoryColorPickerDialog(
+    initialColor: String,
+    onDismiss: () -> Unit,
+    onApply: (String) -> Unit
+) {
+    var hexInput by remember(initialColor) {
+        mutableStateOf(normalizeHexColor(initialColor) ?: "#19D5E5")
+    }
+    val validColor = normalizeHexColor(hexInput)
+    val previewColor = validColor?.let { Color(android.graphics.Color.parseColor(it)) } ?: Color.Transparent
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.color_picker_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .background(previewColor, RoundedCornerShape(10.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
+                )
+                Text(stringResource(R.string.color_palette), fontWeight = FontWeight.SemiBold)
+                CategoryColorPalette.chunked(5).forEach { rowColors ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        rowColors.forEach { hex ->
+                            val selected = validColor == hex
+                            val swatchColor = Color(android.graphics.Color.parseColor(hex))
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(swatchColor)
+                                    .border(
+                                        width = if (selected) 3.dp else 1.dp,
+                                        color = if (selected) Color.White else Color.White.copy(alpha = 0.45f),
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    .clickable { hexInput = hex },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (selected) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = if (swatchColor.luminance() > 0.45f) Color.Black else Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Text(stringResource(R.string.color_custom), fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(
+                    value = hexInput,
+                    onValueChange = { hexInput = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.color_hex_label)) },
+                    supportingText = {
+                        if (hexInput.isNotBlank() && validColor == null) {
+                            Text(stringResource(R.string.color_invalid))
+                        }
+                    },
+                    isError = hexInput.isNotBlank() && validColor == null,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        keyboardType = KeyboardType.Ascii
+                    )
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = validColor != null,
+                onClick = { validColor?.let(onApply) }
+            ) { Text(stringResource(R.string.action_apply)) }
+        }
+    )
 }
 
 @Composable
@@ -1685,6 +1900,7 @@ private fun categoryNameResource(id: String): Int? = when (id) {
     "engagement" -> R.string.category_engagement
     "visuals" -> R.string.category_visuals
     "worldbuilding" -> R.string.category_worldbuilding
+    "audio" -> R.string.category_audio
     else -> null
 }
 
@@ -1694,6 +1910,7 @@ private fun categoryDescriptionResource(id: String): Int? = when (id) {
     "engagement" -> R.string.category_engagement_description
     "visuals" -> R.string.category_visuals_description
     "worldbuilding" -> R.string.category_worldbuilding_description
+    "audio" -> R.string.category_audio_description
     else -> null
 }
 

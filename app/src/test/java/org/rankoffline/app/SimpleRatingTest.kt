@@ -1,35 +1,41 @@
 package org.rankoffline.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SimpleRatingTest {
     @Test
-    fun acceptsZeroToTenWithAtMostTwoDecimals() {
-        mapOf(
-            "0" to 0.0,
-            "0.00" to 0.0,
-            "8.37" to 8.37,
-            "9.99" to 9.99,
-            "10" to 10.0,
-            "10.00" to 10.0
-        ).forEach { (input, expected) ->
-            assertEquals(expected, parseSimpleRating(input)!!, 0.0)
+    fun exactlyTwentyOneHalfPointValuesArePersistible() {
+        val values = (0..20).map { it / 2.0 }
+
+        assertEquals(21, values.size)
+        values.forEach { value ->
+            assertTrue("Expected $value to be valid", isDiscreteRatingValue(value))
+            assertEquals(value, snapRatingValue(value)!!, 0.0)
         }
     }
 
     @Test
-    fun rejectsOutOfRangeNonFiniteAndOverPreciseValues() {
-        listOf("-0.01", "10.01", "8.999", "texto", "NaN", "Infinity").forEach { input ->
-            assertNull(input, parseSimpleRating(input))
+    fun rejectsOutOfRangeNonFiniteAndNonStepValues() {
+        listOf(-0.01, 10.01, Double.NaN, Double.POSITIVE_INFINITY).forEach {
+            assertNull(snapRatingValue(it))
+            assertFalse(isDiscreteRatingValue(it))
+        }
+        listOf(0.25, 8.37, 8.4999997, 9.99).forEach {
+            assertFalse("Expected $it not to be persistible", isDiscreteRatingValue(it))
         }
     }
 
     @Test
-    fun canonicalScoreFormattingKeepsHundredthsWithoutFloatingPointNoise() {
-        assertEquals("8.37", formatRatingInput(8.37))
-        assertEquals("10", formatRatingInput(10.0))
-        assertEquals("", formatRatingInput(Double.NaN))
+    fun sliderSnappingProducesExactHalfPointsWithoutFloatArtifacts() {
+        assertEquals(0.0, snapRatingValue(0.01)!!, 0.0)
+        assertEquals(0.5, snapRatingValue(0.49)!!, 0.0)
+        assertEquals(8.5, snapRatingValue(8.4999997)!!, 0.0)
+        assertEquals(9.5, snapRatingValue(9.49)!!, 0.0)
+        assertEquals(10.0, snapRatingValue(9.99)!!, 0.0)
+        assertEquals(19, RATING_SLIDER_STEPS)
     }
 }

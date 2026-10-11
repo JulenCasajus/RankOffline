@@ -46,11 +46,11 @@ data class RatingSystemConfig(
 
 object DefaultSettings {
     val defaultRatingCategories = listOf(
-        RatingCategory("writing", "Writing", "Story, pacing, themes, dialogue, consistency, ending", 35.0, "#19D5E5", 0),
-        RatingCategory("characters", "Characters", "Main cast, side cast, antagonists, development, depth, dynamics", 25.0, "#E04BCF", 1),
-        RatingCategory("engagement", "Engagement", "Emotional impact, entertainment value, viewer investment, tension, atmosphere, memorability", 20.0, "#FF675D", 2),
-        RatingCategory("visuals", "Visuals", "Animation, art style, cinematography, backgrounds, effects, character design", 15.0, "#FFAA55", 3),
-        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, power system, scope, culture, immersion", 5.0, "#62D6C8", 4)
+        RatingCategory("writing", "Writing", "Plot, themes, pacing, highlights, beginning, ending", 35.0, "#19D5E5", 0),
+        RatingCategory("characters", "Characters", "Main characters, supporting characters, antagonist, development, depth, charisma, dynamics", 20.0, "#E04BCF", 1),
+        RatingCategory("visuals", "Visuals", "Animation, art style, cinematography, backgrounds, effects, character design", 20.0, "#FFAA55", 2),
+        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, power system", 15.0, "#62D6C8", 3),
+        RatingCategory("audio", "Audio", "OST, openings/endings, sound effects", 10.0, "#7EC7FF", 4)
     )
 
     val defaultAdditiveBonus = AdditiveBonus("Personal taste", "How much you liked it personally, independent of technical quality", 1.0, "#E04BCF")
@@ -63,7 +63,7 @@ object DefaultSettings {
 data class AppSettingsState(
     val showImages: Boolean = false,
     val stickyScore: Boolean = true,
-    val elaborateRatingEnabled: Boolean = true,
+    val elaborateRatingEnabled: Boolean = false,
     val ratingConfig: RatingSystemConfig = DefaultSettings.defaultRatingConfig,
     val appIcon: AppIcon = AppIcon.DARK,
     val language: SupportedLanguage = SupportedLanguage.DEFAULT,
@@ -87,14 +87,21 @@ class SettingsRepository internal constructor(
 
     private val _state = MutableStateFlow(AppSettingsState(settingsLoaded = false))
     val state: StateFlow<AppSettingsState> = _state.asStateFlow()
+    private var removedLegacyCategoryIds: List<String> = emptyList()
 
     suspend fun loadInitialState() {
         val prefs = context.dataStore.data.first()
         val ratingJson = prefs[ratingConfigKey]
-        val ratingConfig = if (ratingJson != null) {
-            try { json.decodeFromString<RatingSystemConfig>(ratingJson) } catch (_: Exception) { DefaultSettings.defaultRatingConfig }
-        } else {
-            DefaultSettings.defaultRatingConfig
+        val persistedRatingConfig = ratingJson?.let {
+            try { json.decodeFromString<RatingSystemConfig>(it) } catch (_: Exception) { null }
+        }
+        val normalization = normalizeLegacyInactiveCategories(resolveRatingConfig(persistedRatingConfig))
+        val ratingConfig = normalization.config
+        removedLegacyCategoryIds = normalization.removedCategoryIds
+        if (normalization.removedCategoryIds.isNotEmpty()) {
+            context.dataStore.edit { mutablePrefs ->
+                mutablePrefs[ratingConfigKey] = json.encodeToString(ratingConfig)
+            }
         }
 
         val persistedAppIcon = prefs[appIconKey]
@@ -116,6 +123,9 @@ class SettingsRepository internal constructor(
         )
         localeController.apply(language)
     }
+
+    internal fun takeRemovedLegacyCategoryIds(): List<String> =
+        removedLegacyCategoryIds.also { removedLegacyCategoryIds = emptyList() }
 
     suspend fun updateShowImages(value: Boolean) = updateMutex.withLock {
         _state.value = _state.value.copy(showImages = value)
@@ -159,10 +169,12 @@ class SettingsRepository internal constructor(
     suspend fun resetRatingConfig() = updateMutex.withLock {
         val config = DefaultSettings.defaultRatingConfig
         _state.value = _state.value.copy(
+            elaborateRatingEnabled = false,
             ratingConfig = config,
             settingsLoaded = true
         )
         context.dataStore.edit { prefs ->
+            prefs[elaborateRatingEnabledKey] = false
             prefs[ratingConfigKey] = json.encodeToString(config)
         }
     }
@@ -179,4 +191,20 @@ class SettingsRepository internal constructor(
 
 internal fun resolveShowImages(persisted: Boolean?): Boolean = persisted ?: false
 
-internal fun resolveElaborateRatingEnabled(persisted: Boolean?): Boolean = persisted ?: true
+internal fun resolveElaborateRatingEnabled(persisted: Boolean?): Boolean = persisted ?: false
+
+internal fun resolveRatingConfig(persisted: RatingSystemConfig?): RatingSystemConfig =
+    persisted ?: DefaultSettings.defaultRatingConfig
+
+internal data class RatingConfigNormalization(
+    val config: RatingSystemConfig,
+    val removedCategoryIds: List<String>
+)
+
+internal fun normalizeLegacyInactiveCategories(config: RatingSystemConfig): RatingConfigNormalization {
+    val removedIds = config.categories.filterNot { it.active }.map { it.id }
+    return RatingConfigNormalization(
+        config = if (removedIds.isEmpty()) config else config.copy(categories = config.categories.filter { it.active }),
+        removedCategoryIds = removedIds
+    )
+}

@@ -40,10 +40,12 @@ class AnimeRepository(
     }
 
     suspend fun saveElaborateRating(animeId: String, draft: RatingDraft, config: RatingSystemConfig) = withContext(Dispatchers.IO) {
-        val result = ScoreCalculator.calculate(draft.categoryScores, draft.additiveScore, config)
+        require(draft.categoryScores.values.all { it == null || isDiscreteRatingValue(it) })
+        val normalizedBonus = requireNotNull(snapBonusValue(draft.additiveScore))
+        val result = ScoreCalculator.calculate(draft.categoryScores, normalizedBonus, config)
         val rating = RatingEntity(
             animeId = animeId,
-            additiveScore = draft.additiveScore.takeIf(Double::isFinite) ?: 0.0,
+            additiveScore = normalizedBonus,
             qualityScore = result.qualityScore,
             finalScore = result.finalScore,
             notes = draft.notes,
@@ -62,14 +64,15 @@ class AnimeRepository(
     }
 
     suspend fun saveSimpleRating(animeId: String, draft: RatingDraft, finalScore: Double) = withContext(Dispatchers.IO) {
-        require(finalScore.isFinite() && finalScore in 0.0..10.0)
+        require(isDiscreteRatingValue(finalScore))
+        val normalizedScore = requireNotNull(snapRatingValue(finalScore))
         val previous = dao.rating(animeId)
         dao.upsertRating(
             RatingEntity(
                 animeId = animeId,
                 additiveScore = previous?.additiveScore ?: draft.additiveScore.takeIf(Double::isFinite) ?: 0.0,
                 qualityScore = previous?.qualityScore,
-                finalScore = finalScore,
+                finalScore = normalizedScore,
                 notes = draft.notes,
                 status = draft.status,
                 updatedAt = System.currentTimeMillis()
@@ -79,6 +82,15 @@ class AnimeRepository(
 
     suspend fun deleteRating(animeId: String) = withContext(Dispatchers.IO) {
         dao.deleteRating(animeId)
+    }
+
+    suspend fun deleteRatingCategory(categoryId: String) = withContext(Dispatchers.IO) {
+        dao.deleteRatingScoresForCategory(categoryId)
+    }
+
+    suspend fun deleteRatingScoresOutsideCategories(categoryIds: List<String>) = withContext(Dispatchers.IO) {
+        if (categoryIds.isEmpty()) dao.deleteAllRatingScores()
+        else dao.deleteRatingScoresOutsideCategories(categoryIds)
     }
 
     suspend fun updateCatalogIfNeeded(): Boolean = withContext(Dispatchers.IO) {

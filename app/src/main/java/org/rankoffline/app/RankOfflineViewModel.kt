@@ -77,6 +77,9 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             try {
                 settingsRepository.loadInitialState()
+                settingsRepository.takeRemovedLegacyCategoryIds().forEach { categoryId ->
+                    repository.deleteRatingCategory(categoryId)
+                }
                 repository.updateCatalogIfNeeded()
                 coverRepository.initialize()
                 _catalogCount.value = repository.animeCount()
@@ -145,6 +148,15 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateRatingConfig(config: RatingSystemConfig) {
         viewModelScope.launch { settingsRepository.updateRatingConfig(config) }
+    }
+
+    fun deleteRatingCategory(category: RatingCategory, config: RatingSystemConfig) {
+        viewModelScope.launch {
+            settingsRepository.updateRatingConfig(
+                config.copy(categories = config.categories.filterNot { it.id == category.id })
+            )
+            repository.deleteRatingCategory(category.id)
+        }
     }
 
     fun updateElaborateRatingEnabled(value: Boolean) {
@@ -240,6 +252,9 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     fun resetRatingConfig() {
         viewModelScope.launch {
             settingsRepository.resetRatingConfig()
+            repository.deleteRatingScoresOutsideCategories(
+                DefaultSettings.defaultRatingCategories.map { it.id }
+            )
         }
     }
 }

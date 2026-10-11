@@ -171,24 +171,29 @@ class AnimeDatabaseMigrationTest {
 
             repository.saveElaborateRating(
                 "test:score",
-                RatingDraft(categoryScores = mapOf("only" to 8.43), notes = "keep notes"),
+                RatingDraft(categoryScores = mapOf("only" to 8.5), notes = "A"),
                 config
             )
-            assertEquals(8.43, database.animeDao().rating("test:score")!!.finalScore!!, 0.0)
+            assertEquals(8.5, database.animeDao().rating("test:score")!!.finalScore!!, 0.0)
+            assertEquals("A", repository.loadRating("test:score").notes)
 
-            val elaborateDraft = repository.loadRating("test:score")
-            repository.saveSimpleRating("test:score", elaborateDraft, 9.15)
-            assertEquals(9.15, database.animeDao().rating("test:score")!!.finalScore!!, 0.0)
-            assertEquals(9.15, repository.observeRanking(10).first().single().finalScore!!, 0.0)
-            assertEquals(8.43, repository.loadRating("test:score").categoryScores.getValue("only")!!, 0.0)
-            assertEquals("keep notes", database.animeDao().rating("test:score")!!.notes)
+            val simpleDraft = repository.loadRating("test:score").copy(notes = "B")
+            repository.saveSimpleRating("test:score", simpleDraft, 9.0)
+            assertEquals(9.0, database.animeDao().rating("test:score")!!.finalScore!!, 0.0)
+            assertEquals(9.0, repository.observeRanking(10).first().single().finalScore!!, 0.0)
+            assertEquals(8.5, repository.loadRating("test:score").categoryScores.getValue("only")!!, 0.0)
+            assertEquals("B", repository.loadRating("test:score").notes)
 
             repository.saveElaborateRating(
                 "test:score",
-                repository.loadRating("test:score").copy(categoryScores = mapOf("only" to 7.82)),
+                repository.loadRating("test:score").copy(
+                    categoryScores = mapOf("only" to 7.0),
+                    notes = "C"
+                ),
                 config
             )
-            assertEquals(7.82, database.animeDao().rating("test:score")!!.finalScore!!, 0.0)
+            assertEquals(7.0, database.animeDao().rating("test:score")!!.finalScore!!, 0.0)
+            assertEquals("C", repository.loadRating("test:score").notes)
         } finally {
             database.close()
         }
@@ -219,14 +224,19 @@ class AnimeDatabaseMigrationTest {
         settings.updateRatingConfig(
             DefaultSettings.defaultRatingConfig.copy(
                 categories = DefaultSettings.defaultRatingCategories.mapIndexed { index, category ->
-                    if (index == 0) category.copy(weight = 99.0) else category
+                    if (index == 0) category.copy(weight = 95.0, color = "#A1B2C3") else category
                 }
             )
         )
+        settings.updateElaborateRatingEnabled(true)
+        val colorReload = SettingsRepository(context, iconController, localeController)
+        colorReload.loadInitialState()
+        assertEquals("#A1B2C3", colorReload.state.value.ratingConfig.categories.first().color)
+        assertTrue(colorReload.state.value.elaborateRatingEnabled)
         settings.resetRatingConfig()
         assertEquals(DefaultSettings.defaultRatingConfig, settings.state.value.ratingConfig)
+        assertFalse(settings.state.value.elaborateRatingEnabled)
         assertTrue(settings.state.value.showImages)
-        assertEquals(false, settings.state.value.elaborateRatingEnabled)
         assertEquals(SupportedLanguage.SPANISH, settings.state.value.language)
         assertTrue(activations.isEmpty())
 
@@ -238,12 +248,17 @@ class AnimeDatabaseMigrationTest {
                 "INSERT INTO anime(id,title,cover_resolution_state) VALUES('test:toggle','Toggle Test','UNKNOWN')"
             )
             database.animeDao().upsertRating(
-                RatingEntity("test:toggle", 0.0, 8.37, 8.37, "", "Completed", 1L)
+                RatingEntity("test:toggle", 0.0, 8.5, 8.5, "unchanged", "Completed", 1L)
+            )
+            database.animeDao().upsertRatingScores(
+                listOf(RatingScoreEntity("test:toggle", "writing", 7.5, true))
             )
             settings.updateElaborateRatingEnabled(false)
-            assertEquals(8.37, database.animeDao().rating("test:toggle")!!.finalScore!!, 0.0)
+            assertEquals(8.5, database.animeDao().rating("test:toggle")!!.finalScore!!, 0.0)
             settings.updateElaborateRatingEnabled(true)
-            assertEquals(8.37, database.animeDao().rating("test:toggle")!!.finalScore!!, 0.0)
+            assertEquals(8.5, database.animeDao().rating("test:toggle")!!.finalScore!!, 0.0)
+            assertEquals("unchanged", database.animeDao().rating("test:toggle")!!.notes)
+            assertEquals(7.5, database.animeDao().ratingScores("test:toggle").single().score!!, 0.0)
             assertTrue(activations.isEmpty())
             settings.updateShowImages(false)
             settings.updateLanguage(SupportedLanguage.ENGLISH)
@@ -251,6 +266,71 @@ class AnimeDatabaseMigrationTest {
             database.close()
         }
         Unit
+    }
+
+    @Test
+    fun deletingCategoryRemovesItsDetailedScoresButPreservesRatingAndNotes() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val database = Room.inMemoryDatabaseBuilder(context, AnimeDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            database.openHelper.writableDatabase.execSQL(
+                "INSERT INTO anime(id,title,cover_resolution_state) VALUES('test:category','Category Test','UNKNOWN')"
+            )
+            database.animeDao().upsertRating(
+                RatingEntity("test:category", 0.4, 8.0, 8.4, "keep notes", "Completed", 1L)
+            )
+            database.animeDao().upsertRatingScores(
+                listOf(
+                    RatingScoreEntity("test:category", "writing", 8.0, true),
+                    RatingScoreEntity("test:category", "custom", 7.5, true)
+                )
+            )
+            val repository = AnimeRepository(context, database)
+
+            repository.deleteRatingCategory("custom")
+
+            assertEquals(listOf("writing"), database.animeDao().ratingScores("test:category").map { it.categoryId })
+            val rating = database.animeDao().rating("test:category")!!
+            assertEquals(8.4, rating.finalScore!!, 0.0)
+            assertEquals("keep notes", rating.notes)
+
+            repository.deleteRatingScoresOutsideCategories(DefaultSettings.defaultRatingCategories.map { it.id })
+            assertEquals(listOf("writing"), database.animeDao().ratingScores("test:category").map { it.categoryId })
+            assertEquals(8.4, database.animeDao().rating("test:category")!!.finalScore!!, 0.0)
+            assertEquals("keep notes", database.animeDao().rating("test:category")!!.notes)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun rankingIncludesZeroScoreButExcludesUnratedAnime() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val database = Room.inMemoryDatabaseBuilder(context, AnimeDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val db = database.openHelper.writableDatabase
+            listOf("a", "b", "c", "d").forEach { id ->
+                db.execSQL(
+                    "INSERT INTO anime(id,title,cover_resolution_state) VALUES(?,?, 'UNKNOWN')",
+                    arrayOf(id, "Anime ${id.uppercase()}")
+                )
+            }
+            database.animeDao().upsertRating(RatingEntity("a", 0.0, 10.0, 10.0, "", "Completed", 1L))
+            database.animeDao().upsertRating(RatingEntity("b", 0.0, 5.0, 5.0, "", "Completed", 2L))
+            database.animeDao().upsertRating(RatingEntity("c", 0.0, 0.0, 0.0, "", "Completed", 3L))
+
+            val ranking = database.animeDao().observeRanking(10).first()
+
+            assertEquals(listOf("a", "b", "c"), ranking.map { it.id })
+            assertEquals(0.0, ranking.last().finalScore!!, 0.0)
+            assertFalse(ranking.any { it.id == "d" })
+        } finally {
+            database.close()
+        }
     }
 
     @Test

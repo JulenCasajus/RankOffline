@@ -156,6 +156,15 @@ interface AnimeDao {
     @Query("SELECT * FROM rating_score WHERE anime_id = :animeId")
     suspend fun ratingScores(animeId: String): List<RatingScoreEntity>
 
+    @Query("DELETE FROM rating_score WHERE category_id = :categoryId")
+    suspend fun deleteRatingScoresForCategory(categoryId: String)
+
+    @Query("DELETE FROM rating_score WHERE category_id NOT IN (:categoryIds)")
+    suspend fun deleteRatingScoresOutsideCategories(categoryIds: List<String>)
+
+    @Query("DELETE FROM rating_score")
+    suspend fun deleteAllRatingScores()
+
     @Upsert
     suspend fun upsertRating(rating: RatingEntity)
 

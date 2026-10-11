@@ -7,10 +7,10 @@ Android app (Kotlin + Jetpack Compose) to keep an **offline anime catalog** and 
 Base quality score:
 
 - Writing — **35%**
-- Characters — **25%**
-- Engagement — **20%**
-- Visuals — **15%**
-- Worldbuilding — **5%**
+- Characters — **20%**
+- Visuals — **20%**
+- Worldbuilding — **15%**
+- Audio — **10%**
 
 Personal taste: **+0.0 to +1.0**.
 
@@ -96,12 +96,9 @@ You can also run it manually from **Actions > Build Android APK > Run workflow**
 - Dark/neon UI inspired by the provided rating chart
 - Five selectable launcher icons: Dark (default), Blue, Red, Green, and Yellow
 
-## Planned next steps
+## Roadmap
 
-- Backup/import ratings as JSON
-- Favorites and tags
-- Filters by score/status
-- Franchise grouping
+See the [RankOffline roadmap](docs/ROADMAP.md) for ideas and possible future work.
 
 ## Data attribution
 

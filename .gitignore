@@ -22,3 +22,5 @@ app/src/main/assets/local_covers/*
 *.keystore
 keystore.properties
 dist/
+
+.run/

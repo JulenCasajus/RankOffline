@@ -1,12 +1,12 @@
 <resources>
     <string name="app_name" translatable="false">RankOffline</string>
     <string name="nav_anime">Anime</string>
-    <string name="nav_ranking">Ranking</string>
+    <string name="nav_ranking">My ranking</string>
     <string name="nav_settings">Settings</string>
     <string name="catalog_local_count">Local catalog: %1$s entries.</string>
     <string name="search_anime_hint">Search anime…</string>
     <string name="no_search_results">No results.</string>
-    <string name="ranking_title">Ranking</string>
+    <string name="ranking_title">My ranking</string>
     <string name="ranking_description_with_images">Top 3 and full list by score.</string>
     <string name="ranking_description_without_images">Full list by score.</string>
     <string name="no_saved_ratings">No ratings saved yet.</string>
@@ -23,13 +23,13 @@
     <string name="action_delete">Delete</string>
     <string name="action_continue">Continue</string>
     <string name="action_save">Save</string>
-    <string name="action_restore">Restore</string>
+    <string name="action_apply">Apply</string>
     <string name="action_back">Back</string>
 
     <string name="rating_title">Rating</string>
-    <string name="rating_simple_instructions">Enter a score from 0 to 10, with up to two decimal places.</string>
-    <string name="rating_simple_example" translatable="false">8.37</string>
-    <string name="rating_simple_error">Use a value from 0.00 to 10.00 with no more than two decimal places.</string>
+    <string name="rating_simple_instructions">Choose a score from 0 to 10 in 0.5-point steps.</string>
+    <string name="rating_slider_accessibility">Rating slider</string>
+    <string name="rating_category_slider_accessibility">%1$s rating slider</string>
     <string name="rating_notes">Notes</string>
     <string name="rating_notes_hint">What worked, what didn’t, memorable scenes…</string>
     <string name="score_title">Score</string>
@@ -117,7 +117,6 @@
     <string name="rating_elaborate">Elaborate rating</string>
     <string name="rating_elaborate_description">Use categories, weights, N/A, and a bonus when rating</string>
     <string name="rating_system">Rating system</string>
-    <string name="rating_inactive_categories">Inactive categories</string>
     <string name="rating_add_category">Add category</string>
     <string name="rating_reset_defaults">Reset to defaults</string>
     <string name="rating_new_category_name">New category</string>
@@ -125,18 +124,29 @@
     <string name="category_name">Name</string>
     <string name="category_description">Description</string>
     <string name="category_weight">Weight</string>
+    <string name="category_weight_percent">%1$d%%</string>
+    <string name="category_weight_slider_accessibility">Category weight slider</string>
     <string name="category_color">Color</string>
-    <string name="category_tint">Tint</string>
+    <string name="category_color_content_description">Choose category color</string>
+    <string name="color_picker_title">Select color</string>
+    <string name="color_palette">Color palette</string>
+    <string name="color_custom">Custom color</string>
+    <string name="color_hex_label">Hex color (#RRGGBB)</string>
+    <string name="color_invalid">Enter a valid color such as #19D5E5.</string>
+    <string name="category_delete_title">Delete category?</string>
+    <string name="category_delete_explanation">%1$s and its saved detailed values will be deleted. Existing final scores and notes will not change.</string>
     <string name="category_writing">Writing</string>
-    <string name="category_writing_description">Story, pacing, themes, dialogue, consistency, ending</string>
+    <string name="category_writing_description">Plot, themes, pacing, highlights, beginning, ending</string>
     <string name="category_characters">Characters</string>
-    <string name="category_characters_description">Main cast, side cast, antagonists, development, depth, dynamics</string>
+    <string name="category_characters_description">Main characters, supporting characters, antagonist, development, depth, charisma, dynamics</string>
     <string name="category_engagement">Engagement</string>
     <string name="category_engagement_description">Emotional impact, entertainment value, viewer investment, tension, atmosphere, memorability</string>
     <string name="category_visuals">Visuals</string>
     <string name="category_visuals_description">Animation, art style, cinematography, backgrounds, effects, character design</string>
     <string name="category_worldbuilding">Worldbuilding</string>
-    <string name="category_worldbuilding_description">Setting, lore, power system, scope, culture, immersion</string>
+    <string name="category_worldbuilding_description">Setting, lore, power system</string>
+    <string name="category_audio">Audio</string>
+    <string name="category_audio_description">OST, openings/endings, sound effects</string>
     <string name="bonus_personal_taste">Personal taste</string>
     <string name="bonus_personal_taste_description">How much you liked it personally, independent of technical quality</string>
 

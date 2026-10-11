@@ -3,6 +3,9 @@ package org.rankoffline.app
 import android.content.Context
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
+import java.math.BigDecimal
+import java.util.Locale
+import kotlin.math.roundToInt
 
 sealed interface UserMessage {
     data class Text(@StringRes val resource: Int, val arguments: List<Any> = emptyList()) : UserMessage
@@ -208,15 +211,77 @@ fun CoverPreloadProgress.shouldClearAfterLeavingSettings(): Boolean =
 
 data class ScoreResult(val qualityScore: Double?, val finalScore: Double?)
 
+const val RATING_MIN = 0.0
+const val RATING_MAX = 10.0
+const val RATING_STEP = 0.5
+const val RATING_SLIDER_STEPS = 19
+const val BONUS_MIN = 0.0
+const val BONUS_MAX = 1.0
+const val BONUS_STEP = 0.1
+const val BONUS_SLIDER_STEPS = 9
+const val WEIGHT_MIN = 0.0
+const val WEIGHT_MAX = 100.0
+const val WEIGHT_STEP = 5.0
+const val WEIGHT_SLIDER_STEPS = 19
+
+fun discreteValues(min: Double, max: Double, step: Double): List<Double> {
+    require(min.isFinite() && max.isFinite() && step.isFinite() && max > min && step > 0.0)
+    val intervals = ((max - min) / step).roundToInt()
+    require(intervals > 0 && kotlin.math.abs(min + intervals * step - max) < 1e-9)
+    val decimalMin = BigDecimal.valueOf(min)
+    val decimalStep = BigDecimal.valueOf(step)
+    return (0..intervals).map { index ->
+        decimalMin.add(decimalStep.multiply(BigDecimal.valueOf(index.toLong()))).toDouble()
+    }
+}
+
+fun interiorDiscreteValues(min: Double, max: Double, step: Double): List<Double> =
+    discreteValues(min, max, step).drop(1).dropLast(1)
+
+fun snapDiscreteValue(value: Double, min: Double, max: Double, step: Double): Double? {
+    if (!value.isFinite() || !min.isFinite() || !max.isFinite() || !step.isFinite() ||
+        value !in min..max || max <= min || step <= 0.0
+    ) return null
+    val index = ((value - min) / step).roundToInt()
+    val intervals = ((max - min) / step).roundToInt()
+    if (index !in 0..intervals) return null
+    return BigDecimal.valueOf(min)
+        .add(BigDecimal.valueOf(step).multiply(BigDecimal.valueOf(index.toLong())))
+        .toDouble()
+}
+
+fun snapRatingValue(value: Double): Double? {
+    return snapDiscreteValue(value, RATING_MIN, RATING_MAX, RATING_STEP)
+}
+
+fun isDiscreteRatingValue(value: Double): Boolean = snapRatingValue(value) == value
+
+fun snapBonusValue(value: Double): Double? =
+    snapDiscreteValue(value, BONUS_MIN, BONUS_MAX, BONUS_STEP)
+
+fun snapWeight(value: Double): Double? =
+    snapDiscreteValue(value, WEIGHT_MIN, WEIGHT_MAX, WEIGHT_STEP)
+
+private val HEX_COLOR_PATTERN = Regex("^#[0-9A-Fa-f]{6}$")
+
+fun normalizeHexColor(value: String): String? = value.trim().takeIf(HEX_COLOR_PATTERN::matches)
+    ?.uppercase(Locale.ROOT)
+
+fun RatingCategory.withHexColor(value: String): RatingCategory? =
+    normalizeHexColor(value)?.let { copy(color = it) }
+
 object ScoreCalculator {
     fun calculate(categoryScores: Map<String, Double?>, additiveScore: Double, config: RatingSystemConfig): ScoreResult {
-        val applicable = config.categories.asSequence()
+        val applicable = mutableListOf<Pair<Double, Double>>()
+        config.categories
             .filter { it.active && it.weight.isFinite() && it.weight > 0.0 }
-            .mapNotNull { category ->
-                val score = categoryScores[category.id]
-                if (score == null || !score.isFinite()) null else category.weight to score
+            .forEach { category ->
+                val score = categoryScores[category.id] ?: return@forEach
+                if (!score.isFinite() || score !in RATING_MIN..RATING_MAX) {
+                    return ScoreResult(null, null)
+                }
+                applicable += category.weight to score
             }
-            .toList()
         val totalWeight = applicable.sumOf { it.first }
         if (!totalWeight.isFinite() || totalWeight <= 0.0 || applicable.isEmpty()) {
             return ScoreResult(null, null)
@@ -230,7 +295,7 @@ object ScoreCalculator {
         } else {
             0.0
         }
-        return ScoreResult(quality, (quality + safeBonus).coerceAtMost(10.0))
+        return ScoreResult(quality, (quality + safeBonus).coerceIn(RATING_MIN, RATING_MAX))
     }
 }
 
@@ -253,22 +318,4 @@ data class RatingDraft(
     fun calculatedFinalScore(config: RatingSystemConfig): Double? {
         return ScoreCalculator.calculate(categoryScores, additiveScore, config).finalScore
     }
-}
-
-private val SIMPLE_RATING_PATTERN = Regex("^(?:[0-9](?:[.,][0-9]{1,2})?|10(?:[.,]0{1,2})?)$")
-
-fun parseSimpleRating(input: String): Double? {
-    val normalized = input.trim()
-    if (!SIMPLE_RATING_PATTERN.matches(normalized)) return null
-    return normalized.replace(',', '.').toDoubleOrNull()?.takeIf {
-        it.isFinite() && it in 0.0..10.0
-    }
-}
-
-fun formatRatingInput(score: Double?): String {
-    if (score == null || !score.isFinite()) return ""
-    return java.math.BigDecimal.valueOf(score)
-        .setScale(2, java.math.RoundingMode.HALF_UP)
-        .stripTrailingZeros()
-        .toPlainString()
 }
