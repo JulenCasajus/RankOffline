@@ -12,4 +12,32 @@
 <string name="category_writing">Écriture</string><string name="category_writing_description">Intrigue, thèmes, rythme, temps forts, début, fin</string><string name="category_characters">Personnages</string><string name="category_characters_description">Personnages principaux et secondaires, antagoniste, évolution, profondeur, charisme, dynamiques</string><string name="category_engagement">Implication</string><string name="category_engagement_description">Impact émotionnel, divertissement, intérêt, tension, atmosphère, mémorabilité</string><string name="category_visuals">Visuels</string><string name="category_visuals_description">Animation, direction artistique, cadrage, décors, effets, design des personnages</string><string name="category_worldbuilding">Univers</string><string name="category_worldbuilding_description">Cadre, lore, système de pouvoirs</string><string name="category_audio">Audio</string><string name="category_audio_description">Bande-son, génériques de début/fin, effets sonores</string><string name="bonus_personal_taste">Goût personnel</string><string name="bonus_personal_taste_description">Votre appréciation personnelle, indépendamment de la qualité technique</string>
 <string name="about_version">Version %1$s</string><string name="about_summary">Catalogue d’anime et application d’évaluation hors ligne. Vos évaluations et préférences restent stockées localement.</string><string name="about_licences">Licences</string><string name="about_catalog_licence">Catalogue d’anime : AnimeAPI et sources de données en amont ; AnimeAPI indique ODbL 1.0 et DbCL 1.0, avec certains composants sous d’autres licences compatibles.</string><string name="about_android_licence">AndroidX, Jetpack Compose, DataStore et Kotlinx Serialization : licence Apache 2.0.</string><string name="about_acknowledgements">Remerciements</string><string name="about_acknowledgements_text">AnimeAPI et ses contributeurs fournissent les correspondances du catalogue. AniList et Jikan fournissent les métadonnées des jaquettes lorsqu’elles ne sont pas disponibles localement.</string>
 <string name="error_initialize_local_data">Impossible d’initialiser les données locales.</string><string name="message_no_internet">Aucune connexion Internet</string><string name="message_cover_not_found">Aucune jaquette trouvée pour cet anime</string><string name="message_cover_download_failed">Impossible de télécharger la jaquette. Réessayez.</string><string name="message_cover_deleted">Jaquette supprimée</string><string name="message_cover_delete_failed">Impossible de supprimer la jaquette</string><plurals name="message_covers_deleted"><item quantity="one">%1$d jaquette supprimée</item><item quantity="other">%1$d jaquettes supprimées</item></plurals><string name="message_top_updated">Top %1$d actualisé</string><string name="message_top_update_failed">Impossible d’actualiser le Top %1$d. Réessayez.</string>
+<string name="score_direct_title">Modifier la note finale</string><string name="score_direct_explanation">Saisissez une valeur de 0 à 10 avec au maximum deux décimales.</string><string name="score_direct_label">Note finale</string><string name="score_direct_invalid">Saisissez une valeur valide de 0 à 10 avec au maximum deux décimales.</string>
+    <string name="rating_profiles">Profils</string>
+    <string name="rating_mode">Mode d’évaluation</string>
+    <string name="rating_simple">Évaluation simple</string>
+    <string name="rating_profiles_description">Pondérations selon le type d’œuvre</string>
+    <string name="rating_categories">Catégories</string>
+    <string name="rating_categories_description">Ce qui est évalué</string>
+    <string name="rating_profile">Profil d’évaluation</string>
+    <string name="rating_create_profile">Créer un profil</string>
+    <string name="rating_profile_name">Nom du profil</string>
+    <string name="rating_new_profile_name">Nouveau profil</string>
+    <string name="rating_delete_profile">Supprimer le profil</string>
+    <string name="rating_delete_profile_confirmation">Supprimer le profil « %1$s » ?</string>
+    <string name="rating_last_profile_required">Au moins un profil est requis.</string>
+    <string name="rating_reset_profiles">Réinitialiser les profils</string>
+    <string name="rating_reset_profiles_confirmation">Remplacer tous les profils par ceux par défaut ? Les catégories et les évaluations resteront inchangées.</string>
+    <string name="rating_reset_categories">Réinitialiser les catégories</string>
+    <string name="rating_reset_categories_confirmation">Remplacer toutes les catégories par celles par défaut ? Les profils conserveront leurs pondérations compatibles.</string>
+    <string name="profile_general">Général</string>
+    <string name="profile_narrative">Narratif</string>
+    <string name="profile_character_driven">Centré sur les personnages</string>
+    <string name="profile_visual_action">Visuel / Action</string>
+    <string name="profile_world_adventure">Univers / Aventure</string>
+    <string name="profile_atmospheric">Atmosphérique</string>
+    <string name="covers_settings_title">Popularité et jaquettes</string>
+    <string name="covers_settings_description">Actualisez le classement de popularité et gérez les jaquettes hors ligne.</string>
+    <string name="covers_settings_explanation">Choisissez une plage du Top. RankOffline actualise son classement de popularité et télécharge uniquement les jaquettes manquantes.</string>
+    <string name="covers_download_top">Télécharger le Top %1$d</string>
 </resources>

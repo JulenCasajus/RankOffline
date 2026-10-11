@@ -178,9 +178,10 @@ class AnimeDatabaseMigrationTest {
             assertEquals("A", repository.loadRating("test:score").notes)
 
             val simpleDraft = repository.loadRating("test:score").copy(notes = "B")
-            repository.saveSimpleRating("test:score", simpleDraft, 9.0)
-            assertEquals(9.0, database.animeDao().rating("test:score")!!.finalScore!!, 0.0)
-            assertEquals(9.0, repository.observeRanking(10).first().single().finalScore!!, 0.0)
+            repository.saveSimpleRating("test:score", simpleDraft, qualityScore = 9.0, finalScore = 9.24)
+            assertEquals(9.0, database.animeDao().rating("test:score")!!.qualityScore!!, 0.0)
+            assertEquals(9.24, database.animeDao().rating("test:score")!!.finalScore!!, 0.0)
+            assertEquals(9.24, repository.observeRanking(10).first().single().finalScore!!, 0.0)
             assertEquals(8.5, repository.loadRating("test:score").categoryScores.getValue("only")!!, 0.0)
             assertEquals("B", repository.loadRating("test:score").notes)
 
@@ -194,6 +195,46 @@ class AnimeDatabaseMigrationTest {
             )
             assertEquals(7.0, database.animeDao().rating("test:score")!!.finalScore!!, 0.0)
             assertEquals("C", repository.loadRating("test:score").notes)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun elaborateSaveUsesAndRemembersSelectedProfileWhileSimpleSavePreservesIt() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val database = Room.inMemoryDatabaseBuilder(context, AnimeDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            database.openHelper.writableDatabase.execSQL(
+                "INSERT INTO anime(id,title,cover_resolution_state) VALUES('test:profile','Profile Test','UNKNOWN')"
+            )
+            val repository = AnimeRepository(context, database)
+            val profile = DefaultSettings.defaultProfiles().resolveProfile("narrative")
+            val config = DefaultSettings.defaultRatingConfig.withProfile(profile)
+            repository.saveElaborateRating(
+                animeId = "test:profile",
+                draft = RatingDraft(
+                    categoryScores = mapOf(
+                        "writing" to 10.0,
+                        "characters" to 0.0,
+                        "visuals" to 0.0,
+                        "worldbuilding" to 0.0,
+                        "audio" to 0.0
+                    ),
+                    notes = "profile note"
+                ),
+                config = config,
+                profileId = profile.id
+            )
+
+            val elaborate = repository.loadRating("test:profile")
+            assertEquals(4.5, elaborate.finalScore!!, 0.0)
+            assertEquals("narrative", elaborate.profileId)
+            repository.saveSimpleRating("test:profile", elaborate, qualityScore = 9.0, finalScore = 9.0)
+            assertEquals("narrative", repository.loadRating("test:profile").profileId)
+            assertEquals("profile note", repository.loadRating("test:profile").notes)
         } finally {
             database.close()
         }
@@ -233,12 +274,22 @@ class AnimeDatabaseMigrationTest {
         colorReload.loadInitialState()
         assertEquals("#A1B2C3", colorReload.state.value.ratingConfig.categories.first().color)
         assertTrue(colorReload.state.value.elaborateRatingEnabled)
-        settings.resetRatingConfig()
+        val persistedProfile = RatingProfile(
+            id = "persisted-profile",
+            name = "Persisted",
+            weights = colorReload.state.value.ratingConfig.categories.associate { it.id to 5.0 }
+        )
+        settings.updateRatingProfiles(RatingProfilesConfig(listOf(persistedProfile)))
+        val profileReload = SettingsRepository(context, iconController, localeController)
+        profileReload.loadInitialState()
+        assertEquals("persisted-profile", profileReload.state.value.ratingProfiles.profiles.single().id)
+        settings.resetRatingCategories()
         assertEquals(DefaultSettings.defaultRatingConfig, settings.state.value.ratingConfig)
-        assertFalse(settings.state.value.elaborateRatingEnabled)
+        assertTrue(settings.state.value.elaborateRatingEnabled)
         assertTrue(settings.state.value.showImages)
         assertEquals(SupportedLanguage.SPANISH, settings.state.value.language)
         assertTrue(activations.isEmpty())
+        settings.resetRatingProfiles()
 
         val database = Room.inMemoryDatabaseBuilder(context, AnimeDatabase::class.java)
             .allowMainThreadQueries()
@@ -404,7 +455,7 @@ class AnimeDatabaseMigrationTest {
         )
         database.execSQL(
             "INSERT INTO rating(anime_id,additive_score,quality_score,final_score,notes,status,updated_at) " +
-                "VALUES('mal:55',0.5,8.0,8.5,'keep v5 to v7','Completed',55)"
+                "VALUES('mal:55',0.5,8.0,8.5,'keep v5 to v8','Completed',55)"
         )
         database.execSQL(
             "INSERT INTO rating_score(anime_id,category_id,score,applicable) " +
@@ -414,10 +465,11 @@ class AnimeDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             databaseName,
-            7,
+            8,
             true,
             AnimeDatabase.MIGRATION_5_6,
-            AnimeDatabase.MIGRATION_6_7
+            AnimeDatabase.MIGRATION_6_7,
+            AnimeDatabase.MIGRATION_7_8
         ).use { migrated ->
             migrated.query(
                 "SELECT popularity,popularity_rank,local_cover_path FROM anime WHERE id='mal:55'"
@@ -430,9 +482,38 @@ class AnimeDatabaseMigrationTest {
             migrated.query("SELECT final_score,notes FROM rating WHERE anime_id='mal:55'").use { cursor ->
                 cursor.moveToFirst()
                 assertEquals(8.5, cursor.getDouble(0), 0.0)
-                assertEquals("keep v5 to v7", cursor.getString(1))
+                assertEquals("keep v5 to v8", cursor.getString(1))
             }
             migrated.query("SELECT score FROM rating_score WHERE anime_id='mal:55'").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(8.0, cursor.getDouble(0), 0.0)
+            }
+        }
+    }
+
+    @Test
+    fun migrate7To8AddsNullableProfileIdWithoutLosingRatingData() {
+        val databaseName = "profile-migration-test"
+        InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(databaseName)
+        val database = helper.createDatabase(databaseName, 7)
+        database.execSQL("INSERT INTO anime(id,title,cover_resolution_state) VALUES('mal:8','Profile Test','UNKNOWN')")
+        database.execSQL(
+            "INSERT INTO rating(anime_id,additive_score,quality_score,final_score,notes,status,updated_at) " +
+                "VALUES('mal:8',0.5,8.0,8.5,'keep profile migration','Completed',88)"
+        )
+        database.execSQL(
+            "INSERT INTO rating_score(anime_id,category_id,score,applicable) VALUES('mal:8','writing',8.0,1)"
+        )
+        database.close()
+
+        helper.runMigrationsAndValidate(databaseName, 8, true, AnimeDatabase.MIGRATION_7_8).use { migrated ->
+            migrated.query("SELECT final_score,notes,profile_id FROM rating WHERE anime_id='mal:8'").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(8.5, cursor.getDouble(0), 0.0)
+                assertEquals("keep profile migration", cursor.getString(1))
+                assertTrue(cursor.isNull(2))
+            }
+            migrated.query("SELECT score FROM rating_score WHERE anime_id='mal:8'").use { cursor ->
                 cursor.moveToFirst()
                 assertEquals(8.0, cursor.getDouble(0), 0.0)
             }

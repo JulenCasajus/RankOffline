@@ -11,6 +11,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -28,6 +30,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -42,12 +46,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.flow.collect
+import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
@@ -138,8 +144,12 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                 initial = editor.draft,
                 settings = settings,
                 onBack = viewModel::closeRating,
-                onSaveElaborate = { draft -> viewModel.saveElaborateRating(editor.anime.id, draft) },
-                onSaveSimple = { draft, score -> viewModel.saveSimpleRating(editor.anime.id, draft, score) },
+                onSaveElaborate = { draft, finalOverride, profileId ->
+                    viewModel.saveElaborateRating(editor.anime.id, draft, finalOverride, profileId)
+                },
+                onSaveSimple = { draft, quality, final ->
+                    viewModel.saveSimpleRating(editor.anime.id, draft, quality, final)
+                },
                 onDelete = { viewModel.deleteRating(editor.anime.id) }
             )
         }
@@ -574,22 +584,49 @@ private fun RatingScreen(
     initial: RatingDraft,
     settings: AppSettingsState,
     onBack: () -> Unit,
-    onSaveElaborate: (RatingDraft) -> Unit,
-    onSaveSimple: (RatingDraft, Double) -> Unit,
+    onSaveElaborate: (RatingDraft, Double?, String) -> Unit,
+    onSaveSimple: (RatingDraft, Double, Double) -> Unit,
     onDelete: () -> Unit
 ) {
     val config = settings.ratingConfig
     val elaborate = settings.elaborateRatingEnabled
+    val profiles = settings.ratingProfiles.profiles
+    val initialProfile = remember(initial.profileId, profiles) {
+        settings.ratingProfiles.resolveProfile(initial.profileId)
+    }
+    var selectedProfileId by remember(anime.id, initialProfile.id) { mutableStateOf(initialProfile.id) }
+    val selectedProfile = settings.ratingProfiles.resolveProfile(selectedProfileId)
+    val calculationConfig = config.withProfile(selectedProfile)
     val defaultDraft = remember(anime.id, initial, config.categories, elaborate) {
         if (elaborate && initial.categoryScores.isEmpty()) initial.withDefaultCategoryScores(config) else initial
     }
     var draft by remember(anime.id, defaultDraft) { mutableStateOf(defaultDraft) }
-    var simpleScore by remember(anime.id, initial.finalScore) {
-        mutableDoubleStateOf(snapRatingValue(initial.finalScore ?: 5.0) ?: 5.0)
+    val initialSimpleQuality = remember(anime.id, initial.qualityScore, initial.finalScore, initial.additiveScore) {
+        val candidate = initial.qualityScore
+            ?: initial.finalScore?.minus(initial.additiveScore)
+            ?: 5.0
+        snapRatingValue(candidate.coerceIn(RATING_MIN, RATING_MAX)) ?: 5.0
     }
+    var simpleQuality by remember(anime.id, initialSimpleQuality) { mutableDoubleStateOf(initialSimpleQuality) }
+    var directFinalScore by remember(anime.id, elaborate, initial.finalScore, defaultDraft, calculationConfig) {
+        val calculated = if (elaborate) {
+            defaultDraft.calculatedFinalScore(calculationConfig)
+        } else {
+            finalScoreFromQuality(initialSimpleQuality, defaultDraft.additiveScore)
+        }
+        val savedScore = initial.finalScore
+        val differs = savedScore != null &&
+            (calculated == null || kotlin.math.abs(savedScore - calculated) > 1e-9)
+        mutableStateOf(savedScore.takeIf { differs })
+    }
+    var showDirectScoreDialog by remember(anime.id) { mutableStateOf(false) }
     BackHandler(onBack = onBack)
-    val base = draft.baseScore(config)
-    val calculatedFinal = draft.calculatedFinalScore(config)
+    val base = if (elaborate) draft.baseScore(calculationConfig) else simpleQuality
+    val calculatedFinal = directFinalScore ?: if (elaborate) {
+        draft.calculatedFinalScore(calculationConfig)
+    } else {
+        finalScoreFromQuality(simpleQuality, draft.additiveScore)
+    }
     val stickyScore = settings.stickyScore
 
     Scaffold(
@@ -607,39 +644,36 @@ private fun RatingScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 36.dp)
         ) {
-            if (elaborate) {
-                if (stickyScore) {
-                    stickyHeader { ScoreHeader(base, draft.additiveScore, calculatedFinal, config) }
-                } else {
-                    item { ScoreHeader(base, draft.additiveScore, calculatedFinal, config) }
-                }
-                items(config.categories.filter { it.active }.sortedBy { it.order }, key = { it.id }) { category ->
-                    CategoryEditor(category, draft.categoryScores[category.id]) { newValue ->
-                        draft = draft.copy(categoryScores = draft.categoryScores + (category.id to newValue))
+            if (stickyScore) {
+                stickyHeader {
+                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config) {
+                        showDirectScoreDialog = true
                     }
                 }
-                config.additiveBonus?.let { bonus ->
-                    item {
-                        Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text(
-                                    stringResource(R.string.bonus_range, localizedBonusName(bonus), bonus.maxValue),
-                                    fontWeight = FontWeight.Bold,
-                                    color = Magenta
-                                )
-                                Text(stringResource(R.string.bonus_explanation), color = Color.Gray, fontSize = 13.sp)
-                                DiscreteSlider(
-                                    value = draft.additiveScore,
-                                    onValueChange = { draft = draft.copy(additiveScore = it) },
-                                    min = BONUS_MIN,
-                                    max = BONUS_MAX,
-                                    step = BONUS_STEP,
-                                    accessibilityLabel = localizedBonusName(bonus),
-                                    valueDescription = stringResource(R.string.bonus_current, draft.additiveScore)
-                                )
-                                Text(stringResource(R.string.bonus_current, draft.additiveScore), fontWeight = FontWeight.Bold)
-                            }
+            } else {
+                item {
+                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config) {
+                        showDirectScoreDialog = true
+                    }
+                }
+            }
+            if (elaborate) {
+                item {
+                    RatingProfileSelector(
+                        profiles = profiles,
+                        selected = selectedProfile,
+                        onSelected = {
+                            selectedProfileId = it.id
+                            directFinalScore = null
                         }
+                    )
+                }
+            }
+            if (elaborate) {
+                items(calculationConfig.categories.filter { it.active }.sortedBy { it.order }, key = { it.id }) { category ->
+                    CategoryEditor(category, draft.categoryScores[category.id]) { newValue ->
+                        draft = draft.copy(categoryScores = draft.categoryScores + (category.id to newValue))
+                        directFinalScore = null
                     }
                 }
             } else {
@@ -654,18 +688,33 @@ private fun RatingScreen(
                                 modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
                             )
                             Text(
-                                stringResource(R.string.score_out_of_ten, simpleScore),
+                                stringResource(R.string.score_out_of_ten, simpleQuality),
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Cyan
                             )
                             RatingSlider(
-                                value = simpleScore,
-                                onValueChange = { simpleScore = it },
+                                value = simpleQuality,
+                                onValueChange = {
+                                    simpleQuality = it
+                                    directFinalScore = null
+                                },
                                 accessibilityLabel = stringResource(R.string.rating_slider_accessibility)
                             )
                         }
                     }
+                }
+            }
+            config.additiveBonus?.let { bonus ->
+                item {
+                    BonusEditor(
+                        bonus = bonus,
+                        value = draft.additiveScore,
+                        onValueChange = {
+                            draft = draft.copy(additiveScore = it)
+                            directFinalScore = null
+                        }
+                    )
                 }
             }
             item {
@@ -681,8 +730,11 @@ private fun RatingScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = {
-                            if (elaborate) onSaveElaborate(draft)
-                            else onSaveSimple(draft, simpleScore)
+                            if (elaborate) {
+                                onSaveElaborate(draft, directFinalScore, selectedProfile.id)
+                            } else {
+                                calculatedFinal?.let { onSaveSimple(draft, simpleQuality, it) }
+                            }
                         },
                         modifier = Modifier.weight(1f)
                     ) {
@@ -701,10 +753,63 @@ private fun RatingScreen(
             }
         }
     }
+    if (showDirectScoreDialog) {
+        DirectScoreDialog(
+            initialValue = calculatedFinal,
+            onDismiss = { showDirectScoreDialog = false },
+            onApply = {
+                directFinalScore = it
+                showDirectScoreDialog = false
+            }
+        )
+    }
 }
 
 @Composable
-private fun ScoreHeader(base: Double?, additive: Double, final: Double?, config: RatingSystemConfig) {
+private fun RatingProfileSelector(
+    profiles: List<RatingProfile>,
+    selected: RatingProfile,
+    onSelected: (RatingProfile) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
+        Box {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { expanded = true }.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.rating_profile), color = Color.Gray, fontSize = 13.sp)
+                    Text(localizedProfileName(selected), fontWeight = FontWeight.Bold, color = Cyan)
+                }
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                profiles.forEach { profile ->
+                    DropdownMenuItem(
+                        text = { Text(localizedProfileName(profile)) },
+                        onClick = {
+                            expanded = false
+                            onSelected(profile)
+                        },
+                        leadingIcon = {
+                            if (profile.id == selected.id) Icon(Icons.Default.Check, contentDescription = null)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScoreHeader(
+    base: Double?,
+    additive: Double,
+    final: Double?,
+    config: RatingSystemConfig,
+    onFinalScoreClick: () -> Unit
+) {
     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(18.dp)) {
             Text(stringResource(R.string.score_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -726,12 +831,93 @@ private fun ScoreHeader(base: Double?, additive: Double, final: Double?, config:
                         )
                     }
                 }
-                Surface(color = scoreColor(final ?: 0.0), shape = RoundedCornerShape(16.dp)) {
+                Surface(
+                    modifier = Modifier.clickable(onClick = onFinalScoreClick),
+                    color = scoreColor(final ?: 0.0),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
                     Text(final?.let { "%.2f".format(it) } ?: "—", modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp), color = Color.Black, fontWeight = FontWeight.Black, fontSize = 24.sp)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun BonusEditor(
+    bonus: AdditiveBonus,
+    value: Double,
+    onValueChange: (Double) -> Unit
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                stringResource(R.string.bonus_range, localizedBonusName(bonus), bonus.maxValue),
+                fontWeight = FontWeight.Bold,
+                color = Magenta
+            )
+            Text(stringResource(R.string.bonus_explanation), color = Color.Gray, fontSize = 13.sp)
+            DiscreteSlider(
+                value = value,
+                onValueChange = onValueChange,
+                min = BONUS_MIN,
+                max = BONUS_MAX,
+                step = BONUS_STEP,
+                accessibilityLabel = localizedBonusName(bonus),
+                valueDescription = stringResource(R.string.bonus_current, value)
+            )
+            Text(stringResource(R.string.bonus_current, value), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun DirectScoreDialog(
+    initialValue: Double?,
+    onDismiss: () -> Unit,
+    onApply: (Double) -> Unit
+) {
+    var input by remember(initialValue) {
+        mutableStateOf(initialValue?.let { BigDecimal.valueOf(it).stripTrailingZeros().toPlainString() }.orEmpty())
+    }
+    val parsed = parseDirectRatingValue(input)
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.score_direct_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.score_direct_explanation), color = Color.Gray)
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                    label = { Text(stringResource(R.string.score_direct_label)) },
+                    supportingText = {
+                        if (input.isNotBlank() && parsed == null) {
+                            Text(stringResource(R.string.score_direct_invalid))
+                        }
+                    },
+                    isError = input.isNotBlank() && parsed == null,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { parsed?.let(onApply) })
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+        confirmButton = {
+            TextButton(enabled = parsed != null, onClick = { parsed?.let(onApply) }) {
+                Text(stringResource(R.string.action_apply))
+            }
+        }
+    )
 }
 
 @Composable
@@ -977,7 +1163,14 @@ private fun SettingsScreen(settings: AppSettingsState, viewModel: RankOfflineVie
     var destination by remember { mutableStateOf(SettingsDestination.HOME) }
     val preloadProgress by viewModel.coverPreloadProgress.collectAsState()
     val downloadedCoverCount by viewModel.downloadedCoverCount.collectAsState()
-    val goBack = { destination = SettingsDestination.HOME }
+    val goBack = {
+        destination = when (destination) {
+            SettingsDestination.GENERAL_DOWNLOADS -> SettingsDestination.GENERAL
+            SettingsDestination.RATING_PROFILES,
+            SettingsDestination.RATING_CATEGORIES -> SettingsDestination.RATING
+            else -> SettingsDestination.HOME
+        }
+    }
 
     BackHandler(enabled = destination != SettingsDestination.HOME, onBack = goBack)
 
@@ -990,11 +1183,15 @@ private fun SettingsScreen(settings: AppSettingsState, viewModel: RankOfflineVie
         )
         SettingsDestination.GENERAL -> GeneralSettingsScreen(
             settings = settings,
-            preloadProgress = preloadProgress,
-            downloadedCoverCount = downloadedCoverCount,
             onStickyScoreChange = viewModel::updateStickyScore,
             onShowImagesChange = viewModel::updateShowImages,
             onLanguage = { destination = SettingsDestination.LANGUAGE },
+            onPopularityAndCovers = { destination = SettingsDestination.GENERAL_DOWNLOADS },
+            onBack = goBack
+        )
+        SettingsDestination.GENERAL_DOWNLOADS -> PopularityAndCoversScreen(
+            preloadProgress = preloadProgress,
+            downloadedCoverCount = downloadedCoverCount,
             onDownloadPopular = viewModel::downloadPopularCovers,
             onClearCovers = viewModel::clearDownloadedCovers,
             onVisibilityChanged = viewModel::setGeneralSettingsVisible,
@@ -1006,12 +1203,26 @@ private fun SettingsScreen(settings: AppSettingsState, viewModel: RankOfflineVie
             onBack = { destination = SettingsDestination.GENERAL }
         )
         SettingsDestination.RATING -> RatingSettingsScreen(
-            ratingConfig = settings.ratingConfig,
             elaborateRatingEnabled = settings.elaborateRatingEnabled,
             onElaborateRatingEnabledChange = viewModel::updateElaborateRatingEnabled,
-            onUpdate = viewModel::updateRatingConfig,
+            onProfiles = { destination = SettingsDestination.RATING_PROFILES },
+            onCategories = { destination = SettingsDestination.RATING_CATEGORIES },
+            onBack = goBack
+        )
+        SettingsDestination.RATING_CATEGORIES -> RatingCategoriesScreen(
+            ratingConfig = settings.ratingConfig,
+            onUpdate = viewModel::updateRatingCategory,
+            onCreate = viewModel::createRatingCategory,
             onDeleteCategory = viewModel::deleteRatingCategory,
-            onReset = viewModel::resetRatingConfig,
+            onReset = viewModel::resetRatingCategories,
+            onBack = goBack
+        )
+        SettingsDestination.RATING_PROFILES -> RatingProfilesScreen(
+            profilesConfig = settings.ratingProfiles,
+            categories = settings.ratingConfig.categories,
+            onUpdate = viewModel::updateRatingProfiles,
+            onDelete = viewModel::deleteRatingProfile,
+            onReset = viewModel::resetRatingProfiles,
             onBack = goBack
         )
         SettingsDestination.ICON -> IconSettingsScreen(
@@ -1026,8 +1237,11 @@ private fun SettingsScreen(settings: AppSettingsState, viewModel: RankOfflineVie
 private enum class SettingsDestination {
     HOME,
     GENERAL,
+    GENERAL_DOWNLOADS,
     LANGUAGE,
     RATING,
+    RATING_PROFILES,
+    RATING_CATEGORIES,
     ICON,
     ABOUT
 }
@@ -1240,58 +1454,12 @@ private fun LanguageSettingsScreen(
 @Composable
 private fun GeneralSettingsScreen(
     settings: AppSettingsState,
-    preloadProgress: CoverPreloadProgress,
-    downloadedCoverCount: Int,
     onStickyScoreChange: (Boolean) -> Unit,
     onShowImagesChange: (Boolean) -> Unit,
     onLanguage: () -> Unit,
-    onDownloadPopular: (PopularCoverBatch) -> Unit,
-    onClearCovers: () -> Unit,
-    onVisibilityChanged: (Boolean) -> Unit,
+    onPopularityAndCovers: () -> Unit,
     onBack: () -> Unit
 ) {
-    var showClearConfirmation by remember { mutableStateOf(false) }
-    var showTop5000Confirmation by remember { mutableStateOf(false) }
-    DisposableEffect(Unit) {
-        onVisibilityChanged(true)
-        onDispose { onVisibilityChanged(false) }
-    }
-    if (showClearConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showClearConfirmation = false },
-            title = { Text(stringResource(R.string.covers_clear_title)) },
-            text = { Text(stringResource(R.string.covers_clear_explanation)) },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirmation = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showClearConfirmation = false
-                    onClearCovers()
-                }) { Text(stringResource(R.string.action_delete), color = Coral) }
-            }
-        )
-    }
-    if (showTop5000Confirmation) {
-        AlertDialog(
-            onDismissRequest = { showTop5000Confirmation = false },
-            title = { Text(stringResource(R.string.covers_update_top_5000_title)) },
-            text = {
-                Text(
-                    stringResource(R.string.covers_update_top_5000_warning)
-                )
-            },
-            dismissButton = {
-                TextButton(onClick = { showTop5000Confirmation = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showTop5000Confirmation = false
-                    onDownloadPopular(PopularCoverBatch.TOP_5000)
-                }) { Text(stringResource(R.string.action_continue)) }
-            }
-        )
-    }
     SettingsSubscreen(stringResource(R.string.settings_general_title), onBack) {
         LazyColumn(
             Modifier.fillMaxSize().background(Bg).padding(16.dp),
@@ -1345,20 +1513,46 @@ private fun GeneralSettingsScreen(
                 }
             }
             item {
+                SettingsMenuItem(
+                    icon = Icons.Default.CloudDownload,
+                    title = stringResource(R.string.covers_settings_title),
+                    description = stringResource(R.string.covers_settings_description),
+                    onClick = onPopularityAndCovers
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PopularityAndCoversScreen(
+    preloadProgress: CoverPreloadProgress,
+    downloadedCoverCount: Int,
+    onDownloadPopular: (PopularCoverBatch) -> Unit,
+    onClearCovers: () -> Unit,
+    onVisibilityChanged: (Boolean) -> Unit,
+    onBack: () -> Unit
+) {
+    var showClearConfirmation by remember { mutableStateOf(false) }
+    var showTop5000Confirmation by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        onVisibilityChanged(true)
+        onDispose { onVisibilityChanged(false) }
+    }
+    SettingsSubscreen(stringResource(R.string.covers_settings_title), onBack) {
+        LazyColumn(
+            Modifier.fillMaxSize().background(Bg).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            item {
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.covers_popularity_section), fontWeight = FontWeight.Bold, color = Mint)
                         Text(
-                            stringResource(R.string.covers_popularity_description),
+                            stringResource(R.string.covers_settings_explanation),
                             color = Color.Gray,
                             fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                        Text(
-                            stringResource(R.string.covers_update_explanation),
-                            color = Color.Gray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
+                            modifier = Modifier.padding(bottom = 10.dp)
                         )
                         Text(
                             stringResource(R.string.covers_downloaded_count, downloadedCoverCount),
@@ -1369,117 +1563,18 @@ private fun GeneralSettingsScreen(
                         PopularCoverBatch.entries.forEach { batch ->
                             Button(
                                 onClick = {
-                                    if (batch == PopularCoverBatch.TOP_5000) {
-                                        showTop5000Confirmation = true
-                                    } else {
-                                        onDownloadPopular(batch)
-                                    }
+                                    if (batch == PopularCoverBatch.TOP_5000) showTop5000Confirmation = true
+                                    else onDownloadPopular(batch)
                                 },
                                 enabled = !preloadProgress.isActive,
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                             ) {
                                 Icon(Icons.Default.Download, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.covers_update_top, batch.count))
+                                Text(stringResource(R.string.covers_download_top, batch.count))
                             }
                         }
-                        if (preloadProgress.status != CoverPreloadStatus.IDLE) {
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                when (preloadProgress.status) {
-                                    CoverPreloadStatus.COMPLETED -> stringResource(R.string.covers_update_completed, preloadProgress.target)
-                                    CoverPreloadStatus.FAILED -> stringResource(R.string.covers_update_interrupted, preloadProgress.target)
-                                    else -> stringResource(R.string.covers_updating, preloadProgress.target)
-                                },
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                stringResource(R.string.popularity_title),
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(top = 10.dp)
-                            )
-                            Row(
-                                Modifier.fillMaxWidth().padding(top = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                when {
-                                    preloadProgress.status == CoverPreloadStatus.FETCHING_POPULARITY -> {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            stringResource(
-                                                R.string.popularity_updating_progress,
-                                                preloadProgress.popularityProcessed,
-                                                preloadProgress.target
-                                            ),
-                                            color = Color.LightGray
-                                        )
-                                    }
-                                    preloadProgress.status == CoverPreloadStatus.APPLYING_POPULARITY -> {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(stringResource(R.string.popularity_applying), color = Color.LightGray)
-                                    }
-                                    preloadProgress.popularityUpdated -> {
-                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Mint)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(stringResource(R.string.popularity_updated), color = Color.LightGray)
-                                    }
-                                    preloadProgress.status == CoverPreloadStatus.FAILED -> {
-                                        Icon(Icons.Default.Error, contentDescription = null, tint = Coral)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(stringResource(R.string.popularity_update_failed), color = Coral)
-                                    }
-                                }
-                            }
-                            if (preloadProgress.status == CoverPreloadStatus.FETCHING_POPULARITY) {
-                                LinearProgressIndicator(
-                                    progress = { preloadProgress.popularityFraction },
-                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                                )
-                            }
-                            Text(
-                                stringResource(R.string.covers_progress, preloadProgress.processed, preloadProgress.target),
-                                color = Color.LightGray,
-                                modifier = Modifier.padding(top = 10.dp)
-                            )
-                            LinearProgressIndicator(
-                                progress = { preloadProgress.fraction },
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                            )
-                            Text(
-                                stringResource(
-                                    R.string.covers_progress_details,
-                                    preloadProgress.existing,
-                                    preloadProgress.downloaded,
-                                    preloadProgress.errors
-                                ),
-                                color = Color.Gray,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 6.dp)
-                            )
-                            when {
-                                preloadProgress.status == CoverPreloadStatus.COMPLETED -> Text(
-                                    stringResource(R.string.covers_completed),
-                                    color = Mint,
-                                    fontSize = 13.sp,
-                                    modifier = Modifier.padding(top = 6.dp)
-                                )
-                                preloadProgress.status == CoverPreloadStatus.FAILED &&
-                                    preloadProgress.popularityUpdated -> Text(
-                                    stringResource(R.string.covers_download_interrupted),
-                                    color = Coral,
-                                    fontSize = 13.sp,
-                                    modifier = Modifier.padding(top = 6.dp)
-                                )
-                            }
-                        }
+                        PopularityAndCoverProgress(preloadProgress)
                         OutlinedButton(
                             onClick = { showClearConfirmation = true },
                             enabled = !preloadProgress.isActive,
@@ -1494,16 +1589,136 @@ private fun GeneralSettingsScreen(
             }
         }
     }
+    if (showClearConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmation = false },
+            title = { Text(stringResource(R.string.covers_clear_title)) },
+            text = { Text(stringResource(R.string.covers_clear_explanation)) },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmation = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearConfirmation = false
+                    onClearCovers()
+                }) { Text(stringResource(R.string.action_delete), color = Coral) }
+            }
+        )
+    }
+    if (showTop5000Confirmation) {
+        AlertDialog(
+            onDismissRequest = { showTop5000Confirmation = false },
+            title = { Text(stringResource(R.string.covers_update_top_5000_title)) },
+            text = { Text(stringResource(R.string.covers_update_top_5000_warning)) },
+            dismissButton = {
+                TextButton(onClick = { showTop5000Confirmation = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showTop5000Confirmation = false
+                    onDownloadPopular(PopularCoverBatch.TOP_5000)
+                }) { Text(stringResource(R.string.action_continue)) }
+            }
+        )
+    }
+}
+
+@Composable
+private fun PopularityAndCoverProgress(preloadProgress: CoverPreloadProgress) {
+    if (preloadProgress.status == CoverPreloadStatus.IDLE) return
+    Spacer(Modifier.height(12.dp))
+    Text(
+        when (preloadProgress.status) {
+            CoverPreloadStatus.COMPLETED -> stringResource(R.string.covers_update_completed, preloadProgress.target)
+            CoverPreloadStatus.FAILED -> stringResource(R.string.covers_update_interrupted, preloadProgress.target)
+            else -> stringResource(R.string.covers_updating, preloadProgress.target)
+        },
+        fontWeight = FontWeight.SemiBold
+    )
+    Text(
+        stringResource(R.string.popularity_title),
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 10.dp)
+    )
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        when {
+            preloadProgress.status == CoverPreloadStatus.FETCHING_POPULARITY -> {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(
+                        R.string.popularity_updating_progress,
+                        preloadProgress.popularityProcessed,
+                        preloadProgress.target
+                    ),
+                    color = Color.LightGray
+                )
+            }
+            preloadProgress.status == CoverPreloadStatus.APPLYING_POPULARITY -> {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.popularity_applying), color = Color.LightGray)
+            }
+            preloadProgress.popularityUpdated -> {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Mint)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.popularity_updated), color = Color.LightGray)
+            }
+            preloadProgress.status == CoverPreloadStatus.FAILED -> {
+                Icon(Icons.Default.Error, contentDescription = null, tint = Coral)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.popularity_update_failed), color = Coral)
+            }
+        }
+    }
+    if (preloadProgress.status == CoverPreloadStatus.FETCHING_POPULARITY) {
+        LinearProgressIndicator(
+            progress = { preloadProgress.popularityFraction },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+        )
+    }
+    Text(
+        stringResource(R.string.covers_progress, preloadProgress.processed, preloadProgress.target),
+        color = Color.LightGray,
+        modifier = Modifier.padding(top = 10.dp)
+    )
+    LinearProgressIndicator(
+        progress = { preloadProgress.fraction },
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+    )
+    Text(
+        stringResource(
+            R.string.covers_progress_details,
+            preloadProgress.existing,
+            preloadProgress.downloaded,
+            preloadProgress.errors
+        ),
+        color = Color.Gray,
+        fontSize = 12.sp,
+        modifier = Modifier.padding(top = 6.dp)
+    )
+    when {
+        preloadProgress.status == CoverPreloadStatus.COMPLETED -> Text(
+            stringResource(R.string.covers_completed),
+            color = Mint,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(top = 6.dp)
+        )
+        preloadProgress.status == CoverPreloadStatus.FAILED && preloadProgress.popularityUpdated -> Text(
+            stringResource(R.string.covers_download_interrupted),
+            color = Coral,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(top = 6.dp)
+        )
+    }
 }
 
 @Composable
 private fun RatingSettingsScreen(
-    ratingConfig: RatingSystemConfig,
     elaborateRatingEnabled: Boolean,
     onElaborateRatingEnabledChange: (Boolean) -> Unit,
-    onUpdate: (RatingSystemConfig) -> Unit,
-    onDeleteCategory: (RatingCategory, RatingSystemConfig) -> Unit,
-    onReset: () -> Unit,
+    onProfiles: () -> Unit,
+    onCategories: () -> Unit,
     onBack: () -> Unit
 ) {
     SettingsSubscreen(stringResource(R.string.settings_rating_title), onBack) {
@@ -1514,74 +1729,238 @@ private fun RatingSettingsScreen(
         ) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.rating_elaborate), fontWeight = FontWeight.Bold, color = Magenta)
-                            Text(
-                                stringResource(R.string.rating_elaborate_description),
-                                color = Color.Gray,
-                                fontSize = 13.sp
-                            )
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Text(stringResource(R.string.rating_mode), fontWeight = FontWeight.Bold, color = Magenta)
+                        listOf(
+                            false to stringResource(R.string.rating_simple),
+                            true to stringResource(R.string.rating_elaborate)
+                        ).forEach { (isElaborate, label) ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable {
+                                    onElaborateRatingEnabledChange(isElaborate)
+                                },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = elaborateRatingEnabled == isElaborate,
+                                    onClick = { onElaborateRatingEnabledChange(isElaborate) }
+                                )
+                                Text(label)
+                            }
                         }
-                        Switch(
-                            checked = elaborateRatingEnabled,
-                            onCheckedChange = onElaborateRatingEnabledChange
+                        Text(
+                            stringResource(R.string.rating_elaborate_description),
+                            color = Color.Gray,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
             }
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.rating_system), fontWeight = FontWeight.Bold, color = Magenta)
-                        val categories = ratingConfig.categories.filter { it.active }.sortedBy { it.order }
-                        categories.forEach { category ->
-                            RatingCategoryEditor(
-                                category = category,
-                                onUpdate = { newCategory ->
-                                    val updated = ratingConfig.categories.map {
-                                        if (it.id == newCategory.id) newCategory else it
-                                    }
-                                    onUpdate(ratingConfig.copy(categories = updated.sortedBy { it.order }))
-                                },
-                                onDelete = {
-                                    onDeleteCategory(category, ratingConfig)
-                                }
+                SettingsMenuItem(
+                    icon = Icons.Default.Tune,
+                    title = stringResource(R.string.rating_profiles),
+                    description = stringResource(R.string.rating_profiles_description),
+                    onClick = onProfiles
+                )
+            }
+            item {
+                SettingsMenuItem(
+                    icon = Icons.AutoMirrored.Filled.List,
+                    title = stringResource(R.string.rating_categories),
+                    description = stringResource(R.string.rating_categories_description),
+                    onClick = onCategories
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RatingCategoriesScreen(
+    ratingConfig: RatingSystemConfig,
+    onUpdate: (RatingCategory) -> Unit,
+    onCreate: (RatingCategory) -> Unit,
+    onDeleteCategory: (RatingCategory) -> Unit,
+    onReset: () -> Unit,
+    onBack: () -> Unit
+) {
+    var confirmReset by remember { mutableStateOf(false) }
+    val newCategoryName = stringResource(R.string.rating_new_category_name)
+    val newCategoryDescription = stringResource(R.string.rating_new_category_description)
+    SettingsSubscreen(stringResource(R.string.rating_categories), onBack) {
+        LazyColumn(
+            Modifier.fillMaxSize().background(Bg).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            items(ratingConfig.categories.sortedBy { it.order }, key = { it.id }) { category ->
+                RatingCategoryEditor(category, onUpdate, onDelete = { onDeleteCategory(category) })
+            }
+            item {
+                Button(
+                    onClick = {
+                        onCreate(
+                            RatingCategory(
+                                id = "custom_${UUID.randomUUID()}",
+                                name = newCategoryName,
+                                description = newCategoryDescription,
+                                weight = 0.0,
+                                color = "#7EC7FF",
+                                order = (ratingConfig.categories.maxOfOrNull { it.order } ?: -1) + 1
                             )
-                        }
-                        val newCategoryName = stringResource(R.string.rating_new_category_name)
-                        val newCategoryDescription = stringResource(R.string.rating_new_category_description)
-                        Button(
-                            onClick = {
-                                val nextOrder = ratingConfig.categories.maxOfOrNull { it.order }?.plus(1) ?: 0
-                                val newCategory = RatingCategory(
-                                    id = "custom_${UUID.randomUUID()}",
-                                    name = newCategoryName,
-                                    description = newCategoryDescription,
-                                    weight = 10.0,
-                                    color = "#7EC7FF",
-                                    order = nextOrder
-                                )
-                                onUpdate(ratingConfig.copy(categories = ratingConfig.categories + newCategory))
-                            },
-                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                        ) {
-                            Text(stringResource(R.string.rating_add_category))
-                        }
-                        Button(
-                            onClick = onReset,
-                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                        ) {
-                            Text(stringResource(R.string.rating_reset_defaults))
-                        }
-                    }
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(stringResource(R.string.rating_add_category)) }
+            }
+            item {
+                OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.rating_reset_categories))
                 }
             }
         }
     }
+    if (confirmReset) {
+        ConfirmationDialog(
+            title = stringResource(R.string.rating_reset_categories),
+            text = stringResource(R.string.rating_reset_categories_confirmation),
+            onDismiss = { confirmReset = false },
+            onConfirm = { confirmReset = false; onReset() }
+        )
+    }
+}
+
+@Composable
+private fun RatingProfilesScreen(
+    profilesConfig: RatingProfilesConfig,
+    categories: List<RatingCategory>,
+    onUpdate: (RatingProfilesConfig) -> Unit,
+    onDelete: (String) -> Unit,
+    onReset: () -> Unit,
+    onBack: () -> Unit
+) {
+    var confirmReset by remember { mutableStateOf(false) }
+    val newProfileName = stringResource(R.string.rating_new_profile_name)
+    SettingsSubscreen(stringResource(R.string.rating_profiles), onBack) {
+        LazyColumn(
+            Modifier.fillMaxSize().background(Bg).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            items(profilesConfig.profiles, key = { it.id }) { profile ->
+                RatingProfileEditor(
+                    profile = profile,
+                    categories = categories.sortedBy { it.order },
+                    canDelete = profilesConfig.profiles.size > 1,
+                    onUpdate = { changed ->
+                        onUpdate(profilesConfig.copy(profiles = profilesConfig.profiles.map {
+                            if (it.id == changed.id) changed else it
+                        }))
+                    },
+                    onDelete = { onDelete(profile.id) }
+                )
+            }
+            item {
+                Button(
+                    onClick = {
+                        val profile = RatingProfile(
+                            id = "custom_${UUID.randomUUID()}",
+                            name = newProfileName,
+                            weights = categories.associate { it.id to 5.0 }
+                        )
+                        onUpdate(profilesConfig.copy(profiles = profilesConfig.profiles + profile))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(stringResource(R.string.rating_create_profile)) }
+            }
+            item {
+                OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.rating_reset_profiles))
+                }
+            }
+        }
+    }
+    if (confirmReset) {
+        ConfirmationDialog(
+            title = stringResource(R.string.rating_reset_profiles),
+            text = stringResource(R.string.rating_reset_profiles_confirmation),
+            onDismiss = { confirmReset = false },
+            onConfirm = { confirmReset = false; onReset() }
+        )
+    }
+}
+
+@Composable
+private fun RatingProfileEditor(
+    profile: RatingProfile,
+    categories: List<RatingCategory>,
+    canDelete: Boolean,
+    onUpdate: (RatingProfile) -> Unit,
+    onDelete: () -> Unit
+) {
+    var showDeleteConfirmation by remember(profile.id) { mutableStateOf(false) }
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = localizedProfileName(profile),
+                    onValueChange = { onUpdate(profile.copy(name = it)) },
+                    label = { Text(stringResource(R.string.rating_profile_name)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+                IconButton(enabled = canDelete, onClick = { showDeleteConfirmation = true }) {
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.rating_delete_profile), tint = if (canDelete) Coral else Color.Gray)
+                }
+            }
+            categories.forEach { category ->
+                val weight = profile.weights[category.id] ?: 0.0
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(localizedCategoryName(category), modifier = Modifier.width(100.dp), maxLines = 1)
+                    DiscreteSlider(
+                        value = weight,
+                        onValueChange = { value ->
+                            snapWeight(value)?.let { onUpdate(profile.copy(weights = profile.weights + (category.id to it))) }
+                        },
+                        min = WEIGHT_MIN,
+                        max = WEIGHT_MAX,
+                        step = WEIGHT_STEP,
+                        accessibilityLabel = stringResource(R.string.category_weight_slider_accessibility),
+                        valueDescription = stringResource(R.string.category_weight_percent, weight.toInt()),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(stringResource(R.string.category_weight_percent, weight.toInt()), modifier = Modifier.width(52.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                }
+            }
+            if (!canDelete) {
+                Text(stringResource(R.string.rating_last_profile_required), color = Color.Gray, fontSize = 12.sp)
+            }
+        }
+    }
+    if (showDeleteConfirmation) {
+        ConfirmationDialog(
+            title = stringResource(R.string.rating_delete_profile),
+            text = stringResource(R.string.rating_delete_profile_confirmation, localizedProfileName(profile)),
+            onDismiss = { showDeleteConfirmation = false },
+            onConfirm = { showDeleteConfirmation = false; onDelete() }
+        )
+    }
+}
+
+@Composable
+private fun ConfirmationDialog(title: String, text: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(text) },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_apply)) } }
+    )
 }
 
 @Composable
@@ -1653,11 +2032,6 @@ private fun LicenceAboutScreen(onBack: () -> Unit) {
 
 @Composable
 private fun RatingCategoryEditor(category: RatingCategory, onUpdate: (RatingCategory) -> Unit, onDelete: () -> Unit) {
-    val accent = try {
-        Color(android.graphics.Color.parseColor(category.color))
-    } catch (_: Exception) {
-        Cyan
-    }
     val swatch = try {
         Color(android.graphics.Color.parseColor(category.color))
     } catch (_: Exception) {
@@ -1691,24 +2065,6 @@ private fun RatingCategoryEditor(category: RatingCategory, onUpdate: (RatingCate
                 label = { Text(stringResource(R.string.category_description)) },
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
             )
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                Text(stringResource(R.string.category_weight), color = accent, fontWeight = FontWeight.Bold, modifier = Modifier.width(64.dp))
-                DiscreteSlider(
-                    value = category.weight,
-                    onValueChange = { onUpdate(category.copy(weight = it)) },
-                    min = WEIGHT_MIN,
-                    max = WEIGHT_MAX,
-                    step = WEIGHT_STEP,
-                    accessibilityLabel = stringResource(R.string.category_weight_slider_accessibility),
-                    valueDescription = stringResource(R.string.category_weight_percent, category.weight.toInt()),
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    stringResource(R.string.category_weight_percent, category.weight.toInt()),
-                    modifier = Modifier.width(54.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.End
-                )
-            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.category_color), color = Color.LightGray, modifier = Modifier.width(52.dp))
                 Box(
@@ -1884,6 +2240,23 @@ private fun localizedCategoryDescription(category: RatingCategory): String {
     val canonical = DefaultSettings.defaultRatingCategories.firstOrNull { it.id == category.id }
     val resource = if (canonical?.description == category.description) categoryDescriptionResource(category.id) else null
     return resource?.let { stringResource(it) } ?: category.description
+}
+
+@Composable
+private fun localizedProfileName(profile: RatingProfile): String {
+    val canonical = DefaultSettings.defaultProfiles().profiles.firstOrNull { it.id == profile.id }
+    val resource = if (canonical?.name == profile.name) profileNameResource(profile.id) else null
+    return resource?.let { stringResource(it) } ?: profile.name
+}
+
+private fun profileNameResource(id: String): Int? = when (id) {
+    DefaultSettings.GENERAL_PROFILE_ID -> R.string.profile_general
+    "narrative" -> R.string.profile_narrative
+    "character_driven" -> R.string.profile_character_driven
+    "visual_action" -> R.string.profile_visual_action
+    "world_adventure" -> R.string.profile_world_adventure
+    "atmospheric" -> R.string.profile_atmospheric
+    else -> null
 }
 
 @Composable

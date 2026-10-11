@@ -33,6 +33,10 @@
     <string name="rating_notes">Notes</string>
     <string name="rating_notes_hint">What worked, what didn’t, memorable scenes…</string>
     <string name="score_title">Score</string>
+    <string name="score_direct_title">Edit final score</string>
+    <string name="score_direct_explanation">Enter a value from 0 to 10 with up to two decimal places.</string>
+    <string name="score_direct_label">Final score</string>
+    <string name="score_direct_invalid">Enter a valid value from 0 to 10 with no more than two decimal places.</string>
     <string name="score_quality">Quality: %1$s</string>
     <string name="score_bonus_value">%1$s: +%2$.1f</string>
     <string name="score_category_heading">%1$s · %2$d%%</string>
@@ -171,4 +175,31 @@
     </plurals>
     <string name="message_top_updated">Top %1$d refreshed</string>
     <string name="message_top_update_failed">Couldn’t refresh Top %1$d. Try again.</string>
+    <string name="rating_profiles">Profiles</string>
+    <string name="rating_mode">Rating mode</string>
+    <string name="rating_simple">Simple rating</string>
+    <string name="rating_profiles_description">Weights for each type of work</string>
+    <string name="rating_categories">Categories</string>
+    <string name="rating_categories_description">What is evaluated</string>
+    <string name="rating_profile">Rating profile</string>
+    <string name="rating_create_profile">Create profile</string>
+    <string name="rating_profile_name">Profile name</string>
+    <string name="rating_new_profile_name">New profile</string>
+    <string name="rating_delete_profile">Delete profile</string>
+    <string name="rating_delete_profile_confirmation">Delete profile “%1$s”?</string>
+    <string name="rating_last_profile_required">At least one profile is required.</string>
+    <string name="rating_reset_profiles">Reset profiles</string>
+    <string name="rating_reset_profiles_confirmation">Replace all profiles with the official defaults? Categories and ratings will not change.</string>
+    <string name="rating_reset_categories">Reset categories</string>
+    <string name="rating_reset_categories_confirmation">Replace all categories with the official defaults? Profiles will keep their compatible weights.</string>
+    <string name="profile_general">General</string>
+    <string name="profile_narrative">Narrative</string>
+    <string name="profile_character_driven">Character-driven</string>
+    <string name="profile_visual_action">Visual / Action</string>
+    <string name="profile_world_adventure">World / Adventure</string>
+    <string name="profile_atmospheric">Atmospheric</string>
+    <string name="covers_settings_title">Popularity &amp; covers</string>
+    <string name="covers_settings_description">Refresh popularity rankings and manage offline covers.</string>
+    <string name="covers_settings_explanation">Choose a Top range. RankOffline refreshes its popularity ranking and downloads only missing covers.</string>
+    <string name="covers_download_top">Download Top %1$d</string>
 </resources>

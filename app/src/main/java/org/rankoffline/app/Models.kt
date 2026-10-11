@@ -256,6 +256,30 @@ fun snapRatingValue(value: Double): Double? {
 
 fun isDiscreteRatingValue(value: Double): Boolean = snapRatingValue(value) == value
 
+private val DIRECT_RATING_PATTERN = Regex("^(?:\\d{1,2})(?:[.,]\\d{1,2})?$")
+
+fun parseDirectRatingValue(value: String): Double? {
+    val normalized = value.trim().takeIf(DIRECT_RATING_PATTERN::matches)?.replace(',', '.') ?: return null
+    return normalizeDirectRatingValue(normalized.toDoubleOrNull() ?: return null)
+}
+
+fun normalizeDirectRatingValue(value: Double): Double? {
+    if (!value.isFinite() || value !in RATING_MIN..RATING_MAX) return null
+    val decimal = BigDecimal.valueOf(value).stripTrailingZeros()
+    if (decimal.scale().coerceAtLeast(0) > 2) return null
+    return decimal.toDouble()
+}
+
+fun finalScoreFromQuality(qualityScore: Double, additiveScore: Double): Double? {
+    if (!qualityScore.isFinite() || qualityScore !in RATING_MIN..RATING_MAX ||
+        !additiveScore.isFinite() || additiveScore !in BONUS_MIN..BONUS_MAX
+    ) return null
+    return BigDecimal.valueOf(qualityScore)
+        .add(BigDecimal.valueOf(additiveScore))
+        .min(BigDecimal.valueOf(RATING_MAX))
+        .toDouble()
+}
+
 fun snapBonusValue(value: Double): Double? =
     snapDiscreteValue(value, BONUS_MIN, BONUS_MAX, BONUS_STEP)
 
@@ -304,7 +328,9 @@ data class RatingDraft(
     val additiveScore: Double = 0.0,
     val notes: String = "",
     val status: String = "Completed",
-    val finalScore: Double? = null
+    val finalScore: Double? = null,
+    val qualityScore: Double? = null,
+    val profileId: String? = null
 ) {
     fun withDefaultCategoryScores(config: RatingSystemConfig): RatingDraft {
         if (categoryScores.isNotEmpty()) return this

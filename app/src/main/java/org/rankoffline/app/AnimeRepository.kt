@@ -36,21 +36,38 @@ class AnimeRepository(
         val scores = dao.ratingScores(animeId).associate { entity ->
             entity.categoryId to entity.score.takeIf { entity.applicable }
         }
-        RatingDraft(scores, rating.additiveScore, rating.notes, rating.status, rating.finalScore)
+        RatingDraft(
+            categoryScores = scores,
+            additiveScore = rating.additiveScore,
+            notes = rating.notes,
+            status = rating.status,
+            finalScore = rating.finalScore,
+            qualityScore = rating.qualityScore,
+            profileId = rating.profileId
+        )
     }
 
-    suspend fun saveElaborateRating(animeId: String, draft: RatingDraft, config: RatingSystemConfig) = withContext(Dispatchers.IO) {
+    suspend fun saveElaborateRating(
+        animeId: String,
+        draft: RatingDraft,
+        config: RatingSystemConfig,
+        finalScoreOverride: Double? = null,
+        profileId: String? = null
+    ) = withContext(Dispatchers.IO) {
         require(draft.categoryScores.values.all { it == null || isDiscreteRatingValue(it) })
         val normalizedBonus = requireNotNull(snapBonusValue(draft.additiveScore))
         val result = ScoreCalculator.calculate(draft.categoryScores, normalizedBonus, config)
+        val finalScore = finalScoreOverride?.let { requireNotNull(normalizeDirectRatingValue(it)) }
+            ?: result.finalScore
         val rating = RatingEntity(
             animeId = animeId,
             additiveScore = normalizedBonus,
             qualityScore = result.qualityScore,
-            finalScore = result.finalScore,
+            finalScore = finalScore,
             notes = draft.notes,
             status = draft.status,
-            updatedAt = System.currentTimeMillis()
+            updatedAt = System.currentTimeMillis(),
+            profileId = profileId
         )
         val scores = draft.categoryScores.map { (categoryId, score) ->
             RatingScoreEntity(
@@ -63,19 +80,25 @@ class AnimeRepository(
         dao.saveRating(rating, scores)
     }
 
-    suspend fun saveSimpleRating(animeId: String, draft: RatingDraft, finalScore: Double) = withContext(Dispatchers.IO) {
-        require(isDiscreteRatingValue(finalScore))
-        val normalizedScore = requireNotNull(snapRatingValue(finalScore))
-        val previous = dao.rating(animeId)
+    suspend fun saveSimpleRating(
+        animeId: String,
+        draft: RatingDraft,
+        qualityScore: Double,
+        finalScore: Double
+    ) = withContext(Dispatchers.IO) {
+        val normalizedQuality = requireNotNull(normalizeDirectRatingValue(qualityScore))
+        val normalizedBonus = requireNotNull(snapBonusValue(draft.additiveScore))
+        val normalizedFinal = requireNotNull(normalizeDirectRatingValue(finalScore))
         dao.upsertRating(
             RatingEntity(
                 animeId = animeId,
-                additiveScore = previous?.additiveScore ?: draft.additiveScore.takeIf(Double::isFinite) ?: 0.0,
-                qualityScore = previous?.qualityScore,
-                finalScore = normalizedScore,
+                additiveScore = normalizedBonus,
+                qualityScore = normalizedQuality,
+                finalScore = normalizedFinal,
                 notes = draft.notes,
                 status = draft.status,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = System.currentTimeMillis(),
+                profileId = draft.profileId
             )
         )
     }
