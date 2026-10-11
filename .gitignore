@@ -1,26 +1,35 @@
 .gradle/
 .idea/
+.run/
+.vscode/
+.kotlin/
 local.properties
 .DS_Store
+*.iml
+*.log
+*.hprof
+
 **/build/
+out/
 captures/
 .externalNativeBuild/
 .cxx/
-*.iml
 
-# Gradle descargado temporalmente por Copilot
+# Temporary Gradle downloads
 gradle-8.9/
 gradle-download/
 
-# Covers locales para desarrollo offline
+# Local cover assets used during development
 app/src/main/assets/local_covers/*
 !app/src/main/assets/local_covers/.gitkeep
 
-# Secrets / local config
+# Secrets and local signing configuration
 .env
 *.jks
 *.keystore
 keystore.properties
-dist/
 
-.run/
+# Local release/build artifacts
+dist/
+*.apk
+*.aab
