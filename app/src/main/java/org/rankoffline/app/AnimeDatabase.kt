@@ -55,7 +55,8 @@ data class RatingEntity(
     @ColumnInfo(name = "final_score") val finalScore: Double?,
     val notes: String,
     val status: String,
-    @ColumnInfo(name = "updated_at") val updatedAt: Long
+    @ColumnInfo(name = "updated_at") val updatedAt: Long,
+    @ColumnInfo(name = "profile_id") val profileId: String? = null
 )
 
 @Entity(
@@ -236,7 +237,7 @@ interface AnimeDao {
 
 @Database(
     entities = [AnimeEntity::class, RatingEntity::class, RatingScoreEntity::class, CatalogMetadataEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class AnimeDatabase : RoomDatabase() {
@@ -255,7 +256,8 @@ abstract class AnimeDatabase : RoomDatabase() {
                     MIGRATION_3_5,
                     MIGRATION_4_5,
                     MIGRATION_5_6,
-                    MIGRATION_6_7
+                    MIGRATION_6_7,
+                    MIGRATION_7_8
                 )
                 .build()
                 .also { instance = it }
@@ -277,6 +279,11 @@ abstract class AnimeDatabase : RoomDatabase() {
                     "CREATE UNIQUE INDEX IF NOT EXISTS idx_anime_popularity_rank " +
                         "ON anime(popularity_rank)"
                 )
+            }
+        }
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE rating ADD COLUMN profile_id TEXT")
             }
         }
 

@@ -114,17 +114,29 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         _ratingEditor.value = null
     }
 
-    fun saveElaborateRating(animeId: String, draft: RatingDraft) {
+    fun saveElaborateRating(
+        animeId: String,
+        draft: RatingDraft,
+        finalScoreOverride: Double?,
+        profileId: String
+    ) {
         viewModelScope.launch {
-            repository.saveElaborateRating(animeId, draft, settings.value.ratingConfig)
+            val profile = settings.value.ratingProfiles.resolveProfile(profileId)
+            repository.saveElaborateRating(
+                animeId,
+                draft,
+                settings.value.ratingConfig.withProfile(profile),
+                finalScoreOverride,
+                profile.id
+            )
             dataVersion.value++
             _ratingEditor.value = null
         }
     }
 
-    fun saveSimpleRating(animeId: String, draft: RatingDraft, finalScore: Double) {
+    fun saveSimpleRating(animeId: String, draft: RatingDraft, qualityScore: Double, finalScore: Double) {
         viewModelScope.launch {
-            repository.saveSimpleRating(animeId, draft, finalScore)
+            repository.saveSimpleRating(animeId, draft, qualityScore, finalScore)
             dataVersion.value++
             _ratingEditor.value = null
         }
@@ -146,16 +158,43 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch { settingsRepository.updateStickyScore(value) }
     }
 
-    fun updateRatingConfig(config: RatingSystemConfig) {
-        viewModelScope.launch { settingsRepository.updateRatingConfig(config) }
+    fun updateRatingCategory(category: RatingCategory) {
+        viewModelScope.launch {
+            val config = settings.value.ratingConfig
+            settingsRepository.updateRatingConfig(
+                config.copy(categories = config.categories.map { if (it.id == category.id) category else it })
+            )
+        }
     }
 
-    fun deleteRatingCategory(category: RatingCategory, config: RatingSystemConfig) {
+    fun createRatingCategory(category: RatingCategory) {
         viewModelScope.launch {
-            settingsRepository.updateRatingConfig(
-                config.copy(categories = config.categories.filterNot { it.id == category.id })
+            val current = settings.value
+            settingsRepository.updateRatingSetup(
+                current.ratingConfig.copy(categories = current.ratingConfig.categories + category),
+                current.ratingProfiles.withCategoryAdded(category.id)
+            )
+        }
+    }
+
+    fun deleteRatingCategory(category: RatingCategory) {
+        viewModelScope.launch {
+            val current = settings.value
+            settingsRepository.updateRatingSetup(
+                current.ratingConfig.copy(categories = current.ratingConfig.categories.filterNot { it.id == category.id }),
+                current.ratingProfiles.withCategoryRemoved(category.id)
             )
             repository.deleteRatingCategory(category.id)
+        }
+    }
+
+    fun updateRatingProfiles(config: RatingProfilesConfig) {
+        viewModelScope.launch { settingsRepository.updateRatingProfiles(config) }
+    }
+
+    fun deleteRatingProfile(profileId: String) {
+        viewModelScope.launch {
+            settingsRepository.updateRatingProfiles(settings.value.ratingProfiles.withProfileDeleted(profileId))
         }
     }
 
@@ -249,12 +288,16 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun resetRatingConfig() {
+    fun resetRatingCategories() {
         viewModelScope.launch {
-            settingsRepository.resetRatingConfig()
+            settingsRepository.resetRatingCategories()
             repository.deleteRatingScoresOutsideCategories(
                 DefaultSettings.defaultRatingCategories.map { it.id }
             )
         }
+    }
+
+    fun resetRatingProfiles() {
+        viewModelScope.launch { settingsRepository.resetRatingProfiles() }
     }
 }

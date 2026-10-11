@@ -12,4 +12,32 @@
 <string name="category_writing">Сценарий</string><string name="category_writing_description">Сюжет, тематика, темп, кульминационные моменты, начало, финал</string><string name="category_characters">Персонажи</string><string name="category_characters_description">Главные и второстепенные персонажи, антагонист, развитие, глубина, харизма, динамика</string><string name="category_engagement">Вовлечённость</string><string name="category_engagement_description">Эмоции, увлекательность, интерес, напряжение, атмосфера, запоминаемость</string><string name="category_visuals">Визуал</string><string name="category_visuals_description">Анимация, стиль, операторская работа, фоны, эффекты, дизайн персонажей</string><string name="category_worldbuilding">Мир</string><string name="category_worldbuilding_description">Сеттинг, история мира, система сил</string><string name="category_audio">Звук</string><string name="category_audio_description">Саундтрек, опенинги/эндинги, звуковые эффекты</string><string name="bonus_personal_taste">Личный вкус</string><string name="bonus_personal_taste_description">Насколько вам понравилось произведение независимо от технического качества</string>
 <string name="about_version">Версия %1$s</string><string name="about_summary">Офлайн-каталог аниме и приложение для оценивания. Ваши оценки и настройки хранятся только на устройстве.</string><string name="about_licences">Лицензии</string><string name="about_catalog_licence">Каталог аниме: AnimeAPI и исходные источники данных; AnimeAPI указывает ODbL 1.0 и DbCL 1.0, некоторые компоненты имеют другие совместимые лицензии.</string><string name="about_android_licence">AndroidX, Jetpack Compose, DataStore и Kotlinx Serialization: лицензия Apache 2.0.</string><string name="about_acknowledgements">Благодарности</string><string name="about_acknowledgements_text">AnimeAPI и её участники предоставляют сопоставления каталога. AniList и Jikan предоставляют метаданные обложек, если обложки нет на устройстве.</string>
 <string name="error_initialize_local_data">Не удалось инициализировать локальные данные.</string><string name="message_no_internet">Нет подключения к Интернету</string><string name="message_cover_not_found">Обложка для этого аниме не найдена</string><string name="message_cover_download_failed">Не удалось скачать обложку. Повторите попытку.</string><string name="message_cover_deleted">Обложка удалена</string><string name="message_cover_delete_failed">Не удалось удалить обложку</string><plurals name="message_covers_deleted"><item quantity="one">Удалена %1$d обложка</item><item quantity="few">Удалено %1$d обложки</item><item quantity="many">Удалено %1$d обложек</item><item quantity="other">Удалено %1$d обложки</item></plurals><string name="message_top_updated">Топ-%1$d обновлён</string><string name="message_top_update_failed">Не удалось обновить топ-%1$d. Повторите попытку.</string>
+<string name="score_direct_title">Изменить итоговую оценку</string><string name="score_direct_explanation">Введите значение от 0 до 10, не более двух знаков после запятой.</string><string name="score_direct_label">Итоговая оценка</string><string name="score_direct_invalid">Введите корректное значение от 0 до 10, не более чем с двумя знаками после запятой.</string>
+    <string name="rating_profiles">Профили</string>
+    <string name="rating_mode">Режим оценки</string>
+    <string name="rating_simple">Простая оценка</string>
+    <string name="rating_profiles_description">Веса для разных типов произведений</string>
+    <string name="rating_categories">Категории</string>
+    <string name="rating_categories_description">Что оценивается</string>
+    <string name="rating_profile">Профиль оценки</string>
+    <string name="rating_create_profile">Создать профиль</string>
+    <string name="rating_profile_name">Название профиля</string>
+    <string name="rating_new_profile_name">Новый профиль</string>
+    <string name="rating_delete_profile">Удалить профиль</string>
+    <string name="rating_delete_profile_confirmation">Удалить профиль «%1$s»?</string>
+    <string name="rating_last_profile_required">Необходим хотя бы один профиль.</string>
+    <string name="rating_reset_profiles">Сбросить профили</string>
+    <string name="rating_reset_profiles_confirmation">Заменить все профили стандартными? Категории и оценки не изменятся.</string>
+    <string name="rating_reset_categories">Сбросить категории</string>
+    <string name="rating_reset_categories_confirmation">Заменить все категории стандартными? Совместимые веса профилей сохранятся.</string>
+    <string name="profile_general">Общий</string>
+    <string name="profile_narrative">Сюжетный</string>
+    <string name="profile_character_driven">Персонажный</string>
+    <string name="profile_visual_action">Визуал / Экшен</string>
+    <string name="profile_world_adventure">Мир / Приключения</string>
+    <string name="profile_atmospheric">Атмосферный</string>
+    <string name="covers_settings_title">Популярность и обложки</string>
+    <string name="covers_settings_description">Обновляйте рейтинг популярности и управляйте офлайн-обложками.</string>
+    <string name="covers_settings_explanation">Выберите размер топа. RankOffline обновит рейтинг популярности и скачает только недостающие обложки.</string>
+    <string name="covers_download_top">Скачать топ-%1$d</string>
 </resources>

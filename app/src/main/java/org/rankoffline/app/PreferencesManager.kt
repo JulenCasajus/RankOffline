@@ -44,7 +44,21 @@ data class RatingSystemConfig(
     val additiveBonus: AdditiveBonus?
 )
 
+@Serializable
+data class RatingProfile(
+    val id: String,
+    val name: String,
+    val weights: Map<String, Double>
+)
+
+@Serializable
+data class RatingProfilesConfig(
+    val profiles: List<RatingProfile>
+)
+
 object DefaultSettings {
+    const val GENERAL_PROFILE_ID = "general"
+
     val defaultRatingCategories = listOf(
         RatingCategory("writing", "Writing", "Plot, themes, pacing, highlights, beginning, ending", 35.0, "#19D5E5", 0),
         RatingCategory("characters", "Characters", "Main characters, supporting characters, antagonist, development, depth, charisma, dynamics", 20.0, "#E04BCF", 1),
@@ -58,6 +72,50 @@ object DefaultSettings {
         categories = defaultRatingCategories,
         additiveBonus = defaultAdditiveBonus
     )
+
+    private val defaultProfileWeights = linkedMapOf(
+        GENERAL_PROFILE_ID to listOf(35.0, 20.0, 20.0, 15.0, 10.0),
+        "narrative" to listOf(45.0, 25.0, 10.0, 10.0, 10.0),
+        "character_driven" to listOf(25.0, 40.0, 15.0, 10.0, 10.0),
+        "visual_action" to listOf(20.0, 15.0, 40.0, 15.0, 10.0),
+        "world_adventure" to listOf(20.0, 20.0, 15.0, 35.0, 10.0),
+        "atmospheric" to listOf(25.0, 20.0, 20.0, 15.0, 20.0)
+    )
+
+    private val defaultProfileNames = mapOf(
+        GENERAL_PROFILE_ID to "General",
+        "narrative" to "Narrative",
+        "character_driven" to "Character-driven",
+        "visual_action" to "Visual / Action",
+        "world_adventure" to "World / Adventure",
+        "atmospheric" to "Atmospheric"
+    )
+
+    fun defaultProfiles(categories: List<RatingCategory> = defaultRatingCategories): RatingProfilesConfig {
+        val availableIds = categories.map { it.id }
+        val defaultIds = defaultRatingCategories.map { it.id }
+        return RatingProfilesConfig(
+            defaultProfileWeights.map { (profileId, presetWeights) ->
+                val weights = availableIds.associateWith { categoryId ->
+                    defaultIds.indexOf(categoryId).takeIf { it >= 0 }?.let(presetWeights::get) ?: 0.0
+                }.ensureAtLeastOneWeight()
+                RatingProfile(profileId, defaultProfileNames.getValue(profileId), weights)
+            }
+        )
+    }
+
+    fun initialProfilesForExistingCategories(categories: List<RatingCategory>): RatingProfilesConfig {
+        val defaults = defaultProfiles(categories)
+        return defaults.copy(
+            profiles = defaults.profiles.map { profile ->
+                if (profile.id == GENERAL_PROFILE_ID) {
+                    profile.copy(weights = categories.associate { it.id to it.weight }.ensureAtLeastOneWeight())
+                } else {
+                    profile
+                }
+            }
+        )
+    }
 }
 
 data class AppSettingsState(
@@ -65,6 +123,7 @@ data class AppSettingsState(
     val stickyScore: Boolean = true,
     val elaborateRatingEnabled: Boolean = false,
     val ratingConfig: RatingSystemConfig = DefaultSettings.defaultRatingConfig,
+    val ratingProfiles: RatingProfilesConfig = DefaultSettings.defaultProfiles(),
     val appIcon: AppIcon = AppIcon.DARK,
     val language: SupportedLanguage = SupportedLanguage.DEFAULT,
     val settingsLoaded: Boolean = false
@@ -82,6 +141,7 @@ class SettingsRepository internal constructor(
     private val showImagesKey = booleanPreferencesKey("show_images")
     private val elaborateRatingEnabledKey = booleanPreferencesKey("elaborate_rating_enabled")
     private val ratingConfigKey = stringPreferencesKey("rating_config")
+    private val ratingProfilesKey = stringPreferencesKey("rating_profiles")
     private val appIconKey = stringPreferencesKey("app_icon")
     private val languageKey = stringPreferencesKey("language_tag")
 
@@ -98,9 +158,17 @@ class SettingsRepository internal constructor(
         val normalization = normalizeLegacyInactiveCategories(resolveRatingConfig(persistedRatingConfig))
         val ratingConfig = normalization.config
         removedLegacyCategoryIds = normalization.removedCategoryIds
-        if (normalization.removedCategoryIds.isNotEmpty()) {
+        val persistedProfiles = prefs[ratingProfilesKey]?.let {
+            try { json.decodeFromString<RatingProfilesConfig>(it) } catch (_: Exception) { null }
+        }
+        val initialProfiles = persistedProfiles
+            ?: if (persistedRatingConfig == null) DefaultSettings.defaultProfiles(ratingConfig.categories)
+            else DefaultSettings.initialProfilesForExistingCategories(ratingConfig.categories)
+        val ratingProfiles = reconcileProfiles(initialProfiles, ratingConfig.categories)
+        if (normalization.removedCategoryIds.isNotEmpty() || persistedProfiles != ratingProfiles) {
             context.dataStore.edit { mutablePrefs ->
                 mutablePrefs[ratingConfigKey] = json.encodeToString(ratingConfig)
+                mutablePrefs[ratingProfilesKey] = json.encodeToString(ratingProfiles)
             }
         }
 
@@ -117,6 +185,7 @@ class SettingsRepository internal constructor(
             stickyScore = prefs[stickyScoreKey] ?: true,
             elaborateRatingEnabled = resolveElaborateRatingEnabled(prefs[elaborateRatingEnabledKey]),
             ratingConfig = ratingConfig,
+            ratingProfiles = ratingProfiles,
             appIcon = appIcon,
             language = language,
             settingsLoaded = true
@@ -143,8 +212,17 @@ class SettingsRepository internal constructor(
     }
 
     suspend fun updateRatingConfig(config: RatingSystemConfig) = updateMutex.withLock {
-        _state.value = _state.value.copy(ratingConfig = config)
-        context.dataStore.edit { prefs -> prefs[ratingConfigKey] = json.encodeToString(config) }
+        val profiles = reconcileProfiles(_state.value.ratingProfiles, config.categories)
+        persistRatingSetup(config, profiles)
+    }
+
+    suspend fun updateRatingProfiles(config: RatingProfilesConfig) = updateMutex.withLock {
+        val profiles = reconcileProfiles(config, _state.value.ratingConfig.categories)
+        persistRatingSetup(_state.value.ratingConfig, profiles)
+    }
+
+    suspend fun updateRatingSetup(config: RatingSystemConfig, profiles: RatingProfilesConfig) = updateMutex.withLock {
+        persistRatingSetup(config, reconcileProfiles(profiles, config.categories))
     }
 
     suspend fun updateAppIcon(value: AppIcon) = updateMutex.withLock {
@@ -166,16 +244,23 @@ class SettingsRepository internal constructor(
         localeController.apply(value)
     }
 
-    suspend fun resetRatingConfig() = updateMutex.withLock {
-        val config = DefaultSettings.defaultRatingConfig
-        _state.value = _state.value.copy(
-            elaborateRatingEnabled = false,
-            ratingConfig = config,
-            settingsLoaded = true
+    suspend fun resetRatingCategories() = updateMutex.withLock {
+        val config = _state.value.ratingConfig.copy(categories = DefaultSettings.defaultRatingCategories)
+        persistRatingSetup(config, reconcileProfiles(_state.value.ratingProfiles, config.categories))
+    }
+
+    suspend fun resetRatingProfiles() = updateMutex.withLock {
+        persistRatingSetup(
+            _state.value.ratingConfig,
+            DefaultSettings.defaultProfiles(_state.value.ratingConfig.categories)
         )
+    }
+
+    private suspend fun persistRatingSetup(config: RatingSystemConfig, profiles: RatingProfilesConfig) {
+        _state.value = _state.value.copy(ratingConfig = config, ratingProfiles = profiles, settingsLoaded = true)
         context.dataStore.edit { prefs ->
-            prefs[elaborateRatingEnabledKey] = false
             prefs[ratingConfigKey] = json.encodeToString(config)
+            prefs[ratingProfilesKey] = json.encodeToString(profiles)
         }
     }
 
@@ -188,6 +273,48 @@ class SettingsRepository internal constructor(
         }
     }
 }
+
+internal fun reconcileProfiles(
+    config: RatingProfilesConfig,
+    categories: List<RatingCategory>
+): RatingProfilesConfig {
+    val categoryIds = categories.map { it.id }
+    val uniqueProfiles = config.profiles.distinctBy { it.id }.filter { it.id.isNotBlank() }
+    val source = uniqueProfiles.ifEmpty { DefaultSettings.defaultProfiles(categories).profiles }
+    return RatingProfilesConfig(
+        source.map { profile ->
+            profile.copy(
+                name = profile.name.ifBlank { "Profile" },
+                weights = categoryIds.associateWith { id ->
+                    profile.weights[id]?.takeIf { it.isFinite() }?.coerceIn(0.0, 100.0) ?: 0.0
+                }.ensureAtLeastOneWeight()
+            )
+        }
+    )
+}
+
+internal fun RatingProfilesConfig.withCategoryAdded(categoryId: String): RatingProfilesConfig = copy(
+    profiles = profiles.map { it.copy(weights = it.weights + (categoryId to 0.0)) }
+)
+
+internal fun RatingProfilesConfig.withCategoryRemoved(categoryId: String): RatingProfilesConfig = copy(
+    profiles = profiles.map { it.copy(weights = it.weights - categoryId) }
+)
+
+internal fun RatingProfilesConfig.withProfileDeleted(profileId: String): RatingProfilesConfig =
+    if (profiles.size <= 1) this else copy(profiles = profiles.filterNot { it.id == profileId })
+
+internal fun RatingProfilesConfig.resolveProfile(profileId: String?): RatingProfile =
+    profiles.firstOrNull { it.id == profileId }
+        ?: profiles.firstOrNull { it.id == DefaultSettings.GENERAL_PROFILE_ID }
+        ?: profiles.first()
+
+internal fun RatingSystemConfig.withProfile(profile: RatingProfile): RatingSystemConfig = copy(
+    categories = categories.map { category -> category.copy(weight = profile.weights[category.id] ?: 0.0) }
+)
+
+private fun Map<String, Double>.ensureAtLeastOneWeight(): Map<String, Double> =
+    if (isNotEmpty() && values.none { it.isFinite() && it > 0.0 }) mapValues { 5.0 } else this
 
 internal fun resolveShowImages(persisted: Boolean?): Boolean = persisted ?: false
 

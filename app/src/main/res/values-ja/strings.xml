@@ -12,4 +12,32 @@
 <string name="category_writing">脚本</string><string name="category_writing_description">プロット、テーマ、テンポ、盛り上がり、始まり、結末</string><string name="category_characters">キャラクター</string><string name="category_characters_description">主人公、脇役、敵役、成長、奥行き、魅力、関係性</string><string name="category_engagement">没入感</string><string name="category_engagement_description">感情への訴求、娯楽性、関心、緊張感、雰囲気、印象度</string><string name="category_visuals">映像</string><string name="category_visuals_description">アニメーション、画風、撮影、背景、効果、キャラクターデザイン</string><string name="category_worldbuilding">世界観</string><string name="category_worldbuilding_description">舞台、設定、能力体系</string><string name="category_audio">音響</string><string name="category_audio_description">劇伴、オープニング／エンディング、効果音</string><string name="bonus_personal_taste">個人の好み</string><string name="bonus_personal_taste_description">技術的な完成度とは別に、個人的にどれだけ気に入ったか</string>
 <string name="about_version">バージョン %1$s</string><string name="about_summary">オフラインのアニメカタログ兼評価アプリです。評価と設定は端末内に保存されます。</string><string name="about_licences">ライセンス</string><string name="about_catalog_licence">アニメカタログ：AnimeAPIおよび上流データソース。AnimeAPIはODbL 1.0とDbCL 1.0を示しており、一部は他の互換ライセンスです。</string><string name="about_android_licence">AndroidX、Jetpack Compose、DataStore、Kotlinx Serialization：Apache License 2.0。</string><string name="about_acknowledgements">謝辞</string><string name="about_acknowledgements_text">AnimeAPIとその貢献者がカタログの対応情報を提供しています。ローカルにカバーがない場合はAniListとJikanのメタデータを利用します。</string>
 <string name="error_initialize_local_data">ローカルデータを初期化できませんでした。</string><string name="message_no_internet">インターネットに接続されていません</string><string name="message_cover_not_found">このアニメのカバーが見つかりませんでした</string><string name="message_cover_download_failed">カバーをダウンロードできませんでした。もう一度お試しください。</string><string name="message_cover_deleted">カバーを削除しました</string><string name="message_cover_delete_failed">カバーを削除できませんでした</string><plurals name="message_covers_deleted"><item quantity="other">%1$d件のカバーを削除しました</item></plurals><string name="message_top_updated">トップ%1$dを更新しました</string><string name="message_top_update_failed">トップ%1$dを更新できませんでした。もう一度お試しください。</string>
+<string name="score_direct_title">最終スコアを編集</string><string name="score_direct_explanation">0から10までの値を小数点以下2桁以内で入力してください。</string><string name="score_direct_label">最終スコア</string><string name="score_direct_invalid">0から10までの有効な値を小数点以下2桁以内で入力してください。</string>
+    <string name="rating_profiles">プロファイル</string>
+    <string name="rating_mode">評価モード</string>
+    <string name="rating_simple">シンプル評価</string>
+    <string name="rating_profiles_description">作品タイプ別の重み</string>
+    <string name="rating_categories">カテゴリー</string>
+    <string name="rating_categories_description">評価する項目</string>
+    <string name="rating_profile">評価プロファイル</string>
+    <string name="rating_create_profile">プロファイルを作成</string>
+    <string name="rating_profile_name">プロファイル名</string>
+    <string name="rating_new_profile_name">新しいプロファイル</string>
+    <string name="rating_delete_profile">プロファイルを削除</string>
+    <string name="rating_delete_profile_confirmation">プロファイル「%1$s」を削除しますか？</string>
+    <string name="rating_last_profile_required">少なくとも1つのプロファイルが必要です。</string>
+    <string name="rating_reset_profiles">プロファイルをリセット</string>
+    <string name="rating_reset_profiles_confirmation">すべてのプロファイルを公式の初期設定に戻しますか？カテゴリーと評価は変更されません。</string>
+    <string name="rating_reset_categories">カテゴリーをリセット</string>
+    <string name="rating_reset_categories_confirmation">すべてのカテゴリーを公式の初期設定に戻しますか？互換性のあるプロファイルの重みは保持されます。</string>
+    <string name="profile_general">標準</string>
+    <string name="profile_narrative">物語重視</string>
+    <string name="profile_character_driven">キャラクター重視</string>
+    <string name="profile_visual_action">映像 / アクション重視</string>
+    <string name="profile_world_adventure">世界観 / 冒険重視</string>
+    <string name="profile_atmospheric">雰囲気重視</string>
+    <string name="covers_settings_title">人気ランキングとカバー</string>
+    <string name="covers_settings_description">人気ランキングを更新し、オフライン用カバーを管理します。</string>
+    <string name="covers_settings_explanation">更新する上位件数を選択してください。RankOffline は人気ランキングを更新し、不足しているカバーのみをダウンロードします。</string>
+    <string name="covers_download_top">トップ%1$dをダウンロード</string>
 </resources>

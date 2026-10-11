@@ -12,4 +12,32 @@
 <string name="category_writing">Scrittura</string><string name="category_writing_description">Trama, temi, ritmo, momenti salienti, inizio, finale</string><string name="category_characters">Personaggi</string><string name="category_characters_description">Protagonisti, personaggi secondari, antagonista, sviluppo, profondità, carisma, dinamiche</string><string name="category_engagement">Coinvolgimento</string><string name="category_engagement_description">Impatto emotivo, intrattenimento, interesse, tensione, atmosfera, memorabilità</string><string name="category_visuals">Comparto visivo</string><string name="category_visuals_description">Animazione, stile artistico, regia, sfondi, effetti, character design</string><string name="category_worldbuilding">Costruzione del mondo</string><string name="category_worldbuilding_description">Ambientazione, lore, sistema di poteri</string><string name="category_audio">Audio</string><string name="category_audio_description">Colonna sonora, sigle di apertura/chiusura, effetti sonori</string><string name="bonus_personal_taste">Gusto personale</string><string name="bonus_personal_taste_description">Quanto ti è piaciuto personalmente, indipendentemente dalla qualità tecnica</string>
 <string name="about_version">Versione %1$s</string><string name="about_summary">Catalogo anime e app di valutazione offline. Valutazioni e preferenze restano memorizzate localmente.</string><string name="about_licences">Licenze</string><string name="about_catalog_licence">Catalogo anime: AnimeAPI e fonti dati originali; AnimeAPI indica ODbL 1.0 e DbCL 1.0, con alcuni componenti soggetti ad altre licenze compatibili.</string><string name="about_android_licence">AndroidX, Jetpack Compose, DataStore e Kotlinx Serialization: licenza Apache 2.0.</string><string name="about_acknowledgements">Riconoscimenti</string><string name="about_acknowledgements_text">AnimeAPI e i suoi collaboratori forniscono le corrispondenze del catalogo. AniList e Jikan forniscono i metadati delle copertine quando non sono disponibili localmente.</string>
 <string name="error_initialize_local_data">Impossibile inizializzare i dati locali.</string><string name="message_no_internet">Nessuna connessione Internet</string><string name="message_cover_not_found">Nessuna copertina trovata per questo anime</string><string name="message_cover_download_failed">Impossibile scaricare la copertina. Riprova.</string><string name="message_cover_deleted">Copertina eliminata</string><string name="message_cover_delete_failed">Impossibile eliminare la copertina</string><plurals name="message_covers_deleted"><item quantity="one">%1$d copertina eliminata</item><item quantity="other">%1$d copertine eliminate</item></plurals><string name="message_top_updated">Top %1$d aggiornata</string><string name="message_top_update_failed">Impossibile aggiornare la Top %1$d. Riprova.</string>
+<string name="score_direct_title">Modifica il punteggio finale</string><string name="score_direct_explanation">Inserisci un valore da 0 a 10 con un massimo di due decimali.</string><string name="score_direct_label">Punteggio finale</string><string name="score_direct_invalid">Inserisci un valore valido da 0 a 10 con non più di due decimali.</string>
+    <string name="rating_profiles">Profili</string>
+    <string name="rating_mode">Modalità di valutazione</string>
+    <string name="rating_simple">Valutazione semplice</string>
+    <string name="rating_profiles_description">Pesi in base al tipo di opera</string>
+    <string name="rating_categories">Categorie</string>
+    <string name="rating_categories_description">Cosa viene valutato</string>
+    <string name="rating_profile">Profilo di valutazione</string>
+    <string name="rating_create_profile">Crea profilo</string>
+    <string name="rating_profile_name">Nome del profilo</string>
+    <string name="rating_new_profile_name">Nuovo profilo</string>
+    <string name="rating_delete_profile">Elimina profilo</string>
+    <string name="rating_delete_profile_confirmation">Eliminare il profilo “%1$s”?</string>
+    <string name="rating_last_profile_required">È necessario almeno un profilo.</string>
+    <string name="rating_reset_profiles">Ripristina profili</string>
+    <string name="rating_reset_profiles_confirmation">Sostituire tutti i profili con quelli predefiniti? Categorie e valutazioni non cambieranno.</string>
+    <string name="rating_reset_categories">Ripristina categorie</string>
+    <string name="rating_reset_categories_confirmation">Sostituire tutte le categorie con quelle predefinite? I profili manterranno i pesi compatibili.</string>
+    <string name="profile_general">Generale</string>
+    <string name="profile_narrative">Narrativo</string>
+    <string name="profile_character_driven">Incentrato sui personaggi</string>
+    <string name="profile_visual_action">Visivo / Azione</string>
+    <string name="profile_world_adventure">Mondo / Avventura</string>
+    <string name="profile_atmospheric">Atmosferico</string>
+    <string name="covers_settings_title">Popolarità e copertine</string>
+    <string name="covers_settings_description">Aggiorna la classifica di popolarità e gestisci le copertine offline.</string>
+    <string name="covers_settings_explanation">Scegli un intervallo Top. RankOffline aggiorna la classifica di popolarità e scarica solo le copertine mancanti.</string>
+    <string name="covers_download_top">Scarica Top %1$d</string>
 </resources>
