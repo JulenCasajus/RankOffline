@@ -65,6 +65,114 @@ class GenericMediaRepository(
     private val now: () -> Long = System::currentTimeMillis
 ) {
     private val dao = database.mediaDao()
+    private val groupDao = database.mediaGroupDao()
+    private val groupRepository = GenericMediaGroupRepository(database, now)
+
+    suspend fun search(
+        mediaType: MediaType,
+        query: String,
+        sortOrder: CatalogSortOrder,
+        filters: GenericMediaFilters,
+        mergeEnabled: Boolean
+    ): List<MediaListEntry> = withContext(Dispatchers.IO) {
+        requireIntegratedMediaType(mediaType)
+        val role = requireNotNull(mediaType.genericFilterCreditRole())
+        val individuals = dao.searchItems(
+            mediaType.persistedValue,
+            query.trim(),
+            sortOrder.name,
+            filters.genre,
+            filters.year,
+            role,
+            filters.creditName
+        )
+        if (!mergeEnabled) return@withContext individuals.map { MediaListEntry.Item(it.toDomain()) }
+
+        val groupedIds = groupDao.groupedMediaIds(mediaType.persistedValue).toSet()
+        val ungrouped = individuals.asSequence()
+            .filterNot { it.item.id in groupedIds }
+            .map { MediaListEntry.Item(it.toDomain()) }
+            .toList()
+        val groups = groupDao.matchingGroups(
+            mediaType.persistedValue,
+            query.trim(),
+            filters.genre,
+            filters.year,
+            role,
+            filters.creditName
+        ).mapNotNull { group -> groupRepository.groupDetail(group.id)?.toListEntry() }
+        sortCatalogEntries(ungrouped + groups, sortOrder)
+    }
+
+    suspend fun ranking(
+        mediaType: MediaType,
+        filters: GenericMediaFilters,
+        sortOrder: RankingSortOrder,
+        categoryId: String?,
+        descending: Boolean,
+        mergeEnabled: Boolean
+    ): List<MediaListEntry> = withContext(Dispatchers.IO) {
+        requireIntegratedMediaType(mediaType)
+        val role = requireNotNull(mediaType.genericFilterCreditRole())
+        val categoryScores = if (sortOrder == RankingSortOrder.CATEGORY_SCORE && categoryId != null) {
+            dao.categoryScores(mediaType.persistedValue, categoryId)
+                .filter { it.applicable && it.score?.isFinite() == true }
+                .associate { it.mediaId to it.score }
+        } else emptyMap()
+        val groupedIds = if (mergeEnabled) {
+            groupDao.groupedMediaIds(mediaType.persistedValue).toSet()
+        } else emptySet()
+        val individuals = dao.ratedItems(
+            mediaType.persistedValue,
+            filters.genre,
+            filters.year,
+            role,
+            filters.creditName
+        ).asSequence()
+            .filterNot { it.item.id in groupedIds }
+            .map { row -> MediaListEntry.Item(row.toDomain(categoryScores[row.item.id])) }
+            .filter { it.rankingScore(sortOrder) != null }
+            .toMutableList<MediaListEntry>()
+
+        if (mergeEnabled) {
+            groupDao.matchingGroups(
+                mediaType.persistedValue,
+                "",
+                filters.genre,
+                filters.year,
+                role,
+                filters.creditName
+            ).mapNotNullTo(individuals) { group ->
+                val detail = groupRepository.groupDetail(group.id) ?: return@mapNotNullTo null
+                val explicitCategory = if (sortOrder == RankingSortOrder.CATEGORY_SCORE && categoryId != null) {
+                    groupDao.groupRatingScores(group.id).firstOrNull {
+                        it.categoryId == categoryId && it.applicable && it.score?.isFinite() == true
+                    }?.score
+                } else null
+                detail.toListEntry(categoryId, explicitCategory)
+                    .takeIf { it.rankingScore(sortOrder) != null }
+            }
+        }
+        individuals.sortedWith { left, right ->
+            val leftScore = requireNotNull(left.rankingScore(sortOrder))
+            val rightScore = requireNotNull(right.rankingScore(sortOrder))
+            val scoreComparison = if (descending) rightScore.compareTo(leftScore)
+            else leftScore.compareTo(rightScore)
+            if (scoreComparison != 0) scoreComparison
+            else compareValuesBy(left, right, { it.title.lowercase() }, { it.id })
+        }
+    }
+
+    suspend fun filterOptions(mediaType: MediaType): GenericMediaFilterOptions =
+        withContext(Dispatchers.IO) {
+            requireIntegratedMediaType(mediaType)
+            val role = requireNotNull(mediaType.genericFilterCreditRole())
+            GenericMediaFilterOptions(
+                genres = dao.genres(mediaType.persistedValue),
+                years = dao.years(mediaType.persistedValue),
+                creditNames = dao.creditNames(mediaType.persistedValue, role)
+            )
+        }
 
     suspend fun item(mediaId: String): MediaItem? = withContext(Dispatchers.IO) {
         val entity = dao.item(mediaId) ?: return@withContext null
@@ -157,6 +265,62 @@ class GenericMediaRepository(
         requireGenericMediaType(persistedType)
     }
 
+}
+
+private fun requireIntegratedMediaType(mediaType: MediaType) {
+    require(mediaType == MediaType.MOVIE || mediaType == MediaType.SERIES)
+}
+
+private fun MediaGroupDetail.toListEntry(
+    categoryId: String? = null,
+    explicitCategoryScore: Double? = null
+): MediaListEntry.Group {
+    val explicit = explicitRating
+    return MediaListEntry.Group(
+        value = group,
+        finalScore = explicit?.finalScore ?: derivedRating.finalScore,
+        qualityScore = explicit?.qualityScore ?: derivedRating.qualityScore,
+        additiveScore = explicit?.additiveScore ?: derivedRating.additiveScore,
+        categoryScore = explicitCategoryScore
+            ?: categoryId?.let(derivedRating.categoryScores::get),
+        popularity = members.mapNotNull { it.popularity?.takeIf(Double::isFinite) }.maxOrNull(),
+        memberCount = members.size,
+        ratedCount = derivedRating.ratedCount,
+        representativeMediaId = group.representativeMediaId ?: members.firstOrNull()?.id,
+        derived = explicit == null
+    )
+}
+
+private fun MediaListEntry.rankingScore(sortOrder: RankingSortOrder): Double? = when (sortOrder) {
+    RankingSortOrder.FINAL_SCORE -> finalScore
+    RankingSortOrder.QUALITY_SCORE -> qualityScore
+    RankingSortOrder.PERSONAL_TASTE -> additiveScore?.times(10.0)
+    RankingSortOrder.CATEGORY_SCORE -> categoryScore
+}?.takeIf { it.isFinite() && it in RATING_MIN..RATING_MAX }
+
+private fun sortCatalogEntries(
+    entries: List<MediaListEntry>,
+    sortOrder: CatalogSortOrder
+): List<MediaListEntry> = when (sortOrder) {
+    CatalogSortOrder.TITLE_ASC -> entries.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
+    CatalogSortOrder.TITLE_DESC -> entries.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.title })
+    CatalogSortOrder.POPULARITY,
+    CatalogSortOrder.POPULARITY_REVERSE -> entries.sortedWith { left, right ->
+        fun MediaListEntry.popularity() = when (this) {
+            is MediaListEntry.Item -> value.popularity
+            is MediaListEntry.Group -> popularity
+        }
+        val a = left.popularity()
+        val b = right.popularity()
+        val score = when {
+            a == null && b == null -> 0
+            a == null -> 1
+            b == null -> -1
+            sortOrder == CatalogSortOrder.POPULARITY -> b.compareTo(a)
+            else -> a.compareTo(b)
+        }
+        if (score != 0) score else compareValuesBy(left, right, { it.title.lowercase() }, { it.id })
+    }
 }
 
 internal fun requireGenericMediaType(persistedType: String) {

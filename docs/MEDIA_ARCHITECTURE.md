@@ -221,6 +221,12 @@ development begins with small deterministic fixtures. Full scope/limits are a
 product decision after Block 19 measures asset size, import time, memory, and
 search latency.
 
+Movies and Series optionally bootstrap their local-first item and group assets
+(`movie_catalog*` / `movie_groups*` and `series_catalog*` / `series_groups*`).
+Missing bundles produce an unavailable state rather than falling back to Anime.
+Movie `COLLECTION` and Series `SEASONS` groups use the generic repositories;
+the Android app never calls the TMDb metadata API.
+
 ## Grouping policy
 
 The UI and rating semantics are common; provider identity rules are not.

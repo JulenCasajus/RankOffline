@@ -3,17 +3,45 @@ package org.rankoffline.app
 data class SearchUiState(
     val query: String = "",
     val sortOrder: CatalogSortOrder = CatalogSortOrder.POPULARITY,
-    // Temporary compatibility until each catalog introduces its own filter model.
-    val filters: AnimeFilters = AnimeFilters()
+    val filters: AnimeFilters = AnimeFilters(),
+    val genericFilters: GenericMediaFilters = GenericMediaFilters()
 )
 
 data class RankingUiState(
     val sortOrder: RankingSortOrder = RankingSortOrder.FINAL_SCORE,
     val descending: Boolean = true,
     val categoryId: String? = null,
-    // Temporary compatibility until each catalog introduces its own filter model.
-    val filters: AnimeFilters = AnimeFilters()
+    val filters: AnimeFilters = AnimeFilters(),
+    val genericFilters: GenericMediaFilters = GenericMediaFilters()
 )
+
+data class GenericMediaFilters(
+    val genre: String? = null,
+    val year: Int? = null,
+    val creditName: String? = null
+) {
+    val activeCount: Int get() = listOf(genre, year, creditName).count { it != null }
+}
+
+data class GenericMediaFilterOptions(
+    val genres: List<String> = emptyList(),
+    val years: List<Int> = emptyList(),
+    val creditNames: List<String> = emptyList()
+)
+
+enum class MediaDataPath { ANIME, GENERIC, UNSUPPORTED }
+
+fun MediaType.dataPath(): MediaDataPath = when (this) {
+    MediaType.ANIME -> MediaDataPath.ANIME
+    MediaType.MOVIE, MediaType.SERIES -> MediaDataPath.GENERIC
+    MediaType.MANGA, MediaType.BOOK -> MediaDataPath.UNSUPPORTED
+}
+
+fun MediaType.genericFilterCreditRole(): String? = when (this) {
+    MediaType.MOVIE -> "PRODUCTION_COMPANY"
+    MediaType.SERIES -> "NETWORK"
+    else -> null
+}
 
 internal fun defaultSearchUiStates(): Map<MediaType, SearchUiState> =
     MediaType.entries.associateWith { SearchUiState() }

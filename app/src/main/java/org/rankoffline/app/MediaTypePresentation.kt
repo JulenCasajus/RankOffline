@@ -21,3 +21,19 @@ val MediaType.accentColor: Color
         MediaType.MOVIE -> Color(0xFF2E2EDE)
         MediaType.BOOK -> Color(0xFF27CF24)
     }
+
+@get:StringRes
+val MediaType.mergeLabelResource: Int?
+    get() = when (this) {
+        MediaType.ANIME, MediaType.SERIES -> R.string.merge_seasons
+        MediaType.MOVIE -> R.string.merge_collections
+        MediaType.MANGA, MediaType.BOOK -> null
+    }
+
+@get:StringRes
+val MediaType.creditFilterLabelResource: Int?
+    get() = when (this) {
+        MediaType.MOVIE -> R.string.filter_production_company
+        MediaType.SERIES -> R.string.filter_network
+        else -> null
+    }

@@ -20,6 +20,7 @@ sealed interface UserMessage {
 data class Anime(
     val id: String,
     val title: String,
+    val mediaType: MediaType = MediaType.ANIME,
     val malId: Long? = null,
     val anilistId: Long? = null,
     val popularity: Int? = null,
@@ -97,6 +98,39 @@ data class GroupDetail(
     val members: List<Anime>,
     val explicitRating: GroupRatingEntity?,
     val derivedRating: DerivedGroupRating
+)
+
+data class GroupDetailUi(
+    val id: String,
+    val mediaType: MediaType,
+    val type: String,
+    val displayTitle: String,
+    val representativeMediaId: String?,
+    val members: List<Anime>,
+    val explicitFinalScore: Double?,
+    val derivedRating: DerivedGroupRating
+)
+
+fun GroupDetail.toUi(): GroupDetailUi = GroupDetailUi(
+    id = group.id,
+    mediaType = MediaType.ANIME,
+    type = group.type,
+    displayTitle = group.displayTitle,
+    representativeMediaId = group.rootAnimeId,
+    members = members,
+    explicitFinalScore = explicitRating?.finalScore,
+    derivedRating = derivedRating
+)
+
+fun MediaGroupDetail.toUi(): GroupDetailUi = GroupDetailUi(
+    id = group.id,
+    mediaType = group.mediaType,
+    type = group.groupType,
+    displayTitle = group.displayTitle,
+    representativeMediaId = group.representativeMediaId ?: members.firstOrNull()?.id,
+    members = members.map { MediaListEntry.Item(it).toAnimeDisplay() },
+    explicitFinalScore = explicitRating?.finalScore,
+    derivedRating = derivedRating
 )
 
 enum class AnimeListRowAction { RATE, GROUP_DETAILS }

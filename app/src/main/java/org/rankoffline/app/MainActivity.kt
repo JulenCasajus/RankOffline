@@ -58,6 +58,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOf
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
@@ -118,6 +119,12 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val rankingSortDescending = rankingState.descending
     val rankingCategoryId = rankingState.categoryId
     val filterOptions by viewModel.filterOptions.collectAsState()
+    val genericFilterOptionsByMedia by viewModel.genericFilterOptions.collectAsState()
+    val catalogAvailabilityByMedia by viewModel.catalogAvailability.collectAsState()
+    val genericFilterOptions = genericFilterOptionsByMedia[settings.activeMediaType]
+        ?: GenericMediaFilterOptions()
+    val catalogAvailability = catalogAvailabilityByMedia[settings.activeMediaType]
+        ?: CatalogAvailability.UNAVAILABLE
     val catalogCount by viewModel.catalogCount.collectAsState()
     val catalogListStates = remember { MediaType.entries.associateWith { LazyListState() } }
     val rankingListStates = remember { MediaType.entries.associateWith { LazyListState() } }
@@ -231,15 +238,19 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     onSortOrderChange = viewModel::setCatalogSortCriterion,
                     onSortDirectionToggle = viewModel::toggleCatalogSortDirection,
                     filters = catalogFilters,
+                    genericFilters = searchState.genericFilters,
                     mergeSeasonsEnabled = settings.mergeSeasonsEnabled,
                     onMergeSeasonsChange = viewModel::updateMergeSeasonsEnabled,
                     filterOptions = filterOptions,
+                    genericFilterOptions = genericFilterOptions,
                     onFiltersChange = viewModel::setCatalogFilters,
+                    onGenericFiltersChange = viewModel::setGenericCatalogFilters,
                     onAnime = viewModel::openAnime,
                     onGroupDetails = viewModel::openGroupDetails,
                     onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
-                    onCoverOpen = { coverViewerAnime = it.coverTarget() },
-                    errorMessage = errorMessage
+                    onCoverOpen = { if (it.mediaType == MediaType.ANIME) coverViewerAnime = it.coverTarget() },
+                    errorMessage = errorMessage,
+                    catalogAvailability = catalogAvailability
                 )
                 1 -> RankingScreen(
                     ranked = ranked,
@@ -249,21 +260,25 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     imagesEnabled = settings.showImages,
                     coverRepository = viewModel.coverRepository,
                     filters = rankingFilters,
+                    genericFilters = rankingState.genericFilters,
                     mergeSeasonsEnabled = settings.mergeSeasonsEnabled,
                     onMergeSeasonsChange = viewModel::updateMergeSeasonsEnabled,
                     filterOptions = filterOptions,
+                    genericFilterOptions = genericFilterOptions,
                     sortOrder = rankingSortOrder,
                     sortDescending = rankingSortDescending,
                     categoryId = rankingCategoryId,
                     categories = settings.ratingConfig.categories,
                     onFiltersChange = viewModel::setRankingFilters,
+                    onGenericFiltersChange = viewModel::setGenericRankingFilters,
                     onSortOrderChange = viewModel::setRankingSortOrder,
                     onSortDirectionToggle = viewModel::toggleRankingSortDirection,
                     onCategorySort = viewModel::setRankingCategory,
                     onAnime = viewModel::openAnime,
                     onGroupDetails = viewModel::openGroupDetails,
                     onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
-                    onCoverOpen = { coverViewerAnime = it.coverTarget() }
+                    onCoverOpen = { if (it.mediaType == MediaType.ANIME) coverViewerAnime = it.coverTarget() },
+                    catalogAvailability = catalogAvailability
                 )
                 else -> SettingsScreen(settings, catalogCount, viewModel)
             }
@@ -285,15 +300,19 @@ private fun AnimeListScreen(
     onSortOrderChange: (CatalogSortOrder) -> Unit,
     onSortDirectionToggle: () -> Unit,
     filters: AnimeFilters,
+    genericFilters: GenericMediaFilters,
     mergeSeasonsEnabled: Boolean,
     onMergeSeasonsChange: (Boolean) -> Unit,
     filterOptions: AnimeFilterOptions,
+    genericFilterOptions: GenericMediaFilterOptions,
     onFiltersChange: (AnimeFilters) -> Unit,
+    onGenericFiltersChange: (GenericMediaFilters) -> Unit,
     onAnime: (Anime) -> Unit,
     onGroupDetails: (Anime) -> Unit,
     onCoverDownload: (Anime) -> Unit,
     onCoverOpen: (Anime) -> Unit,
-    errorMessage: UserMessage?
+    errorMessage: UserMessage?,
+    catalogAvailability: CatalogAvailability
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
@@ -306,9 +325,12 @@ private fun AnimeListScreen(
         )
         Spacer(Modifier.height(10.dp))
         ListActionRow(
+            mergeLabel = activeMediaType.mergeLabelResource?.let { stringResource(it) },
             mergeSeasonsEnabled = mergeSeasonsEnabled,
             onMergeSeasonsChange = onMergeSeasonsChange,
-            activeFilterCount = filters.activeCount,
+            activeFilterCount = if (activeMediaType.dataPath() == MediaDataPath.GENERIC) {
+                genericFilters.activeCount
+            } else filters.activeCount,
             sortLabel = sortOrder.criterionLabel(),
             sortReversed = sortOrder.isReversed,
             onFilters = { showFilters = true },
@@ -338,7 +360,7 @@ private fun AnimeListScreen(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             leadingIcon = { Icon(Icons.Default.Search, null) },
-            placeholder = { Text(stringResource(R.string.search_anime_hint)) }
+            placeholder = { Text(stringResource(R.string.search_catalog_hint)) }
         )
         Spacer(Modifier.height(12.dp))
         LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -353,16 +375,34 @@ private fun AnimeListScreen(
                     onGroupDetails = { onGroupDetails(anime) }
                 )
             }
-            if (list.isEmpty()) item { Text(stringResource(R.string.no_search_results), color = Color.Gray, modifier = Modifier.padding(20.dp)) }
+            if (list.isEmpty()) item {
+                val emptyText = when (catalogAvailability) {
+                    CatalogAvailability.LOADING -> R.string.catalog_loading
+                    CatalogAvailability.UNAVAILABLE -> R.string.catalog_not_available_yet
+                    CatalogAvailability.ERROR -> R.string.catalog_unavailable_error
+                    CatalogAvailability.AVAILABLE -> R.string.no_search_results
+                }
+                Text(stringResource(emptyText), color = Color.Gray, modifier = Modifier.padding(20.dp))
+            }
         }
     }
     if (showFilters) {
-        AnimeFiltersDialog(
-            current = filters,
-            options = filterOptions,
-            onDismiss = { showFilters = false },
-            onApply = { onFiltersChange(it); showFilters = false }
-        )
+        if (activeMediaType.dataPath() == MediaDataPath.GENERIC) {
+            GenericMediaFiltersDialog(
+                mediaType = activeMediaType,
+                current = genericFilters,
+                options = genericFilterOptions,
+                onDismiss = { showFilters = false },
+                onApply = { onGenericFiltersChange(it); showFilters = false }
+            )
+        } else {
+            AnimeFiltersDialog(
+                current = filters,
+                options = filterOptions,
+                onDismiss = { showFilters = false },
+                onApply = { onFiltersChange(it); showFilters = false }
+            )
+        }
     }
 }
 
@@ -375,21 +415,25 @@ private fun RankingScreen(
     imagesEnabled: Boolean,
     coverRepository: CoverRepository,
     filters: AnimeFilters,
+    genericFilters: GenericMediaFilters,
     mergeSeasonsEnabled: Boolean,
     onMergeSeasonsChange: (Boolean) -> Unit,
     filterOptions: AnimeFilterOptions,
+    genericFilterOptions: GenericMediaFilterOptions,
     sortOrder: RankingSortOrder,
     sortDescending: Boolean,
     categoryId: String?,
     categories: List<RatingCategory>,
     onFiltersChange: (AnimeFilters) -> Unit,
+    onGenericFiltersChange: (GenericMediaFilters) -> Unit,
     onSortOrderChange: (RankingSortOrder) -> Unit,
     onSortDirectionToggle: () -> Unit,
     onCategorySort: (String) -> Unit,
     onAnime: (Anime) -> Unit,
     onGroupDetails: (Anime) -> Unit,
     onCoverDownload: (Anime) -> Unit,
-    onCoverOpen: (Anime) -> Unit
+    onCoverOpen: (Anime) -> Unit,
+    catalogAvailability: CatalogAvailability
 ) {
     var showFilters by remember { mutableStateOf(false) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -407,9 +451,12 @@ private fun RankingScreen(
             )
             Spacer(Modifier.height(10.dp))
             ListActionRow(
+                mergeLabel = activeMediaType.mergeLabelResource?.let { stringResource(it) },
                 mergeSeasonsEnabled = mergeSeasonsEnabled,
                 onMergeSeasonsChange = onMergeSeasonsChange,
-                activeFilterCount = filters.activeCount,
+                activeFilterCount = if (activeMediaType.dataPath() == MediaDataPath.GENERIC) {
+                    genericFilters.activeCount
+                } else filters.activeCount,
                 sortLabel = rankingSortLabel(sortOrder, categoryId, categories),
                 sortReversed = !sortDescending,
                 onFilters = { showFilters = true },
@@ -459,7 +506,7 @@ private fun RankingScreen(
                 )
             }
             if (rest.isEmpty() && top3.isEmpty()) {
-                item { Text(stringResource(R.string.no_saved_ratings), color = Color.Gray, modifier = Modifier.padding(20.dp)) }
+                item { EmptyRankingMessage(catalogAvailability) }
             }
         } else {
             itemsIndexed(ranked, key = { _, anime -> anime.id }) { index, anime ->
@@ -476,22 +523,33 @@ private fun RankingScreen(
                 )
             }
             if (ranked.isEmpty()) {
-                item { Text(stringResource(R.string.no_saved_ratings), color = Color.Gray, modifier = Modifier.padding(20.dp)) }
+                item { EmptyRankingMessage(catalogAvailability) }
             }
         }
     }
     if (showFilters) {
-        AnimeFiltersDialog(
-            current = filters,
-            options = filterOptions,
-            onDismiss = { showFilters = false },
-            onApply = { onFiltersChange(it); showFilters = false }
-        )
+        if (activeMediaType.dataPath() == MediaDataPath.GENERIC) {
+            GenericMediaFiltersDialog(
+                mediaType = activeMediaType,
+                current = genericFilters,
+                options = genericFilterOptions,
+                onDismiss = { showFilters = false },
+                onApply = { onGenericFiltersChange(it); showFilters = false }
+            )
+        } else {
+            AnimeFiltersDialog(
+                current = filters,
+                options = filterOptions,
+                onDismiss = { showFilters = false },
+                onApply = { onFiltersChange(it); showFilters = false }
+            )
+        }
     }
 }
 
 @Composable
 private fun ListActionRow(
+    mergeLabel: String?,
     mergeSeasonsEnabled: Boolean,
     onMergeSeasonsChange: (Boolean) -> Unit,
     activeFilterCount: Int,
@@ -502,7 +560,6 @@ private fun ListActionRow(
     onSortDirectionToggle: () -> Unit,
     sortMenu: @Composable () -> Unit
 ) {
-    val mergeLabel = stringResource(R.string.merge_seasons)
     val filterLabel = if (activeFilterCount > 0) stringResource(R.string.filters_active, activeFilterCount)
     else stringResource(R.string.filters_title)
     val sortDirectionDescription = stringResource(R.string.sort_action)
@@ -513,9 +570,9 @@ private fun ListActionRow(
         val extraWidth = with(density) { 8.dp.toPx() }
         val minimumWidth = with(density) { 40.dp.toPx() }
         val directionWidth = with(density) { 49.dp.toPx() }
-        listOf(mergeLabel, filterLabel, sortLabel).mapIndexed { index, label ->
+        listOfNotNull(mergeLabel, filterLabel, sortLabel).mapIndexed { index, label ->
             maxOf(textMeasurer.measure(label, style = textStyle, maxLines = 1).size.width + extraWidth, minimumWidth)
-                .let { if (index == 2) it + directionWidth else it }
+                .let { if (index == listOfNotNull(mergeLabel, filterLabel, sortLabel).lastIndex) it + directionWidth else it }
         }
     }
     Row(
@@ -523,20 +580,23 @@ private fun ListActionRow(
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CompactActionButton(
-            label = mergeLabel,
-            selected = mergeSeasonsEnabled,
-            onClick = { onMergeSeasonsChange(!mergeSeasonsEnabled) },
-            modifier = Modifier.weight(buttonWeights[0])
-        )
+        var weightIndex = 0
+        if (mergeLabel != null) {
+            CompactActionButton(
+                label = mergeLabel,
+                selected = mergeSeasonsEnabled,
+                onClick = { onMergeSeasonsChange(!mergeSeasonsEnabled) },
+                modifier = Modifier.weight(buttonWeights[weightIndex++])
+            )
+        }
         CompactActionButton(
             label = filterLabel,
             selected = activeFilterCount > 0,
             onClick = onFilters,
-            modifier = Modifier.weight(buttonWeights[1])
+            modifier = Modifier.weight(buttonWeights[weightIndex++])
         )
         Surface(
-            modifier = Modifier.weight(buttonWeights[2]).height(48.dp),
+            modifier = Modifier.weight(buttonWeights[weightIndex]).height(48.dp),
             shape = RoundedCornerShape(12.dp),
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -652,7 +712,7 @@ private fun AnimeTopAppBar(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun GroupDetailScreen(
-    detail: GroupDetail,
+    detail: GroupDetailUi,
     imagesEnabled: Boolean,
     coverRepository: CoverRepository,
     onBack: () -> Unit,
@@ -662,9 +722,9 @@ private fun GroupDetailScreen(
     onCoverOpen: (Anime) -> Unit
 ) {
     BackHandler(onBack = onBack)
-    var showDraftChoice by remember(detail.group.id) { mutableStateOf(false) }
-    val explicit = detail.explicitRating
-    val shown = explicit?.finalScore ?: detail.derivedRating.finalScore
+    var showDraftChoice by remember(detail.id) { mutableStateOf(false) }
+    val explicit = detail.explicitFinalScore
+    val shown = explicit ?: detail.derivedRating.finalScore
     val requestRating = {
         if (explicit == null && detail.derivedRating.ratedCount > 0) showDraftChoice = true
         else onRate(false)
@@ -672,7 +732,7 @@ private fun GroupDetailScreen(
     Scaffold(
         containerColor = Bg,
         topBar = {
-            AnimeTopAppBar(detail.group.displayTitle, onBack)
+            AnimeTopAppBar(detail.displayTitle, onBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().padding(horizontal = 16.dp)) {
@@ -697,7 +757,7 @@ private fun GroupDetailScreen(
                             Text(
                                 stringResource(
                                     R.string.group_format_summary,
-                                    groupFormatLabel(detail.group.type),
+                                    groupFormatLabel(detail.type),
                                     detail.members.size
                                 ),
                                 color = Color.LightGray
@@ -712,7 +772,7 @@ private fun GroupDetailScreen(
                             )
                         }
                         Spacer(Modifier.width(12.dp))
-                        ScoreValueBadge(explicit.finalScore, requestRating)
+                        ScoreValueBadge(explicit, requestRating)
                     }
                 }
             } else {
@@ -738,7 +798,7 @@ private fun GroupDetailScreen(
                             Text(
                                 stringResource(
                                     R.string.group_format_summary,
-                                    groupFormatLabel(detail.group.type),
+                                    groupFormatLabel(detail.type),
                                     detail.members.size
                                 ),
                                 color = Color.LightGray
@@ -809,6 +869,70 @@ private fun GroupDetailScreen(
         text = { Text(stringResource(R.string.group_draft_choice)) },
         confirmButton = { TextButton(onClick = { showDraftChoice = false; onRate(true) }) { Text(stringResource(R.string.group_use_member_ratings)) } },
         dismissButton = { TextButton(onClick = { showDraftChoice = false; onRate(false) }) { Text(stringResource(R.string.group_start_fresh)) } }
+    )
+}
+
+@Composable
+private fun EmptyRankingMessage(availability: CatalogAvailability) {
+    val resource = when (availability) {
+        CatalogAvailability.LOADING -> R.string.catalog_loading
+        CatalogAvailability.UNAVAILABLE -> R.string.catalog_not_available_yet
+        CatalogAvailability.ERROR -> R.string.catalog_unavailable_error
+        CatalogAvailability.AVAILABLE -> R.string.no_saved_ratings
+    }
+    Text(stringResource(resource), color = Color.Gray, modifier = Modifier.padding(20.dp))
+}
+
+@Composable
+private fun GenericMediaFiltersDialog(
+    mediaType: MediaType,
+    current: GenericMediaFilters,
+    options: GenericMediaFilterOptions,
+    onDismiss: () -> Unit,
+    onApply: (GenericMediaFilters) -> Unit
+) {
+    var draft by remember(current) { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.filters_title)) },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChoice(R.string.filter_genre, draft.genre, options.genres) {
+                        draft = draft.copy(genre = it)
+                    }
+                }
+                item {
+                    FilterChoice(
+                        R.string.filter_year,
+                        draft.year?.toString(),
+                        options.years.map(Int::toString)
+                    ) { draft = draft.copy(year = it?.toIntOrNull()) }
+                }
+                mediaType.creditFilterLabelResource?.let { label ->
+                    item {
+                        FilterChoice(label, draft.creditName, options.creditNames) {
+                            draft = draft.copy(creditName = it)
+                        }
+                    }
+                }
+                item {
+                    TextButton(
+                        onClick = { draft = GenericMediaFilters() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(stringResource(R.string.filters_clear)) }
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+        confirmButton = {
+            TextButton(onClick = { onApply(draft) }) { Text(stringResource(R.string.action_apply)) }
+        }
     )
 }
 
@@ -979,7 +1103,8 @@ private fun AnimeListRow(
                     coverRepository,
                     onCoverDownload,
                     onCoverOpen,
-                    Modifier.size(52.dp).clip(RoundedCornerShape(10.dp))
+                    Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)),
+                    allowDownload = anime.mediaType == MediaType.ANIME || anime.groupId == null
                 )
                 Spacer(Modifier.width(12.dp))
             }
@@ -1030,25 +1155,38 @@ private fun AnimeCover(
     coverRepository: CoverRepository,
     onDownloadRequested: () -> Unit,
     onCoverClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    allowDownload: Boolean = true
 ) {
-    val pathFlow = remember(anime.id) { coverRepository.observeLocalCoverPath(anime.id) }
+    val pathFlow = remember(anime.id, anime.mediaType, anime.localCoverPath) {
+        if (anime.mediaType == MediaType.ANIME) coverRepository.observeLocalCoverPath(anime.id)
+        else flowOf(anime.localCoverPath)
+    }
     val immediatePath = remember(anime.id, anime.localCoverPath) {
         coverRepository.immediateLocalCoverPath(anime.id, anime.localCoverPath)
     }
     val localPath by pathFlow.collectAsState(initial = immediatePath)
-    val downloadStateFlow = remember(anime.id) { coverRepository.observeDownloadState(anime.id) }
-    val downloadState by downloadStateFlow.collectAsState()
-    var bitmap by remember(anime.id, localPath) {
-        mutableStateOf(localPath?.let { coverRepository.cachedBitmap(anime.id, it) })
+    val downloadStateFlow = remember(anime.id, anime.mediaType) {
+        if (anime.mediaType == MediaType.ANIME) coverRepository.observeDownloadState(anime.id)
+        else flowOf(CoverDownloadState.IDLE)
+    }
+    val downloadState by downloadStateFlow.collectAsState(initial = CoverDownloadState.IDLE)
+    var invalidLocalPath by remember(anime.id, localPath) { mutableStateOf(false) }
+    val effectiveLocalPath = localPath.takeUnless { invalidLocalPath }
+    var bitmap by remember(anime.id, effectiveLocalPath) {
+        mutableStateOf(effectiveLocalPath?.let { coverRepository.cachedBitmap(anime.id, it) })
     }
 
-    LaunchedEffect(anime.id, localPath) {
-        val currentLocalPath = localPath
+    LaunchedEffect(anime.id, effectiveLocalPath) {
+        val currentLocalPath = effectiveLocalPath
         if (currentLocalPath != null && bitmap == null) {
             val loaded = coverRepository.loadBitmap(anime.id, currentLocalPath)
             if (loaded == null) {
-                coverRepository.invalidateLocalCover(anime, currentLocalPath)
+                if (anime.mediaType == MediaType.ANIME) {
+                    coverRepository.invalidateLocalCover(anime, currentLocalPath)
+                } else {
+                    invalidLocalPath = true
+                }
             } else {
                 bitmap = loaded
             }
@@ -1066,12 +1204,13 @@ private fun AnimeCover(
             modifier = modifier
                 .clip(RoundedCornerShape(10.dp))
                 .clickable {
-                    dispatchCoverTap(localPath, onDownloadRequested, onCoverClick)
+                    dispatchCoverTap(effectiveLocalPath, onDownloadRequested, onCoverClick)
                 }
         )
-        localPath == null -> DefaultCover(
+        effectiveLocalPath == null -> DefaultCover(
             modifier = modifier,
             downloading = downloadState == CoverDownloadState.DOWNLOADING,
+            enabled = allowDownload,
             onClick = { dispatchCoverTap(null, onDownloadRequested, onCoverClick) }
         )
         else -> Box(modifier.background(Color(0xFF1A1F2E)).clip(RoundedCornerShape(10.dp)))
@@ -1079,12 +1218,17 @@ private fun AnimeCover(
 }
 
 @Composable
-private fun DefaultCover(modifier: Modifier = Modifier, downloading: Boolean, onClick: () -> Unit) {
+private fun DefaultCover(
+    modifier: Modifier = Modifier,
+    downloading: Boolean,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
     Box(
         modifier = modifier
             .background(color = Color(0xFF1A1F2E))
             .clip(RoundedCornerShape(10.dp))
-            .clickable(enabled = !downloading, onClick = onClick),
+            .clickable(enabled = enabled && !downloading, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(Icons.Default.Image, contentDescription = stringResource(R.string.cover_download), tint = Color.Gray, modifier = Modifier.size(22.dp))

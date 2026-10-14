@@ -45,6 +45,13 @@
     <string name="filter_search_values">Werte suchen</string>
     <string name="sort_final_score">Endwertung</string><string name="sort_quality_score">Qualität</string><string name="sort_personal_taste">Persönlicher Geschmack</string><string name="sort_category_score">Kategoriewertung</string>
     <string name="merge_seasons">Staffeln zusammenfassen</string>
+    <string name="merge_collections">Sammlungen zusammenfassen</string>
+    <string name="search_catalog_hint">Titel suchen…</string>
+    <string name="catalog_loading">Katalog wird geladen…</string>
+    <string name="catalog_not_available_yet">Katalog noch nicht verfügbar</string>
+    <string name="catalog_unavailable_error">Katalog konnte nicht geladen werden</string>
+    <string name="filter_production_company">Produktionsfirma</string>
+    <string name="filter_network">Sender</string>
     <string name="group_format_series">Serien</string>
     <string name="group_format_movies">Filme</string>
     <string name="group_format_specials">Special</string>

@@ -45,6 +45,13 @@
     <string name="filter_search_values">搜索选项</string>
     <string name="sort_final_score">最终评分</string><string name="sort_quality_score">质量</string><string name="sort_personal_taste">个人喜好</string><string name="sort_category_score">分类评分</string>
     <string name="merge_seasons">合并季度</string>
+    <string name="merge_collections">合并电影合集</string>
+    <string name="search_catalog_hint">搜索标题…</string>
+    <string name="catalog_loading">正在加载目录…</string>
+    <string name="catalog_not_available_yet">目录尚不可用</string>
+    <string name="catalog_unavailable_error">无法加载目录</string>
+    <string name="filter_production_company">制作公司</string>
+    <string name="filter_network">电视网</string>
     <string name="group_format_series">系列</string>
     <string name="group_format_movies">电影</string>
     <string name="group_format_specials">特别篇</string>

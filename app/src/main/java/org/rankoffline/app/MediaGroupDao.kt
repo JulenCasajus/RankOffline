@@ -1,14 +1,100 @@
 package org.rankoffline.app
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import androidx.room.Update
+
+data class MediaGroupCatalogFields(
+    val id: String,
+    @ColumnInfo(name = "media_type") val mediaType: String,
+    @ColumnInfo(name = "group_type") val groupType: String,
+    val provider: String?,
+    @ColumnInfo(name = "provider_group_id") val providerGroupId: String?,
+    @ColumnInfo(name = "display_title") val displayTitle: String,
+    @ColumnInfo(name = "remote_cover_ref") val remoteCoverRef: String?
+)
+
+data class MediaIdType(
+    val id: String,
+    @ColumnInfo(name = "media_type") val mediaType: String
+)
 
 @Dao
 interface MediaGroupDao {
+    @Query(
+        """
+        SELECT mediaGroup.*
+        FROM media_group mediaGroup
+        WHERE mediaGroup.media_type = :mediaType
+          AND (:query = '' OR mediaGroup.display_title LIKE '%' || :query || '%' COLLATE NOCASE
+               OR EXISTS (
+                   SELECT 1 FROM media_group_member member
+                   INNER JOIN media_item item ON item.id = member.media_id
+                   WHERE member.group_id = mediaGroup.id
+                     AND (item.title LIKE '%' || :query || '%' COLLATE NOCASE
+                          OR item.original_title LIKE '%' || :query || '%' COLLATE NOCASE
+                          OR EXISTS (SELECT 1 FROM media_alias alias
+                                     WHERE alias.media_id = item.id
+                                       AND alias.title LIKE '%' || :query || '%' COLLATE NOCASE))
+               ))
+          AND (:genre IS NULL OR EXISTS (
+              SELECT 1 FROM media_group_member member
+              INNER JOIN media_genre genreRow ON genreRow.media_id = member.media_id
+              WHERE member.group_id = mediaGroup.id AND genreRow.genre = :genre
+          ))
+          AND (:year IS NULL OR EXISTS (
+              SELECT 1 FROM media_group_member member
+              INNER JOIN media_item item ON item.id = member.media_id
+              WHERE member.group_id = mediaGroup.id AND item.year = :year
+          ))
+          AND (:creditName IS NULL OR EXISTS (
+              SELECT 1 FROM media_group_member member
+              INNER JOIN media_credit credit ON credit.media_id = member.media_id
+              WHERE member.group_id = mediaGroup.id
+                AND credit.role = :creditRole AND credit.name = :creditName
+          ))
+        ORDER BY mediaGroup.display_title COLLATE NOCASE ASC, mediaGroup.id ASC
+        """
+    )
+    suspend fun matchingGroups(
+        mediaType: String,
+        query: String,
+        genre: String?,
+        year: Int?,
+        creditRole: String?,
+        creditName: String?
+    ): List<MediaGroupEntity>
+
+    @Query(
+        """
+        SELECT member.media_id
+        FROM media_group_member member
+        INNER JOIN media_group mediaGroup ON mediaGroup.id = member.group_id
+        WHERE mediaGroup.media_type = :mediaType
+        """
+    )
+    suspend fun groupedMediaIds(mediaType: String): List<String>
+
+    @Query("SELECT id, media_type FROM media_item WHERE id IN (:mediaIds)")
+    suspend fun mediaIdTypes(mediaIds: List<String>): List<MediaIdType>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertNewGroups(groups: List<MediaGroupEntity>): List<Long>
+
+    @Update(entity = MediaGroupEntity::class)
+    suspend fun updateCatalogFields(groups: List<MediaGroupCatalogFields>): Int
+
+    @Query("DELETE FROM media_group_member WHERE group_id IN (:groupIds)")
+    suspend fun deleteMembers(groupIds: List<String>)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertMembers(members: List<MediaGroupMemberEntity>)
+
     @Query("SELECT * FROM media_group WHERE id = :groupId")
     suspend fun group(groupId: String): MediaGroupEntity?
 
