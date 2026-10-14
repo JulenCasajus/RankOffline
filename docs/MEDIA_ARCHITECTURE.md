@@ -107,6 +107,11 @@ Migration tests must start from the exported, published schema 10 and prove
 that every existing Anime table and representative user value survives 10 to
 11 unchanged. A fresh schema 11 installation is tested separately.
 
+Anime continues to use `AnimeRepository`. Manga, Series, Movies, and Books use
+`GenericMediaRepository` and the generic `media_*` tables. Both paths adapt to
+the common `MediaItem` domain model and share the existing score calculator;
+this avoids rewriting published Anime persistence or duplicating rating rules.
+
 ## Rating semantics
 
 Every individual target has one canonical final score. The existing rules are
