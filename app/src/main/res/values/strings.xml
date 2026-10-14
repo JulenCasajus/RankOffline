@@ -6,7 +6,7 @@
     <string name="catalog_local_count">Local catalog: %1$s entries.</string>
     <string name="search_anime_hint">Search anime…</string>
     <string name="no_search_results">No results.</string>
-    <string name="ranking_title">My ranking</string>
+    <string name="ranking_title">MyRanking</string>
     <string name="no_saved_ratings">No ratings saved yet.</string>
     <string name="sort_popularity">Popularity</string>
     <string name="sort_popularity_descending">↓ Popularity</string>
