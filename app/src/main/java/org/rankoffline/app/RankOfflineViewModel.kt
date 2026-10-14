@@ -15,7 +15,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -24,6 +27,12 @@ import java.util.concurrent.ConcurrentHashMap
 
 data class RatingEditorState(val anime: Anime, val draft: RatingDraft? = null)
 private data class CatalogRequest(val query: String, val sort: CatalogSortOrder, val filters: AnimeFilters, val merge: Boolean)
+private data class ActiveSearchSnapshot(
+    val mediaType: MediaType,
+    val state: SearchUiState,
+    val merge: Boolean
+)
+private data class ActiveRankingSnapshot(val state: RankingUiState, val merge: Boolean)
 private data class RankingRequest(
     val filters: AnimeFilters,
     val sort: RankingSortOrder,
@@ -48,47 +57,73 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     private var preloadJob: Job? = null
     private val manualDownloadJobs = ConcurrentHashMap<String, Job>()
 
-    private val query = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = query.asStateFlow()
-    private val _catalogSortOrder = MutableStateFlow(CatalogSortOrder.POPULARITY)
-    val catalogSortOrder: StateFlow<CatalogSortOrder> = _catalogSortOrder.asStateFlow()
-    private val _catalogFilters = MutableStateFlow(AnimeFilters())
-    val catalogFilters: StateFlow<AnimeFilters> = _catalogFilters.asStateFlow()
-    private val _rankingFilters = MutableStateFlow(AnimeFilters())
-    val rankingFilters: StateFlow<AnimeFilters> = _rankingFilters.asStateFlow()
-    private val _rankingSortOrder = MutableStateFlow(RankingSortOrder.FINAL_SCORE)
-    val rankingSortOrder: StateFlow<RankingSortOrder> = _rankingSortOrder.asStateFlow()
-    private val _rankingSortDescending = MutableStateFlow(true)
-    val rankingSortDescending: StateFlow<Boolean> = _rankingSortDescending.asStateFlow()
-    private val _rankingCategoryId = MutableStateFlow<String?>(null)
-    val rankingCategoryId: StateFlow<String?> = _rankingCategoryId.asStateFlow()
+    private val searchStates = MutableStateFlow(defaultSearchUiStates())
+    private val rankingStates = MutableStateFlow(defaultRankingUiStates())
+    private val activeSearchSnapshot: StateFlow<ActiveSearchSnapshot> = combine(searchStates, settings) { states, currentSettings ->
+        ActiveSearchSnapshot(
+            mediaType = currentSettings.activeMediaType,
+            state = states.searchStateFor(currentSettings.activeMediaType),
+            merge = currentSettings.mergeEnabled
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        ActiveSearchSnapshot(MediaType.ANIME, SearchUiState(), merge = false)
+    )
+    val activeSearchState: StateFlow<SearchUiState> = activeSearchSnapshot
+        .map { it.state }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchUiState())
+
+    private val activeRankingSnapshot: StateFlow<ActiveRankingSnapshot> = combine(rankingStates, settings) { states, currentSettings ->
+        val validCategories = currentSettings.ratingConfig.categories.mapTo(mutableSetOf()) { it.id }
+        ActiveRankingSnapshot(
+            state = states.rankingStateFor(currentSettings.activeMediaType).withValidCategory(validCategories),
+            merge = currentSettings.mergeEnabled
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        ActiveRankingSnapshot(RankingUiState(), merge = false)
+    )
+    val activeRankingState: StateFlow<RankingUiState> = activeRankingSnapshot
+        .map { it.state }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, RankingUiState())
     private val _filterOptions = MutableStateFlow(AnimeFilterOptions())
     val filterOptions: StateFlow<AnimeFilterOptions> = _filterOptions.asStateFlow()
     private val dataVersion = MutableStateFlow(0L)
     private val _groupDetail = MutableStateFlow<GroupDetail?>(null)
     val groupDetail: StateFlow<GroupDetail?> = _groupDetail.asStateFlow()
 
+    private val debouncedSearchQuery = activeSearchSnapshot
+        .map { it.mediaType to it.state.query }
+        .distinctUntilChanged()
+        .debounce(300)
+
     val searchResults: StateFlow<List<Anime>> = combine(
-        query.debounce(300),
+        debouncedSearchQuery,
         dataVersion,
-        _catalogSortOrder,
-        _catalogFilters,
-        settings
-    ) { currentQuery, _, sortOrder, filters, currentSettings ->
-        CatalogRequest(currentQuery, sortOrder, filters, currentSettings.mergeSeasonsEnabled)
+        activeSearchSnapshot
+    ) { (queryMediaType, currentQuery), _, active ->
+        if (queryMediaType != active.mediaType) {
+            null
+        } else {
+            CatalogRequest(currentQuery, active.state.sortOrder, active.state.filters, active.merge)
+        }
     }
+        .filterNotNull()
         .mapLatest { request -> repository.search(request.query, request.sort, request.filters, mergeSeasonsEnabled = request.merge) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val ranking: StateFlow<List<Anime>> = combine(
-        _rankingFilters,
-        _rankingSortOrder,
-        _rankingSortDescending,
-        _rankingCategoryId,
-        settings
-    ) { filters, sortOrder, descending, categoryId, currentSettings ->
-        RankingRequest(filters, sortOrder, descending, categoryId, currentSettings.mergeSeasonsEnabled)
-    }
+    val ranking: StateFlow<List<Anime>> = activeRankingSnapshot
+        .map { active ->
+            RankingRequest(
+                active.state.filters,
+                active.state.sortOrder,
+                active.state.descending,
+                active.state.categoryId,
+                active.merge
+            )
+        }
         .flatMapLatest { request ->
             repository.observeRanking(
                 request.filters,
@@ -138,41 +173,56 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun setSearchQuery(value: String) {
-        query.value = value
+        updateActiveSearchState { it.copy(query = value) }
     }
 
     fun setCatalogSortOrder(value: CatalogSortOrder) {
-        _catalogSortOrder.value = value
+        updateActiveSearchState { it.copy(sortOrder = value) }
     }
 
     fun setCatalogSortCriterion(value: CatalogSortOrder) {
-        _catalogSortOrder.value = value.withReversed(_catalogSortOrder.value.isReversed)
+        updateActiveSearchState { it.copy(sortOrder = value.withReversed(it.sortOrder.isReversed)) }
     }
 
     fun toggleCatalogSortDirection() {
-        _catalogSortOrder.value = _catalogSortOrder.value.inverted()
+        updateActiveSearchState { it.copy(sortOrder = it.sortOrder.inverted()) }
     }
 
     fun setCatalogFilters(value: AnimeFilters) {
-        _catalogFilters.value = value
+        updateActiveSearchState { it.copy(filters = value) }
     }
 
     fun setRankingFilters(value: AnimeFilters) {
-        _rankingFilters.value = value
+        updateActiveRankingState { it.copy(filters = value) }
     }
 
     fun setRankingSortOrder(value: RankingSortOrder) {
-        _rankingSortOrder.value = value
-        if (value != RankingSortOrder.CATEGORY_SCORE) _rankingCategoryId.value = null
+        updateActiveRankingState {
+            it.copy(
+                sortOrder = value,
+                categoryId = it.categoryId.takeIf { value == RankingSortOrder.CATEGORY_SCORE }
+            )
+        }
     }
 
     fun toggleRankingSortDirection() {
-        _rankingSortDescending.value = !_rankingSortDescending.value
+        updateActiveRankingState { it.copy(descending = !it.descending) }
     }
 
     fun setRankingCategory(categoryId: String) {
-        _rankingCategoryId.value = categoryId
-        _rankingSortOrder.value = RankingSortOrder.CATEGORY_SCORE
+        updateActiveRankingState {
+            it.copy(categoryId = categoryId, sortOrder = RankingSortOrder.CATEGORY_SCORE)
+        }
+    }
+
+    private fun updateActiveSearchState(transform: (SearchUiState) -> SearchUiState) {
+        val mediaType = settings.value.activeMediaType
+        searchStates.value = searchStates.value.updateSearchUiState(mediaType, transform)
+    }
+
+    private fun updateActiveRankingState(transform: (RankingUiState) -> RankingUiState) {
+        val mediaType = settings.value.activeMediaType
+        rankingStates.value = rankingStates.value.updateRankingUiState(mediaType, transform)
     }
 
     fun openRating(anime: Anime) {

@@ -16,9 +16,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -108,40 +108,38 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val groupDetail by viewModel.groupDetail.collectAsState()
     val list by viewModel.searchResults.collectAsState()
     val ranked by viewModel.ranking.collectAsState()
-    val query by viewModel.searchQuery.collectAsState()
-    val catalogSortOrder by viewModel.catalogSortOrder.collectAsState()
-    val catalogFilters by viewModel.catalogFilters.collectAsState()
-    val rankingFilters by viewModel.rankingFilters.collectAsState()
-    val rankingSortOrder by viewModel.rankingSortOrder.collectAsState()
-    val rankingSortDescending by viewModel.rankingSortDescending.collectAsState()
-    val rankingCategoryId by viewModel.rankingCategoryId.collectAsState()
+    val searchState by viewModel.activeSearchState.collectAsState()
+    val rankingState by viewModel.activeRankingState.collectAsState()
+    val query = searchState.query
+    val catalogSortOrder = searchState.sortOrder
+    val catalogFilters = searchState.filters
+    val rankingFilters = rankingState.filters
+    val rankingSortOrder = rankingState.sortOrder
+    val rankingSortDescending = rankingState.descending
+    val rankingCategoryId = rankingState.categoryId
     val filterOptions by viewModel.filterOptions.collectAsState()
     val catalogCount by viewModel.catalogCount.collectAsState()
-    val catalogListState = rememberLazyListState()
-    val rankingListState = rememberLazyListState()
-    var previousCatalogQuery by remember { mutableStateOf(query) }
-    var previousCatalogSort by remember { mutableStateOf(catalogSortOrder) }
-    var previousCatalogFilters by remember { mutableStateOf(catalogFilters) }
-    var pendingCatalogTopReset by remember { mutableStateOf(false) }
+    val catalogListStates = remember { MediaType.entries.associateWith { LazyListState() } }
+    val rankingListStates = remember { MediaType.entries.associateWith { LazyListState() } }
+    val catalogListState = catalogListStates.getValue(settings.activeMediaType)
+    val rankingListState = rankingListStates.getValue(settings.activeMediaType)
+    val previousCatalogStates = remember { mutableStateMapOf<MediaType, SearchUiState>() }
+    var pendingCatalogTopReset by remember { mutableStateOf<MediaType?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
-    LaunchedEffect(query, catalogSortOrder, catalogFilters) {
-        val shouldReset = query != previousCatalogQuery ||
-            catalogSortOrder != previousCatalogSort ||
-            catalogFilters != previousCatalogFilters
-        previousCatalogQuery = query
-        previousCatalogSort = catalogSortOrder
-        previousCatalogFilters = catalogFilters
-        if (shouldReset) {
-            pendingCatalogTopReset = true
+    LaunchedEffect(settings.activeMediaType, searchState) {
+        val mediaType = settings.activeMediaType
+        val previous = previousCatalogStates.put(mediaType, searchState)
+        if (previous != null && previous != searchState) {
+            pendingCatalogTopReset = mediaType
             catalogListState.scrollToItem(0)
         }
     }
-    LaunchedEffect(list) {
-        if (pendingCatalogTopReset) {
+    LaunchedEffect(list, settings.activeMediaType) {
+        if (pendingCatalogTopReset == settings.activeMediaType) {
             catalogListState.scrollToItem(0)
-            pendingCatalogTopReset = false
+            pendingCatalogTopReset = null
         }
     }
 
