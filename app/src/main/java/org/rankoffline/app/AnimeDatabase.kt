@@ -11,19 +11,26 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import androidx.room.RawQuery
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.Upsert
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
 @Entity(
     tableName = "anime",
     indices = [
         Index(value = ["title"], name = "idx_anime_title"),
-        Index(value = ["popularity_rank"], name = "idx_anime_popularity_rank", unique = true)
+        Index(value = ["popularity_rank"], name = "idx_anime_popularity_rank", unique = true),
+        Index(value = ["format"], name = "idx_anime_format"),
+        Index(value = ["season_year"], name = "idx_anime_season_year"),
+        Index(value = ["media_status"], name = "idx_anime_media_status"),
+        Index(value = ["source"], name = "idx_anime_source"),
+        Index(value = ["episodes"], name = "idx_anime_episodes")
     ]
 )
 data class AnimeEntity(
@@ -36,7 +43,101 @@ data class AnimeEntity(
     @ColumnInfo(name = "poster_url") val posterUrl: String?,
     @ColumnInfo(name = "remote_cover_url") val remoteCoverUrl: String?,
     @ColumnInfo(name = "local_cover_path") val localCoverPath: String?,
-    @ColumnInfo(name = "cover_resolution_state", defaultValue = "'UNKNOWN'") val coverResolutionState: String
+    @ColumnInfo(name = "cover_resolution_state", defaultValue = "'UNKNOWN'") val coverResolutionState: String,
+    val format: String? = null,
+    @ColumnInfo(name = "season_year") val seasonYear: Int? = null,
+    @ColumnInfo(name = "media_status") val mediaStatus: String? = null,
+    val source: String? = null,
+    val episodes: Int? = null,
+    @ColumnInfo(name = "country_of_origin") val countryOfOrigin: String? = null,
+    @ColumnInfo(name = "average_score") val averageScore: Int? = null,
+    @ColumnInfo(name = "start_date") val startDate: String? = null
+)
+
+@Entity(
+    tableName = "anime_group",
+    indices = [Index(value = ["type"], name = "idx_anime_group_type"), Index(value = ["root_anime_id"], name = "idx_anime_group_root")],
+    foreignKeys = [ForeignKey(entity = AnimeEntity::class, parentColumns = ["id"], childColumns = ["root_anime_id"])]
+)
+data class AnimeGroupEntity(
+    @PrimaryKey val id: String,
+    val type: String,
+    @ColumnInfo(name = "root_anime_id") val rootAnimeId: String,
+    @ColumnInfo(name = "display_title") val displayTitle: String
+)
+
+@Entity(
+    tableName = "anime_group_member",
+    primaryKeys = ["group_id", "anime_id"],
+    indices = [Index(value = ["anime_id"], name = "idx_anime_group_member_anime")],
+    foreignKeys = [
+        ForeignKey(entity = AnimeGroupEntity::class, parentColumns = ["id"], childColumns = ["group_id"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = AnimeEntity::class, parentColumns = ["id"], childColumns = ["anime_id"], onDelete = ForeignKey.CASCADE)
+    ]
+)
+data class AnimeGroupMemberEntity(
+    @ColumnInfo(name = "group_id") val groupId: String,
+    @ColumnInfo(name = "anime_id") val animeId: String,
+    val position: Int
+)
+
+@Entity(
+    tableName = "group_rating",
+    foreignKeys = [ForeignKey(entity = AnimeGroupEntity::class, parentColumns = ["id"], childColumns = ["group_id"], onDelete = ForeignKey.CASCADE)]
+)
+data class GroupRatingEntity(
+    @PrimaryKey @ColumnInfo(name = "group_id") val groupId: String,
+    @ColumnInfo(name = "additive_score") val additiveScore: Double,
+    @ColumnInfo(name = "quality_score") val qualityScore: Double?,
+    @ColumnInfo(name = "final_score") val finalScore: Double?,
+    val notes: String,
+    val status: String,
+    @ColumnInfo(name = "updated_at") val updatedAt: Long,
+    @ColumnInfo(name = "profile_id") val profileId: String? = null
+)
+
+@Entity(
+    tableName = "group_rating_score",
+    primaryKeys = ["group_id", "category_id"],
+    foreignKeys = [ForeignKey(entity = GroupRatingEntity::class, parentColumns = ["group_id"], childColumns = ["group_id"], onDelete = ForeignKey.CASCADE)]
+)
+data class GroupRatingScoreEntity(
+    @ColumnInfo(name = "group_id") val groupId: String,
+    @ColumnInfo(name = "category_id") val categoryId: String,
+    val score: Double?,
+    val applicable: Boolean
+)
+
+@Entity(
+    tableName = "anime_genre",
+    primaryKeys = ["anime_id", "genre"],
+    indices = [Index(value = ["genre"], name = "idx_anime_genre_genre")],
+    foreignKeys = [ForeignKey(
+        entity = AnimeEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["anime_id"],
+        onDelete = ForeignKey.CASCADE
+    )]
+)
+data class AnimeGenreEntity(
+    @ColumnInfo(name = "anime_id") val animeId: String,
+    val genre: String
+)
+
+@Entity(
+    tableName = "anime_studio",
+    primaryKeys = ["anime_id", "studio"],
+    indices = [Index(value = ["studio"], name = "idx_anime_studio_studio")],
+    foreignKeys = [ForeignKey(
+        entity = AnimeEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["anime_id"],
+        onDelete = ForeignKey.CASCADE
+    )]
+)
+data class AnimeStudioEntity(
+    @ColumnInfo(name = "anime_id") val animeId: String,
+    val studio: String
 )
 
 @Entity(
@@ -92,10 +193,21 @@ data class AnimeRow(
     val finalScore: Double?,
     val qualityScore: Double?,
     val additiveScore: Double?,
+    val categoryScore: Double?,
     val status: String?,
     val remoteCoverUrl: String?,
     val localCoverPath: String?,
-    val coverResolutionState: String
+    val coverResolutionState: String,
+    val format: String?,
+    val seasonYear: Int?,
+    val startDate: String?,
+    val studio: String?,
+    val groupId: String?,
+    val groupType: String?,
+    val rootAnimeId: String?,
+    val memberCount: Int,
+    val ratedCount: Int,
+    val derived: Boolean
 )
 
 @Dao
@@ -105,39 +217,245 @@ interface AnimeDao {
         SELECT a.id, a.title, a.mal_id AS malId, a.anilist_id AS anilistId, a.popularity,
                a.popularity_rank AS popularityRank,
                r.final_score AS finalScore, r.quality_score AS qualityScore,
-               r.additive_score AS additiveScore, r.status,
+               r.additive_score AS additiveScore, NULL AS categoryScore, r.status,
                COALESCE(a.remote_cover_url, a.poster_url) AS remoteCoverUrl,
                a.local_cover_path AS localCoverPath,
-               a.cover_resolution_state AS coverResolutionState
+               a.cover_resolution_state AS coverResolutionState,
+               a.format,a.season_year AS seasonYear,a.start_date AS startDate,
+               (SELECT ast.studio FROM anime_studio ast WHERE ast.anime_id=a.id ORDER BY ast.studio COLLATE NOCASE LIMIT 1) AS studio,
+               NULL AS groupId, NULL AS groupType, NULL AS rootAnimeId,
+               0 AS memberCount, 0 AS ratedCount, 0 AS derived
         FROM anime a LEFT JOIN rating r ON a.id = r.anime_id
         WHERE (:query = '' OR a.title LIKE '%' || :query || '%' COLLATE NOCASE)
+          AND (:genre IS NULL OR EXISTS (SELECT 1 FROM anime_genre ag WHERE ag.anime_id=a.id AND ag.genre=:genre))
+          AND (:format IS NULL
+               OR (:format='SERIES' AND a.format IN ('TV','TV_SHORT','ONA'))
+               OR (:format='MOVIES' AND a.format='MOVIE')
+               OR (:format='SPECIAL' AND a.format IN ('OVA','SPECIAL'))
+               OR (:format='MUSIC' AND a.format='MUSIC'))
+          AND (:year IS NULL OR a.season_year=:year)
+          AND (:studio IS NULL OR EXISTS (SELECT 1 FROM anime_studio ast WHERE ast.anime_id=a.id AND ast.studio=:studio))
         ORDER BY
-            CASE WHEN :sortOrder = 'POPULARITY' AND a.popularity_rank IS NULL THEN 1
+            CASE WHEN :sortOrder IN ('POPULARITY','POPULARITY_REVERSE') AND a.popularity_rank IS NULL THEN 1
                  ELSE 0 END ASC,
             CASE WHEN :sortOrder = 'POPULARITY' THEN a.popularity_rank END ASC,
+            CASE WHEN :sortOrder = 'POPULARITY_REVERSE' THEN a.popularity_rank END DESC,
             CASE WHEN :sortOrder = 'TITLE_DESC' THEN a.title END COLLATE NOCASE DESC,
             a.title COLLATE NOCASE ASC
         LIMIT :limit
         """
     )
-    suspend fun search(query: String, limit: Int, sortOrder: String): List<AnimeRow>
+    suspend fun search(
+        query: String,
+        limit: Int,
+        sortOrder: String,
+        genre: String?,
+        format: String?,
+        year: Int?,
+        studio: String?
+    ): List<AnimeRow>
+
+    suspend fun search(query: String, limit: Int, sortOrder: String): List<AnimeRow> =
+        search(query, limit, sortOrder, null, null, null, null)
 
     @Query(
         """
-        SELECT a.id, a.title, a.mal_id AS malId, a.anilist_id AS anilistId, a.popularity,
-               a.popularity_rank AS popularityRank,
-               r.final_score AS finalScore, r.quality_score AS qualityScore,
-               r.additive_score AS additiveScore, r.status,
-               COALESCE(a.remote_cover_url, a.poster_url) AS remoteCoverUrl,
-               a.local_cover_path AS localCoverPath,
-               a.cover_resolution_state AS coverResolutionState
-        FROM anime a INNER JOIN rating r ON a.id = r.anime_id
-        WHERE r.final_score IS NOT NULL
-        ORDER BY r.final_score DESC, a.title COLLATE NOCASE
+        WITH visible AS (
+            SELECT a.id, a.title, a.mal_id AS malId, a.anilist_id AS anilistId, a.popularity,
+                   a.popularity_rank AS popularityRank,
+                   r.final_score AS finalScore, r.quality_score AS qualityScore,
+                   r.additive_score AS additiveScore, selected_score.score AS categoryScore, r.status,
+                   COALESCE(a.remote_cover_url, a.poster_url) AS remoteCoverUrl,
+                   a.local_cover_path AS localCoverPath,
+                   a.cover_resolution_state AS coverResolutionState,
+                   a.format,a.season_year AS seasonYear,a.start_date AS startDate,
+                   (SELECT ast.studio FROM anime_studio ast WHERE ast.anime_id=a.id ORDER BY ast.studio COLLATE NOCASE LIMIT 1) AS studio,
+                   NULL AS groupId, NULL AS groupType, NULL AS rootAnimeId,
+                   0 AS memberCount, 0 AS ratedCount, 0 AS derived
+            FROM anime a INNER JOIN rating r ON a.id = r.anime_id
+            LEFT JOIN rating_score selected_score
+              ON selected_score.anime_id=r.anime_id
+             AND selected_score.category_id=:categoryId
+             AND selected_score.applicable=1
+            WHERE r.final_score IS NOT NULL
+              AND (:genre IS NULL OR EXISTS (SELECT 1 FROM anime_genre ag WHERE ag.anime_id=a.id AND ag.genre=:genre))
+              AND (:format IS NULL
+                   OR (:format='SERIES' AND a.format IN ('TV','TV_SHORT','ONA'))
+                   OR (:format='MOVIES' AND a.format='MOVIE')
+                   OR (:format='SPECIAL' AND a.format IN ('OVA','SPECIAL'))
+                   OR (:format='MUSIC' AND a.format='MUSIC'))
+              AND (:year IS NULL OR a.season_year=:year)
+              AND (:studio IS NULL OR EXISTS (SELECT 1 FROM anime_studio ast WHERE ast.anime_id=a.id AND ast.studio=:studio))
+
+            UNION ALL
+
+            SELECT g.id, g.display_title, a.mal_id AS malId, a.anilist_id AS anilistId,
+                   a.popularity, a.popularity_rank AS popularityRank,
+                   gr.final_score AS finalScore, gr.quality_score AS qualityScore,
+                   gr.additive_score AS additiveScore, group_score.score AS categoryScore, gr.status,
+                   COALESCE(a.remote_cover_url, a.poster_url) AS remoteCoverUrl,
+                   a.local_cover_path AS localCoverPath,
+                   a.cover_resolution_state AS coverResolutionState,
+                   g.type AS format,a.season_year AS seasonYear,a.start_date AS startDate,
+                   (SELECT ast.studio FROM anime_studio ast WHERE ast.anime_id=a.id ORDER BY ast.studio COLLATE NOCASE LIMIT 1) AS studio,
+                   g.id AS groupId,g.type AS groupType,g.root_anime_id AS rootAnimeId,
+                   (SELECT COUNT(*) FROM anime_group_member count_member WHERE count_member.group_id=g.id) AS memberCount,
+                   0 AS ratedCount,0 AS derived
+            FROM anime_group g
+            JOIN anime a ON a.id=g.root_anime_id
+            JOIN group_rating gr ON gr.group_id=g.id AND gr.final_score IS NOT NULL
+            LEFT JOIN group_rating_score group_score
+              ON group_score.group_id=g.id
+             AND group_score.category_id=:categoryId
+             AND group_score.applicable=1
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM anime_group_member rated_member
+                JOIN rating member_rating ON member_rating.anime_id=rated_member.anime_id
+                WHERE rated_member.group_id=g.id AND member_rating.final_score IS NOT NULL
+            )
+              AND (:genre IS NULL OR EXISTS (
+                  SELECT 1 FROM anime_group_member genre_member
+                  JOIN anime_genre ag ON ag.anime_id=genre_member.anime_id
+                  WHERE genre_member.group_id=g.id AND ag.genre=:genre
+              ))
+              AND (:format IS NULL OR g.type=:format)
+              AND (:year IS NULL OR EXISTS (
+                  SELECT 1 FROM anime_group_member year_member
+                  JOIN anime year_anime ON year_anime.id=year_member.anime_id
+                  WHERE year_member.group_id=g.id AND year_anime.season_year=:year
+              ))
+              AND (:studio IS NULL OR EXISTS (
+                  SELECT 1 FROM anime_group_member studio_member
+                  JOIN anime_studio ast ON ast.anime_id=studio_member.anime_id
+                  WHERE studio_member.group_id=g.id AND ast.studio=:studio
+              ))
+        )
+        SELECT * FROM visible
+        ORDER BY
+          CASE WHEN
+            CASE :sortOrder
+              WHEN 'QUALITY_SCORE' THEN qualityScore
+              WHEN 'PERSONAL_TASTE' THEN additiveScore
+              WHEN 'CATEGORY_SCORE' THEN categoryScore
+              ELSE finalScore
+            END IS NULL THEN 1 ELSE 0 END ASC,
+          CASE WHEN :descending THEN
+            CASE :sortOrder
+              WHEN 'QUALITY_SCORE' THEN qualityScore
+              WHEN 'PERSONAL_TASTE' THEN additiveScore
+              WHEN 'CATEGORY_SCORE' THEN categoryScore
+              ELSE finalScore
+            END
+          END DESC,
+          CASE WHEN NOT :descending THEN
+            CASE :sortOrder
+              WHEN 'QUALITY_SCORE' THEN qualityScore
+              WHEN 'PERSONAL_TASTE' THEN additiveScore
+              WHEN 'CATEGORY_SCORE' THEN categoryScore
+              ELSE finalScore
+            END
+          END ASC,
+          title COLLATE NOCASE
         LIMIT :limit
         """
     )
-    fun observeRanking(limit: Int): Flow<List<AnimeRow>>
+    fun observeRanking(
+        limit: Int,
+        sortOrder: String,
+        descending: Boolean,
+        categoryId: String,
+        genre: String?,
+        format: String?,
+        year: Int?,
+        studio: String?
+    ): Flow<List<AnimeRow>>
+
+    fun observeRanking(limit: Int): Flow<List<AnimeRow>> =
+        observeRanking(limit, RankingSortOrder.FINAL_SCORE.name, true, "", null, null, null, null)
+
+    @RawQuery
+    suspend fun groupedSearch(query: SupportSQLiteQuery): List<AnimeRow>
+
+    @RawQuery(observedEntities = [
+        AnimeEntity::class, AnimeGenreEntity::class, AnimeStudioEntity::class,
+        AnimeGroupEntity::class, AnimeGroupMemberEntity::class,
+        RatingEntity::class, RatingScoreEntity::class,
+        GroupRatingEntity::class, GroupRatingScoreEntity::class
+    ])
+    fun observeGroupedRanking(query: SupportSQLiteQuery): Flow<List<AnimeRow>>
+
+    @Query(
+        """
+        SELECT a.id,a.title,a.mal_id AS malId,a.anilist_id AS anilistId,a.popularity,
+               a.popularity_rank AS popularityRank,r.final_score AS finalScore,
+               r.quality_score AS qualityScore,r.additive_score AS additiveScore,
+               NULL AS categoryScore,r.status,
+               COALESCE(a.remote_cover_url,a.poster_url) AS remoteCoverUrl,
+               a.local_cover_path AS localCoverPath,a.cover_resolution_state AS coverResolutionState,
+               a.format,a.season_year AS seasonYear,a.start_date AS startDate,
+               (SELECT ast.studio FROM anime_studio ast WHERE ast.anime_id=a.id ORDER BY ast.studio COLLATE NOCASE LIMIT 1) AS studio,
+               NULL AS groupId,NULL AS groupType,NULL AS rootAnimeId,
+               0 AS memberCount,0 AS ratedCount,0 AS derived
+        FROM anime_group_member gm
+        JOIN anime a ON a.id=gm.anime_id
+        LEFT JOIN rating r ON r.anime_id=a.id
+        WHERE gm.group_id=:groupId
+        ORDER BY gm.position
+        """
+    )
+    suspend fun groupMembers(groupId: String): List<AnimeRow>
+
+    @Query("SELECT * FROM anime_group WHERE id=:groupId")
+    suspend fun group(groupId: String): AnimeGroupEntity?
+
+    @Query("SELECT * FROM group_rating WHERE group_id=:groupId")
+    suspend fun groupRating(groupId: String): GroupRatingEntity?
+
+    @Query("SELECT * FROM group_rating_score WHERE group_id=:groupId")
+    suspend fun groupRatingScores(groupId: String): List<GroupRatingScoreEntity>
+
+    @Query("SELECT r.* FROM anime_group_member gm JOIN rating r ON r.anime_id=gm.anime_id WHERE gm.group_id=:groupId AND r.final_score IS NOT NULL")
+    suspend fun ratedGroupMembers(groupId: String): List<RatingEntity>
+
+    @Query("SELECT rs.* FROM anime_group_member gm JOIN rating r ON r.anime_id=gm.anime_id JOIN rating_score rs ON rs.anime_id=r.anime_id WHERE gm.group_id=:groupId AND r.final_score IS NOT NULL")
+    suspend fun ratedGroupMemberScores(groupId: String): List<RatingScoreEntity>
+
+    @Upsert
+    suspend fun upsertGroupRating(rating: GroupRatingEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertGroupRatingScores(scores: List<GroupRatingScoreEntity>)
+
+    @Transaction
+    suspend fun saveGroupRating(rating: GroupRatingEntity, scores: List<GroupRatingScoreEntity>) {
+        upsertGroupRating(rating)
+        if (scores.isNotEmpty()) upsertGroupRatingScores(scores)
+    }
+
+    @Query("DELETE FROM group_rating WHERE group_id=:groupId")
+    suspend fun deleteGroupRating(groupId: String)
+
+    @Query("DELETE FROM group_rating_score WHERE category_id=:categoryId")
+    suspend fun deleteGroupRatingScoresForCategory(categoryId: String)
+
+    @Query("DELETE FROM group_rating_score WHERE category_id NOT IN (:categoryIds)")
+    suspend fun deleteGroupRatingScoresOutsideCategories(categoryIds: List<String>)
+
+    @Query("DELETE FROM group_rating_score")
+    suspend fun deleteAllGroupRatingScores()
+
+    @Query("SELECT DISTINCT genre FROM anime_genre ORDER BY genre COLLATE NOCASE")
+    suspend fun genres(): List<String>
+
+    @Query("SELECT DISTINCT format FROM anime WHERE format IS NOT NULL AND TRIM(format) != '' AND LOWER(TRIM(format)) != 'null' ORDER BY format COLLATE NOCASE")
+    suspend fun formats(): List<String>
+
+    @Query("SELECT DISTINCT season_year FROM anime WHERE season_year IS NOT NULL ORDER BY season_year DESC")
+    suspend fun years(): List<Int>
+
+    @Query("SELECT DISTINCT studio FROM anime_studio ORDER BY studio COLLATE NOCASE")
+    suspend fun studios(): List<String>
 
     @Query("SELECT COUNT(*) FROM anime")
     suspend fun animeCount(): Int
@@ -236,8 +554,8 @@ interface AnimeDao {
 }
 
 @Database(
-    entities = [AnimeEntity::class, RatingEntity::class, RatingScoreEntity::class, CatalogMetadataEntity::class],
-    version = 8,
+    entities = [AnimeEntity::class, AnimeGenreEntity::class, AnimeStudioEntity::class, AnimeGroupEntity::class, AnimeGroupMemberEntity::class, RatingEntity::class, RatingScoreEntity::class, GroupRatingEntity::class, GroupRatingScoreEntity::class, CatalogMetadataEntity::class],
+    version = 10,
     exportSchema = true
 )
 abstract class AnimeDatabase : RoomDatabase() {
@@ -257,7 +575,9 @@ abstract class AnimeDatabase : RoomDatabase() {
                     MIGRATION_4_5,
                     MIGRATION_5_6,
                     MIGRATION_6_7,
-                    MIGRATION_7_8
+                    MIGRATION_7_8,
+                    MIGRATION_8_9,
+                    MIGRATION_9_10
                 )
                 .build()
                 .also { instance = it }
@@ -284,6 +604,38 @@ abstract class AnimeDatabase : RoomDatabase() {
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE rating ADD COLUMN profile_id TEXT")
+            }
+        }
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE anime ADD COLUMN format TEXT")
+                db.execSQL("ALTER TABLE anime ADD COLUMN season_year INTEGER")
+                db.execSQL("ALTER TABLE anime ADD COLUMN media_status TEXT")
+                db.execSQL("ALTER TABLE anime ADD COLUMN source TEXT")
+                db.execSQL("ALTER TABLE anime ADD COLUMN episodes INTEGER")
+                db.execSQL("ALTER TABLE anime ADD COLUMN country_of_origin TEXT")
+                db.execSQL("ALTER TABLE anime ADD COLUMN average_score INTEGER")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_format ON anime(format)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_season_year ON anime(season_year)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_media_status ON anime(media_status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_source ON anime(source)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_episodes ON anime(episodes)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS anime_genre(anime_id TEXT NOT NULL,genre TEXT NOT NULL,PRIMARY KEY(anime_id,genre),FOREIGN KEY(anime_id) REFERENCES anime(id) ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_genre_genre ON anime_genre(genre)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS anime_studio(anime_id TEXT NOT NULL,studio TEXT NOT NULL,PRIMARY KEY(anime_id,studio),FOREIGN KEY(anime_id) REFERENCES anime(id) ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_studio_studio ON anime_studio(studio)")
+            }
+        }
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE anime ADD COLUMN start_date TEXT")
+                db.execSQL("CREATE TABLE IF NOT EXISTS anime_group(id TEXT NOT NULL PRIMARY KEY,type TEXT NOT NULL,root_anime_id TEXT NOT NULL,display_title TEXT NOT NULL,FOREIGN KEY(root_anime_id) REFERENCES anime(id) ON UPDATE NO ACTION ON DELETE NO ACTION)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_group_type ON anime_group(type)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_group_root ON anime_group(root_anime_id)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS anime_group_member(group_id TEXT NOT NULL,anime_id TEXT NOT NULL,position INTEGER NOT NULL,PRIMARY KEY(group_id,anime_id),FOREIGN KEY(group_id) REFERENCES anime_group(id) ON UPDATE NO ACTION ON DELETE CASCADE,FOREIGN KEY(anime_id) REFERENCES anime(id) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_group_member_anime ON anime_group_member(anime_id)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS group_rating(group_id TEXT NOT NULL PRIMARY KEY,additive_score REAL NOT NULL,quality_score REAL,final_score REAL,notes TEXT NOT NULL,status TEXT NOT NULL,updated_at INTEGER NOT NULL,profile_id TEXT,FOREIGN KEY(group_id) REFERENCES anime_group(id) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS group_rating_score(group_id TEXT NOT NULL,category_id TEXT NOT NULL,score REAL,applicable INTEGER NOT NULL,PRIMARY KEY(group_id,category_id),FOREIGN KEY(group_id) REFERENCES group_rating(group_id) ON UPDATE NO ACTION ON DELETE CASCADE)")
             }
         }
 

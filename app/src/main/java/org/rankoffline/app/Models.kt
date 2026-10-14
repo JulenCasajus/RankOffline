@@ -27,13 +27,146 @@ data class Anime(
     val finalScore: Double? = null,
     val baseScore: Double? = null,
     val additiveScore: Double? = null,
+    val categoryScore: Double? = null,
     val status: String? = null,
     val remoteCoverUrl: String? = null,
     val localCoverPath: String? = null,
-    val coverResolutionState: CoverResolutionState = CoverResolutionState.UNKNOWN
+    val coverResolutionState: CoverResolutionState = CoverResolutionState.UNKNOWN,
+    val format: String? = null,
+    val seasonYear: Int? = null,
+    val startDate: String? = null,
+    val studio: String? = null,
+    val groupId: String? = null,
+    val groupType: String? = null,
+    val rootAnimeId: String? = null,
+    val memberCount: Int = 0,
+    val ratedCount: Int = 0,
+    val derived: Boolean = false
 )
 
-enum class CatalogSortOrder { POPULARITY, TITLE_ASC, TITLE_DESC }
+enum class CatalogSortOrder { POPULARITY, POPULARITY_REVERSE, TITLE_ASC, TITLE_DESC }
+
+val CatalogSortOrder.isReversed: Boolean
+    get() = this == CatalogSortOrder.POPULARITY_REVERSE || this == CatalogSortOrder.TITLE_DESC
+
+fun CatalogSortOrder.withReversed(reversed: Boolean): CatalogSortOrder = when (this) {
+    CatalogSortOrder.POPULARITY,
+    CatalogSortOrder.POPULARITY_REVERSE -> if (reversed) CatalogSortOrder.POPULARITY_REVERSE else CatalogSortOrder.POPULARITY
+    CatalogSortOrder.TITLE_ASC,
+    CatalogSortOrder.TITLE_DESC -> if (reversed) CatalogSortOrder.TITLE_DESC else CatalogSortOrder.TITLE_ASC
+}
+
+fun CatalogSortOrder.inverted(): CatalogSortOrder = withReversed(!isReversed)
+
+enum class RankingSortOrder { FINAL_SCORE, QUALITY_SCORE, PERSONAL_TASTE, CATEGORY_SCORE }
+
+const val SERIES_FORMAT_FILTER = "SERIES"
+const val MOVIES_FORMAT_FILTER = "MOVIES"
+const val SPECIAL_FORMAT_FILTER = "SPECIAL"
+const val MUSIC_FORMAT_FILTER = "MUSIC"
+val NORMALIZED_FORMAT_FILTERS = listOf(
+    SERIES_FORMAT_FILTER,
+    MOVIES_FORMAT_FILTER,
+    SPECIAL_FORMAT_FILTER,
+    MUSIC_FORMAT_FILTER
+)
+
+internal fun normalizedAnimeFormat(raw: String?): String? = when (raw?.uppercase(Locale.ROOT)) {
+    "TV", "TV_SHORT", "ONA", SERIES_FORMAT_FILTER -> SERIES_FORMAT_FILTER
+    "MOVIE", MOVIES_FORMAT_FILTER -> MOVIES_FORMAT_FILTER
+    "OVA", "SPECIAL" -> SPECIAL_FORMAT_FILTER
+    "MUSIC" -> MUSIC_FORMAT_FILTER
+    null, "" -> null
+    else -> null
+}
+
+internal fun normalizedFormatOptions(rawFormats: Iterable<String>): List<String> {
+    val available = rawFormats.mapNotNull(::normalizedAnimeFormat).toSet()
+    return NORMALIZED_FORMAT_FILTERS.filter(available::contains)
+}
+
+internal fun Anime.metadataYear(): Int? = seasonYear ?: startDate?.take(4)?.toIntOrNull()
+
+internal fun metadataSubtitleSegments(format: String?, year: Int?, studio: String?): List<String> =
+    listOfNotNull(format?.takeIf(String::isNotBlank), year?.toString(), studio?.takeIf(String::isNotBlank))
+
+internal fun joinMetadataSubtitle(segments: List<String>): String = segments.joinToString(" · ")
+
+data class GroupDetail(
+    val group: AnimeGroupEntity,
+    val members: List<Anime>,
+    val explicitRating: GroupRatingEntity?,
+    val derivedRating: DerivedGroupRating
+)
+
+enum class AnimeListRowAction { RATE, GROUP_DETAILS }
+
+internal fun animeListRowAction(anime: Anime, memberCountClicked: Boolean): AnimeListRowAction =
+    if (anime.groupId != null && memberCountClicked) AnimeListRowAction.GROUP_DETAILS else AnimeListRowAction.RATE
+
+fun Anime.coverTarget(): Anime = rootAnimeId?.let { copy(id = it, groupId = null, groupType = null) } ?: this
+
+data class DerivedGroupRating(
+    val finalScore: Double?,
+    val qualityScore: Double?,
+    val additiveScore: Double?,
+    val categoryScores: Map<String, Double>,
+    val ratedCount: Int
+) {
+    fun asDraft(): RatingDraft = RatingDraft(
+        categoryScores = categoryScores.mapValues { (_, value) -> snapRatingValue(value) },
+        additiveScore = snapBonusValue(additiveScore ?: 0.0) ?: 0.0,
+        finalScore = null,
+        qualityScore = qualityScore ?: finalScore?.minus(additiveScore ?: 0.0)?.coerceIn(RATING_MIN, RATING_MAX)
+    )
+}
+
+fun deriveGroupRating(
+    ratings: List<RatingEntity>,
+    scores: List<RatingScoreEntity>
+): DerivedGroupRating {
+    val rated = ratings.filter { it.finalScore?.isFinite() == true }
+    val ratedIds = rated.mapTo(mutableSetOf()) { it.animeId }
+    fun Iterable<Double?>.averageOrNull(): Double? {
+        val values = filterNotNull().filter(Double::isFinite)
+        return values.takeIf { it.isNotEmpty() }?.average()
+    }
+    val categories = scores.asSequence()
+        .filter { it.animeId in ratedIds && it.applicable && it.score?.isFinite() == true }
+        .groupBy { it.categoryId }
+        .mapValues { (_, values) -> values.mapNotNull { it.score }.average() }
+    return DerivedGroupRating(
+        finalScore = rated.map { it.finalScore }.averageOrNull(),
+        qualityScore = rated.map { it.qualityScore }.averageOrNull(),
+        additiveScore = rated.map { it.additiveScore }.averageOrNull(),
+        categoryScores = categories,
+        ratedCount = rated.size
+    )
+}
+
+fun Anime.rankingDisplayScore(sortOrder: RankingSortOrder): Double? = when (sortOrder) {
+    RankingSortOrder.FINAL_SCORE -> finalScore
+    RankingSortOrder.QUALITY_SCORE -> baseScore
+    RankingSortOrder.PERSONAL_TASTE -> additiveScore?.times(10.0)
+    RankingSortOrder.CATEGORY_SCORE -> categoryScore
+}?.takeIf { it.isFinite() && it in RATING_MIN..RATING_MAX }
+
+data class AnimeFilters(
+    val genre: String? = null,
+    val format: String? = null,
+    val year: Int? = null,
+    val studio: String? = null
+) {
+    val activeCount: Int
+        get() = listOf(genre, format, year, studio).count { it != null }
+}
+
+data class AnimeFilterOptions(
+    val genres: List<String> = emptyList(),
+    val formats: List<String> = emptyList(),
+    val years: List<Int> = emptyList(),
+    val studios: List<String> = emptyList()
+)
 
 enum class CoverResolutionState { UNKNOWN, AVAILABLE, NOT_FOUND }
 

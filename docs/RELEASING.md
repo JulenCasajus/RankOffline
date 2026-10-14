@@ -57,8 +57,10 @@ The script:
 1. Make sure the intended code and documentation are committed.
 2. Update `versionName` in `app/build.gradle.kts`.
 3. Increment `versionCode`. Never reuse or decrease a published value.
-4. Do **not** regenerate the bundled catalog unless the release intentionally contains a catalog update.
-5. Run local validation:
+4. Confirm `targetSdk` meets the current requirements of every intended
+   distribution channel, especially Google Play.
+5. Do **not** regenerate the bundled catalog unless the release intentionally contains a catalog update.
+6. Run local validation:
 
    ```bash
    git diff --check
@@ -72,16 +74,16 @@ The script:
    ./gradlew connectedDebugAndroidTest
    ```
 
-6. For releases containing a Room migration, test a real update from the previous published APK and confirm ratings, notes, categories, profiles, and settings survive.
-7. Push the release commit to `main` and wait for **Build Android APK** to succeed.
-8. Create and push the matching tag:
+7. For releases containing a Room migration, test a real update from the previous published APK and confirm ratings, notes, categories, profiles, and settings survive.
+8. Push the release commit to `main` and wait for **Build Android APK** to succeed.
+9. Create and push the matching tag:
 
    ```bash
    git tag -a vX.Y.Z -m "RankOffline vX.Y.Z"
    git push origin vX.Y.Z
    ```
 
-9. The **Release RankOffline** workflow then:
+10. The **Release RankOffline** workflow then:
    - validates the bundled catalog hash;
    - verifies that the tag matches Gradle `versionName`;
    - validates signing secrets;
@@ -91,8 +93,8 @@ The script:
    - uploads the APK as an Actions artifact;
    - creates the GitHub Release for tag-triggered runs.
 
-10. Confirm the release contains `RankOffline-vX.Y.Z.apk`.
-11. Verify Obtainium detects and installs the update over the previous version without clearing app data.
+11. Confirm the release contains `RankOffline-vX.Y.Z.apk`.
+12. Verify Obtainium detects and installs the update over the previous version without clearing app data.
 
 ## Versioning
 

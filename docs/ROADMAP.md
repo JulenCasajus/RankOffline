@@ -7,10 +7,6 @@ This roadmap is a collection of ideas and likely directions, not a commitment to
 - Improve podium images and the overall podium presentation.
 - Add a light theme alongside the current dark theme.
 
-## Discovery and filtering
-
-- Add filtering by themes/topics and other useful catalog dimensions.
-
 ## Imports and interoperability
 
 - Import or download a user's existing ratings from popular anime platforms.

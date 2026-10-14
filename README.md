@@ -63,7 +63,12 @@ To rebuild the catalog manually:
 python tools/fetch_catalog.py
 ```
 
-The script downloads AnimeAPI's master array, enriches it with AniList Top 5000 popularity data, validates the result, and updates both `anime_catalog.json` and its content-version hash. Do not regenerate the catalog as part of an unrelated change.
+The script downloads AnimeAPI's master array, enriches known AniList IDs with
+metadata and explicit relations, adds the Top 5000 popularity snapshot,
+validates the result, and updates both `anime_catalog.json` and its
+content-version hash. Group membership is derived offline from those explicit
+relations; normal builds never contact AniList to rebuild the catalog. Do not
+regenerate the catalog as part of an unrelated change.
 
 ## Install
 
@@ -126,9 +131,17 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing
 
 ## Data attribution
 
-The bundled catalog is built from AnimeAPI by nattadasu and its upstream/open data sources. AnimeAPI reports its compiled database under ODbL 1.0 + DbCL 1.0, with some source components under other compatible licenses. Review upstream licensing before redistributing a derived database and preserve required attribution/share-alike terms.
+The bundled catalog is built from [AnimeAPI by nattadasu](https://github.com/nattadasu/animeApi/tree/v3)
+and its upstream/open data sources. AnimeAPI documents its compiled database
+under [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) with the
+individual contents under [DbCL 1.0](https://opendatacommons.org/licenses/dbcl/1-0/),
+while some raw source components are published under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Review the
+upstream terms before redistributing the bundled derived database and preserve
+the required attribution/share-alike notices.
 
-AniList provides popularity and primary cover metadata. Jikan is used as a cover fallback where needed.
+AniList provides catalog metadata, explicit relations, popularity, and primary
+cover metadata. Jikan is used as a cover fallback where needed.
 
 ## Architecture and privacy
 
@@ -136,4 +149,20 @@ RankOffline uses Jetpack Compose, Room, and DataStore. Ratings, notes, profile/c
 
 Android Auto Backup and cleartext traffic are disabled. Network requests are limited to public anime identifiers and cover/popularity metadata; personal ratings and notes are not sent to those services.
 
-The project is licensed under the [MIT License](LICENSE).
+## License and trademarks
+
+RankOffline is free and open-source software licensed under the
+[GNU General Public License v3.0](LICENSE) (`GPL-3.0-only`). You may use,
+study, modify, and redistribute its original application source code under the
+terms of GPLv3, including for commercial purposes.
+
+Previous releases remain available under the licence under which they were
+originally published.
+
+The official RankOffline name, logo, launcher icons, and distinctive branding
+are governed separately by the [trademark policy](TRADEMARKS.md). Modified or
+unofficial distributions must use their own name and branding.
+
+The bundled catalog, Android/Jetpack dependencies, and other third-party
+components remain under their own licenses described above; the RankOffline
+license does not replace those terms.

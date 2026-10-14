@@ -16,15 +16,113 @@ class AnimeRepository(
 ) {
     private val dao = database.animeDao()
 
-    fun observeRanking(limit: Int = 200): Flow<List<Anime>> =
-        dao.observeRanking(limit).map { rows -> rows.map { it.toDomain() } }
+    fun observeRanking(limit: Int): Flow<List<Anime>> =
+        observeRanking(
+            filters = AnimeFilters(),
+            sortOrder = RankingSortOrder.FINAL_SCORE,
+            categoryId = null,
+            limit = limit
+        )
+
+    fun observeRanking(
+        filters: AnimeFilters = AnimeFilters(),
+        sortOrder: RankingSortOrder = RankingSortOrder.FINAL_SCORE,
+        categoryId: String? = null,
+        limit: Int = 200,
+        descending: Boolean = true,
+        mergeSeasonsEnabled: Boolean = false
+    ): Flow<List<Anime>> = (if (!mergeSeasonsEnabled) dao.observeRanking(
+        limit = limit,
+        sortOrder = sortOrder.name,
+        descending = descending,
+        categoryId = categoryId.orEmpty(),
+        genre = filters.genre,
+        format = filters.format,
+        year = filters.year,
+        studio = filters.studio
+    ) else dao.observeGroupedRanking(GroupedQueries.ranking(sortOrder, categoryId, filters, limit, descending)))
+        .map { rows -> rows.map { it.toDomain() } }
 
     suspend fun search(
         query: String,
         sortOrder: CatalogSortOrder,
-        limit: Int = 200
+        filters: AnimeFilters = AnimeFilters(),
+        limit: Int = 200,
+        mergeSeasonsEnabled: Boolean = false
     ): List<Anime> = withContext(Dispatchers.IO) {
-        dao.search(query.trim(), limit, sortOrder.name).map { it.toDomain() }
+        (if (!mergeSeasonsEnabled) dao.search(
+            query = query.trim(),
+            limit = limit,
+            sortOrder = sortOrder.name,
+            genre = filters.genre,
+            format = filters.format,
+            year = filters.year,
+            studio = filters.studio
+        ) else dao.groupedSearch(GroupedQueries.catalog(query.trim(), sortOrder, filters, limit)))
+            .map { it.toDomain() }
+    }
+
+    suspend fun groupDetail(groupId: String): GroupDetail? = withContext(Dispatchers.IO) {
+        val group = dao.group(groupId) ?: return@withContext null
+        val members = dao.groupMembers(groupId).map { it.toDomain() }
+        val derived = deriveGroupRating(dao.ratedGroupMembers(groupId), dao.ratedGroupMemberScores(groupId))
+        GroupDetail(
+            group,
+            members,
+            dao.groupRating(groupId)?.takeIf { it.finalScore?.isFinite() == true },
+            derived
+        )
+    }
+
+    suspend fun loadGroupRating(groupId: String, fromMembers: Boolean): RatingDraft = withContext(Dispatchers.IO) {
+        val rating = dao.groupRating(groupId)?.takeIf { it.finalScore?.isFinite() == true }
+        if (rating == null) {
+            return@withContext if (fromMembers) {
+                deriveGroupRating(dao.ratedGroupMembers(groupId), dao.ratedGroupMemberScores(groupId)).asDraft()
+            } else RatingDraft()
+        }
+        RatingDraft(
+            categoryScores = dao.groupRatingScores(groupId).associate { it.categoryId to it.score.takeIf { _ -> it.applicable } },
+            additiveScore = rating.additiveScore, notes = rating.notes, status = rating.status,
+            finalScore = rating.finalScore, qualityScore = rating.qualityScore, profileId = rating.profileId
+        )
+    }
+
+    suspend fun saveElaborateGroupRating(
+        groupId: String, draft: RatingDraft, config: RatingSystemConfig,
+        finalScoreOverride: Double?, profileId: String
+    ) = withContext(Dispatchers.IO) {
+        require(draft.categoryScores.values.all { it == null || isDiscreteRatingValue(it) })
+        val bonus = requireNotNull(snapBonusValue(draft.additiveScore))
+        val calculated = ScoreCalculator.calculate(draft.categoryScores, bonus, config)
+        val final = finalScoreOverride?.let { requireNotNull(normalizeDirectRatingValue(it)) } ?: calculated.finalScore
+        dao.saveGroupRating(
+            GroupRatingEntity(groupId, bonus, calculated.qualityScore, final, draft.notes, draft.status, System.currentTimeMillis(), profileId),
+            draft.categoryScores.map { (categoryId, score) ->
+                GroupRatingScoreEntity(groupId, categoryId, score?.takeIf(Double::isFinite), score?.isFinite() == true)
+            }
+        )
+    }
+
+    suspend fun saveSimpleGroupRating(groupId: String, draft: RatingDraft, qualityScore: Double, finalScore: Double) =
+        withContext(Dispatchers.IO) {
+            dao.upsertGroupRating(GroupRatingEntity(
+                groupId, requireNotNull(snapBonusValue(draft.additiveScore)),
+                requireNotNull(normalizeDirectRatingValue(qualityScore)),
+                requireNotNull(normalizeDirectRatingValue(finalScore)),
+                draft.notes, draft.status, System.currentTimeMillis(), draft.profileId
+            ))
+        }
+
+    suspend fun deleteGroupRating(groupId: String) = withContext(Dispatchers.IO) { dao.deleteGroupRating(groupId) }
+
+    suspend fun filterOptions(): AnimeFilterOptions = withContext(Dispatchers.IO) {
+        AnimeFilterOptions(
+            genres = dao.genres(),
+            formats = normalizedFormatOptions(dao.formats()),
+            years = dao.years(),
+            studios = dao.studios()
+        )
     }
 
     suspend fun animeCount(): Int = withContext(Dispatchers.IO) { dao.animeCount() }
@@ -109,11 +207,17 @@ class AnimeRepository(
 
     suspend fun deleteRatingCategory(categoryId: String) = withContext(Dispatchers.IO) {
         dao.deleteRatingScoresForCategory(categoryId)
+        dao.deleteGroupRatingScoresForCategory(categoryId)
     }
 
     suspend fun deleteRatingScoresOutsideCategories(categoryIds: List<String>) = withContext(Dispatchers.IO) {
-        if (categoryIds.isEmpty()) dao.deleteAllRatingScores()
-        else dao.deleteRatingScoresOutsideCategories(categoryIds)
+        if (categoryIds.isEmpty()) {
+            dao.deleteAllRatingScores()
+            dao.deleteAllGroupRatingScores()
+        } else {
+            dao.deleteRatingScoresOutsideCategories(categoryIds)
+            dao.deleteGroupRatingScoresOutsideCategories(categoryIds)
+        }
     }
 
     suspend fun updateCatalogIfNeeded(): Boolean = withContext(Dispatchers.IO) {
@@ -124,22 +228,29 @@ class AnimeRepository(
         database.runInTransaction {
             val db = database.openHelper.writableDatabase
             val assetRanks = mutableListOf<IncomingPopularityRank>()
+            val incomingGroups = linkedMapOf<String, MutableList<GroupImportMember>>()
+            db.execSQL("DELETE FROM anime_genre")
+            db.execSQL("DELETE FROM anime_studio")
             val insert = db.compileStatement(
                 """
                 INSERT OR IGNORE INTO anime(
                     id,title,mal_id,anilist_id,popularity,poster_url,remote_cover_url,
-                    local_cover_path,cover_resolution_state
-                ) VALUES(?,?,?,?,?,?,?,NULL,'UNKNOWN')
+                    local_cover_path,cover_resolution_state,format,season_year,media_status,
+                    source,episodes,country_of_origin,average_score,start_date
+                ) VALUES(?,?,?,?,?,?,?,NULL,'UNKNOWN',?,?,?,?,?,?,?,?)
                 """.trimIndent()
             )
             val update = db.compileStatement(
                 """
                 UPDATE anime SET title=?, mal_id=COALESCE(?,mal_id), anilist_id=COALESCE(?,anilist_id),
                     popularity=?, poster_url=COALESCE(?,poster_url),
-                    remote_cover_url=COALESCE(remote_cover_url,?)
+                    remote_cover_url=COALESCE(remote_cover_url,?), format=?, season_year=?,
+                    media_status=?, source=?, episodes=?, country_of_origin=?, average_score=?, start_date=?
                 WHERE id=?
                 """.trimIndent()
             )
+            val insertGenre = db.compileStatement("INSERT OR IGNORE INTO anime_genre(anime_id,genre) VALUES(?,?)")
+            val insertStudio = db.compileStatement("INSERT OR IGNORE INTO anime_studio(anime_id,studio) VALUES(?,?)")
             for (index in 0 until entries.length()) {
                 val item = entries.getJSONObject(index)
                 val id = item.getString("id")
@@ -149,6 +260,21 @@ class AnimeRepository(
                 val popularity = item.optLongOrNull("popularity")
                 val popularityRank = item.optLongOrNull("popularityRank")?.toInt()
                 val posterUrl = item.optString("posterUrl", "").takeIf(String::isNotBlank)
+                val format = item.optNullableString("format")
+                val seasonYear = item.optLongOrNull("seasonYear")
+                val mediaStatus = item.optNullableString("status")
+                val source = item.optNullableString("source")
+                val episodes = item.optLongOrNull("episodes")
+                val country = item.optNullableString("countryOfOrigin")
+                val averageScore = item.optLongOrNull("averageScore")
+                val startDate = item.optJSONObject("startDate")?.let { date ->
+                    val year = date.optInt("year")
+                    val month = date.optInt("month")
+                    val day = date.optInt("day")
+                    if (year in 1..9999 && month in 1..12 && day in 1..31)
+                        "%04d-%02d-%02d".format(java.util.Locale.ROOT, year, month, day)
+                    else null
+                }
 
                 insert.clearBindings()
                 insert.bindString(1, id)
@@ -158,6 +284,14 @@ class AnimeRepository(
                 insert.bindNullableLong(5, popularity)
                 insert.bindNullableString(6, posterUrl)
                 insert.bindNullableString(7, posterUrl)
+                insert.bindNullableString(8, format)
+                insert.bindNullableLong(9, seasonYear)
+                insert.bindNullableString(10, mediaStatus)
+                insert.bindNullableString(11, source)
+                insert.bindNullableLong(12, episodes)
+                insert.bindNullableString(13, country)
+                insert.bindNullableLong(14, averageScore)
+                insert.bindNullableString(15, startDate)
                 insert.executeInsert()
 
                 update.clearBindings()
@@ -167,8 +301,51 @@ class AnimeRepository(
                 update.bindNullableLong(4, popularity)
                 update.bindNullableString(5, posterUrl)
                 update.bindNullableString(6, posterUrl)
-                update.bindString(7, id)
+                update.bindNullableString(7, format)
+                update.bindNullableLong(8, seasonYear)
+                update.bindNullableString(9, mediaStatus)
+                update.bindNullableString(10, source)
+                update.bindNullableLong(11, episodes)
+                update.bindNullableString(12, country)
+                update.bindNullableLong(13, averageScore)
+                update.bindNullableString(14, startDate)
+                update.bindString(15, id)
                 update.executeUpdateDelete()
+                item.optNullableString("groupId")?.let { groupId ->
+                    val groupFormat = item.optNullableString("groupFormat")
+                    val displayTitle = item.optNullableString("groupDisplayTitle")
+                    val coverAnimeId = item.optNullableString("groupCoverAnimeId")
+                    if (groupFormat != null && displayTitle != null && coverAnimeId != null) {
+                        incomingGroups.getOrPut(groupId) { mutableListOf() }.add(
+                            GroupImportMember(
+                                id, title, startDate, seasonYear?.toInt(),
+                                groupFormat, displayTitle, coverAnimeId
+                            )
+                        )
+                    }
+                }
+                item.optJSONArray("genres")?.let { genres ->
+                    for (genreIndex in 0 until genres.length()) {
+                        val genre = genres.optString(genreIndex).trim()
+                        if (genre.isNotEmpty()) {
+                            insertGenre.clearBindings()
+                            insertGenre.bindString(1, id)
+                            insertGenre.bindString(2, genre)
+                            insertGenre.executeInsert()
+                        }
+                    }
+                }
+                item.optJSONArray("studios")?.let { studios ->
+                    for (studioIndex in 0 until studios.length()) {
+                        val studio = studios.optString(studioIndex).trim()
+                        if (studio.isNotEmpty()) {
+                            insertStudio.clearBindings()
+                            insertStudio.bindString(1, id)
+                            insertStudio.bindString(2, studio)
+                            insertStudio.executeInsert()
+                        }
+                    }
+                }
                 popularityRank?.let { assetRanks += IncomingPopularityRank(id, it) }
             }
             // A catalog-only asset must not erase a ranking that the user refreshed in-app.
@@ -177,6 +354,7 @@ class AnimeRepository(
             if (assetRanks.isNotEmpty()) {
                 applyRankPlan(db, assetRanks, PopularityRankReconciler.FULL_RANKING_LIMIT)
             }
+            reconcileGroups(db, incomingGroups)
             db.execSQL(
                 "UPDATE anime SET cover_resolution_state='AVAILABLE' " +
                     "WHERE remote_cover_url IS NOT NULL AND cover_resolution_state='UNKNOWN'"
@@ -276,9 +454,20 @@ class AnimeRepository(
         finalScore = finalScore,
         baseScore = qualityScore,
         additiveScore = additiveScore,
+        categoryScore = categoryScore,
         status = status,
         remoteCoverUrl = remoteCoverUrl,
         localCoverPath = localCoverPath,
+        format = format,
+        seasonYear = seasonYear,
+        startDate = startDate,
+        studio = studio,
+        groupId = groupId,
+        groupType = groupType,
+        rootAnimeId = rootAnimeId,
+        memberCount = memberCount,
+        ratedCount = ratedCount,
+        derived = derived,
         coverResolutionState = runCatching { CoverResolutionState.valueOf(coverResolutionState) }
             .getOrDefault(CoverResolutionState.UNKNOWN)
     )
@@ -292,12 +481,97 @@ class AnimeRepository(
         popularityRank = popularityRank,
         remoteCoverUrl = remoteCoverUrl ?: posterUrl,
         localCoverPath = localCoverPath,
+        format = format,
+        seasonYear = seasonYear,
+        startDate = startDate,
         coverResolutionState = runCatching { CoverResolutionState.valueOf(coverResolutionState) }
             .getOrDefault(CoverResolutionState.UNKNOWN)
     )
 
     private fun org.json.JSONObject.optLongOrNull(key: String): Long? =
         if (has(key) && !isNull(key)) getLong(key) else null
+
+    private fun org.json.JSONObject.optNullableString(key: String): String? =
+        if (has(key) && !isNull(key)) getString(key).trim().takeIf(String::isNotEmpty) else null
+
+    private fun reconcileGroups(db: SupportSQLiteDatabase, incoming: Map<String, List<GroupImportMember>>) {
+        // Membership is snapshot data; ratings and group identity are user data and never deleted here.
+        db.execSQL("DELETE FROM anime_group_member")
+        val insertGroup = db.compileStatement(
+            "INSERT OR IGNORE INTO anime_group(id,type,root_anime_id,display_title) VALUES(?,?,?,?)"
+        )
+        val updateGroup = db.compileStatement(
+            "UPDATE anime_group SET type=?,root_anime_id=?,display_title=? WHERE id=?"
+        )
+        val insertMember = db.compileStatement(
+            "INSERT INTO anime_group_member(group_id,anime_id,position) VALUES(?,?,?)"
+        )
+        incoming.forEach { (groupId, members) ->
+            if (members.size < 2) return@forEach
+            val metadata = members.first()
+            if (members.any {
+                    it.groupFormat != metadata.groupFormat || it.displayTitle != metadata.displayTitle ||
+                        it.coverAnimeId != metadata.coverAnimeId
+                }
+            ) return@forEach
+            if (members.none { it.id == metadata.coverAnimeId }) return@forEach
+            insertGroup.clearBindings()
+            insertGroup.bindString(1, groupId)
+            insertGroup.bindString(2, metadata.groupFormat)
+            insertGroup.bindString(3, metadata.coverAnimeId)
+            insertGroup.bindString(4, metadata.displayTitle)
+            insertGroup.executeInsert()
+            updateGroup.clearBindings()
+            updateGroup.bindString(1, metadata.groupFormat)
+            updateGroup.bindString(2, metadata.coverAnimeId)
+            updateGroup.bindString(3, metadata.displayTitle)
+            updateGroup.bindString(4, groupId)
+            updateGroup.executeUpdateDelete()
+            migrateLegacyNormalizedGroupRating(db, groupId, metadata.groupFormat)
+            members.sortedWith(compareBy<GroupImportMember> { it.startDate == null }
+                .thenBy { it.startDate ?: "" }
+                .thenBy { it.seasonYear ?: Int.MAX_VALUE }
+                .thenBy { it.title.lowercase(java.util.Locale.ROOT) }
+                .thenBy { it.id })
+                .forEachIndexed { position, member ->
+                    insertMember.clearBindings()
+                    insertMember.bindString(1, groupId)
+                    insertMember.bindString(2, member.id)
+                    insertMember.bindLong(3, position.toLong())
+                    insertMember.executeInsert()
+                }
+        }
+    }
+
+    private fun migrateLegacyNormalizedGroupRating(
+        db: SupportSQLiteDatabase,
+        groupId: String,
+        normalizedFormat: String
+    ) {
+        val legacySuffix = when (normalizedFormat) {
+            MOVIES_FORMAT_FILTER -> "MOVIE"
+            SPECIAL_FORMAT_FILTER -> "OVA"
+            else -> return
+        }
+        val legacyId = groupId.substringBeforeLast(':') + ":$legacySuffix"
+        val targetExists = db.query(
+            "SELECT 1 FROM group_rating WHERE group_id=? LIMIT 1",
+            arrayOf(groupId)
+        ).use { it.moveToFirst() }
+        if (targetExists) return
+        db.execSQL(
+            "INSERT OR IGNORE INTO group_rating(group_id,additive_score,quality_score,final_score,notes,status,updated_at,profile_id) " +
+                "SELECT ?,additive_score,quality_score,final_score,notes,status,updated_at,profile_id " +
+                "FROM group_rating WHERE group_id=?",
+            arrayOf(groupId, legacyId)
+        )
+        db.execSQL(
+            "INSERT OR IGNORE INTO group_rating_score(group_id,category_id,score,applicable) " +
+                "SELECT ?,category_id,score,applicable FROM group_rating_score " +
+                "WHERE group_id=? AND EXISTS(SELECT 1 FROM group_rating WHERE group_id=?)",
+            arrayOf(groupId, legacyId, groupId)
+        )
+    }
 
     private fun SupportSQLiteStatement.bindNullableLong(index: Int, value: Long?) {
         if (value == null) bindNull(index) else bindLong(index, value)
@@ -394,6 +668,16 @@ class AnimeRepository(
         val animeId: String,
         val anilistId: Long?,
         val malId: Long?
+    )
+
+    private data class GroupImportMember(
+        val id: String,
+        val title: String,
+        val startDate: String?,
+        val seasonYear: Int?,
+        val groupFormat: String,
+        val displayTitle: String,
+        val coverAnimeId: String
     )
 
     private data class ResolvedPopularAnime(

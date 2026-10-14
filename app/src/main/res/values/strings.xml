@@ -7,12 +7,13 @@
     <string name="search_anime_hint">Search anime…</string>
     <string name="no_search_results">No results.</string>
     <string name="ranking_title">My ranking</string>
-    <string name="ranking_description_with_images">Top 3 and full list by score.</string>
-    <string name="ranking_description_without_images">Full list by score.</string>
     <string name="no_saved_ratings">No ratings saved yet.</string>
-    <string name="sort_most_popular">Most popular</string>
+    <string name="sort_popularity">Popularity</string>
+    <string name="sort_popularity_descending">↓ Popularity</string>
+    <string name="sort_popularity_ascending">↑ Popularity</string>
     <string name="sort_title_ascending" translatable="false">A → Z</string>
     <string name="sort_title_descending" translatable="false">Z → A</string>
+    <string name="sort_descending_format" translatable="false">↓ %1$s</string>
 
     <string name="cover_download">Download cover</string>
     <string name="cover_close">Close</string>
@@ -157,8 +158,9 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_summary">An offline anime catalog and rating app. Your ratings and preferences are stored locally.</string>
     <string name="about_licences">Licences</string>
-    <string name="about_rankoffline_licence" translatable="false">RankOffline: MIT License.</string>
-    <string name="about_catalog_licence">Anime catalog: AnimeAPI and upstream data sources; AnimeAPI reports ODbL 1.0 and DbCL 1.0, with some source components under other compatible licences.</string>
+    <string name="about_rankoffline_licence" translatable="false">RankOffline application code: GNU General Public License v3.0 (GPL-3.0-only).</string>
+    <string name="about_rankoffline_trademarks">Official RankOffline name, logo, launcher icons and branding: not licensed under GPLv3; see TRADEMARKS.md.</string>
+    <string name="about_catalog_licence">Anime catalog: AnimeAPI compiled database under ODbL 1.0, contents under DbCL 1.0, and some raw source components under CC0 1.0.</string>
     <string name="about_android_licence">AndroidX, Jetpack Compose, DataStore and Kotlinx Serialization: Apache License 2.0.</string>
     <string name="about_acknowledgements">Acknowledgements</string>
     <string name="about_acknowledgements_text">AnimeAPI and its upstream contributors provide catalog mappings. AniList and Jikan provide anime cover metadata when a cover is not already available locally.</string>
@@ -202,4 +204,26 @@
     <string name="covers_settings_description">Refresh popularity rankings and manage offline covers.</string>
     <string name="covers_settings_explanation">Choose a Top range. RankOffline refreshes its popularity ranking and downloads only missing covers.</string>
     <string name="covers_download_top">Download Top %1$d</string>
+    <string name="filters_title">Filters</string><string name="filters_active">Filters (%1$d)</string><string name="filters_clear">Clear filters</string><string name="filters_all">All / No filter</string>
+    <string name="filter_genre">Genre</string><string name="filter_format">Format</string><string name="filter_year">Year</string><string name="filter_studio">Studio</string>
+    <string name="filter_search_values">Search values</string>
+    <string name="sort_final_score">Final score</string><string name="sort_quality_score">Quality</string><string name="sort_personal_taste">Personal taste</string><string name="sort_category_score">Category score</string>
+    <string name="merge_seasons">Merge seasons</string>
+    <string name="group_format_series">Series</string>
+    <string name="group_format_movies">Movies</string>
+    <string name="group_format_specials">Special</string>
+    <string name="group_format_music">Music</string>
+    <string name="group_format_summary">%1$s · %2$d entries</string>
+    <string name="group_entries_count">%1$d entries</string>
+    <string name="group_calculated">Calculated</string>
+    <string name="sort_action">Sort</string>
+    <string name="group_derived_count">Calculated · %1$d/%2$d rated</string>
+    <string name="group_rated_count">%1$d/%2$d rated</string>
+    <string name="group_unrated">Unrated</string>
+    <string name="group_rate_together">Rate</string>
+    <string name="group_members">Members</string>
+    <string name="group_draft_choice">Start from scratch or use the individual ratings as a starting point?</string>
+    <string name="group_start_fresh">Start from scratch</string>
+    <string name="group_use_member_ratings">Use individual ratings</string>
+    <string name="group_explicit_rating">Group rating</string>
 </resources>

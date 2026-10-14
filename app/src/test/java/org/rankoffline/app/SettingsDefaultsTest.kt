@@ -24,6 +24,14 @@ class SettingsDefaultsTest {
     }
 
     @Test
+    fun mergeSeasonsDefaultsOff() {
+        assertFalse(AppSettingsState().mergeSeasonsEnabled)
+        assertFalse(resolveMergeSeasonsEnabled(null))
+        assertTrue(resolveMergeSeasonsEnabled(true))
+        assertFalse(resolveMergeSeasonsEnabled(false))
+    }
+
+    @Test
     fun officialDefaultCategoriesHaveStableOrderWeightsAndContent() {
         val categories = DefaultSettings.defaultRatingCategories
 

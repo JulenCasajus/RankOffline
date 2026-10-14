@@ -3,6 +3,8 @@
 .run/
 .vscode/
 .kotlin/
+__pycache__/
+*.py[cod]
 local.properties
 .DS_Store
 *.iml
