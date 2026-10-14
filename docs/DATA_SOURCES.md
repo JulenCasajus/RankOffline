@@ -65,6 +65,13 @@ Movies store the canonical collection ID/name when present. Series generation
 creates numbered-season items from the parent series and excludes season zero;
 it does not enumerate episodes.
 
+The offline Movie generator reads explicit IDs or a bounded local daily export,
+then requests deterministic English details with appended credits and
+alternative titles. It emits the generic Movie catalog plus a separate
+canonical-collection artifact; it does not infer broader universes. Publishing
+Movie data in the application still requires the TMDb attribution described
+below.
+
 ### Images and attribution
 
 Only `poster_path` (and a collection poster reference when relevant) is stored.
