@@ -120,6 +120,13 @@ preserve downloaded-cover state, ratings, and group data. Items absent from a
 new catalog are intentionally not pruned because deletion could cascade user
 data. Anime retains its existing JSON catalog and importer unchanged.
 
+Generic cover references are resolved through provider-specific, HTTPS-only
+rules for TMDb, MangaDex, and Open Library. Downloads are explicit/on-demand,
+size-bounded, image-validated, and atomically installed under app-private
+`covers/<media-type>/` directories with hashed filenames. Catalog refreshes
+never download covers. The existing Anime cover path and behavior remain
+separate and unchanged.
+
 ## Rating semantics
 
 Every individual target has one canonical final score. The existing rules are

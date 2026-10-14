@@ -21,6 +21,12 @@ interface MediaDao {
     @Upsert
     suspend fun upsertItems(items: List<MediaItemEntity>)
 
+    @Query(
+        "UPDATE media_item SET local_cover_path = :path, cover_resolution_state = :state " +
+            "WHERE id = :mediaId"
+    )
+    suspend fun updateMediaCover(mediaId: String, path: String?, state: String): Int
+
     @Query("SELECT * FROM media_rating WHERE media_id = :mediaId")
     suspend fun rating(mediaId: String): MediaRatingEntity?
 
