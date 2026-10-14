@@ -223,6 +223,8 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                 0 -> AnimeListScreen(
                     list = list,
                     listState = catalogListState,
+                    activeMediaType = settings.activeMediaType,
+                    onMediaTypeSelected = viewModel::updateActiveMediaType,
                     query = query,
                     imagesEnabled = settings.showImages,
                     coverRepository = viewModel.coverRepository,
@@ -244,6 +246,8 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                 1 -> RankingScreen(
                     ranked = ranked,
                     listState = rankingListState,
+                    activeMediaType = settings.activeMediaType,
+                    onMediaTypeSelected = viewModel::updateActiveMediaType,
                     imagesEnabled = settings.showImages,
                     coverRepository = viewModel.coverRepository,
                     filters = rankingFilters,
@@ -273,6 +277,8 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
 private fun AnimeListScreen(
     list: List<Anime>,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    activeMediaType: MediaType,
+    onMediaTypeSelected: (MediaType) -> Unit,
     query: String,
     imagesEnabled: Boolean,
     coverRepository: CoverRepository,
@@ -295,7 +301,11 @@ private fun AnimeListScreen(
     var showFilters by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().background(Bg).padding(16.dp)) {
-        Text("RankOffline", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        MediaScreenTitle(
+            title = stringResource(R.string.app_name),
+            activeMediaType = activeMediaType,
+            onMediaTypeSelected = onMediaTypeSelected
+        )
         Spacer(Modifier.height(10.dp))
         ListActionRow(
             mergeSeasonsEnabled = mergeSeasonsEnabled,
@@ -362,6 +372,8 @@ private fun AnimeListScreen(
 private fun RankingScreen(
     ranked: List<Anime>,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    activeMediaType: MediaType,
+    onMediaTypeSelected: (MediaType) -> Unit,
     imagesEnabled: Boolean,
     coverRepository: CoverRepository,
     filters: AnimeFilters,
@@ -390,7 +402,11 @@ private fun RankingScreen(
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         item {
-            Text(stringResource(R.string.ranking_title), fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            MediaScreenTitle(
+                title = stringResource(R.string.ranking_title),
+                activeMediaType = activeMediaType,
+                onMediaTypeSelected = onMediaTypeSelected
+            )
             Spacer(Modifier.height(10.dp))
             ListActionRow(
                 mergeSeasonsEnabled = mergeSeasonsEnabled,
@@ -1810,6 +1826,8 @@ private fun SettingsScreen(settings: AppSettingsState, catalogCount: Int, viewMo
 
     when (destination) {
         SettingsDestination.HOME -> SettingsHomeScreen(
+            activeMediaType = settings.activeMediaType,
+            onMediaTypeSelected = viewModel::updateActiveMediaType,
             onGeneral = { destination = SettingsDestination.GENERAL },
             onRating = { destination = SettingsDestination.RATING },
             onIcon = { destination = SettingsDestination.ICON },
@@ -1882,6 +1900,8 @@ private enum class SettingsDestination {
 
 @Composable
 private fun SettingsHomeScreen(
+    activeMediaType: MediaType,
+    onMediaTypeSelected: (MediaType) -> Unit,
     onGeneral: () -> Unit,
     onRating: () -> Unit,
     onIcon: () -> Unit,
@@ -1891,7 +1911,11 @@ private fun SettingsHomeScreen(
         Modifier.fillMaxSize().background(Bg).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(stringResource(R.string.settings_title), fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        MediaScreenTitle(
+            title = stringResource(R.string.settings_title),
+            activeMediaType = activeMediaType,
+            onMediaTypeSelected = onMediaTypeSelected
+        )
         SettingsMenuItem(
             icon = Icons.Default.Settings,
             title = stringResource(R.string.settings_general_title),

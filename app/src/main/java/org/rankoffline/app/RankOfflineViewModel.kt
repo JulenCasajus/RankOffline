@@ -324,6 +324,11 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch { settingsRepository.updateElaborateRatingEnabled(value) }
     }
 
+    fun updateActiveMediaType(value: MediaType) {
+        if (settings.value.activeMediaType == value) return
+        viewModelScope.launch { settingsRepository.updateActiveMediaType(value) }
+    }
+
     fun updateAppIcon(value: AppIcon) {
         viewModelScope.launch { settingsRepository.updateAppIcon(value) }
     }
