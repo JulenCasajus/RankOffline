@@ -83,6 +83,11 @@
     <string name="icon_red">Red</string>
     <string name="icon_green">Green</string>
     <string name="icon_yellow">Yellow</string>
+    <string name="icon_star">Star</string>
+    <string name="icon_star_no_background">Star · transparent</string>
+    <string name="icon_star_pastel">Star · pastel</string>
+    <string name="icon_star_white">Star · white</string>
+    <string name="icon_dark_glow">Dark glow</string>
 
     <string name="general_display_section">Display</string>
     <string name="general_sticky_score">Sticky score header</string>

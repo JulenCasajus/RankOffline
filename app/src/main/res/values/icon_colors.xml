@@ -5,4 +5,8 @@
     <color name="launcher_red_background">#F31826</color>
     <color name="launcher_green_background">#4A9B31</color>
     <color name="launcher_yellow_background">#FFC800</color>
+    <color name="launcher_star_background">#053898</color>
+    <color name="launcher_star_pastel_background">#FFF2D8</color>
+    <color name="launcher_star_white_background">#FFFFFF</color>
+    <color name="launcher_dark_glow_background">#061B49</color>
 </resources>

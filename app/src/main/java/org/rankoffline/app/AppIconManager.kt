@@ -16,7 +16,32 @@ enum class AppIcon(
     BLUE(R.string.icon_blue, "BLUE", "MainActivityBlue", R.drawable.rankoffline_blue_source),
     RED(R.string.icon_red, "RED", "MainActivityRed", R.drawable.rankoffline_red_source),
     GREEN(R.string.icon_green, "GREEN", "MainActivityGreen", R.drawable.rankoffline_green_source),
-    YELLOW(R.string.icon_yellow, "YELLOW", "MainActivityYellow", R.drawable.rankoffline_yellow_source);
+    YELLOW(R.string.icon_yellow, "YELLOW", "MainActivityYellow", R.drawable.rankoffline_yellow_source),
+    STAR(R.string.icon_star, "STAR", "MainActivityStar", R.drawable.rankoffline_star_source),
+    STAR_NO_BACKGROUND(
+        R.string.icon_star_no_background,
+        "STAR_NO_BACKGROUND",
+        "MainActivityStarNoBackground",
+        R.drawable.rankoffline_star_no_background_source
+    ),
+    STAR_PASTEL(
+        R.string.icon_star_pastel,
+        "STAR_PASTEL",
+        "MainActivityStarPastel",
+        R.drawable.rankoffline_star_pastel_source
+    ),
+    STAR_WHITE(
+        R.string.icon_star_white,
+        "STAR_WHITE",
+        "MainActivityStarWhite",
+        R.drawable.rankoffline_star_white_source
+    ),
+    DARK_GLOW(
+        R.string.icon_dark_glow,
+        "DARK_GLOW",
+        "MainActivityDarkGlow",
+        R.drawable.rankoffline_dark_glow_source
+    );
 
     fun componentClassName(packageName: String): String = "$packageName.$aliasClassName"
 

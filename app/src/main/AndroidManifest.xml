@@ -79,5 +79,70 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+        <activity-alias
+            android:name=".MainActivityStar"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/rankoffline_star"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/rankoffline_star"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityDarkGlow"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/rankoffline_dark_glow"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/rankoffline_dark_glow"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityStarNoBackground"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/rankoffline_star_no_background"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/rankoffline_star_no_background"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityStarPastel"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/rankoffline_star_pastel"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/rankoffline_star_pastel"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityStarWhite"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/rankoffline_star_white"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/rankoffline_star_white"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
     </application>
 </manifest>
