@@ -2896,22 +2896,30 @@ private fun scoreLabel(v: Double): String = stringResource(when {
 
 @Composable
 private fun localizedCategoryName(category: RatingCategory): String {
-    val canonical = DefaultSettings.defaultRatingCategories.firstOrNull { it.id == category.id }
-    val resource = if (canonical?.name == category.name) categoryNameResource(category.id) else null
+    val canonical = MediaType.entries.firstNotNullOfOrNull { mediaType ->
+        DefaultSettings.canonicalCategory(mediaType, category.id)
+            ?.takeIf { it.name == category.name && it.description == category.description }
+            ?.let { mediaType to it }
+    }
+    val resource = canonical?.let { (mediaType, _) -> categoryNameResource(mediaType, category.id) }
     return resource?.let { stringResource(it) } ?: category.name
 }
 
 @Composable
 private fun localizedCategoryDescription(category: RatingCategory): String {
-    val canonical = DefaultSettings.defaultRatingCategories.firstOrNull { it.id == category.id }
-    val resource = if (canonical?.description == category.description) categoryDescriptionResource(category.id) else null
+    val canonicalMedia = MediaType.entries.firstOrNull { mediaType ->
+        DefaultSettings.canonicalCategory(mediaType, category.id)?.description == category.description
+    }
+    val resource = canonicalMedia?.let { categoryDescriptionResource(it, category.id) }
     return resource?.let { stringResource(it) } ?: category.description
 }
 
 @Composable
 private fun localizedProfileName(profile: RatingProfile): String {
-    val canonical = DefaultSettings.defaultProfiles().profiles.firstOrNull { it.id == profile.id }
-    val resource = if (canonical?.name == profile.name) profileNameResource(profile.id) else null
+    val isCanonical = MediaType.entries.any { mediaType ->
+        DefaultSettings.canonicalProfile(mediaType, profile.id)?.name == profile.name
+    }
+    val resource = if (isCanonical) profileNameResource(profile.id) else null
     return resource?.let { stringResource(it) } ?: profile.name
 }
 
@@ -2920,6 +2928,10 @@ private fun profileNameResource(id: String): Int? = when (id) {
     "narrative" -> R.string.profile_narrative
     "character_driven" -> R.string.profile_character_driven
     "visual_action" -> R.string.profile_visual_action
+    "art_focused" -> R.string.profile_art_focused
+    "prose_style" -> R.string.profile_prose_style
+    "visual_direction" -> R.string.profile_visual_direction
+    "technical_craft" -> R.string.profile_technical_craft
     "world_adventure" -> R.string.profile_world_adventure
     "atmospheric" -> R.string.profile_atmospheric
     else -> null
@@ -2933,24 +2945,72 @@ private fun localizedBonusName(bonus: AdditiveBonus): String =
         bonus.name
     }
 
-private fun categoryNameResource(id: String): Int? = when (id) {
-    "writing" -> R.string.category_writing
+private fun categoryNameResource(mediaType: MediaType, id: String): Int? = when (id) {
+    "writing" -> when (mediaType) {
+        MediaType.ANIME -> R.string.category_writing
+        MediaType.MANGA -> R.string.category_manga_writing
+        MediaType.BOOK -> R.string.category_book_writing
+        MediaType.SERIES -> R.string.category_series_writing
+        MediaType.MOVIE -> R.string.category_movie_writing
+    }
     "characters" -> R.string.category_characters
     "engagement" -> R.string.category_engagement
     "visuals" -> R.string.category_visuals
     "worldbuilding" -> R.string.category_worldbuilding
     "audio" -> R.string.category_audio
+    "art" -> R.string.category_art
+    "paneling" -> R.string.category_paneling
+    "prose" -> R.string.category_prose
+    "structure" -> R.string.category_structure
+    "direction" -> R.string.category_direction
+    "editing" -> R.string.category_editing
     else -> null
 }
 
-private fun categoryDescriptionResource(id: String): Int? = when (id) {
-    "writing" -> R.string.category_writing_description
-    "characters" -> R.string.category_characters_description
-    "engagement" -> R.string.category_engagement_description
-    "visuals" -> R.string.category_visuals_description
-    "worldbuilding" -> R.string.category_worldbuilding_description
-    "audio" -> R.string.category_audio_description
-    else -> null
+private fun categoryDescriptionResource(mediaType: MediaType, id: String): Int? = when (mediaType) {
+    MediaType.ANIME -> when (id) {
+        "writing" -> R.string.category_writing_description
+        "characters" -> R.string.category_characters_description
+        "engagement" -> R.string.category_engagement_description
+        "visuals" -> R.string.category_visuals_description
+        "worldbuilding" -> R.string.category_worldbuilding_description
+        "audio" -> R.string.category_audio_description
+        else -> null
+    }
+    MediaType.MANGA -> when (id) {
+        "writing" -> R.string.category_manga_writing_description
+        "characters" -> R.string.category_manga_characters_description
+        "art" -> R.string.category_art_description
+        "paneling" -> R.string.category_paneling_description
+        "worldbuilding" -> R.string.category_manga_worldbuilding_description
+        else -> null
+    }
+    MediaType.BOOK -> when (id) {
+        "writing" -> R.string.category_book_writing_description
+        "characters" -> R.string.category_book_characters_description
+        "prose" -> R.string.category_prose_description
+        "worldbuilding" -> R.string.category_book_worldbuilding_description
+        "structure" -> R.string.category_structure_description
+        else -> null
+    }
+    MediaType.SERIES -> when (id) {
+        "writing" -> R.string.category_series_writing_description
+        "characters" -> R.string.category_series_characters_description
+        "direction" -> R.string.category_series_direction_description
+        "visuals" -> R.string.category_series_visuals_description
+        "worldbuilding" -> R.string.category_series_worldbuilding_description
+        "audio" -> R.string.category_series_audio_description
+        else -> null
+    }
+    MediaType.MOVIE -> when (id) {
+        "writing" -> R.string.category_movie_writing_description
+        "characters" -> R.string.category_movie_characters_description
+        "direction" -> R.string.category_movie_direction_description
+        "visuals" -> R.string.category_movie_visuals_description
+        "editing" -> R.string.category_editing_description
+        "audio" -> R.string.category_movie_audio_description
+        else -> null
+    }
 }
 
 private fun scoreColor(v: Double): Color = when {

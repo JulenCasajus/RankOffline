@@ -27,11 +27,11 @@ The domain has five stable, non-localized media values:
 
 | Persisted value | User-facing experience | Provider |
 | --- | --- | --- |
-| `ANIME` | Anime | AnimeAPI with the existing enrichment sources |
-| `MANGA` | Manga | MangaDex |
-| `SERIES` | Series | TMDb |
-| `MOVIE` | Movies | TMDb |
-| `BOOK` | Books | Open Library |
+| `anime` | Anime | AnimeAPI with the existing enrichment sources |
+| `manga` | Manga | MangaDex |
+| `series` | Series | TMDb |
+| `movie` | Movies | TMDb |
+| `book` | Books | Open Library |
 
 Localized labels are presentation only. Provider-derived IDs are the durable
 identity and must not depend on a title, translation, or display order:
@@ -152,6 +152,12 @@ the settings migration they must seed the `ANIME` namespace exactly once and
 must not be replaced by defaults. Temporarily mirroring legacy Anime keys is
 acceptable for downgrade friendliness. Corrupt or unknown new values fall back
 safely without rewriting valid legacy data.
+
+The implemented snapshot is stored under `media_settings_v1`, keyed by the
+stable lowercase media values. It is authoritative for the multi-media app;
+Anime edits are also mirrored to the four legacy keys above for temporary
+downgrade compatibility. The legacy inactive-category cleanup runs only while
+migrating legacy Anime settings, never for the other media namespaces.
 
 Other media types receive their documented defaults independently. Resetting
 categories or profiles affects only the active media type. Global preferences

@@ -304,7 +304,9 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                 current.ratingConfig.copy(categories = current.ratingConfig.categories.filterNot { it.id == category.id }),
                 current.ratingProfiles.withCategoryRemoved(category.id)
             )
-            repository.deleteRatingCategory(category.id)
+            if (current.activeMediaType == MediaType.ANIME) {
+                repository.deleteRatingCategory(category.id)
+            }
         }
     }
 
@@ -409,12 +411,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun resetRatingCategories() {
-        viewModelScope.launch {
-            settingsRepository.resetRatingCategories()
-            repository.deleteRatingScoresOutsideCategories(
-                DefaultSettings.defaultRatingCategories.map { it.id }
-            )
-        }
+        viewModelScope.launch { settingsRepository.resetRatingCategories() }
     }
 
     fun resetRatingProfiles() {

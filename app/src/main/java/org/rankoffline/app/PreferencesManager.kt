@@ -14,10 +14,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
 
 private val Context.dataStore by preferencesDataStore(name = "app_preferences")
+private val settingsJson = Json { ignoreUnknownKeys = true }
 
 @Serializable
 data class RatingCategory(
@@ -56,10 +58,23 @@ data class RatingProfilesConfig(
     val profiles: List<RatingProfile>
 )
 
+@Serializable
+data class MediaSettings(
+    val elaborateRatingEnabled: Boolean,
+    val ratingConfig: RatingSystemConfig,
+    val ratingProfiles: RatingProfilesConfig,
+    val mergeEnabled: Boolean
+)
+
+@Serializable
+internal data class PersistedMediaSettings(
+    val media: Map<String, MediaSettings> = emptyMap()
+)
+
 object DefaultSettings {
     const val GENERAL_PROFILE_ID = "general"
 
-    val defaultRatingCategories = listOf(
+    private val animeCategories = listOf(
         RatingCategory("writing", "Writing", "Plot, themes, pacing, highlights, beginning, ending", 35.0, "#19D5E5", 0),
         RatingCategory("characters", "Characters", "Main characters, supporting characters, antagonist, development, depth, charisma, dynamics", 20.0, "#E04BCF", 1),
         RatingCategory("visuals", "Visuals", "Animation, art style, cinematography, backgrounds, effects, character design", 20.0, "#FFAA55", 2),
@@ -67,41 +82,139 @@ object DefaultSettings {
         RatingCategory("audio", "Audio", "OST, openings/endings, sound effects", 10.0, "#7EC7FF", 4)
     )
 
+    private val mangaCategories = listOf(
+        RatingCategory("writing", "Writing", "Plot, themes, pacing, structure, dialogue, beginning and ending.", 30.0, "#19D5E5", 0),
+        RatingCategory("characters", "Characters", "Main and supporting characters, development, depth, charisma and dynamics.", 20.0, "#E04BCF", 1),
+        RatingCategory("art", "Art", "Drawing quality, art style, character design, backgrounds and visual identity.", 25.0, "#FFAA55", 2),
+        RatingCategory("paneling", "Paneling", "Page composition, panel flow, visual clarity and storytelling through layout.", 10.0, "#7EC7FF", 3),
+        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, internal rules, systems and sense of place.", 15.0, "#62D6C8", 4)
+    )
+
+    private val bookCategories = listOf(
+        RatingCategory("writing", "Writing", "Plot, themes, ideas, dialogue, narrative construction and ending.", 30.0, "#19D5E5", 0),
+        RatingCategory("characters", "Characters", "Main and supporting characters, development, depth and relationships.", 20.0, "#E04BCF", 1),
+        RatingCategory("prose", "Prose / Style", "Language, voice, readability, imagery and stylistic execution.", 25.0, "#FFAA55", 2),
+        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, internal coherence and sense of place where applicable.", 15.0, "#62D6C8", 3),
+        RatingCategory("structure", "Pacing / Structure", "Narrative rhythm, chapter/section structure, progression and organization.", 10.0, "#7EC7FF", 4)
+    )
+
+    private val seriesCategories = listOf(
+        RatingCategory("writing", "Writing", "Plot, themes, dialogue, pacing, season structure and narrative payoff.", 25.0, "#19D5E5", 0),
+        RatingCategory("characters", "Characters", "Main and supporting characters, development, depth, charisma and dynamics.", 20.0, "#E04BCF", 1),
+        RatingCategory("direction", "Direction", "Staging, shot choices, performances, tone and overall audiovisual direction.", 15.0, "#FFAA55", 2),
+        RatingCategory("visuals", "Visuals", "Cinematography, production design, effects, lighting and visual execution.", 15.0, "#7EC7FF", 3),
+        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, internal rules and continuity where applicable.", 15.0, "#62D6C8", 4),
+        RatingCategory("audio", "Audio", "Music, sound design, mixing and use of audio.", 10.0, "#9575CD", 5)
+    )
+
+    private val movieCategories = listOf(
+        RatingCategory("writing", "Writing", "Plot, themes, dialogue, narrative construction and payoff.", 20.0, "#19D5E5", 0),
+        RatingCategory("characters", "Characters", "Character writing, performances as characters, development and dynamics.", 15.0, "#E04BCF", 1),
+        RatingCategory("direction", "Direction", "Staging, performances, tone, shot choices and overall directorial execution.", 20.0, "#FFAA55", 2),
+        RatingCategory("visuals", "Visuals", "Cinematography, production design, effects, lighting and visual identity.", 20.0, "#7EC7FF", 3),
+        RatingCategory("editing", "Editing / Pacing", "Cutting, rhythm, scene transitions, structure and use of runtime.", 15.0, "#62D6C8", 4),
+        RatingCategory("audio", "Audio", "Score, music, sound design, mixing and audiovisual integration.", 10.0, "#9575CD", 5)
+    )
+
     val defaultAdditiveBonus = AdditiveBonus("Personal taste", "How much you liked it personally, independent of technical quality", 1.0, "#E04BCF")
-    val defaultRatingConfig = RatingSystemConfig(
-        categories = defaultRatingCategories,
-        additiveBonus = defaultAdditiveBonus
+
+    private data class ProfilePreset(val id: String, val name: String, val weights: Map<String, Double>)
+
+    private fun preset(id: String, name: String, vararg weights: Pair<String, Double>) =
+        ProfilePreset(id, name, linkedMapOf(*weights))
+
+    private val profilePresets = mapOf(
+        MediaType.ANIME to listOf(
+            preset("general", "General", "writing" to 35.0, "characters" to 20.0, "visuals" to 20.0, "worldbuilding" to 15.0, "audio" to 10.0),
+            preset("narrative", "Narrative", "writing" to 45.0, "characters" to 25.0, "visuals" to 10.0, "worldbuilding" to 10.0, "audio" to 10.0),
+            preset("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "visuals" to 15.0, "worldbuilding" to 10.0, "audio" to 10.0),
+            preset("visual_action", "Visual / Action", "writing" to 20.0, "characters" to 15.0, "visuals" to 40.0, "worldbuilding" to 15.0, "audio" to 10.0),
+            preset("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 20.0, "visuals" to 15.0, "worldbuilding" to 35.0, "audio" to 10.0),
+            preset("atmospheric", "Atmospheric", "writing" to 25.0, "characters" to 20.0, "visuals" to 20.0, "worldbuilding" to 15.0, "audio" to 20.0)
+        ),
+        MediaType.MANGA to listOf(
+            preset("general", "General", "writing" to 30.0, "characters" to 20.0, "art" to 25.0, "paneling" to 10.0, "worldbuilding" to 15.0),
+            preset("narrative", "Narrative", "writing" to 45.0, "characters" to 25.0, "art" to 10.0, "paneling" to 10.0, "worldbuilding" to 10.0),
+            preset("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "art" to 15.0, "paneling" to 10.0, "worldbuilding" to 10.0),
+            preset("art_focused", "Art-focused", "writing" to 15.0, "characters" to 15.0, "art" to 40.0, "paneling" to 20.0, "worldbuilding" to 10.0),
+            preset("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 20.0, "art" to 15.0, "paneling" to 10.0, "worldbuilding" to 35.0),
+            preset("atmospheric", "Atmospheric", "writing" to 25.0, "characters" to 15.0, "art" to 30.0, "paneling" to 15.0, "worldbuilding" to 15.0)
+        ),
+        MediaType.BOOK to listOf(
+            preset("general", "General", "writing" to 30.0, "characters" to 20.0, "prose" to 25.0, "worldbuilding" to 15.0, "structure" to 10.0),
+            preset("narrative", "Narrative", "writing" to 45.0, "characters" to 20.0, "prose" to 15.0, "worldbuilding" to 10.0, "structure" to 10.0),
+            preset("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "prose" to 15.0, "worldbuilding" to 10.0, "structure" to 10.0),
+            preset("prose_style", "Prose / Style", "writing" to 20.0, "characters" to 10.0, "prose" to 45.0, "worldbuilding" to 10.0, "structure" to 15.0),
+            preset("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 15.0, "prose" to 15.0, "worldbuilding" to 40.0, "structure" to 10.0),
+            preset("atmospheric", "Atmospheric", "writing" to 20.0, "characters" to 15.0, "prose" to 35.0, "worldbuilding" to 20.0, "structure" to 10.0)
+        ),
+        MediaType.SERIES to listOf(
+            preset("general", "General", "writing" to 25.0, "characters" to 20.0, "direction" to 15.0, "visuals" to 15.0, "worldbuilding" to 15.0, "audio" to 10.0),
+            preset("narrative", "Narrative", "writing" to 40.0, "characters" to 25.0, "direction" to 10.0, "visuals" to 5.0, "worldbuilding" to 10.0, "audio" to 10.0),
+            preset("character_driven", "Character-driven", "writing" to 20.0, "characters" to 40.0, "direction" to 10.0, "visuals" to 10.0, "worldbuilding" to 10.0, "audio" to 10.0),
+            preset("visual_direction", "Visual / Direction", "writing" to 10.0, "characters" to 10.0, "direction" to 30.0, "visuals" to 30.0, "worldbuilding" to 10.0, "audio" to 10.0),
+            preset("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 15.0, "direction" to 10.0, "visuals" to 10.0, "worldbuilding" to 35.0, "audio" to 10.0),
+            preset("atmospheric", "Atmospheric", "writing" to 15.0, "characters" to 15.0, "direction" to 20.0, "visuals" to 20.0, "worldbuilding" to 10.0, "audio" to 20.0)
+        ),
+        MediaType.MOVIE to listOf(
+            preset("general", "General", "writing" to 20.0, "characters" to 15.0, "direction" to 20.0, "visuals" to 20.0, "editing" to 15.0, "audio" to 10.0),
+            preset("narrative", "Narrative", "writing" to 40.0, "characters" to 25.0, "direction" to 15.0, "visuals" to 5.0, "editing" to 10.0, "audio" to 5.0),
+            preset("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "direction" to 15.0, "visuals" to 5.0, "editing" to 10.0, "audio" to 5.0),
+            preset("visual_direction", "Visual / Direction", "writing" to 10.0, "characters" to 10.0, "direction" to 30.0, "visuals" to 30.0, "editing" to 10.0, "audio" to 10.0),
+            preset("technical_craft", "Technical Craft", "writing" to 10.0, "characters" to 10.0, "direction" to 20.0, "visuals" to 20.0, "editing" to 25.0, "audio" to 15.0),
+            preset("atmospheric", "Atmospheric", "writing" to 15.0, "characters" to 10.0, "direction" to 20.0, "visuals" to 20.0, "editing" to 10.0, "audio" to 25.0)
+        )
     )
 
-    private val defaultProfileWeights = linkedMapOf(
-        GENERAL_PROFILE_ID to listOf(35.0, 20.0, 20.0, 15.0, 10.0),
-        "narrative" to listOf(45.0, 25.0, 10.0, 10.0, 10.0),
-        "character_driven" to listOf(25.0, 40.0, 15.0, 10.0, 10.0),
-        "visual_action" to listOf(20.0, 15.0, 40.0, 15.0, 10.0),
-        "world_adventure" to listOf(20.0, 20.0, 15.0, 35.0, 10.0),
-        "atmospheric" to listOf(25.0, 20.0, 20.0, 15.0, 20.0)
+    private val categoriesByMedia = mapOf(
+        MediaType.ANIME to animeCategories,
+        MediaType.MANGA to mangaCategories,
+        MediaType.SERIES to seriesCategories,
+        MediaType.MOVIE to movieCategories,
+        MediaType.BOOK to bookCategories
     )
 
-    private val defaultProfileNames = mapOf(
-        GENERAL_PROFILE_ID to "General",
-        "narrative" to "Narrative",
-        "character_driven" to "Character-driven",
-        "visual_action" to "Visual / Action",
-        "world_adventure" to "World / Adventure",
-        "atmospheric" to "Atmospheric"
+    fun ratingConfig(mediaType: MediaType): RatingSystemConfig = RatingSystemConfig(
+        categories = categoriesByMedia.getValue(mediaType).map(RatingCategory::copy),
+        additiveBonus = defaultAdditiveBonus.copy()
     )
 
-    fun defaultProfiles(categories: List<RatingCategory> = defaultRatingCategories): RatingProfilesConfig {
-        val availableIds = categories.map { it.id }
-        val defaultIds = defaultRatingCategories.map { it.id }
+    fun profiles(
+        mediaType: MediaType,
+        categories: List<RatingCategory> = ratingConfig(mediaType).categories
+    ): RatingProfilesConfig {
+        val categoryIds = categories.map { it.id }
         return RatingProfilesConfig(
-            defaultProfileWeights.map { (profileId, presetWeights) ->
-                val weights = availableIds.associateWith { categoryId ->
-                    defaultIds.indexOf(categoryId).takeIf { it >= 0 }?.let(presetWeights::get) ?: 0.0
-                }.ensureAtLeastOneWeight()
-                RatingProfile(profileId, defaultProfileNames.getValue(profileId), weights)
+            profilePresets.getValue(mediaType).map { preset ->
+                RatingProfile(
+                    preset.id,
+                    preset.name,
+                    categoryIds.associateWith { preset.weights[it] ?: 0.0 }.ensureAtLeastOneWeight()
+                )
             }
         )
+    }
+
+    fun mediaSettings(mediaType: MediaType): MediaSettings {
+        val config = ratingConfig(mediaType)
+        return MediaSettings(false, config, profiles(mediaType, config.categories), false)
+    }
+
+    fun allMediaSettings(): Map<MediaType, MediaSettings> =
+        MediaType.entries.associateWith(::mediaSettings)
+
+    fun canonicalCategory(mediaType: MediaType, categoryId: String): RatingCategory? =
+        categoriesByMedia[mediaType]?.firstOrNull { it.id == categoryId }?.copy()
+
+    fun canonicalProfile(mediaType: MediaType, profileId: String): RatingProfile? =
+        profiles(mediaType).profiles.firstOrNull { it.id == profileId }
+
+    // Anime compatibility API retained while existing Anime UI/repository code is adapted.
+    val defaultRatingCategories = animeCategories.map(RatingCategory::copy)
+    val defaultRatingConfig = RatingSystemConfig(defaultRatingCategories, defaultAdditiveBonus)
+
+    fun defaultProfiles(categories: List<RatingCategory> = defaultRatingCategories): RatingProfilesConfig {
+        return profiles(MediaType.ANIME, categories)
     }
 
     fun initialProfilesForExistingCategories(categories: List<RatingCategory>): RatingProfilesConfig {
@@ -122,21 +235,29 @@ data class AppSettingsState(
     val showImages: Boolean = false,
     val stickyScore: Boolean = true,
     val activeMediaType: MediaType = MediaType.ANIME,
-    val elaborateRatingEnabled: Boolean = false,
-    val ratingConfig: RatingSystemConfig = DefaultSettings.defaultRatingConfig,
-    val ratingProfiles: RatingProfilesConfig = DefaultSettings.defaultProfiles(),
+    val mediaSettings: Map<MediaType, MediaSettings> = DefaultSettings.allMediaSettings(),
     val appIcon: AppIcon = AppIcon.DARK,
     val language: SupportedLanguage = SupportedLanguage.DEFAULT,
-    val mergeSeasonsEnabled: Boolean = false,
     val settingsLoaded: Boolean = false
-)
+) {
+    val activeMediaSettings: MediaSettings
+        get() = mediaSettings[activeMediaType] ?: DefaultSettings.mediaSettings(activeMediaType)
+
+    val elaborateRatingEnabled: Boolean get() = activeMediaSettings.elaborateRatingEnabled
+    val ratingConfig: RatingSystemConfig get() = activeMediaSettings.ratingConfig
+    val ratingProfiles: RatingProfilesConfig get() = activeMediaSettings.ratingProfiles
+    val mergeEnabled: Boolean get() = activeMediaSettings.mergeEnabled
+
+    /** Temporary bridge for the existing Anime Search/Ranking call sites. */
+    val mergeSeasonsEnabled: Boolean get() = mergeEnabled
+}
 
 class SettingsRepository internal constructor(
     private val context: Context,
     private val iconAliasController: AppIconAliasController = PackageManagerAppIconAliasController(context),
     private val localeController: AppLocaleController = AndroidXAppLocaleController()
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = settingsJson
     private val updateMutex = Mutex()
 
     private val stickyScoreKey = booleanPreferencesKey("sticky_score")
@@ -145,6 +266,7 @@ class SettingsRepository internal constructor(
     private val elaborateRatingEnabledKey = booleanPreferencesKey("elaborate_rating_enabled")
     private val ratingConfigKey = stringPreferencesKey("rating_config")
     private val ratingProfilesKey = stringPreferencesKey("rating_profiles")
+    private val mediaSettingsKey = stringPreferencesKey("media_settings_v1")
     private val appIconKey = stringPreferencesKey("app_icon")
     private val languageKey = stringPreferencesKey("language_tag")
     private val mergeSeasonsEnabledKey = booleanPreferencesKey("merge_seasons_enabled")
@@ -155,25 +277,21 @@ class SettingsRepository internal constructor(
 
     suspend fun loadInitialState() {
         val prefs = context.dataStore.data.first()
-        val ratingJson = prefs[ratingConfigKey]
-        val persistedRatingConfig = ratingJson?.let {
-            try { json.decodeFromString<RatingSystemConfig>(it) } catch (_: Exception) { null }
-        }
-        val normalization = normalizeLegacyInactiveCategories(resolveRatingConfig(persistedRatingConfig))
-        val ratingConfig = normalization.config
-        removedLegacyCategoryIds = normalization.removedCategoryIds
-        val persistedProfiles = prefs[ratingProfilesKey]?.let {
-            try { json.decodeFromString<RatingProfilesConfig>(it) } catch (_: Exception) { null }
-        }
-        val initialProfiles = persistedProfiles
-            ?: if (persistedRatingConfig == null) DefaultSettings.defaultProfiles(ratingConfig.categories)
-            else DefaultSettings.initialProfilesForExistingCategories(ratingConfig.categories)
-        val ratingProfiles = reconcileProfiles(initialProfiles, ratingConfig.categories)
-        if (normalization.removedCategoryIds.isNotEmpty() || persistedProfiles != ratingProfiles) {
-            context.dataStore.edit { mutablePrefs ->
-                mutablePrefs[ratingConfigKey] = json.encodeToString(ratingConfig)
-                mutablePrefs[ratingProfilesKey] = json.encodeToString(ratingProfiles)
-            }
+        val legacyInput = LegacyAnimeSettings(
+            elaborateRatingEnabled = prefs[elaborateRatingEnabledKey],
+            ratingConfig = decodeOrNull(prefs[ratingConfigKey]),
+            ratingProfiles = decodeOrNull(prefs[ratingProfilesKey]),
+            mergeEnabled = prefs[mergeSeasonsEnabledKey]
+        )
+        val legacyMigration = migrateLegacyAnimeSettings(legacyInput)
+        val persistedSnapshot = decodeMediaSettingsSnapshot(prefs[mediaSettingsKey])
+        val mediaSettings = normalizeMediaSettingsSnapshot(persistedSnapshot, legacyMigration.settings)
+        removedLegacyCategoryIds = if (
+            persistedSnapshot?.media?.containsKey(MediaType.ANIME.persistedValue) != true
+        ) {
+            legacyMigration.removedCategoryIds
+        } else {
+            emptyList()
         }
 
         val persistedAppIcon = prefs[appIconKey]
@@ -184,16 +302,19 @@ class SettingsRepository internal constructor(
                 mutablePrefs[appIconKey] = AppIcon.DARK.persistedValue
             }
         }
+        val normalizedSnapshot = encodeMediaSettingsSnapshot(mediaSettings)
+        val animeMirror = mediaSettings.getValue(MediaType.ANIME).toLegacyAnimeSettings()
+        context.dataStore.edit { mutablePrefs ->
+            mutablePrefs[mediaSettingsKey] = normalizedSnapshot
+            mirrorLegacyAnimeSettings(mutablePrefs, animeMirror)
+        }
         _state.value = AppSettingsState(
             showImages = resolveShowImages(prefs[showImagesKey]),
             stickyScore = prefs[stickyScoreKey] ?: true,
             activeMediaType = resolveActiveMediaType(prefs[activeMediaTypeKey]),
-            elaborateRatingEnabled = resolveElaborateRatingEnabled(prefs[elaborateRatingEnabledKey]),
-            ratingConfig = ratingConfig,
-            ratingProfiles = ratingProfiles,
+            mediaSettings = mediaSettings,
             appIcon = appIcon,
             language = language,
-            mergeSeasonsEnabled = resolveMergeSeasonsEnabled(prefs[mergeSeasonsEnabledKey]),
             settingsLoaded = true
         )
         localeController.apply(language)
@@ -218,22 +339,26 @@ class SettingsRepository internal constructor(
     }
 
     suspend fun updateElaborateRatingEnabled(value: Boolean) = updateMutex.withLock {
-        _state.value = _state.value.copy(elaborateRatingEnabled = value)
-        context.dataStore.edit { prefs -> prefs[elaborateRatingEnabledKey] = value }
+        persistActiveMediaSettings { it.copy(elaborateRatingEnabled = value) }
     }
 
     suspend fun updateRatingConfig(config: RatingSystemConfig) = updateMutex.withLock {
-        val profiles = reconcileProfiles(_state.value.ratingProfiles, config.categories)
-        persistRatingSetup(config, profiles)
+        val mediaType = _state.value.activeMediaType
+        val profiles = reconcileProfiles(_state.value.ratingProfiles, config.categories, mediaType)
+        persistActiveMediaSettings { it.copy(ratingConfig = config, ratingProfiles = profiles) }
     }
 
     suspend fun updateRatingProfiles(config: RatingProfilesConfig) = updateMutex.withLock {
-        val profiles = reconcileProfiles(config, _state.value.ratingConfig.categories)
-        persistRatingSetup(_state.value.ratingConfig, profiles)
+        val mediaType = _state.value.activeMediaType
+        val profiles = reconcileProfiles(config, _state.value.ratingConfig.categories, mediaType)
+        persistActiveMediaSettings { it.copy(ratingProfiles = profiles) }
     }
 
     suspend fun updateRatingSetup(config: RatingSystemConfig, profiles: RatingProfilesConfig) = updateMutex.withLock {
-        persistRatingSetup(config, reconcileProfiles(profiles, config.categories))
+        val mediaType = _state.value.activeMediaType
+        persistActiveMediaSettings {
+            it.copy(ratingConfig = config, ratingProfiles = reconcileProfiles(profiles, config.categories, mediaType))
+        }
     }
 
     suspend fun updateAppIcon(value: AppIcon) = updateMutex.withLock {
@@ -255,29 +380,52 @@ class SettingsRepository internal constructor(
         localeController.apply(value)
     }
 
-    suspend fun updateMergeSeasonsEnabled(value: Boolean) = updateMutex.withLock {
-        context.dataStore.edit { prefs -> prefs[mergeSeasonsEnabledKey] = value }
-        _state.value = _state.value.copy(mergeSeasonsEnabled = value)
+    suspend fun updateMergeEnabled(value: Boolean) = updateMutex.withLock {
+        persistActiveMediaSettings { it.copy(mergeEnabled = value) }
     }
 
+    // Compatibility bridge until the existing Anime call sites use the generic name.
+    suspend fun updateMergeSeasonsEnabled(value: Boolean) = updateMergeEnabled(value)
+
     suspend fun resetRatingCategories() = updateMutex.withLock {
-        val config = _state.value.ratingConfig.copy(categories = DefaultSettings.defaultRatingCategories)
-        persistRatingSetup(config, reconcileProfiles(_state.value.ratingProfiles, config.categories))
+        val mediaType = _state.value.activeMediaType
+        persistActiveMediaSettings {
+            it.withDefaultCategories(mediaType)
+        }
     }
 
     suspend fun resetRatingProfiles() = updateMutex.withLock {
-        persistRatingSetup(
-            _state.value.ratingConfig,
-            DefaultSettings.defaultProfiles(_state.value.ratingConfig.categories)
-        )
+        val mediaType = _state.value.activeMediaType
+        persistActiveMediaSettings {
+            it.withDefaultProfiles(mediaType)
+        }
     }
 
-    private suspend fun persistRatingSetup(config: RatingSystemConfig, profiles: RatingProfilesConfig) {
-        _state.value = _state.value.copy(ratingConfig = config, ratingProfiles = profiles, settingsLoaded = true)
+    private suspend fun persistActiveMediaSettings(transform: (MediaSettings) -> MediaSettings) {
+        val mediaType = _state.value.activeMediaType
+        val updated = updateMediaSettings(_state.value.mediaSettings, mediaType, transform)
         context.dataStore.edit { prefs ->
-            prefs[ratingConfigKey] = json.encodeToString(config)
-            prefs[ratingProfilesKey] = json.encodeToString(profiles)
+            prefs[mediaSettingsKey] = encodeMediaSettingsSnapshot(updated)
+            if (mediaType == MediaType.ANIME) {
+                mirrorLegacyAnimeSettings(prefs, updated.getValue(MediaType.ANIME).toLegacyAnimeSettings())
+            }
         }
+        _state.value = _state.value.copy(mediaSettings = updated, settingsLoaded = true)
+    }
+
+    private inline fun <reified T> decodeOrNull(value: String?): T? {
+        if (value == null) return null
+        return try { json.decodeFromString<T>(value) } catch (_: Exception) { null }
+    }
+
+    private fun mirrorLegacyAnimeSettings(
+        prefs: androidx.datastore.preferences.core.MutablePreferences,
+        mirror: LegacyAnimeSettings
+    ) {
+        prefs[elaborateRatingEnabledKey] = mirror.elaborateRatingEnabled ?: false
+        prefs[ratingConfigKey] = json.encodeToString(requireNotNull(mirror.ratingConfig))
+        prefs[ratingProfilesKey] = json.encodeToString(requireNotNull(mirror.ratingProfiles))
+        prefs[mergeSeasonsEnabledKey] = mirror.mergeEnabled ?: false
     }
 
     private fun ensureSelectedIcon(icon: AppIcon, previousIcon: AppIcon) {
@@ -292,11 +440,12 @@ class SettingsRepository internal constructor(
 
 internal fun reconcileProfiles(
     config: RatingProfilesConfig,
-    categories: List<RatingCategory>
+    categories: List<RatingCategory>,
+    mediaType: MediaType = MediaType.ANIME
 ): RatingProfilesConfig {
     val categoryIds = categories.map { it.id }
     val uniqueProfiles = config.profiles.distinctBy { it.id }.filter { it.id.isNotBlank() }
-    val source = uniqueProfiles.ifEmpty { DefaultSettings.defaultProfiles(categories).profiles }
+    val source = uniqueProfiles.ifEmpty { DefaultSettings.profiles(mediaType, categories).profiles }
     return RatingProfilesConfig(
         source.map { profile ->
             profile.copy(
@@ -359,3 +508,120 @@ internal fun normalizeLegacyInactiveCategories(config: RatingSystemConfig): Rati
         removedCategoryIds = removedIds
     )
 }
+
+internal data class LegacyAnimeSettings(
+    val elaborateRatingEnabled: Boolean? = null,
+    val ratingConfig: RatingSystemConfig? = null,
+    val ratingProfiles: RatingProfilesConfig? = null,
+    val mergeEnabled: Boolean? = null
+)
+
+internal data class LegacyAnimeMigration(
+    val settings: MediaSettings,
+    val removedCategoryIds: List<String>
+)
+
+internal fun migrateLegacyAnimeSettings(legacy: LegacyAnimeSettings): LegacyAnimeMigration {
+    val normalization = normalizeLegacyInactiveCategories(resolveRatingConfig(legacy.ratingConfig))
+    val initialProfiles = legacy.ratingProfiles
+        ?: if (legacy.ratingConfig == null) {
+            DefaultSettings.defaultProfiles(normalization.config.categories)
+        } else {
+            DefaultSettings.initialProfilesForExistingCategories(normalization.config.categories)
+        }
+    return LegacyAnimeMigration(
+        settings = MediaSettings(
+            elaborateRatingEnabled = resolveElaborateRatingEnabled(legacy.elaborateRatingEnabled),
+            ratingConfig = normalization.config,
+            ratingProfiles = reconcileProfiles(
+                initialProfiles,
+                normalization.config.categories,
+                MediaType.ANIME
+            ),
+            mergeEnabled = resolveMergeSeasonsEnabled(legacy.mergeEnabled)
+        ),
+        removedCategoryIds = normalization.removedCategoryIds
+    )
+}
+
+internal fun MediaSettings.toLegacyAnimeSettings(): LegacyAnimeSettings = LegacyAnimeSettings(
+    elaborateRatingEnabled = elaborateRatingEnabled,
+    ratingConfig = ratingConfig,
+    ratingProfiles = ratingProfiles,
+    mergeEnabled = mergeEnabled
+)
+
+internal fun decodeMediaSettingsSnapshot(value: String?): PersistedMediaSettings? {
+    if (value == null) return null
+    return try {
+        val mediaObject = settingsJson.parseToJsonElement(value)
+            .jsonObject["media"]
+            ?.jsonObject
+            ?: return null
+        PersistedMediaSettings(
+            media = mediaObject.mapNotNull { (key, element) ->
+                runCatching { settingsJson.decodeFromJsonElement<MediaSettings>(element) }
+                    .getOrNull()
+                    ?.let { key to it }
+            }.toMap()
+        )
+    } catch (_: Exception) {
+        null
+    }
+}
+
+internal fun encodeMediaSettingsSnapshot(settings: Map<MediaType, MediaSettings>): String =
+    settingsJson.encodeToString(
+        PersistedMediaSettings(
+            media = settings.entries.associate { (mediaType, value) ->
+                mediaType.persistedValue to value
+            }
+        )
+    )
+
+internal fun normalizeMediaSettingsSnapshot(
+    snapshot: PersistedMediaSettings?,
+    legacyAnimeSettings: MediaSettings
+): Map<MediaType, MediaSettings> = MediaType.entries.associateWith { mediaType ->
+    val fallback = if (mediaType == MediaType.ANIME) {
+        legacyAnimeSettings
+    } else {
+        DefaultSettings.mediaSettings(mediaType)
+    }
+    normalizeMediaSettings(
+        mediaType,
+        snapshot?.media?.get(mediaType.persistedValue) ?: fallback
+    )
+}
+
+private fun normalizeMediaSettings(mediaType: MediaType, settings: MediaSettings): MediaSettings {
+    val categories = settings.ratingConfig.categories
+        .filter { it.id.isNotBlank() }
+        .distinctBy { it.id }
+    val config = settings.ratingConfig.copy(categories = categories)
+    return settings.copy(
+        ratingConfig = config,
+        ratingProfiles = reconcileProfiles(settings.ratingProfiles, categories, mediaType)
+    )
+}
+
+internal fun updateMediaSettings(
+    settings: Map<MediaType, MediaSettings>,
+    mediaType: MediaType,
+    transform: (MediaSettings) -> MediaSettings
+): Map<MediaType, MediaSettings> {
+    val current = settings[mediaType] ?: DefaultSettings.mediaSettings(mediaType)
+    return settings + (mediaType to normalizeMediaSettings(mediaType, transform(current)))
+}
+
+internal fun MediaSettings.withDefaultCategories(mediaType: MediaType): MediaSettings {
+    val config = ratingConfig.copy(categories = DefaultSettings.ratingConfig(mediaType).categories)
+    return copy(
+        ratingConfig = config,
+        ratingProfiles = reconcileProfiles(ratingProfiles, config.categories, mediaType)
+    )
+}
+
+internal fun MediaSettings.withDefaultProfiles(mediaType: MediaType): MediaSettings = copy(
+    ratingProfiles = DefaultSettings.profiles(mediaType, ratingConfig.categories)
+)
