@@ -107,6 +107,14 @@ Editing a profile later does **not** recalculate every anime that previously use
 
 If a saved profile is later deleted, the editor falls back safely to General when available, otherwise to the first available profile. The previously saved `finalScore` remains unchanged until the user saves again.
 
+## Group ratings
+
+Merge seasons can represent related entries as a format-specific group. An
+explicit group rating is stored independently in `group_rating` and never
+rewrites member ratings. If no explicit group rating exists, ranking may show
+an in-memory average of rated members; that derived value is never persisted
+as an official score.
+
 ## Reset behavior
 
 Category and profile resets are intentionally independent:

@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -39,12 +40,15 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.flow.collect
 import java.math.BigDecimal
 import java.text.NumberFormat
@@ -100,13 +105,45 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val ready by viewModel.ready.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val ratingEditor by viewModel.ratingEditor.collectAsState()
+    val groupDetail by viewModel.groupDetail.collectAsState()
     val list by viewModel.searchResults.collectAsState()
     val ranked by viewModel.ranking.collectAsState()
     val query by viewModel.searchQuery.collectAsState()
     val catalogSortOrder by viewModel.catalogSortOrder.collectAsState()
+    val catalogFilters by viewModel.catalogFilters.collectAsState()
+    val rankingFilters by viewModel.rankingFilters.collectAsState()
+    val rankingSortOrder by viewModel.rankingSortOrder.collectAsState()
+    val rankingSortDescending by viewModel.rankingSortDescending.collectAsState()
+    val rankingCategoryId by viewModel.rankingCategoryId.collectAsState()
+    val filterOptions by viewModel.filterOptions.collectAsState()
     val catalogCount by viewModel.catalogCount.collectAsState()
+    val catalogListState = rememberLazyListState()
+    val rankingListState = rememberLazyListState()
+    var previousCatalogQuery by remember { mutableStateOf(query) }
+    var previousCatalogSort by remember { mutableStateOf(catalogSortOrder) }
+    var previousCatalogFilters by remember { mutableStateOf(catalogFilters) }
+    var pendingCatalogTopReset by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    LaunchedEffect(query, catalogSortOrder, catalogFilters) {
+        val shouldReset = query != previousCatalogQuery ||
+            catalogSortOrder != previousCatalogSort ||
+            catalogFilters != previousCatalogFilters
+        previousCatalogQuery = query
+        previousCatalogSort = catalogSortOrder
+        previousCatalogFilters = catalogFilters
+        if (shouldReset) {
+            pendingCatalogTopReset = true
+            catalogListState.scrollToItem(0)
+        }
+    }
+    LaunchedEffect(list) {
+        if (pendingCatalogTopReset) {
+            catalogListState.scrollToItem(0)
+            pendingCatalogTopReset = false
+        }
+    }
 
     LaunchedEffect(viewModel, context) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it.resolve(context)) }
@@ -156,6 +193,20 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         return
     }
 
+    groupDetail?.let { detail ->
+        GroupDetailScreen(
+            detail = detail,
+            imagesEnabled = settings.showImages,
+            coverRepository = viewModel.coverRepository,
+            onBack = viewModel::closeGroup,
+            onRate = viewModel::rateGroup,
+            onMember = viewModel::openRating,
+            onCoverDownload = viewModel::downloadCover,
+            onCoverOpen = { coverViewerAnime = it }
+        )
+        return
+    }
+
     Scaffold(
         containerColor = Bg,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -171,27 +222,48 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
             when (tab) {
                 0 -> AnimeListScreen(
                     list = list,
+                    listState = catalogListState,
                     query = query,
-                    catalogCount = catalogCount,
                     imagesEnabled = settings.showImages,
                     coverRepository = viewModel.coverRepository,
                     onQueryChange = viewModel::setSearchQuery,
                     sortOrder = catalogSortOrder,
-                    onSortOrderChange = viewModel::setCatalogSortOrder,
-                    onAnime = viewModel::openRating,
-                    onCoverDownload = viewModel::downloadCover,
-                    onCoverOpen = { coverViewerAnime = it },
+                    onSortOrderChange = viewModel::setCatalogSortCriterion,
+                    onSortDirectionToggle = viewModel::toggleCatalogSortDirection,
+                    filters = catalogFilters,
+                    mergeSeasonsEnabled = settings.mergeSeasonsEnabled,
+                    onMergeSeasonsChange = viewModel::updateMergeSeasonsEnabled,
+                    filterOptions = filterOptions,
+                    onFiltersChange = viewModel::setCatalogFilters,
+                    onAnime = viewModel::openAnime,
+                    onGroupDetails = viewModel::openGroupDetails,
+                    onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
+                    onCoverOpen = { coverViewerAnime = it.coverTarget() },
                     errorMessage = errorMessage
                 )
                 1 -> RankingScreen(
-                    ranked,
-                    settings.showImages,
-                    viewModel.coverRepository,
-                    viewModel::openRating,
-                    viewModel::downloadCover,
-                    onCoverOpen = { coverViewerAnime = it }
+                    ranked = ranked,
+                    listState = rankingListState,
+                    imagesEnabled = settings.showImages,
+                    coverRepository = viewModel.coverRepository,
+                    filters = rankingFilters,
+                    mergeSeasonsEnabled = settings.mergeSeasonsEnabled,
+                    onMergeSeasonsChange = viewModel::updateMergeSeasonsEnabled,
+                    filterOptions = filterOptions,
+                    sortOrder = rankingSortOrder,
+                    sortDescending = rankingSortDescending,
+                    categoryId = rankingCategoryId,
+                    categories = settings.ratingConfig.categories,
+                    onFiltersChange = viewModel::setRankingFilters,
+                    onSortOrderChange = viewModel::setRankingSortOrder,
+                    onSortDirectionToggle = viewModel::toggleRankingSortDirection,
+                    onCategorySort = viewModel::setRankingCategory,
+                    onAnime = viewModel::openAnime,
+                    onGroupDetails = viewModel::openGroupDetails,
+                    onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
+                    onCoverOpen = { coverViewerAnime = it.coverTarget() }
                 )
-                else -> SettingsScreen(settings, viewModel)
+                else -> SettingsScreen(settings, catalogCount, viewModel)
             }
         }
     }
@@ -200,61 +272,48 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
 @Composable
 private fun AnimeListScreen(
     list: List<Anime>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     query: String,
-    catalogCount: Int,
     imagesEnabled: Boolean,
     coverRepository: CoverRepository,
     onQueryChange: (String) -> Unit,
     sortOrder: CatalogSortOrder,
     onSortOrderChange: (CatalogSortOrder) -> Unit,
+    onSortDirectionToggle: () -> Unit,
+    filters: AnimeFilters,
+    mergeSeasonsEnabled: Boolean,
+    onMergeSeasonsChange: (Boolean) -> Unit,
+    filterOptions: AnimeFilterOptions,
+    onFiltersChange: (AnimeFilters) -> Unit,
     onAnime: (Anime) -> Unit,
+    onGroupDetails: (Anime) -> Unit,
     onCoverDownload: (Anime) -> Unit,
     onCoverOpen: (Anime) -> Unit,
     errorMessage: UserMessage?
 ) {
-    val listState = rememberLazyListState()
     var sortMenuExpanded by remember { mutableStateOf(false) }
-    val currentLocale = Locale.getDefault()
-    val formattedCatalogCount = remember(catalogCount, currentLocale) {
-        NumberFormat.getIntegerInstance(currentLocale).format(catalogCount)
-    }
-
-    LaunchedEffect(query, sortOrder) {
-        if (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0) {
-            listState.scrollToItem(0)
-        }
-    }
+    var showFilters by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().background(Bg).padding(16.dp)) {
         Text("RankOffline", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(6.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.catalog_local_count, formattedCatalogCount),
-                color = Color.LightGray,
-                modifier = Modifier.weight(1f)
-            )
-            Box {
-                OutlinedButton(
-                    onClick = { sortMenuExpanded = true },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Sort,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(5.dp))
-                    Text(sortOrder.shortLabel(), fontSize = 13.sp)
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                }
+        Spacer(Modifier.height(10.dp))
+        ListActionRow(
+            mergeSeasonsEnabled = mergeSeasonsEnabled,
+            onMergeSeasonsChange = onMergeSeasonsChange,
+            activeFilterCount = filters.activeCount,
+            sortLabel = sortOrder.criterionLabel(),
+            sortReversed = sortOrder.isReversed,
+            onFilters = { showFilters = true },
+            onSort = { sortMenuExpanded = true },
+            onSortDirectionToggle = onSortDirectionToggle
+        ) {
                 DropdownMenu(
                     expanded = sortMenuExpanded,
                     onDismissRequest = { sortMenuExpanded = false }
                 ) {
-                    CatalogSortOrder.entries.forEach { option ->
+                    listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC).forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(option.menuLabel()) },
+                            text = { Text(option.criterionLabel()) },
                             onClick = {
                                 sortMenuExpanded = false
                                 onSortOrderChange(option)
@@ -262,7 +321,6 @@ private fun AnimeListScreen(
                         )
                     }
                 }
-            }
         }
         errorMessage?.let { Text(it.resolve(LocalContext.current), color = Coral, fontSize = 13.sp) }
         Spacer(Modifier.height(14.dp))
@@ -277,60 +335,113 @@ private fun AnimeListScreen(
         Spacer(Modifier.height(12.dp))
         LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(list, key = { it.id }) { anime ->
-                AnimeRow(
+                AnimeListRow(
                     anime,
                     imagesEnabled,
                     coverRepository,
                     onCoverDownload = { onCoverDownload(anime) },
                     onCoverOpen = { onCoverOpen(anime) },
-                    onClick = { onAnime(anime) }
+                    onClick = { onAnime(anime) },
+                    onGroupDetails = { onGroupDetails(anime) }
                 )
             }
             if (list.isEmpty()) item { Text(stringResource(R.string.no_search_results), color = Color.Gray, modifier = Modifier.padding(20.dp)) }
         }
+    }
+    if (showFilters) {
+        AnimeFiltersDialog(
+            current = filters,
+            options = filterOptions,
+            onDismiss = { showFilters = false },
+            onApply = { onFiltersChange(it); showFilters = false }
+        )
     }
 }
 
 @Composable
 private fun RankingScreen(
     ranked: List<Anime>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     imagesEnabled: Boolean,
     coverRepository: CoverRepository,
+    filters: AnimeFilters,
+    mergeSeasonsEnabled: Boolean,
+    onMergeSeasonsChange: (Boolean) -> Unit,
+    filterOptions: AnimeFilterOptions,
+    sortOrder: RankingSortOrder,
+    sortDescending: Boolean,
+    categoryId: String?,
+    categories: List<RatingCategory>,
+    onFiltersChange: (AnimeFilters) -> Unit,
+    onSortOrderChange: (RankingSortOrder) -> Unit,
+    onSortDirectionToggle: () -> Unit,
+    onCategorySort: (String) -> Unit,
     onAnime: (Anime) -> Unit,
+    onGroupDetails: (Anime) -> Unit,
     onCoverDownload: (Anime) -> Unit,
     onCoverOpen: (Anime) -> Unit
 ) {
+    var showFilters by remember { mutableStateOf(false) }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
     LazyColumn(
-        Modifier.fillMaxSize().background(Bg).padding(16.dp),
+        state = listState,
+        modifier = Modifier.fillMaxSize().background(Bg).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         item {
             Text(stringResource(R.string.ranking_title), fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text(
-                stringResource(
-                    if (imagesEnabled) R.string.ranking_description_with_images
-                    else R.string.ranking_description_without_images
-                ),
-                color = Color.LightGray
-            )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
+            ListActionRow(
+                mergeSeasonsEnabled = mergeSeasonsEnabled,
+                onMergeSeasonsChange = onMergeSeasonsChange,
+                activeFilterCount = filters.activeCount,
+                sortLabel = rankingSortLabel(sortOrder, categoryId, categories),
+                sortReversed = !sortDescending,
+                onFilters = { showFilters = true },
+                onSort = { sortMenuExpanded = true },
+                onSortDirectionToggle = onSortDirectionToggle
+            ) {
+                    DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
+                        RankingSortOrder.entries.filterNot { it == RankingSortOrder.CATEGORY_SCORE }.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.localizedLabel()) },
+                                onClick = { sortMenuExpanded = false; onSortOrderChange(option) }
+                            )
+                        }
+                        HorizontalDivider()
+                        Text(
+                            stringResource(R.string.sort_category_score),
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                        categories.sortedBy { it.order }.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(localizedCategoryName(category)) },
+                                onClick = { sortMenuExpanded = false; onCategorySort(category.id) }
+                            )
+                        }
+                    }
+            }
         }
         if (imagesEnabled) {
             val top3 = ranked.take(3)
             val rest = ranked.drop(3)
             if (top3.isNotEmpty()) {
-                item { Top3Podium(top3, coverRepository, onCoverDownload, onCoverOpen, onAnime) }
+                item { Top3Podium(top3, sortOrder, coverRepository, onCoverDownload, onCoverOpen, onAnime) }
             }
             itemsIndexed(rest, key = { _, anime -> anime.id }) { index, anime ->
-                AnimeRow(
+                AnimeListRow(
                     anime,
                     true,
                     coverRepository,
                     rank = index + 4,
+                    rankingSortOrder = sortOrder,
                     onCoverDownload = { onCoverDownload(anime) },
                     onCoverOpen = { onCoverOpen(anime) },
-                    onClick = { onAnime(anime) }
+                    onClick = { onAnime(anime) },
+                    onGroupDetails = { onGroupDetails(anime) }
                 )
             }
             if (rest.isEmpty() && top3.isEmpty()) {
@@ -338,14 +449,16 @@ private fun RankingScreen(
             }
         } else {
             itemsIndexed(ranked, key = { _, anime -> anime.id }) { index, anime ->
-                AnimeRow(
+                AnimeListRow(
                     anime,
                     false,
                     coverRepository,
                     rank = index + 1,
+                    rankingSortOrder = sortOrder,
                     onCoverDownload = { onCoverDownload(anime) },
                     onCoverOpen = { onCoverOpen(anime) },
-                    onClick = { onAnime(anime) }
+                    onClick = { onAnime(anime) },
+                    onGroupDetails = { onGroupDetails(anime) }
                 )
             }
             if (ranked.isEmpty()) {
@@ -353,27 +466,494 @@ private fun RankingScreen(
             }
         }
     }
+    if (showFilters) {
+        AnimeFiltersDialog(
+            current = filters,
+            options = filterOptions,
+            onDismiss = { showFilters = false },
+            onApply = { onFiltersChange(it); showFilters = false }
+        )
+    }
 }
 
 @Composable
-private fun AnimeRow(
+private fun ListActionRow(
+    mergeSeasonsEnabled: Boolean,
+    onMergeSeasonsChange: (Boolean) -> Unit,
+    activeFilterCount: Int,
+    sortLabel: String,
+    sortReversed: Boolean,
+    onFilters: () -> Unit,
+    onSort: () -> Unit,
+    onSortDirectionToggle: () -> Unit,
+    sortMenu: @Composable () -> Unit
+) {
+    val mergeLabel = stringResource(R.string.merge_seasons)
+    val filterLabel = if (activeFilterCount > 0) stringResource(R.string.filters_active, activeFilterCount)
+    else stringResource(R.string.filters_title)
+    val sortDirectionDescription = stringResource(R.string.sort_action)
+    val textStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 11.sp)
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val buttonWeights = remember(mergeLabel, filterLabel, sortLabel, textStyle, density) {
+        val extraWidth = with(density) { 8.dp.toPx() }
+        val minimumWidth = with(density) { 40.dp.toPx() }
+        val directionWidth = with(density) { 49.dp.toPx() }
+        listOf(mergeLabel, filterLabel, sortLabel).mapIndexed { index, label ->
+            maxOf(textMeasurer.measure(label, style = textStyle, maxLines = 1).size.width + extraWidth, minimumWidth)
+                .let { if (index == 2) it + directionWidth else it }
+        }
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CompactActionButton(
+            label = mergeLabel,
+            selected = mergeSeasonsEnabled,
+            onClick = { onMergeSeasonsChange(!mergeSeasonsEnabled) },
+            modifier = Modifier.weight(buttonWeights[0])
+        )
+        CompactActionButton(
+            label = filterLabel,
+            selected = activeFilterCount > 0,
+            onClick = onFilters,
+            modifier = Modifier.weight(buttonWeights[1])
+        )
+        Surface(
+            modifier = Modifier.weight(buttonWeights[2]).height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable(onClick = onSort),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        sortLabel,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    sortMenu()
+                }
+                VerticalDivider(
+                    modifier = Modifier.height(28.dp),
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Box(
+                    modifier = Modifier
+                        .width(48.dp)
+                        .fillMaxHeight()
+                        .background(Cyan.copy(alpha = 0.08f))
+                        .clickable(onClick = onSortDirectionToggle)
+                        .semantics { contentDescription = sortDirectionDescription },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        if (sortReversed) "↑" else "↓",
+                        color = Cyan,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactActionButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 48.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, if (selected) Cyan else MaterialTheme.colorScheme.outline),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (selected) Cyan.copy(alpha = 0.18f) else Color.Transparent,
+            contentColor = if (selected) Cyan else MaterialTheme.colorScheme.onSurface
+        ),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+    ) {
+        Text(
+            label,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+private fun groupFormatLabel(format: String): String = when (format) {
+    SERIES_FORMAT_FILTER -> stringResource(R.string.group_format_series)
+    MOVIES_FORMAT_FILTER -> stringResource(R.string.group_format_movies)
+    SPECIAL_FORMAT_FILTER -> stringResource(R.string.group_format_specials)
+    MUSIC_FORMAT_FILTER -> stringResource(R.string.group_format_music)
+    else -> formatDisplayName(format)
+}
+
+private fun Anime.localizedDisplayTitle(): String = title
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AnimeTopAppBar(
+    title: String,
+    onBack: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    TopAppBar(
+        title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.action_back)
+                )
+            }
+        },
+        actions = actions,
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
+    )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun GroupDetailScreen(
+    detail: GroupDetail,
+    imagesEnabled: Boolean,
+    coverRepository: CoverRepository,
+    onBack: () -> Unit,
+    onRate: (Boolean) -> Unit,
+    onMember: (Anime) -> Unit,
+    onCoverDownload: (Anime) -> Unit,
+    onCoverOpen: (Anime) -> Unit
+) {
+    BackHandler(onBack = onBack)
+    var showDraftChoice by remember(detail.group.id) { mutableStateOf(false) }
+    val explicit = detail.explicitRating
+    val shown = explicit?.finalScore ?: detail.derivedRating.finalScore
+    val requestRating = {
+        if (explicit == null && detail.derivedRating.ratedCount > 0) showDraftChoice = true
+        else onRate(false)
+    }
+    Scaffold(
+        containerColor = Bg,
+        topBar = {
+            AnimeTopAppBar(detail.group.displayTitle, onBack)
+        }
+    ) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize().padding(horizontal = 16.dp)) {
+            if (explicit != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Panel),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.group_explicit_rating),
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                stringResource(
+                                    R.string.group_format_summary,
+                                    groupFormatLabel(detail.group.type),
+                                    detail.members.size
+                                ),
+                                color = Color.LightGray
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.group_rated_count,
+                                    detail.derivedRating.ratedCount,
+                                    detail.members.size
+                                ),
+                                color = Color.LightGray
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        ScoreValueBadge(explicit.finalScore, requestRating)
+                    }
+                }
+            } else {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Panel),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                stringResource(
+                                    if (shown == null) R.string.group_unrated else R.string.group_calculated
+                                ),
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                stringResource(
+                                    R.string.group_format_summary,
+                                    groupFormatLabel(detail.group.type),
+                                    detail.members.size
+                                ),
+                                color = Color.LightGray
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.group_rated_count,
+                                    detail.derivedRating.ratedCount,
+                                    detail.members.size
+                                ),
+                                color = if (shown == null) Color.LightGray else Mint
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            if (shown != null) {
+                                ScoreValueBadge(shown, requestRating)
+                                Spacer(Modifier.height(8.dp))
+                            }
+                            OutlinedButton(
+                                onClick = requestRating,
+                                modifier = Modifier.heightIn(min = 40.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, Cyan),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Cyan.copy(alpha = 0.12f),
+                                    contentColor = Cyan
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    stringResource(R.string.group_rate_together),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(stringResource(R.string.group_members), fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                items(detail.members, key = { it.id }) { member ->
+                    AnimeListRow(
+                        anime = member,
+                        showImages = imagesEnabled,
+                        coverRepository = coverRepository,
+                        onCoverDownload = { onCoverDownload(member) },
+                        onCoverOpen = { onCoverOpen(member) },
+                        onClick = { onMember(member) },
+                        onGroupDetails = {}
+                    )
+                }
+            }
+        }
+    }
+    if (showDraftChoice) AlertDialog(
+        onDismissRequest = { showDraftChoice = false },
+        title = { Text(stringResource(R.string.group_rate_together)) },
+        text = { Text(stringResource(R.string.group_draft_choice)) },
+        confirmButton = { TextButton(onClick = { showDraftChoice = false; onRate(true) }) { Text(stringResource(R.string.group_use_member_ratings)) } },
+        dismissButton = { TextButton(onClick = { showDraftChoice = false; onRate(false) }) { Text(stringResource(R.string.group_start_fresh)) } }
+    )
+}
+
+@Composable
+private fun AnimeFiltersDialog(
+    current: AnimeFilters,
+    options: AnimeFilterOptions,
+    onDismiss: () -> Unit,
+    onApply: (AnimeFilters) -> Unit
+) {
+    var draft by remember(current) { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.filters_title)) },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item { FilterChoice(R.string.filter_genre, draft.genre, options.genres) { draft = draft.copy(genre = it) } }
+                item {
+                    val labels = mapOf(
+                        SERIES_FORMAT_FILTER to stringResource(R.string.group_format_series),
+                        MOVIES_FORMAT_FILTER to stringResource(R.string.group_format_movies),
+                        SPECIAL_FORMAT_FILTER to stringResource(R.string.group_format_specials),
+                        MUSIC_FORMAT_FILTER to stringResource(R.string.group_format_music)
+                    )
+                    FilterChoice(
+                        R.string.filter_format, draft.format, options.formats,
+                        { labels[it] ?: formatDisplayName(it) }
+                    ) { draft = draft.copy(format = it) }
+                }
+                item { FilterChoice(R.string.filter_year, draft.year?.toString(), options.years.map(Int::toString)) { draft = draft.copy(year = it?.toIntOrNull()) } }
+                item { FilterChoice(R.string.filter_studio, draft.studio, options.studios) { draft = draft.copy(studio = it) } }
+                item {
+                    TextButton(onClick = { draft = AnimeFilters() }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.filters_clear))
+                    }
+                }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { TextButton(onClick = { onApply(draft) }) { Text(stringResource(R.string.action_apply)) } }
+    )
+}
+
+@Composable
+private fun FilterChoice(
+    @androidx.annotation.StringRes labelResource: Int,
+    selected: String?,
+    options: List<String>,
+    displayValue: (String) -> String = { it },
+    onSelected: (String?) -> Unit
+) {
+    var choosing by remember { mutableStateOf(false) }
+    OutlinedButton(onClick = { choosing = true }, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+            Text(stringResource(labelResource), color = Color.Gray, fontSize = 11.sp)
+            Text(selected?.let(displayValue) ?: stringResource(R.string.filters_all), maxLines = 1)
+        }
+        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+    }
+    if (choosing) {
+        FilterValueDialog(
+            title = stringResource(labelResource),
+            options = options,
+            displayValue = displayValue,
+            onDismiss = { choosing = false },
+            onSelected = {
+                choosing = false
+                onSelected(it)
+            }
+        )
+    }
+}
+
+@Composable
+private fun FilterValueDialog(
+    title: String,
+    options: List<String>,
+    displayValue: (String) -> String,
+    onDismiss: () -> Unit,
+    onSelected: (String?) -> Unit
+) {
+    var query by remember(title) { mutableStateOf("") }
+    val visibleOptions = remember(query, options) {
+        if (query.isBlank()) options else options.filter {
+            it.contains(query.trim(), ignoreCase = true) ||
+                displayValue(it).contains(query.trim(), ignoreCase = true)
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    placeholder = { Text(stringResource(R.string.filter_search_values)) }
+                )
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+                    item {
+                        TextButton(onClick = { onSelected(null) }, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.filters_all))
+                        }
+                    }
+                    items(visibleOptions, key = { it }) { option ->
+                        TextButton(onClick = { onSelected(option) }, modifier = Modifier.fillMaxWidth()) {
+                            Text(displayValue(option), modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
+    )
+}
+
+internal fun formatDisplayName(raw: String): String = raw.split('_').joinToString(" ") { part ->
+    when (val upper = part.uppercase(Locale.ROOT)) {
+        "TV", "OVA", "ONA" -> upper
+        else -> part.lowercase(Locale.ROOT).replaceFirstChar(Char::uppercaseChar)
+    }
+}
+
+@Composable
+private fun Anime.metadataSubtitle(): String {
+    val normalizedFormat = normalizedAnimeFormat(format)?.let { groupFormatLabel(it) }
+    return joinMetadataSubtitle(metadataSubtitleSegments(normalizedFormat, metadataYear(), studio))
+}
+
+@Composable
+private fun AnimeListRow(
     anime: Anime,
     showImages: Boolean,
     coverRepository: CoverRepository,
     rank: Int? = null,
+    rankingSortOrder: RankingSortOrder? = null,
     onCoverDownload: () -> Unit,
     onCoverOpen: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onGroupDetails: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable {
+            if (animeListRowAction(anime, memberCountClicked = false) == AnimeListRowAction.RATE) onClick()
+        },
         colors = CardDefaults.cardColors(containerColor = Panel),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (rank != null) {
                 Box(
-                    modifier = Modifier.width(36.dp).heightIn(min = 52.dp).clickable(onClick = onClick),
+                    modifier = Modifier.width(36.dp).heightIn(min = 52.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Text("${rank}.", color = Color.LightGray, fontWeight = FontWeight.Bold)
@@ -381,7 +961,7 @@ private fun AnimeRow(
             }
             if (showImages) {
                 AnimeCover(
-                    anime,
+                    anime.coverTarget(),
                     coverRepository,
                     onCoverDownload,
                     onCoverOpen,
@@ -390,19 +970,39 @@ private fun AnimeRow(
                 Spacer(Modifier.width(12.dp))
             }
             Row(
-                modifier = Modifier.weight(1f).heightIn(min = 52.dp).clickable(onClick = onClick),
+                modifier = Modifier.weight(1f).heightIn(min = 52.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    anime.title,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 2,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp
-                )
-                anime.finalScore?.let {
-                    Surface(color = scoreColor(it), shape = RoundedCornerShape(12.dp)) {
-                        Text("%.2f".format(it), modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontWeight = FontWeight.Bold, color = Color.Black)
+                Column(Modifier.weight(1f)) {
+                    Text(anime.localizedDisplayTitle(), maxLines = 2, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    val subtitle = if (anime.groupId != null) {
+                        stringResource(R.string.group_entries_count, anime.memberCount)
+                    } else {
+                        anime.metadataSubtitle()
+                    }
+                    if (subtitle.isNotEmpty()) {
+                        Text(
+                            subtitle,
+                            color = if (anime.groupId != null) Cyan else Color.LightGray,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = if (anime.groupId != null) {
+                                Modifier.clickable {
+                                    if (animeListRowAction(anime, memberCountClicked = true) == AnimeListRowAction.GROUP_DETAILS) {
+                                        onGroupDetails()
+                                    }
+                                }
+                            } else {
+                                Modifier
+                            }
+                        )
+                    }
+                }
+                val shownScore = if (rankingSortOrder == null) anime.finalScore else anime.rankingDisplayScore(rankingSortOrder)
+                if (shownScore != null || rankingSortOrder != null) {
+                    Surface(color = shownScore?.let(::scoreColor) ?: Color.Gray, shape = RoundedCornerShape(12.dp)) {
+                        Text(shownScore?.let { "%.2f".format(it) } ?: "—", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontWeight = FontWeight.Bold, color = Color.Black)
                     }
                 }
             }
@@ -480,6 +1080,7 @@ private fun DefaultCover(modifier: Modifier = Modifier, downloading: Boolean, on
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CoverViewerDialog(
     anime: Anime,
@@ -497,6 +1098,9 @@ private fun CoverViewerDialog(
     }
     var confirmDelete by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    val imageAspectRatio = bitmap?.let { image ->
+        image.width.toFloat().div(image.height.toFloat()).takeIf { it.isFinite() && it > 0f }
+    } ?: (2f / 3f)
 
     LaunchedEffect(anime.id, localPath) {
         val currentPath = localPath
@@ -512,40 +1116,46 @@ private fun CoverViewerDialog(
         }
     }
 
-    Dialog(onDismissRequest = { if (!deleting) onDismiss() }) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
-            color = Color(0xFF08090E),
-            shape = RoundedCornerShape(20.dp)
+    Dialog(
+        onDismissRequest = { if (!deleting) onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Column(Modifier.fillMaxSize().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(anime.title, modifier = Modifier.weight(1f), maxLines = 2, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = onDismiss, enabled = !deleting) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cover_close))
+            val viewerWidth = minOf(maxWidth, 560.dp)
+            val maxImageHeight = (maxHeight - 152.dp).coerceAtLeast(120.dp)
+            val imageHeight = minOf(viewerWidth / imageAspectRatio, maxImageHeight)
+            Surface(
+                modifier = Modifier.width(viewerWidth).wrapContentHeight(),
+                color = Color(0xFF08090E),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    AnimeTopAppBar(anime.localizedDisplayTitle(), onDismiss)
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(imageHeight).background(Color.Black),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        bitmap?.let { image ->
+                            Image(
+                                bitmap = image.asImageBitmap(),
+                                contentDescription = anime.title,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } ?: CircularProgressIndicator(color = Cyan)
                     }
-                }
-                Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth().background(Color.Black),
-                    contentAlignment = Alignment.Center
-                ) {
-                    bitmap?.let { image ->
-                        Image(
-                            bitmap = image.asImageBitmap(),
-                            contentDescription = anime.title,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } ?: CircularProgressIndicator(color = Cyan)
-                }
-                OutlinedButton(
-                    onClick = { confirmDelete = true },
-                    enabled = !deleting,
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.cover_delete))
+                    OutlinedButton(
+                        onClick = { confirmDelete = true },
+                        enabled = !deleting,
+                        modifier = Modifier.fillMaxWidth().padding(12.dp)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.cover_delete))
+                    }
                 }
             }
         }
@@ -632,11 +1242,7 @@ private fun RatingScreen(
     Scaffold(
         containerColor = Bg,
         topBar = {
-            TopAppBar(
-                title = { Text(anime.title, maxLines = 1) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
-            )
+            AnimeTopAppBar(anime.localizedDisplayTitle(), onBack)
         }
     ) { padding ->
         LazyColumn(
@@ -831,15 +1437,26 @@ private fun ScoreHeader(
                         )
                     }
                 }
-                Surface(
-                    modifier = Modifier.clickable(onClick = onFinalScoreClick),
-                    color = scoreColor(final ?: 0.0),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text(final?.let { "%.2f".format(it) } ?: "—", modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp), color = Color.Black, fontWeight = FontWeight.Black, fontSize = 24.sp)
-                }
+                ScoreValueBadge(final, onFinalScoreClick)
             }
         }
+    }
+}
+
+@Composable
+private fun ScoreValueBadge(score: Double?, onClick: (() -> Unit)? = null) {
+    Surface(
+        modifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick),
+        color = scoreColor(score ?: 0.0),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Text(
+            score?.let { "%.2f".format(it) } ?: "—",
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+            color = Color.Black,
+            fontWeight = FontWeight.Black,
+            fontSize = 24.sp
+        )
     }
 }
 
@@ -1059,107 +1676,124 @@ private fun DiscreteSlider(
 @Composable
 private fun Top3Podium(
     top3: List<Anime>,
+    sortOrder: RankingSortOrder,
     coverRepository: CoverRepository,
     onCoverDownload: (Anime) -> Unit,
     onCoverOpen: (Anime) -> Unit,
     onAnime: (Anime) -> Unit
 ) {
-    Column(Modifier.fillMaxWidth()) {
-        when (top3.size) {
-            1 -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                PodiumItem(top3[0], 1, true, coverRepository, { onCoverDownload(top3[0]) }, { onCoverOpen(top3[0]) }, { onAnime(top3[0]) }, Modifier.width(170.dp))
-            }
-            2 -> Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.Bottom
-            ) {
-                PodiumItem(top3[1], 2, false, coverRepository, { onCoverDownload(top3[1]) }, { onCoverOpen(top3[1]) }, { onAnime(top3[1]) }, Modifier.weight(1f))
-                PodiumItem(top3[0], 1, true, coverRepository, { onCoverDownload(top3[0]) }, { onCoverOpen(top3[0]) }, { onAnime(top3[0]) }, Modifier.weight(1.2f))
-            }
-            else -> Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.Bottom
-            ) {
-                PodiumItem(top3[1], 2, false, coverRepository, { onCoverDownload(top3[1]) }, { onCoverOpen(top3[1]) }, { onAnime(top3[1]) }, Modifier.weight(1f))
-                PodiumItem(top3[0], 1, true, coverRepository, { onCoverDownload(top3[0]) }, { onCoverOpen(top3[0]) }, { onAnime(top3[0]) }, Modifier.weight(1.2f))
-                PodiumItem(top3[2], 3, false, coverRepository, { onCoverDownload(top3[2]) }, { onCoverOpen(top3[2]) }, { onAnime(top3[2]) }, Modifier.weight(1f))
+    val displayedPlaces = when (top3.size) {
+        1 -> listOf(0 to 1)
+        2 -> listOf(1 to 2, 0 to 1)
+        else -> listOf(1 to 2, 0 to 1, 2 to 3)
+    }
+    val gap = 6.dp
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // All three artworks share this one dp-per-source-pixel scale, even when
+        // fewer than three ranked entries are currently available.
+        val globalScale = ((maxWidth - gap * 2).coerceAtLeast(0.dp).value /
+            PODIUM_TOTAL_SOURCE_WIDTH).coerceAtLeast(0f)
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            displayedPlaces.forEach { (animeIndex, position) ->
+                val anime = top3[animeIndex]
+                PodiumItem(
+                    anime = anime,
+                    position = position,
+                    artwork = podiumArtwork(position),
+                    globalScale = globalScale,
+                    sortOrder = sortOrder,
+                    coverRepository = coverRepository,
+                    onCoverDownload = { onCoverDownload(anime) },
+                    onCoverOpen = { onCoverOpen(anime) },
+                    onOpenRating = { onAnime(anime) }
+                )
             }
         }
     }
+}
+
+private data class PodiumArtwork(val drawable: Int, val sourceWidth: Float, val sourceHeight: Float)
+
+private const val PODIUM_TOTAL_SOURCE_WIDTH = 487f + 525f + 483f
+private val PODIUM_COVER_OVERLAP = 8.dp
+
+private fun podiumArtwork(position: Int): PodiumArtwork = when (position) {
+    1 -> PodiumArtwork(R.drawable.rankoffline_podium_1, 525f, 400f)
+    2 -> PodiumArtwork(R.drawable.rankoffline_podium_2, 487f, 341f)
+    else -> PodiumArtwork(R.drawable.rankoffline_podium_3, 483f, 310f)
 }
 
 @Composable
 private fun PodiumItem(
     anime: Anime,
     position: Int,
-    isLarge: Boolean,
+    artwork: PodiumArtwork,
+    globalScale: Float,
+    sortOrder: RankingSortOrder,
     coverRepository: CoverRepository,
     onCoverDownload: () -> Unit,
     onCoverOpen: () -> Unit,
-    onOpenRating: () -> Unit,
-    modifier: Modifier = Modifier
+    onOpenRating: () -> Unit
 ) {
-    val podiumRes = when (position) {
-        1 -> R.drawable.podium_first
-        2 -> R.drawable.podium_second
-        else -> R.drawable.podium_third
-    }
-    val podiumHeight = if (isLarge) 170.dp * 0.66f else 130.dp * 0.66f
-    val coverSize = if (isLarge) 120.dp else 96.dp
-    val podiumDrop = 56.dp
-    val scoreColorValue = scoreColor(anime.finalScore ?: 0.0)
+    val isFirst = position == 1
+    val podiumWidth = (artwork.sourceWidth * globalScale).dp
+    val podiumHeight = (artwork.sourceHeight * globalScale).dp
+    val coverSize = minOf(if (isFirst) 120.dp else 96.dp, podiumWidth)
+    val shownScore = anime.rankingDisplayScore(sortOrder)
+    val scoreColorValue = shownScore?.let(::scoreColor) ?: Color.Gray
 
-    // Reserve the podium's downward extension inside the item to keep later rows clear.
-    val totalHeight = podiumHeight + (coverSize / 2) + 24.dp + 18.dp + podiumDrop
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(totalHeight)
+    Column(
+        modifier = Modifier.width(podiumWidth),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(
-            painter = painterResource(id = podiumRes),
-            contentDescription = null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .height(podiumHeight),
-            contentScale = ContentScale.FillBounds
-        )
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(top = 8.dp).zIndex(1f)
+        Surface(
+            color = scoreColorValue,
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.clickable { dispatchTop3ScoreTap(onOpenRating) }
         ) {
-            Surface(
-                color = scoreColorValue,
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.clickable { dispatchTop3ScoreTap(onOpenRating) }
-            ) {
-                Text(
-                    "%.2f".format(anime.finalScore ?: 0.0),
-                    Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = if (isLarge) 18.sp else 16.sp
-                )
-            }
-            Spacer(Modifier.height(10.dp))
+            Text(
+                shownScore?.let { "%.2f".format(it) } ?: "—",
+                Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                fontSize = if (isFirst) 18.sp else 16.sp
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .width(podiumWidth)
+                .height(coverSize + podiumHeight - PODIUM_COVER_OVERLAP)
+        ) {
             AnimeCover(
-                anime,
+                anime.coverTarget(),
                 coverRepository,
                 onCoverDownload,
                 onCoverOpen,
-                Modifier.size(coverSize).clip(RoundedCornerShape(12.dp)).zIndex(1f)
+                Modifier
+                    .size(coverSize)
+                    .align(Alignment.TopCenter)
+                    .clip(RoundedCornerShape(12.dp))
+                    .zIndex(1f)
+            )
+            Image(
+                painter = painterResource(id = artwork.drawable),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(podiumWidth, podiumHeight)
+                    .align(Alignment.BottomCenter),
+                contentScale = ContentScale.Fit
             )
         }
     }
 }
 
 @Composable
-private fun SettingsScreen(settings: AppSettingsState, viewModel: RankOfflineViewModel) {
+private fun SettingsScreen(settings: AppSettingsState, catalogCount: Int, viewModel: RankOfflineViewModel) {
     var destination by remember { mutableStateOf(SettingsDestination.HOME) }
     val preloadProgress by viewModel.coverPreloadProgress.collectAsState()
     val downloadedCoverCount by viewModel.downloadedCoverCount.collectAsState()
@@ -1230,7 +1864,7 @@ private fun SettingsScreen(settings: AppSettingsState, viewModel: RankOfflineVie
             onIconSelected = viewModel::updateAppIcon,
             onBack = goBack
         )
-        SettingsDestination.ABOUT -> LicenceAboutScreen(onBack = goBack)
+        SettingsDestination.ABOUT -> LicenceAboutScreen(catalogCount = catalogCount, onBack = goBack)
     }
 }
 
@@ -1381,6 +2015,7 @@ private fun SettingsSubscreen(title: String, onBack: () -> Unit, content: @Compo
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Bg,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text(title) },
@@ -1389,6 +2024,7 @@ private fun SettingsSubscreen(title: String, onBack: () -> Unit, content: @Compo
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
             )
         }
@@ -1964,10 +2600,14 @@ private fun ConfirmationDialog(title: String, text: String, onDismiss: () -> Uni
 }
 
 @Composable
-private fun LicenceAboutScreen(onBack: () -> Unit) {
+private fun LicenceAboutScreen(catalogCount: Int, onBack: () -> Unit) {
     val context = LocalContext.current
+    val currentLocale = Locale.getDefault()
     val versionName = remember(context.packageName) {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
+    }
+    val formattedCatalogCount = remember(catalogCount, currentLocale) {
+        NumberFormat.getIntegerInstance(currentLocale).format(catalogCount)
     }
     SettingsSubscreen(stringResource(R.string.settings_about_title), onBack) {
         LazyColumn(
@@ -1985,6 +2625,11 @@ private fun LicenceAboutScreen(onBack: () -> Unit) {
                             modifier = Modifier.padding(top = 8.dp)
                         )
                         Text(
+                            stringResource(R.string.catalog_local_count, formattedCatalogCount),
+                            color = Color.Gray,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                        Text(
                             stringResource(R.string.about_summary),
                             color = Color.LightGray,
                             fontSize = 13.sp,
@@ -1998,6 +2643,12 @@ private fun LicenceAboutScreen(onBack: () -> Unit) {
                     Column(Modifier.padding(16.dp)) {
                         Text(stringResource(R.string.about_licences), fontWeight = FontWeight.Bold, color = Cyan)
                         Text(stringResource(R.string.about_rankoffline_licence), color = Color.LightGray, modifier = Modifier.padding(top = 8.dp))
+                        Text(
+                            stringResource(R.string.about_rankoffline_trademarks),
+                            color = Color.LightGray,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
                         Text(
                             stringResource(R.string.about_catalog_licence),
                             color = Color.LightGray,
@@ -2201,17 +2852,32 @@ private fun CategoryColorPickerDialog(
 }
 
 @Composable
-private fun CatalogSortOrder.shortLabel(): String = when (this) {
-    CatalogSortOrder.POPULARITY -> stringResource(R.string.sort_most_popular)
-    CatalogSortOrder.TITLE_ASC -> stringResource(R.string.sort_title_ascending)
-    CatalogSortOrder.TITLE_DESC -> stringResource(R.string.sort_title_descending)
+private fun CatalogSortOrder.criterionLabel(): String = when (this) {
+    CatalogSortOrder.POPULARITY,
+    CatalogSortOrder.POPULARITY_REVERSE -> stringResource(R.string.sort_popularity)
+    CatalogSortOrder.TITLE_ASC,
+    CatalogSortOrder.TITLE_DESC -> stringResource(R.string.sort_title_ascending)
 }
 
 @Composable
-private fun CatalogSortOrder.menuLabel(): String = when (this) {
-    CatalogSortOrder.POPULARITY -> stringResource(R.string.sort_most_popular)
-    CatalogSortOrder.TITLE_ASC -> stringResource(R.string.sort_title_ascending)
-    CatalogSortOrder.TITLE_DESC -> stringResource(R.string.sort_title_descending)
+private fun RankingSortOrder.localizedLabel(): String = stringResource(
+    when (this) {
+        RankingSortOrder.FINAL_SCORE -> R.string.sort_final_score
+        RankingSortOrder.QUALITY_SCORE -> R.string.sort_quality_score
+        RankingSortOrder.PERSONAL_TASTE -> R.string.sort_personal_taste
+        RankingSortOrder.CATEGORY_SCORE -> R.string.sort_category_score
+    }
+)
+
+@Composable
+private fun rankingSortLabel(
+    sortOrder: RankingSortOrder,
+    categoryId: String?,
+    categories: List<RatingCategory>
+): String {
+    if (sortOrder != RankingSortOrder.CATEGORY_SCORE) return sortOrder.localizedLabel()
+    val category = categories.firstOrNull { it.id == categoryId }
+    return category?.let { localizedCategoryName(it) } ?: stringResource(R.string.sort_category_score)
 }
 
 @Composable

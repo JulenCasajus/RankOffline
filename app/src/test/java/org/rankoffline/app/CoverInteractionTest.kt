@@ -29,6 +29,21 @@ class CoverInteractionTest {
     }
 
     @Test
+    fun groupCoverUsesItsRepresentativeAnime() {
+        val group = Anime(
+            id = "group:mal:1:SERIES",
+            title = "Series group",
+            groupId = "group:mal:1:SERIES",
+            rootAnimeId = "mal:10"
+        )
+
+        val cover = group.coverTarget()
+
+        assertEquals("mal:10", cover.id)
+        assertEquals(null, cover.groupId)
+    }
+
+    @Test
     fun temporaryNetworkErrorsDoNotBecomeNotFound() {
         assertEquals(
             CoverResolutionState.UNKNOWN,

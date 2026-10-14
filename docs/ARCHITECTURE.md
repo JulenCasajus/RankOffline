@@ -6,18 +6,27 @@ RankOffline is a single-module, local-first Android app. Jetpack Compose renders
 
 ### Room
 
-Room owns `anime_rank.db`, currently schema **8**.
+Room owns `anime_rank.db`, currently schema **10**.
 
 Main tables:
 
-- `anime` — bundled catalog data, popularity metadata, and local cover metadata.
+- `anime` — bundled catalog data, AniList metadata, popularity, and local cover metadata.
+- `anime_genre` / `anime_studio` — indexed metadata used by Room filters.
 - `rating` — one row per rated anime, including the canonical `final_score`, shared notes/status, and nullable `profile_id` for the last elaborate profile used.
 - `rating_score` — detailed category values keyed by anime ID and stable category ID.
+- `anime_group` / `anime_group_member` — precomputed format-normalized groups derived from conservative AniList relations.
+- `group_rating` / `group_rating_score` — explicit group ratings, kept independent from member ratings.
 - `catalog_metadata` — bundled catalog version/integrity metadata.
 
-`rating.final_score` is the sole score used by ranking. Simple and elaborate saves both write this field.
+`rating.final_score` is the sole saved score for an individual anime. Simple
+and elaborate saves both write this field. Group rows use the independent
+`group_rating.final_score` when explicitly rated, otherwise a non-persisted
+derived average of their rated members.
 
-Migrations are explicit and non-destructive. Migration **7 → 8** adds only nullable `profile_id`, preserving existing ratings, notes, and detailed category scores. No destructive fallback is configured.
+Migrations are explicit and non-destructive. Migration **7 → 8** adds the
+nullable rating profile reference; **8 → 9** adds searchable catalog metadata;
+and **9 → 10** adds dates, precomputed groups, and independent group ratings.
+No destructive fallback is configured.
 
 ### DataStore
 
@@ -28,7 +37,8 @@ The `app_preferences` DataStore owns:
 - editable rating categories;
 - rating profiles and their category weights;
 - launcher icon selection;
-- app language.
+- app language;
+- the optional Merge seasons view.
 
 Category/profile relationships use stable category IDs, never localized or user-editable names.
 
@@ -76,11 +86,28 @@ Important invariants:
 
 ## Catalog
 
-The versioned `anime_catalog.json` is imported transactionally only when `anime_catalog.version` changes.
+The versioned `anime_catalog.json` is imported transactionally only when
+`anime_catalog.version` changes. Metadata junction rows and group membership
+are reconciled inside the same transaction.
 
 The bundled catalog currently contains 40,742 unique entries and a complete local Top 5000 popularity snapshot. Catalog upserts preserve user ratings, notes, settings, profile/category configuration, and downloaded cover metadata.
 
-Catalog generation is an explicit manual operation through `tools/fetch_catalog.py`; it is not part of normal builds or CI.
+Catalog generation is an explicit manual operation through
+`tools/fetch_catalog.py`; it is not part of normal builds or CI. AnimeAPI
+remains the master catalog. AniList enrichment queries already-known IDs in
+batches, and group identity is derived offline from explicit relations rather
+than title matching.
+
+## Optional grouping
+
+Merge seasons is off by default. When enabled, persisted groups replace their
+members in search and ranking only when at least two entries share a
+conservative AniList family and normalized format bucket (Series, Movies,
+Special, or Music).
+
+An explicit group rating is independent from all member ratings. Without an
+explicit group rating, the UI derives a non-persisted average from rated
+members. Changing either side never silently rewrites the other.
 
 ## Covers, popularity, and network
 

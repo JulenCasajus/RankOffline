@@ -126,6 +126,7 @@ data class AppSettingsState(
     val ratingProfiles: RatingProfilesConfig = DefaultSettings.defaultProfiles(),
     val appIcon: AppIcon = AppIcon.DARK,
     val language: SupportedLanguage = SupportedLanguage.DEFAULT,
+    val mergeSeasonsEnabled: Boolean = false,
     val settingsLoaded: Boolean = false
 )
 
@@ -144,6 +145,7 @@ class SettingsRepository internal constructor(
     private val ratingProfilesKey = stringPreferencesKey("rating_profiles")
     private val appIconKey = stringPreferencesKey("app_icon")
     private val languageKey = stringPreferencesKey("language_tag")
+    private val mergeSeasonsEnabledKey = booleanPreferencesKey("merge_seasons_enabled")
 
     private val _state = MutableStateFlow(AppSettingsState(settingsLoaded = false))
     val state: StateFlow<AppSettingsState> = _state.asStateFlow()
@@ -188,6 +190,7 @@ class SettingsRepository internal constructor(
             ratingProfiles = ratingProfiles,
             appIcon = appIcon,
             language = language,
+            mergeSeasonsEnabled = resolveMergeSeasonsEnabled(prefs[mergeSeasonsEnabledKey]),
             settingsLoaded = true
         )
         localeController.apply(language)
@@ -242,6 +245,11 @@ class SettingsRepository internal constructor(
         context.dataStore.edit { prefs -> prefs[languageKey] = value.languageTag }
         _state.value = _state.value.copy(language = value)
         localeController.apply(value)
+    }
+
+    suspend fun updateMergeSeasonsEnabled(value: Boolean) = updateMutex.withLock {
+        context.dataStore.edit { prefs -> prefs[mergeSeasonsEnabledKey] = value }
+        _state.value = _state.value.copy(mergeSeasonsEnabled = value)
     }
 
     suspend fun resetRatingCategories() = updateMutex.withLock {
@@ -319,6 +327,8 @@ private fun Map<String, Double>.ensureAtLeastOneWeight(): Map<String, Double> =
 internal fun resolveShowImages(persisted: Boolean?): Boolean = persisted ?: false
 
 internal fun resolveElaborateRatingEnabled(persisted: Boolean?): Boolean = persisted ?: false
+
+internal fun resolveMergeSeasonsEnabled(persisted: Boolean?): Boolean = persisted ?: false
 
 internal fun resolveRatingConfig(persisted: RatingSystemConfig?): RatingSystemConfig =
     persisted ?: DefaultSettings.defaultRatingConfig

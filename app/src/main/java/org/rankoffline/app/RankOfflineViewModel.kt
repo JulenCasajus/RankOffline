@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -22,6 +23,14 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 data class RatingEditorState(val anime: Anime, val draft: RatingDraft? = null)
+private data class CatalogRequest(val query: String, val sort: CatalogSortOrder, val filters: AnimeFilters, val merge: Boolean)
+private data class RankingRequest(
+    val filters: AnimeFilters,
+    val sort: RankingSortOrder,
+    val descending: Boolean,
+    val categoryId: String?,
+    val merge: Boolean
+)
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class RankOfflineViewModel(application: Application) : AndroidViewModel(application) {
@@ -43,17 +52,52 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     val searchQuery: StateFlow<String> = query.asStateFlow()
     private val _catalogSortOrder = MutableStateFlow(CatalogSortOrder.POPULARITY)
     val catalogSortOrder: StateFlow<CatalogSortOrder> = _catalogSortOrder.asStateFlow()
+    private val _catalogFilters = MutableStateFlow(AnimeFilters())
+    val catalogFilters: StateFlow<AnimeFilters> = _catalogFilters.asStateFlow()
+    private val _rankingFilters = MutableStateFlow(AnimeFilters())
+    val rankingFilters: StateFlow<AnimeFilters> = _rankingFilters.asStateFlow()
+    private val _rankingSortOrder = MutableStateFlow(RankingSortOrder.FINAL_SCORE)
+    val rankingSortOrder: StateFlow<RankingSortOrder> = _rankingSortOrder.asStateFlow()
+    private val _rankingSortDescending = MutableStateFlow(true)
+    val rankingSortDescending: StateFlow<Boolean> = _rankingSortDescending.asStateFlow()
+    private val _rankingCategoryId = MutableStateFlow<String?>(null)
+    val rankingCategoryId: StateFlow<String?> = _rankingCategoryId.asStateFlow()
+    private val _filterOptions = MutableStateFlow(AnimeFilterOptions())
+    val filterOptions: StateFlow<AnimeFilterOptions> = _filterOptions.asStateFlow()
     private val dataVersion = MutableStateFlow(0L)
+    private val _groupDetail = MutableStateFlow<GroupDetail?>(null)
+    val groupDetail: StateFlow<GroupDetail?> = _groupDetail.asStateFlow()
 
     val searchResults: StateFlow<List<Anime>> = combine(
         query.debounce(300),
         dataVersion,
-        _catalogSortOrder
-    ) { currentQuery, _, sortOrder -> currentQuery to sortOrder }
-        .mapLatest { (currentQuery, sortOrder) -> repository.search(currentQuery, sortOrder) }
+        _catalogSortOrder,
+        _catalogFilters,
+        settings
+    ) { currentQuery, _, sortOrder, filters, currentSettings ->
+        CatalogRequest(currentQuery, sortOrder, filters, currentSettings.mergeSeasonsEnabled)
+    }
+        .mapLatest { request -> repository.search(request.query, request.sort, request.filters, mergeSeasonsEnabled = request.merge) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val ranking: StateFlow<List<Anime>> = repository.observeRanking()
+    val ranking: StateFlow<List<Anime>> = combine(
+        _rankingFilters,
+        _rankingSortOrder,
+        _rankingSortDescending,
+        _rankingCategoryId,
+        settings
+    ) { filters, sortOrder, descending, categoryId, currentSettings ->
+        RankingRequest(filters, sortOrder, descending, categoryId, currentSettings.mergeSeasonsEnabled)
+    }
+        .flatMapLatest { request ->
+            repository.observeRanking(
+                request.filters,
+                request.sort,
+                request.categoryId,
+                descending = request.descending,
+                mergeSeasonsEnabled = request.merge
+            )
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val downloadedCoverCount: StateFlow<Int> = repository.observeDownloadedCoverCount()
@@ -83,6 +127,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                 repository.updateCatalogIfNeeded()
                 coverRepository.initialize()
                 _catalogCount.value = repository.animeCount()
+                _filterOptions.value = repository.filterOptions()
                 dataVersion.value++
             } catch (exception: Exception) {
                 _errorMessage.value = UserMessage.Text(R.string.error_initialize_local_data)
@@ -100,6 +145,36 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         _catalogSortOrder.value = value
     }
 
+    fun setCatalogSortCriterion(value: CatalogSortOrder) {
+        _catalogSortOrder.value = value.withReversed(_catalogSortOrder.value.isReversed)
+    }
+
+    fun toggleCatalogSortDirection() {
+        _catalogSortOrder.value = _catalogSortOrder.value.inverted()
+    }
+
+    fun setCatalogFilters(value: AnimeFilters) {
+        _catalogFilters.value = value
+    }
+
+    fun setRankingFilters(value: AnimeFilters) {
+        _rankingFilters.value = value
+    }
+
+    fun setRankingSortOrder(value: RankingSortOrder) {
+        _rankingSortOrder.value = value
+        if (value != RankingSortOrder.CATEGORY_SCORE) _rankingCategoryId.value = null
+    }
+
+    fun toggleRankingSortDirection() {
+        _rankingSortDescending.value = !_rankingSortDescending.value
+    }
+
+    fun setRankingCategory(categoryId: String) {
+        _rankingCategoryId.value = categoryId
+        _rankingSortOrder.value = RankingSortOrder.CATEGORY_SCORE
+    }
+
     fun openRating(anime: Anime) {
         _ratingEditor.value = RatingEditorState(anime)
         viewModelScope.launch {
@@ -107,6 +182,45 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
             if (_ratingEditor.value?.anime?.id == anime.id) {
                 _ratingEditor.value = RatingEditorState(anime, draft)
             }
+        }
+    }
+
+    fun openAnime(anime: Anime) {
+        if (anime.groupId == null) {
+            openRating(anime)
+        } else {
+            viewModelScope.launch {
+                repository.groupDetail(anime.groupId)?.let { openGroupRating(it, fromMembers = false) }
+            }
+        }
+    }
+
+    fun openGroupDetails(anime: Anime) {
+        val groupId = anime.groupId ?: return
+        viewModelScope.launch { _groupDetail.value = repository.groupDetail(groupId) }
+    }
+
+    fun closeGroup() { _groupDetail.value = null }
+
+    fun rateGroup(fromMembers: Boolean) {
+        val detail = _groupDetail.value ?: return
+        openGroupRating(detail, fromMembers)
+    }
+
+    private fun openGroupRating(detail: GroupDetail, fromMembers: Boolean) {
+        val root = detail.members.firstOrNull { it.id == detail.group.rootAnimeId } ?: return
+        val target = root.copy(
+            id = detail.group.id, title = detail.group.displayTitle,
+            groupId = detail.group.id, groupType = detail.group.type,
+            rootAnimeId = detail.group.rootAnimeId,
+            finalScore = detail.explicitRating?.finalScore,
+            baseScore = detail.explicitRating?.qualityScore,
+            additiveScore = detail.explicitRating?.additiveScore
+        )
+        _ratingEditor.value = RatingEditorState(target)
+        viewModelScope.launch {
+            val draft = repository.loadGroupRating(detail.group.id, fromMembers)
+            if (_ratingEditor.value?.anime?.id == target.id) _ratingEditor.value = RatingEditorState(target, draft)
         }
     }
 
@@ -122,36 +236,42 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     ) {
         viewModelScope.launch {
             val profile = settings.value.ratingProfiles.resolveProfile(profileId)
-            repository.saveElaborateRating(
-                animeId,
-                draft,
-                settings.value.ratingConfig.withProfile(profile),
-                finalScoreOverride,
-                profile.id
-            )
+            if (animeId.startsWith("group:"))
+                repository.saveElaborateGroupRating(animeId, draft, settings.value.ratingConfig.withProfile(profile), finalScoreOverride, profile.id)
+            else repository.saveElaborateRating(animeId, draft, settings.value.ratingConfig.withProfile(profile), finalScoreOverride, profile.id)
             dataVersion.value++
             _ratingEditor.value = null
+            _groupDetail.value?.let { _groupDetail.value = repository.groupDetail(it.group.id) }
         }
     }
 
     fun saveSimpleRating(animeId: String, draft: RatingDraft, qualityScore: Double, finalScore: Double) {
         viewModelScope.launch {
-            repository.saveSimpleRating(animeId, draft, qualityScore, finalScore)
+            if (animeId.startsWith("group:"))
+                repository.saveSimpleGroupRating(animeId, draft, qualityScore, finalScore)
+            else repository.saveSimpleRating(animeId, draft, qualityScore, finalScore)
             dataVersion.value++
             _ratingEditor.value = null
+            _groupDetail.value?.let { _groupDetail.value = repository.groupDetail(it.group.id) }
         }
     }
 
     fun deleteRating(animeId: String) {
         viewModelScope.launch {
-            repository.deleteRating(animeId)
+            if (animeId.startsWith("group:")) repository.deleteGroupRating(animeId)
+            else repository.deleteRating(animeId)
             dataVersion.value++
             _ratingEditor.value = null
+            _groupDetail.value?.let { _groupDetail.value = repository.groupDetail(it.group.id) }
         }
     }
 
     fun updateShowImages(value: Boolean) {
         viewModelScope.launch { settingsRepository.updateShowImages(value) }
+    }
+
+    fun updateMergeSeasonsEnabled(value: Boolean) {
+        viewModelScope.launch { settingsRepository.updateMergeSeasonsEnabled(value) }
     }
 
     fun updateStickyScore(value: Boolean) {

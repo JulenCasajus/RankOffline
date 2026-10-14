@@ -30,6 +30,178 @@ class AnimeDatabaseMigrationTest {
     )
 
     @Test
+    fun migrate9To10PreservesIndividualRatingsAndAddsIndependentGroups() {
+        val name = "group-migration-test"
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        context.deleteDatabase(name)
+        helper.createDatabase(name, 9).use { old ->
+            old.execSQL("INSERT INTO anime(id,title,local_cover_path,cover_resolution_state) VALUES('mal:10','Season 1','/private/cover.jpg','AVAILABLE')")
+            old.execSQL("INSERT INTO anime(id,title,cover_resolution_state) VALUES('mal:11','Season 2','UNKNOWN')")
+            old.execSQL("INSERT INTO rating(anime_id,additive_score,quality_score,final_score,notes,status,updated_at,profile_id) VALUES('mal:10',0.4,8.0,8.4,'sacred note','Completed',123,'narrative')")
+            old.execSQL("INSERT INTO rating_score(anime_id,category_id,score,applicable) VALUES('mal:10','writing',9.0,1)")
+        }
+        helper.runMigrationsAndValidate(name, 10, true, AnimeDatabase.MIGRATION_9_10).use { db ->
+            db.query("SELECT additive_score,quality_score,final_score,notes,status,updated_at,profile_id FROM rating WHERE anime_id='mal:10'").use { c ->
+                assertTrue(c.moveToFirst())
+                assertEquals(0.4, c.getDouble(0), 0.0)
+                assertEquals(8.0, c.getDouble(1), 0.0)
+                assertEquals(8.4, c.getDouble(2), 0.0)
+                assertEquals("sacred note", c.getString(3))
+                assertEquals("Completed", c.getString(4))
+                assertEquals(123L, c.getLong(5))
+                assertEquals("narrative", c.getString(6))
+            }
+            db.query("SELECT score FROM rating_score WHERE anime_id='mal:10' AND category_id='writing'").use { c ->
+                assertTrue(c.moveToFirst())
+                assertEquals(9.0, c.getDouble(0), 0.0)
+            }
+            db.query("SELECT local_cover_path FROM anime WHERE id='mal:10'").use { c ->
+                assertTrue(c.moveToFirst())
+                assertEquals("/private/cover.jpg", c.getString(0))
+            }
+            db.execSQL("INSERT INTO anime_group VALUES('group:mal:10:SERIES','SERIES','mal:10','Season 1')")
+            db.execSQL("INSERT INTO anime_group_member VALUES('group:mal:10:SERIES','mal:10',0)")
+            db.execSQL("INSERT INTO anime_group_member VALUES('group:mal:10:SERIES','mal:11',1)")
+            db.execSQL("INSERT INTO group_rating VALUES('group:mal:10:SERIES',0.3,9.0,9.3,'group note','Completed',456,'general')")
+            db.execSQL("DELETE FROM rating WHERE anime_id='mal:10'")
+            db.query("SELECT final_score,notes FROM group_rating WHERE group_id='group:mal:10:SERIES'").use { c ->
+                assertTrue(c.moveToFirst())
+                assertEquals(9.3, c.getDouble(0), 0.0)
+                assertEquals("group note", c.getString(1))
+            }
+        }
+    }
+
+    @Test
+    fun groupedRankingUsesDerivedUntilExplicitAndNeverRewritesChildren() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val database = Room.inMemoryDatabaseBuilder(context, AnimeDatabase::class.java).build()
+        try {
+            val db = database.openHelper.writableDatabase
+            listOf("a", "b", "c", "d").forEach { id ->
+                db.execSQL("INSERT INTO anime(id,title,cover_resolution_state) VALUES(?,?,'UNKNOWN')", arrayOf(id, id))
+            }
+            db.execSQL("INSERT INTO anime_group VALUES('group:a:SERIES','SERIES','a','a')")
+            db.execSQL("INSERT INTO anime_group_member VALUES('group:a:SERIES','a',0)")
+            db.execSQL("INSERT INTO anime_group_member VALUES('group:a:SERIES','b',1)")
+            database.animeDao().upsertRating(RatingEntity("a", 0.0, 8.6, 8.6, "a note", "Completed", 1))
+            database.animeDao().upsertRating(RatingEntity("b", 0.0, 5.7, 5.7, "b note", "Completed", 1))
+            database.animeDao().upsertRating(RatingEntity("c", 0.0, 0.0, 0.0, "zero valid", "Completed", 1))
+            fun ranking() = database.animeDao().observeGroupedRanking(
+                GroupedQueries.ranking(RankingSortOrder.FINAL_SCORE, null, AnimeFilters(), 20)
+            )
+            val derived = ranking().first()
+            assertEquals(listOf("group:a:SERIES", "c"), derived.map { it.id })
+            assertEquals(7.15, derived[0].finalScore!!, 0.000001)
+            assertTrue(derived[0].derived)
+            val ascending = database.animeDao().observeGroupedRanking(
+                GroupedQueries.ranking(
+                    RankingSortOrder.FINAL_SCORE,
+                    null,
+                    AnimeFilters(),
+                    20,
+                    descending = false
+                )
+            ).first()
+            assertEquals(listOf("c", "group:a:SERIES"), ascending.map { it.id })
+            database.animeDao().deleteRating("b")
+            val oneRatedMember = ranking().first().first { it.id == "group:a:SERIES" }
+            assertEquals(8.6, oneRatedMember.finalScore!!, 0.0)
+            assertEquals(1, oneRatedMember.ratedCount)
+            database.animeDao().upsertRating(RatingEntity("b", 0.0, 5.7, 5.7, "b note", "Completed", 1))
+            database.animeDao().upsertGroupRating(
+                GroupRatingEntity("group:a:SERIES", 0.0, null, null, "", "Completed", 1)
+            )
+            val nullExplicitFallsBack = ranking().first().first { it.id == "group:a:SERIES" }
+            assertEquals(7.15, nullExplicitFallsBack.finalScore!!, 0.000001)
+            assertTrue(nullExplicitFallsBack.derived)
+            database.animeDao().upsertGroupRating(GroupRatingEntity("group:a:SERIES", 0.0, 9.0, 9.0, "global", "Completed", 2))
+            database.animeDao().upsertRating(RatingEntity("b", 0.0, 7.0, 7.0, "changed", "Completed", 3))
+            assertEquals(9.0, ranking().first()[0].finalScore!!, 0.0)
+            assertEquals("changed", database.animeDao().rating("b")?.notes)
+            database.animeDao().deleteGroupRating("group:a:SERIES")
+            assertEquals(7.8, ranking().first()[0].finalScore!!, 0.000001)
+            assertEquals("a note", database.animeDao().rating("a")?.notes)
+            val catalog = database.animeDao().groupedSearch(
+                GroupedQueries.catalog("", CatalogSortOrder.TITLE_ASC, AnimeFilters(), 20)
+            )
+            assertEquals(setOf("group:a:SERIES", "c", "d"), catalog.map { it.id }.toSet())
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun individualRankingShowsExplicitGroupOnlyWhenNoneOfItsMembersAreRated() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val database = Room.inMemoryDatabaseBuilder(context, AnimeDatabase::class.java).build()
+        try {
+            val db = database.openHelper.writableDatabase
+            db.execSQL("INSERT INTO anime(id,title,format,cover_resolution_state) VALUES('a','Season 1','TV','UNKNOWN')")
+            db.execSQL("INSERT INTO anime(id,title,format,cover_resolution_state) VALUES('b','Season 2','TV','UNKNOWN')")
+            db.execSQL("INSERT INTO anime_group VALUES('group:a:SERIES','SERIES','a','Series')")
+            db.execSQL("INSERT INTO anime_group_member VALUES('group:a:SERIES','a',0)")
+            db.execSQL("INSERT INTO anime_group_member VALUES('group:a:SERIES','b',1)")
+            database.animeDao().upsertGroupRating(
+                GroupRatingEntity("group:a:SERIES", 0.0, 8.5, 8.5, "group only", "Completed", 1)
+            )
+            val repository = AnimeRepository(context, database)
+
+            val groupOnly = repository.observeRanking(mergeSeasonsEnabled = false).first()
+            assertEquals(listOf("group:a:SERIES"), groupOnly.map { it.id })
+            assertEquals(2, groupOnly.single().memberCount)
+
+            database.animeDao().upsertRating(
+                RatingEntity("a", 0.0, 7.0, 7.0, "individual", "Completed", 2)
+            )
+            val memberInstead = repository.observeRanking(mergeSeasonsEnabled = false).first()
+            assertEquals(listOf("a"), memberInstead.map { it.id })
+
+            database.animeDao().deleteRating("a")
+            assertEquals(
+                listOf("group:a:SERIES"),
+                repository.observeRanking(mergeSeasonsEnabled = false).first().map { it.id }
+            )
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun groupedFiltersUseIndependentAnyMemberConditionsAndNormalizedFormat() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val database = Room.inMemoryDatabaseBuilder(context, AnimeDatabase::class.java).build()
+        try {
+            val db = database.openHelper.writableDatabase
+            db.execSQL("INSERT INTO anime(id,title,format,season_year,cover_resolution_state) VALUES('s1','Titan', 'TV',2013,'UNKNOWN')")
+            db.execSQL("INSERT INTO anime(id,title,format,season_year,cover_resolution_state) VALUES('s2','Titan Final Season','ONA',2020,'UNKNOWN')")
+            db.execSQL("INSERT INTO anime(id,title,format,season_year,cover_resolution_state) VALUES('m1','Titan Movie 1','MOVIE',2014,'UNKNOWN')")
+            db.execSQL("INSERT INTO anime(id,title,format,season_year,cover_resolution_state) VALUES('m2','Titan Movie 2','MOVIE',2015,'UNKNOWN')")
+            db.execSQL("INSERT INTO anime(id,title,format,season_year,cover_resolution_state) VALUES('o1','Titan OVA','OVA',2016,'UNKNOWN')")
+            db.execSQL("INSERT INTO anime(id,title,format,season_year,cover_resolution_state) VALUES('sp1','Titan Special','SPECIAL',2017,'UNKNOWN')")
+            db.execSQL("INSERT INTO anime_genre VALUES('s1','Action'),('m1','Action')")
+            db.execSQL("INSERT INTO anime_studio VALUES('s2','MAPPA'),('m2','MAPPA')")
+            db.execSQL("INSERT INTO anime_group VALUES('group:s1:SERIES','SERIES','s1','Titan')")
+            db.execSQL("INSERT INTO anime_group VALUES('group:s1:MOVIES','MOVIES','m1','Titan Movie 1')")
+            db.execSQL("INSERT INTO anime_group VALUES('group:s1:SPECIAL','SPECIAL','o1','Titan OVA')")
+            db.execSQL("INSERT INTO anime_group_member VALUES('group:s1:SERIES','s1',0),('group:s1:SERIES','s2',1)")
+            db.execSQL("INSERT INTO anime_group_member VALUES('group:s1:MOVIES','m1',0),('group:s1:MOVIES','m2',1)")
+            db.execSQL("INSERT INTO anime_group_member VALUES('group:s1:SPECIAL','o1',0),('group:s1:SPECIAL','sp1',1)")
+
+            suspend fun search(text: String = "", filters: AnimeFilters = AnimeFilters()) = database.animeDao().groupedSearch(
+                GroupedQueries.catalog(text, CatalogSortOrder.TITLE_ASC, filters, 20)
+            ).map { it.id }
+
+            assertEquals(listOf("group:s1:SERIES"), search(filters = AnimeFilters(genre = "Action", year = 2013, studio = "MAPPA", format = "SERIES")))
+            assertEquals(listOf("group:s1:MOVIES"), search(filters = AnimeFilters(format = "MOVIES")))
+            assertEquals(listOf("group:s1:SERIES"), search("Final Season"))
+            assertEquals(listOf("group:s1:SPECIAL"), search(filters = AnimeFilters(format = "SPECIAL")))
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
     fun everySupportedLocaleResolvesRepresentativeResources() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         SupportedLanguage.entries.forEach { language ->
@@ -409,6 +581,10 @@ class AnimeDatabaseMigrationTest {
                 listOf("Gamma", "beta", "delta", "Alpha"),
                 database.animeDao().search("", 10, CatalogSortOrder.POPULARITY.name).map { it.title }
             )
+            assertEquals(
+                listOf("delta", "beta", "Gamma", "Alpha"),
+                database.animeDao().search("", 10, CatalogSortOrder.POPULARITY_REVERSE.name).map { it.title }
+            )
             assertEquals(2, database.animeDao().observeDownloadedCoverCount().first())
 
             database.animeDao().clearLocalCoverPath("a")
@@ -605,6 +781,149 @@ class AnimeDatabaseMigrationTest {
     }
 
     @Test
+    fun migrate8To9AddsMetadataWithoutLosingUserData() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        context.deleteDatabase(METADATA_MIGRATION_DB)
+        val database = helper.createDatabase(METADATA_MIGRATION_DB, 8)
+        database.execSQL(
+            "INSERT INTO anime(id,title,local_cover_path,cover_resolution_state) " +
+                "VALUES('mal:9','Migration Anime','/private/cover.jpg','AVAILABLE')"
+        )
+        database.execSQL(
+            "INSERT INTO rating(anime_id,additive_score,quality_score,final_score,notes,status,updated_at,profile_id) " +
+                "VALUES('mal:9',0.5,8.0,8.5,'keep metadata migration','Completed',99,'narrative')"
+        )
+        database.execSQL(
+            "INSERT INTO rating_score(anime_id,category_id,score,applicable) " +
+                "VALUES('mal:9','writing',9.0,1)"
+        )
+        database.close()
+
+        helper.runMigrationsAndValidate(
+            METADATA_MIGRATION_DB,
+            9,
+            true,
+            AnimeDatabase.MIGRATION_8_9
+        ).use { migrated ->
+            migrated.query(
+                "SELECT format,season_year,media_status,source,episodes,country_of_origin," +
+                    "average_score,local_cover_path FROM anime WHERE id='mal:9'"
+            ).use { cursor ->
+                cursor.moveToFirst()
+                repeat(7) { column -> assertTrue(cursor.isNull(column)) }
+                assertEquals("/private/cover.jpg", cursor.getString(7))
+            }
+            migrated.query(
+                "SELECT final_score,notes,profile_id FROM rating WHERE anime_id='mal:9'"
+            ).use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(8.5, cursor.getDouble(0), 0.0)
+                assertEquals("keep metadata migration", cursor.getString(1))
+                assertEquals("narrative", cursor.getString(2))
+            }
+            migrated.query(
+                "SELECT score,applicable FROM rating_score WHERE anime_id='mal:9' AND category_id='writing'"
+            ).use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(9.0, cursor.getDouble(0), 0.0)
+                assertEquals(1, cursor.getInt(1))
+            }
+            migrated.query("SELECT COUNT(*) FROM anime_genre").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+            migrated.query("SELECT COUNT(*) FROM anime_studio").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun roomFiltersAndRankingSortsUseMetadataAndPutMissingValuesLast() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val database = Room.inMemoryDatabaseBuilder(context, AnimeDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val db = database.openHelper.writableDatabase
+            db.execSQL("INSERT INTO anime(id,title,format,season_year,media_status,source,episodes,cover_resolution_state) VALUES('a','Alpha Hero','TV',2024,'FINISHED','MANGA',12,'UNKNOWN')")
+            db.execSQL("INSERT INTO anime(id,title,format,season_year,media_status,source,episodes,cover_resolution_state) VALUES('b','Beta Hero','TV',2024,'RELEASING','ORIGINAL',24,'UNKNOWN')")
+            db.execSQL("INSERT INTO anime(id,title,format,season_year,media_status,source,episodes,cover_resolution_state) VALUES('c','Cinema','MOVIE',2020,'FINISHED','ORIGINAL',1,'UNKNOWN')")
+            db.execSQL("INSERT INTO anime_genre(anime_id,genre) VALUES('a','Action'),('b','Action'),('c','Drama')")
+            db.execSQL("INSERT INTO anime_studio(anime_id,studio) VALUES('a','Bones'),('b','Trigger'),('c','Bones')")
+            database.animeDao().upsertRating(RatingEntity("a", 0.2, 7.0, 8.0, "", "Completed", 1))
+            database.animeDao().upsertRating(RatingEntity("b", 0.8, 9.0, 7.0, "", "Completed", 2))
+            database.animeDao().upsertRating(RatingEntity("c", 0.5, null, 6.0, "", "Completed", 3))
+            database.animeDao().upsertRatingScores(listOf(
+                RatingScoreEntity("a", "writing", 5.0, true),
+                RatingScoreEntity("b", "writing", 9.0, true),
+                RatingScoreEntity("c", "writing", null, false)
+            ))
+            val repository = AnimeRepository(context, database)
+
+            assertEquals(
+                listOf("Alpha Hero"),
+                repository.search(
+                    "Hero",
+                    CatalogSortOrder.TITLE_ASC,
+                    AnimeFilters(genre = "Action", format = "SERIES", studio = "Bones")
+                ).map { it.title }
+            )
+            assertEquals(
+                listOf("b", "a", "c"),
+                repository.observeRanking(sortOrder = RankingSortOrder.QUALITY_SCORE).first().map { it.id }
+            )
+            assertEquals(
+                listOf("a", "b", "c"),
+                repository.observeRanking(
+                    sortOrder = RankingSortOrder.QUALITY_SCORE,
+                    descending = false
+                ).first().map { it.id }
+            )
+            assertEquals(
+                listOf("b", "c", "a"),
+                repository.observeRanking(sortOrder = RankingSortOrder.PERSONAL_TASTE).first().map { it.id }
+            )
+            assertEquals(
+                listOf("a", "c", "b"),
+                repository.observeRanking(
+                    sortOrder = RankingSortOrder.PERSONAL_TASTE,
+                    descending = false
+                ).first().map { it.id }
+            )
+            assertEquals(
+                listOf("b", "a", "c"),
+                repository.observeRanking(
+                    sortOrder = RankingSortOrder.CATEGORY_SCORE,
+                    categoryId = "writing"
+                ).first().map { it.id }
+            )
+            val categoryRanking = repository.observeRanking(
+                sortOrder = RankingSortOrder.CATEGORY_SCORE,
+                categoryId = "writing"
+            ).first()
+            assertEquals(9.0, categoryRanking[0].rankingDisplayScore(RankingSortOrder.CATEGORY_SCORE)!!, 0.0)
+            assertEquals(5.0, categoryRanking[1].rankingDisplayScore(RankingSortOrder.CATEGORY_SCORE)!!, 0.0)
+            assertNull(categoryRanking[2].rankingDisplayScore(RankingSortOrder.CATEGORY_SCORE))
+            assertEquals(
+                listOf("a", "b", "c"),
+                repository.observeRanking(
+                    sortOrder = RankingSortOrder.CATEGORY_SCORE,
+                    categoryId = "writing",
+                    descending = false
+                ).first().map { it.id }
+            )
+            assertEquals(
+                listOf("a", "c"),
+                repository.observeRanking(filters = AnimeFilters(studio = "Bones")).first().map { it.id }
+            )
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
     fun incompletePopularityResponseLeavesExistingRankUntouched() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val database = Room.inMemoryDatabaseBuilder(context, AnimeDatabase::class.java)
@@ -640,5 +959,6 @@ class AnimeDatabaseMigrationTest {
         const val TEST_DB = "migration-test"
         const val POPULARITY_MIGRATION_DB = "popularity-migration-test"
         const val RANK_MIGRATION_DB = "rank-migration-test"
+        const val METADATA_MIGRATION_DB = "metadata-migration-test"
     }
 }
