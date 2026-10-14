@@ -39,3 +39,4 @@ dist/
 # Provider tooling caches and local generated output
 tools/.cache/
 tools/tmdb/output/
+tools/mangadex/output/

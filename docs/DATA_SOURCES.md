@@ -100,12 +100,17 @@ flow, reader, chapter-page download, reading progress, or MangaDex rating sync.
 A MangaDex manga resource represents the RankOffline item; chapters and volumes
 are subordinate data and are not synthesized as items.
 
-Before Block 13 implements enumeration, it must inspect the then current
+The offline generator accepts explicit UUIDs or an explicitly bounded listing
+request, expands only cover/author/artist metadata, and caches successful public
+API responses for resumable runs. Production catalog selection remains bounded
+pending a provider-compliant enumeration strategy; it never scrapes HTML or
+uses authentication/user synchronization.
+
+The generator follows the current
 [official MangaDex API documentation](https://api.mangadex.org/docs/) and
-OpenAPI/schema. The implementation must not guess around collection-pagination
-limits. If safe complete enumeration cannot be demonstrated, the tool will
-produce a bounded catalog and report the limitation rather than scrape HTML or
-evade limits.
+OpenAPI schema, including the documented 100-item maximum list page. Discovery
+requires an explicit bound. Since safe complete enumeration is not established,
+the tool reports that limitation rather than scraping HTML or evading limits.
 
 The official documentation currently describes a global request allowance and
 HTTP 429 enforcement in its
@@ -120,6 +125,10 @@ as `monochrome`, `colored`, `preserialization`, `serialization`, and
 franchise, and shared universe. Only relations verified to mean editions or
 variants of substantially the same work may drive the initial merge mode.
 Broader work/franchise relations remain excluded.
+
+Variant artifacts use connected components across only those five allowlisted
+relations, require at least two selected catalog items, and use stable hashes of
+sorted MangaDex UUIDs. MangaDex attribution remains required for release.
 
 Store the manga UUID, canonical/alternative titles as justified, year, status,
 original language, demographic, genres/tags, authors/artists, primary cover-art
