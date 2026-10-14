@@ -554,8 +554,30 @@ interface AnimeDao {
 }
 
 @Database(
-    entities = [AnimeEntity::class, AnimeGenreEntity::class, AnimeStudioEntity::class, AnimeGroupEntity::class, AnimeGroupMemberEntity::class, RatingEntity::class, RatingScoreEntity::class, GroupRatingEntity::class, GroupRatingScoreEntity::class, CatalogMetadataEntity::class],
-    version = 10,
+    entities = [
+        AnimeEntity::class,
+        AnimeGenreEntity::class,
+        AnimeStudioEntity::class,
+        AnimeGroupEntity::class,
+        AnimeGroupMemberEntity::class,
+        RatingEntity::class,
+        RatingScoreEntity::class,
+        GroupRatingEntity::class,
+        GroupRatingScoreEntity::class,
+        CatalogMetadataEntity::class,
+        MediaItemEntity::class,
+        MediaGenreEntity::class,
+        MediaCreditEntity::class,
+        MediaAliasEntity::class,
+        MediaGroupEntity::class,
+        MediaGroupMemberEntity::class,
+        MediaRatingEntity::class,
+        MediaRatingScoreEntity::class,
+        MediaGroupRatingEntity::class,
+        MediaGroupRatingScoreEntity::class,
+        MediaCatalogMetadataEntity::class
+    ],
+    version = 11,
     exportSchema = true
 )
 abstract class AnimeDatabase : RoomDatabase() {
@@ -577,7 +599,8 @@ abstract class AnimeDatabase : RoomDatabase() {
                     MIGRATION_6_7,
                     MIGRATION_7_8,
                     MIGRATION_8_9,
-                    MIGRATION_9_10
+                    MIGRATION_9_10,
+                    MIGRATION_10_11
                 )
                 .build()
                 .also { instance = it }
@@ -636,6 +659,35 @@ abstract class AnimeDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS idx_anime_group_member_anime ON anime_group_member(anime_id)")
                 db.execSQL("CREATE TABLE IF NOT EXISTS group_rating(group_id TEXT NOT NULL PRIMARY KEY,additive_score REAL NOT NULL,quality_score REAL,final_score REAL,notes TEXT NOT NULL,status TEXT NOT NULL,updated_at INTEGER NOT NULL,profile_id TEXT,FOREIGN KEY(group_id) REFERENCES anime_group(id) ON UPDATE NO ACTION ON DELETE CASCADE)")
                 db.execSQL("CREATE TABLE IF NOT EXISTS group_rating_score(group_id TEXT NOT NULL,category_id TEXT NOT NULL,score REAL,applicable INTEGER NOT NULL,PRIMARY KEY(group_id,category_id),FOREIGN KEY(group_id) REFERENCES group_rating(group_id) ON UPDATE NO ACTION ON DELETE CASCADE)")
+            }
+        }
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_item` (`id` TEXT NOT NULL, `media_type` TEXT NOT NULL, `provider` TEXT NOT NULL, `provider_id` TEXT NOT NULL, `title` TEXT NOT NULL, `original_title` TEXT, `year` INTEGER, `start_date` TEXT, `format` TEXT, `status` TEXT, `original_language` TEXT, `demographic` TEXT, `part_number` INTEGER, `popularity` REAL, `popularity_rank` INTEGER, `remote_cover_ref` TEXT, `local_cover_path` TEXT, `cover_resolution_state` TEXT NOT NULL DEFAULT 'UNKNOWN', PRIMARY KEY(`id`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_item_media_type` ON `media_item` (`media_type`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_item_type_title` ON `media_item` (`media_type`, `title`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_item_type_popularity_rank` ON `media_item` (`media_type`, `popularity_rank`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_item_type_year` ON `media_item` (`media_type`, `year`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_item_type_format` ON `media_item` (`media_type`, `format`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_item_type_demographic` ON `media_item` (`media_type`, `demographic`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `idx_media_item_provider_identity` ON `media_item` (`media_type`, `provider`, `provider_id`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_genre` (`media_id` TEXT NOT NULL, `genre` TEXT NOT NULL, PRIMARY KEY(`media_id`, `genre`), FOREIGN KEY(`media_id`) REFERENCES `media_item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_genre_genre` ON `media_genre` (`genre`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_credit` (`media_id` TEXT NOT NULL, `role` TEXT NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`media_id`, `role`, `name`), FOREIGN KEY(`media_id`) REFERENCES `media_item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_credit_role_name` ON `media_credit` (`role`, `name`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_alias` (`media_id` TEXT NOT NULL, `title` TEXT NOT NULL, `language` TEXT, `kind` TEXT, PRIMARY KEY(`media_id`, `title`), FOREIGN KEY(`media_id`) REFERENCES `media_item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_alias_title` ON `media_alias` (`title`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_group` (`id` TEXT NOT NULL, `media_type` TEXT NOT NULL, `group_type` TEXT NOT NULL, `provider` TEXT, `provider_group_id` TEXT, `display_title` TEXT NOT NULL, `representative_media_id` TEXT, `remote_cover_ref` TEXT, `local_cover_path` TEXT, `cover_resolution_state` TEXT NOT NULL DEFAULT 'UNKNOWN', PRIMARY KEY(`id`), FOREIGN KEY(`representative_media_id`) REFERENCES `media_item`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_group_type` ON `media_group` (`media_type`, `group_type`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_group_representative` ON `media_group` (`representative_media_id`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `idx_media_group_provider_identity` ON `media_group` (`media_type`, `group_type`, `provider`, `provider_group_id`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_group_member` (`group_id` TEXT NOT NULL, `media_id` TEXT NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`group_id`, `media_id`), FOREIGN KEY(`group_id`) REFERENCES `media_group`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`media_id`) REFERENCES `media_item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_group_member_media` ON `media_group_member` (`media_id`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_rating` (`media_id` TEXT NOT NULL, `additive_score` REAL NOT NULL, `quality_score` REAL, `final_score` REAL, `notes` TEXT NOT NULL, `status` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, `profile_id` TEXT, PRIMARY KEY(`media_id`), FOREIGN KEY(`media_id`) REFERENCES `media_item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_rating_score` (`media_id` TEXT NOT NULL, `category_id` TEXT NOT NULL, `score` REAL, `applicable` INTEGER NOT NULL, PRIMARY KEY(`media_id`, `category_id`), FOREIGN KEY(`media_id`) REFERENCES `media_rating`(`media_id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_group_rating` (`group_id` TEXT NOT NULL, `additive_score` REAL NOT NULL, `quality_score` REAL, `final_score` REAL, `notes` TEXT NOT NULL, `status` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, `profile_id` TEXT, PRIMARY KEY(`group_id`), FOREIGN KEY(`group_id`) REFERENCES `media_group`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_group_rating_score` (`group_id` TEXT NOT NULL, `category_id` TEXT NOT NULL, `score` REAL, `applicable` INTEGER NOT NULL, PRIMARY KEY(`group_id`, `category_id`), FOREIGN KEY(`group_id`) REFERENCES `media_group_rating`(`group_id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `media_catalog_metadata` (`media_type` TEXT NOT NULL, `metadata_key` TEXT NOT NULL, `metadata_value` TEXT NOT NULL, PRIMARY KEY(`media_type`, `metadata_key`))")
             }
         }
 

@@ -74,7 +74,7 @@ model.
 
 ## Room 10 to 11 transition
 
-Schema 11 will be an additive, non-destructive migration. These schema 10
+Schema 11 is an additive, non-destructive migration. These schema 10
 tables remain the Anime source of truth without destructive changes:
 
 - `anime`, `anime_genre`, `anime_studio`
@@ -83,14 +83,15 @@ tables remain the Anime source of truth without destructive changes:
 - `group_rating`, `group_rating_score`
 - `catalog_metadata`
 
-The generic non-Anime schema should add only tables demonstrated as necessary
-by the importer and repository. The expected shape is:
+Manga, Series, Movies, and Books use the deliberately separate transitional
+`media_*` schema while Anime remains on its mature tables. The generic shape is:
 
 - `media_item` — provider item, media type, searchable title/date/popularity,
   cover reference/state, and compact provider metadata;
 - `media_genre` — indexed many-to-many filter values;
 - `media_credit` — indexed creators, studios, networks, or production companies
   with a role/type;
+- `media_alias` — alternative provider titles for future offline search;
 - `media_group` and `media_group_member` — provider-backed grouping and ordered
   membership;
 - `media_rating` and `media_rating_score` — canonical individual rating and
@@ -98,7 +99,6 @@ by the importer and repository. The expected shape is:
 - `media_group_rating` and `media_group_rating_score` — explicit group ratings;
 - `media_catalog_metadata` — independent catalog version/hash/import metadata.
 
-Names may be refined in Block 3, but the semantics and separation may not.
 Foreign keys and indices must cover media type, title search, year, popularity,
 genre/credit filtering, rating joins, and group membership. There will be no
 `fallbackToDestructiveMigration`.
