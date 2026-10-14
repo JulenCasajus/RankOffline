@@ -121,6 +121,7 @@ object DefaultSettings {
 data class AppSettingsState(
     val showImages: Boolean = false,
     val stickyScore: Boolean = true,
+    val activeMediaType: MediaType = MediaType.ANIME,
     val elaborateRatingEnabled: Boolean = false,
     val ratingConfig: RatingSystemConfig = DefaultSettings.defaultRatingConfig,
     val ratingProfiles: RatingProfilesConfig = DefaultSettings.defaultProfiles(),
@@ -140,6 +141,7 @@ class SettingsRepository internal constructor(
 
     private val stickyScoreKey = booleanPreferencesKey("sticky_score")
     private val showImagesKey = booleanPreferencesKey("show_images")
+    private val activeMediaTypeKey = stringPreferencesKey("active_media_type")
     private val elaborateRatingEnabledKey = booleanPreferencesKey("elaborate_rating_enabled")
     private val ratingConfigKey = stringPreferencesKey("rating_config")
     private val ratingProfilesKey = stringPreferencesKey("rating_profiles")
@@ -185,6 +187,7 @@ class SettingsRepository internal constructor(
         _state.value = AppSettingsState(
             showImages = resolveShowImages(prefs[showImagesKey]),
             stickyScore = prefs[stickyScoreKey] ?: true,
+            activeMediaType = resolveActiveMediaType(prefs[activeMediaTypeKey]),
             elaborateRatingEnabled = resolveElaborateRatingEnabled(prefs[elaborateRatingEnabledKey]),
             ratingConfig = ratingConfig,
             ratingProfiles = ratingProfiles,
@@ -207,6 +210,11 @@ class SettingsRepository internal constructor(
     suspend fun updateStickyScore(value: Boolean) = updateMutex.withLock {
         _state.value = _state.value.copy(stickyScore = value)
         context.dataStore.edit { prefs -> prefs[stickyScoreKey] = value }
+    }
+
+    suspend fun updateActiveMediaType(value: MediaType) = updateMutex.withLock {
+        context.dataStore.edit { prefs -> prefs[activeMediaTypeKey] = value.persistedValue }
+        _state.value = _state.value.withActiveMediaType(value)
     }
 
     suspend fun updateElaborateRatingEnabled(value: Boolean) = updateMutex.withLock {
@@ -325,6 +333,12 @@ private fun Map<String, Double>.ensureAtLeastOneWeight(): Map<String, Double> =
     if (isNotEmpty() && values.none { it.isFinite() && it > 0.0 }) mapValues { 5.0 } else this
 
 internal fun resolveShowImages(persisted: Boolean?): Boolean = persisted ?: false
+
+internal fun resolveActiveMediaType(persisted: String?): MediaType =
+    MediaType.fromPersistedValue(persisted)
+
+internal fun AppSettingsState.withActiveMediaType(value: MediaType): AppSettingsState =
+    copy(activeMediaType = value)
 
 internal fun resolveElaborateRatingEnabled(persisted: Boolean?): Boolean = persisted ?: false
 

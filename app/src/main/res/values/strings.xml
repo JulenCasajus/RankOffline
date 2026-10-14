@@ -3,6 +3,11 @@
     <string name="nav_anime">Anime</string>
     <string name="nav_ranking">My ranking</string>
     <string name="nav_settings">Settings</string>
+    <string name="media_anime">Anime</string>
+    <string name="media_manga">Manga</string>
+    <string name="media_series">Series</string>
+    <string name="media_movies">Movies</string>
+    <string name="media_books">Books</string>
     <string name="catalog_local_count">Local catalog: %1$s entries.</string>
     <string name="search_anime_hint">Search anime…</string>
     <string name="no_search_results">No results.</string>
