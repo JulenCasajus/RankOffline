@@ -25,6 +25,26 @@ data class MediaItem(
     val coverResolutionState: CoverResolutionState = CoverResolutionState.UNKNOWN
 )
 
+data class MediaGroup(
+    val id: String,
+    val mediaType: MediaType,
+    val groupType: String,
+    val provider: String?,
+    val providerGroupId: String?,
+    val displayTitle: String,
+    val representativeMediaId: String?,
+    val remoteCoverRef: String?,
+    val localCoverPath: String?,
+    val coverResolutionState: CoverResolutionState
+)
+
+data class MediaGroupDetail(
+    val group: MediaGroup,
+    val members: List<MediaItem>,
+    val explicitRating: MediaGroupRatingEntity?,
+    val derivedRating: DerivedGroupRating
+)
+
 fun MediaItemEntity.toDomain(
     rating: MediaRatingEntity? = null,
     categoryScore: Double? = null
@@ -71,4 +91,18 @@ fun Anime.toMediaItem(): MediaItem = MediaItem(
     remoteCoverRef = remoteCoverUrl,
     localCoverPath = localCoverPath,
     coverResolutionState = coverResolutionState
+)
+
+fun MediaGroupEntity.toDomain(): MediaGroup = MediaGroup(
+    id = id,
+    mediaType = MediaType.fromPersistedValue(mediaType),
+    groupType = groupType,
+    provider = provider,
+    providerGroupId = providerGroupId,
+    displayTitle = displayTitle,
+    representativeMediaId = representativeMediaId,
+    remoteCoverRef = remoteCoverRef,
+    localCoverPath = localCoverPath,
+    coverResolutionState = runCatching { CoverResolutionState.valueOf(coverResolutionState) }
+        .getOrDefault(CoverResolutionState.UNKNOWN)
 )

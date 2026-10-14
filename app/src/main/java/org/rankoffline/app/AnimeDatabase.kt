@@ -583,6 +583,7 @@ interface AnimeDao {
 abstract class AnimeDatabase : RoomDatabase() {
     abstract fun animeDao(): AnimeDao
     abstract fun mediaDao(): MediaDao
+    abstract fun mediaGroupDao(): MediaGroupDao
 
     companion object {
         const val DATABASE_NAME = "anime_rank.db"

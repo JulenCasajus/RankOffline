@@ -121,18 +121,32 @@ data class DerivedGroupRating(
     )
 }
 
-fun deriveGroupRating(
-    ratings: List<RatingEntity>,
-    scores: List<RatingScoreEntity>
+internal data class GroupRatingInput(
+    val id: String,
+    val finalScore: Double?,
+    val qualityScore: Double?,
+    val additiveScore: Double?
+)
+
+internal data class GroupRatingScoreInput(
+    val memberId: String,
+    val categoryId: String,
+    val score: Double?,
+    val applicable: Boolean
+)
+
+internal fun deriveGroupRatingFromInputs(
+    ratings: List<GroupRatingInput>,
+    scores: List<GroupRatingScoreInput>
 ): DerivedGroupRating {
     val rated = ratings.filter { it.finalScore?.isFinite() == true }
-    val ratedIds = rated.mapTo(mutableSetOf()) { it.animeId }
+    val ratedIds = rated.mapTo(mutableSetOf()) { it.id }
     fun Iterable<Double?>.averageOrNull(): Double? {
         val values = filterNotNull().filter(Double::isFinite)
         return values.takeIf { it.isNotEmpty() }?.average()
     }
     val categories = scores.asSequence()
-        .filter { it.animeId in ratedIds && it.applicable && it.score?.isFinite() == true }
+        .filter { it.memberId in ratedIds && it.applicable && it.score?.isFinite() == true }
         .groupBy { it.categoryId }
         .mapValues { (_, values) -> values.mapNotNull { it.score }.average() }
     return DerivedGroupRating(
@@ -143,6 +157,22 @@ fun deriveGroupRating(
         ratedCount = rated.size
     )
 }
+
+fun deriveGroupRating(
+    ratings: List<RatingEntity>,
+    scores: List<RatingScoreEntity>
+): DerivedGroupRating = deriveGroupRatingFromInputs(
+    ratings = ratings.map { GroupRatingInput(it.animeId, it.finalScore, it.qualityScore, it.additiveScore) },
+    scores = scores.map { GroupRatingScoreInput(it.animeId, it.categoryId, it.score, it.applicable) }
+)
+
+fun deriveMediaGroupRating(
+    ratings: List<MediaRatingEntity>,
+    scores: List<MediaRatingScoreEntity>
+): DerivedGroupRating = deriveGroupRatingFromInputs(
+    ratings = ratings.map { GroupRatingInput(it.mediaId, it.finalScore, it.qualityScore, it.additiveScore) },
+    scores = scores.map { GroupRatingScoreInput(it.mediaId, it.categoryId, it.score, it.applicable) }
+)
 
 fun Anime.rankingDisplayScore(sortOrder: RankingSortOrder): Double? = when (sortOrder) {
     RankingSortOrder.FINAL_SCORE -> finalScore

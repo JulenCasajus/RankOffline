@@ -157,10 +157,11 @@ class GenericMediaRepository(
         requireGenericMediaType(persistedType)
     }
 
-    private fun requireGenericMediaType(persistedType: String) {
-        val mediaType = MediaType.entries.firstOrNull { it.persistedValue == persistedType }
-        require(mediaType != null && mediaType != MediaType.ANIME) {
-            "Generic media persistence does not accept media type: $persistedType"
-        }
+}
+
+internal fun requireGenericMediaType(persistedType: String) {
+    val mediaType = MediaType.entries.firstOrNull { it.persistedValue == persistedType }
+    require(mediaType != null && mediaType != MediaType.ANIME) {
+        "Generic media persistence does not accept media type: $persistedType"
     }
 }
