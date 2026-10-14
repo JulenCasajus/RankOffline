@@ -112,6 +112,14 @@ Anime continues to use `AnimeRepository`. Manga, Series, Movies, and Books use
 the common `MediaItem` domain model and share the existing score calculator;
 this avoids rewriting published Anime persistence or duplicating rating rules.
 
+New non-Anime catalogs use a gzip-compressed JSON Lines asset plus a JSON
+manifest. Imports stream records in bounded batches, verify the SHA-256 of the
+exact compressed bytes, and commit data and per-media catalog metadata in one
+transaction. Catalog refreshes update provider-owned metadata and relations but
+preserve downloaded-cover state, ratings, and group data. Items absent from a
+new catalog are intentionally not pruned because deletion could cascade user
+data. Anime retains its existing JSON catalog and importer unchanged.
+
 ## Rating semantics
 
 Every individual target has one canonical final score. The existing rules are
