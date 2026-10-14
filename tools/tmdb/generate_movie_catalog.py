@@ -83,7 +83,7 @@ class TmdbClient:
         if requests_per_second <= 0 or timeout <= 0 or max_attempts <= 0:
             raise ValueError("Rate, timeout, and max attempts must be positive")
         self._token = token
-        self._movie_cache = cache_dir / "movie"
+        self._cache_dir = cache_dir
         self._request_interval = 1.0 / requests_per_second
         self._timeout = timeout
         self._max_attempts = max_attempts
@@ -94,15 +94,34 @@ class TmdbClient:
         self._last_request_started = 0.0
 
     def movie_details(self, movie_id: int) -> MovieFetchResult:
-        cache_path = self._movie_cache / f"{movie_id}.json"
-        cached = _read_cached_details(cache_path, movie_id)
+        return self._details(
+            resource="movie",
+            resource_id=movie_id,
+            append_to_response="credits,alternative_titles",
+        )
+
+    def tv_details(self, series_id: int) -> MovieFetchResult:
+        return self._details(
+            resource="tv",
+            resource_id=series_id,
+            append_to_response="alternative_titles",
+        )
+
+    def _details(
+        self,
+        resource: str,
+        resource_id: int,
+        append_to_response: str,
+    ) -> MovieFetchResult:
+        cache_path = self._cache_dir / resource / f"{resource_id}.json"
+        cached = _read_cached_details(cache_path, resource_id)
         if cached is not None:
-            return MovieFetchResult(movie_id, cached, cached=True)
+            return MovieFetchResult(resource_id, cached, cached=True)
 
         query = urllib.parse.urlencode(
-            {"language": "en-US", "append_to_response": "credits,alternative_titles"}
+            {"language": "en-US", "append_to_response": append_to_response}
         )
-        url = f"{API_BASE}/3/movie/{movie_id}?{query}"
+        url = f"{API_BASE}/3/{resource}/{resource_id}?{query}"
         for attempt in range(self._max_attempts):
             self._wait_for_rate_slot()
             request = urllib.request.Request(
@@ -118,21 +137,23 @@ class TmdbClient:
                 with self._opener(request, timeout=self._timeout) as response:
                     payload = response.read(MAX_RESPONSE_BYTES + 1)
                     if len(payload) > MAX_RESPONSE_BYTES:
-                        raise TmdbToolError(f"TMDb response too large for movie {movie_id}")
+                        raise TmdbToolError(
+                            f"TMDb response too large for {resource} {resource_id}"
+                        )
                 details = json.loads(payload.decode("utf-8"))
-                _validate_details_identity(details, movie_id)
+                _validate_details_identity(details, resource_id)
                 _write_json_atomic(cache_path, details)
-                return MovieFetchResult(movie_id, details)
+                return MovieFetchResult(resource_id, details)
             except urllib.error.HTTPError as error:
                 if error.code == 404:
-                    return MovieFetchResult(movie_id, None, unavailable=True)
+                    return MovieFetchResult(resource_id, None, unavailable=True)
                 if error.code in AUTH_HTTP_CODES:
                     raise TmdbAuthenticationError(
                         f"TMDb authentication failed with HTTP {error.code}."
                     ) from error
                 if error.code not in TRANSIENT_HTTP_CODES:
                     raise TmdbToolError(
-                        f"TMDb request for movie {movie_id} failed with HTTP {error.code}."
+                        f"TMDb request for {resource} {resource_id} failed with HTTP {error.code}."
                     ) from error
                 retry_after = error.headers.get("Retry-After") if error.headers else None
                 delay = _retry_delay(retry_after, attempt)
@@ -140,14 +161,17 @@ class TmdbClient:
                 delay = _retry_delay(None, attempt)
                 if attempt + 1 == self._max_attempts:
                     raise TmdbToolError(
-                        f"TMDb request for movie {movie_id} failed after retries."
+                        f"TMDb request for {resource} {resource_id} failed after retries."
                     ) from error
             except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as error:
-                raise TmdbToolError(f"Malformed TMDb response for movie {movie_id}.") from error
+                raise TmdbToolError(
+                    f"Malformed TMDb response for {resource} {resource_id}."
+                ) from error
 
             if attempt + 1 == self._max_attempts:
                 raise TmdbToolError(
-                    f"TMDb request for movie {movie_id} failed after {self._max_attempts} attempts."
+                    f"TMDb request for {resource} {resource_id} failed after "
+                    f"{self._max_attempts} attempts."
                 )
             self._sleep(delay)
         raise AssertionError("Unreachable retry loop")
@@ -316,7 +340,16 @@ def enrich_movies(
     workers: int = DEFAULT_WORKERS,
     progress_stream: Any = sys.stderr,
 ) -> tuple[dict[int, dict[str, Any]], list[int]]:
-    ids = sorted(set(movie_ids))
+    return enrich_resources(movie_ids, client.movie_details, workers, progress_stream)
+
+
+def enrich_resources(
+    resource_ids: Iterable[int],
+    fetch_details: Callable[[int], MovieFetchResult],
+    workers: int = DEFAULT_WORKERS,
+    progress_stream: Any = sys.stderr,
+) -> tuple[dict[int, dict[str, Any]], list[int]]:
+    ids = sorted(set(resource_ids))
     if workers <= 0:
         raise ValueError("workers must be positive")
     details: dict[int, dict[str, Any]] = {}
@@ -325,7 +358,7 @@ def enrich_movies(
     fetched = 0
     processed = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = {executor.submit(client.movie_details, movie_id): movie_id for movie_id in ids}
+        futures = {executor.submit(fetch_details, resource_id): resource_id for resource_id in ids}
         try:
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
@@ -505,11 +538,18 @@ def _write_deterministic_jsonl_gzip(path: Path, records: Iterable[dict[str, Any]
             temporary.unlink()
 
 
-def _artifact_manifest(path: Path, version: str, count_key: str, count: int) -> dict[str, Any]:
+def _artifact_manifest(
+    path: Path,
+    version: str,
+    count_key: str,
+    count: int,
+    media_type: str = MEDIA_TYPE,
+    provider: str = PROVIDER,
+) -> dict[str, Any]:
     return {
         "formatVersion": FORMAT_VERSION,
-        "mediaType": MEDIA_TYPE,
-        "provider": PROVIDER,
+        "mediaType": media_type,
+        "provider": provider,
         "catalogVersion": version,
         "sha256": _sha256_file(path),
         count_key: count,
