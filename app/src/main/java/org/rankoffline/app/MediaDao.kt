@@ -59,6 +59,7 @@ interface MediaDao {
           AND (:genre IS NULL OR EXISTS (SELECT 1 FROM media_genre genreRow
                                         WHERE genreRow.media_id = item.id AND genreRow.genre = :genre))
           AND (:year IS NULL OR item.year = :year)
+          AND (:demographic IS NULL OR item.demographic = :demographic)
           AND (:creditName IS NULL OR EXISTS (SELECT 1 FROM media_credit credit
                                              WHERE credit.media_id = item.id
                                                AND credit.role = :creditRole
@@ -80,7 +81,8 @@ interface MediaDao {
         genre: String?,
         year: Int?,
         creditRole: String?,
-        creditName: String?
+        creditName: String?,
+        demographic: String?
     ): List<MediaItemRatingRow>
 
     @Query(
@@ -96,6 +98,7 @@ interface MediaDao {
           AND (:genre IS NULL OR EXISTS (SELECT 1 FROM media_genre genreRow
                                         WHERE genreRow.media_id = item.id AND genreRow.genre = :genre))
           AND (:year IS NULL OR item.year = :year)
+          AND (:demographic IS NULL OR item.demographic = :demographic)
           AND (:creditName IS NULL OR EXISTS (SELECT 1 FROM media_credit credit
                                              WHERE credit.media_id = item.id
                                                AND credit.role = :creditRole
@@ -108,7 +111,8 @@ interface MediaDao {
         genre: String?,
         year: Int?,
         creditRole: String?,
-        creditName: String?
+        creditName: String?,
+        demographic: String?
     ): List<MediaItemRatingRow>
 
     @Query(
@@ -133,6 +137,13 @@ interface MediaDao {
             "ORDER BY year DESC"
     )
     suspend fun years(mediaType: String): List<Int>
+
+    @Query(
+        "SELECT DISTINCT demographic FROM media_item " +
+            "WHERE media_type = :mediaType AND demographic IS NOT NULL " +
+            "ORDER BY demographic COLLATE NOCASE ASC"
+    )
+    suspend fun demographics(mediaType: String): List<String>
 
     @Query(
         "SELECT DISTINCT credit.name FROM media_credit credit INNER JOIN media_item item " +

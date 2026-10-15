@@ -46,12 +46,14 @@
     <string name="sort_final_score">Итоговая оценка</string><string name="sort_quality_score">Качество</string><string name="sort_personal_taste">Личные предпочтения</string><string name="sort_category_score">Оценка категории</string>
     <string name="merge_seasons">Объединить сезоны</string>
     <string name="merge_collections">Объединить коллекции</string>
+    <string name="merge_variants">Объединить варианты</string>
     <string name="search_catalog_hint">Поиск названий…</string>
     <string name="catalog_loading">Загрузка каталога…</string>
     <string name="catalog_not_available_yet">Каталог пока недоступен</string>
     <string name="catalog_unavailable_error">Не удалось загрузить каталог</string>
     <string name="filter_production_company">Производственная компания</string>
     <string name="filter_network">Телеканал</string>
+    <string name="filter_demographic">Демография</string>
     <string name="group_format_series">Сериалы</string>
     <string name="group_format_movies">Фильмы</string>
     <string name="group_format_specials">Спецвыпуск</string>

@@ -30,7 +30,7 @@ interface MediaGroupDao {
         """
         SELECT mediaGroup.*
         FROM media_group mediaGroup
-        WHERE mediaGroup.media_type = :mediaType
+        WHERE mediaGroup.media_type = :mediaType AND mediaGroup.group_type = :groupType
           AND (:query = '' OR mediaGroup.display_title LIKE '%' || :query || '%' COLLATE NOCASE
                OR EXISTS (
                    SELECT 1 FROM media_group_member member
@@ -52,6 +52,11 @@ interface MediaGroupDao {
               INNER JOIN media_item item ON item.id = member.media_id
               WHERE member.group_id = mediaGroup.id AND item.year = :year
           ))
+          AND (:demographic IS NULL OR EXISTS (
+              SELECT 1 FROM media_group_member member
+              INNER JOIN media_item item ON item.id = member.media_id
+              WHERE member.group_id = mediaGroup.id AND item.demographic = :demographic
+          ))
           AND (:creditName IS NULL OR EXISTS (
               SELECT 1 FROM media_group_member member
               INNER JOIN media_credit credit ON credit.media_id = member.media_id
@@ -63,11 +68,13 @@ interface MediaGroupDao {
     )
     suspend fun matchingGroups(
         mediaType: String,
+        groupType: String,
         query: String,
         genre: String?,
         year: Int?,
         creditRole: String?,
-        creditName: String?
+        creditName: String?,
+        demographic: String?
     ): List<MediaGroupEntity>
 
     @Query(
@@ -75,10 +82,10 @@ interface MediaGroupDao {
         SELECT member.media_id
         FROM media_group_member member
         INNER JOIN media_group mediaGroup ON mediaGroup.id = member.group_id
-        WHERE mediaGroup.media_type = :mediaType
+        WHERE mediaGroup.media_type = :mediaType AND mediaGroup.group_type = :groupType
         """
     )
-    suspend fun groupedMediaIds(mediaType: String): List<String>
+    suspend fun groupedMediaIds(mediaType: String, groupType: String): List<String>
 
     @Query("SELECT id, media_type FROM media_item WHERE id IN (:mediaIds)")
     suspend fun mediaIdTypes(mediaIds: List<String>): List<MediaIdType>

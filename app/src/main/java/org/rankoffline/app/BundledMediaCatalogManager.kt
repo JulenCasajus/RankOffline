@@ -17,7 +17,7 @@ class BundledMediaCatalogManager(
 
     suspend fun importOptional(mediaType: MediaType): CatalogAvailability =
         withContext(Dispatchers.IO) {
-            require(mediaType == MediaType.MOVIE || mediaType == MediaType.SERIES)
+            require(mediaType in setOf(MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES))
             val prefix = mediaType.persistedValue
             val itemManifest = optionalAsset("${prefix}_catalog.manifest.json")
             val itemCatalog = optionalAsset("${prefix}_catalog.jsonl.gz")

@@ -18,23 +18,25 @@ data class RankingUiState(
 data class GenericMediaFilters(
     val genre: String? = null,
     val year: Int? = null,
-    val creditName: String? = null
+    val creditName: String? = null,
+    val demographic: String? = null
 ) {
-    val activeCount: Int get() = listOf(genre, year, creditName).count { it != null }
+    val activeCount: Int get() = listOf(genre, year, creditName, demographic).count { it != null }
 }
 
 data class GenericMediaFilterOptions(
     val genres: List<String> = emptyList(),
     val years: List<Int> = emptyList(),
-    val creditNames: List<String> = emptyList()
+    val creditNames: List<String> = emptyList(),
+    val demographics: List<String> = emptyList()
 )
 
 enum class MediaDataPath { ANIME, GENERIC, UNSUPPORTED }
 
 fun MediaType.dataPath(): MediaDataPath = when (this) {
     MediaType.ANIME -> MediaDataPath.ANIME
-    MediaType.MOVIE, MediaType.SERIES -> MediaDataPath.GENERIC
-    MediaType.MANGA, MediaType.BOOK -> MediaDataPath.UNSUPPORTED
+    MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES -> MediaDataPath.GENERIC
+    MediaType.BOOK -> MediaDataPath.UNSUPPORTED
 }
 
 fun MediaType.genericFilterCreditRole(): String? = when (this) {
@@ -43,8 +45,23 @@ fun MediaType.genericFilterCreditRole(): String? = when (this) {
     else -> null
 }
 
+fun MediaType.genericGroupType(): String? = when (this) {
+    MediaType.MANGA -> "VARIANTS"
+    MediaType.SERIES -> "SEASONS"
+    MediaType.MOVIE -> "COLLECTION"
+    else -> null
+}
+
 internal fun defaultSearchUiStates(): Map<MediaType, SearchUiState> =
-    MediaType.entries.associateWith { SearchUiState() }
+    MediaType.entries.associateWith { mediaType ->
+        SearchUiState(
+            sortOrder = if (mediaType == MediaType.MANGA) {
+                CatalogSortOrder.TITLE_ASC
+            } else {
+                CatalogSortOrder.POPULARITY
+            }
+        )
+    }
 
 internal fun defaultRankingUiStates(): Map<MediaType, RankingUiState> =
     MediaType.entries.associateWith { RankingUiState() }

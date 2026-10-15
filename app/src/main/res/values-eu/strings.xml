@@ -46,12 +46,14 @@
     <string name="sort_final_score">Azken nota</string><string name="sort_quality_score">Kalitatea</string><string name="sort_personal_taste">Gustu pertsonala</string><string name="sort_category_score">Kategoriaren nota</string>
     <string name="merge_seasons">Denboraldiak bateratu</string>
     <string name="merge_collections">Bildumak bateratu</string>
+    <string name="merge_variants">Aldaerak bateratu</string>
     <string name="search_catalog_hint">Bilatu izenburuak…</string>
     <string name="catalog_loading">Katalogoa kargatzen…</string>
     <string name="catalog_not_available_yet">Katalogoa ez dago erabilgarri oraindik</string>
     <string name="catalog_unavailable_error">Ezin izan da katalogoa kargatu</string>
     <string name="filter_production_company">Ekoiztetxea</string>
     <string name="filter_network">Telebista-katea</string>
+    <string name="filter_demographic">Demografia</string>
     <string name="group_format_series">Serieak</string>
     <string name="group_format_movies">Filmak</string>
     <string name="group_format_specials">Berezia</string>

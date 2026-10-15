@@ -53,12 +53,14 @@
     <string name="sort_final_score">Nota final</string><string name="sort_quality_score">Calidad</string><string name="sort_personal_taste">Gusto personal</string><string name="sort_category_score">Nota por categoría</string>
     <string name="merge_seasons">Fusionar temporadas</string>
     <string name="merge_collections">Fusionar colecciones</string>
+    <string name="merge_variants">Fusionar variantes</string>
     <string name="search_catalog_hint">Buscar títulos…</string>
     <string name="catalog_loading">Cargando catálogo…</string>
     <string name="catalog_not_available_yet">Catálogo aún no disponible</string>
     <string name="catalog_unavailable_error">No se pudo cargar el catálogo</string>
     <string name="filter_production_company">Productora</string>
     <string name="filter_network">Cadena</string>
+    <string name="filter_demographic">Demografía</string>
     <string name="group_format_series">Series</string>
     <string name="group_format_movies">Películas</string>
     <string name="group_format_specials">Especial</string>

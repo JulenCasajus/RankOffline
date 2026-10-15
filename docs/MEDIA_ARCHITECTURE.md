@@ -227,6 +227,12 @@ Missing bundles produce an unavailable state rather than falling back to Anime.
 Movie `COLLECTION` and Series `SEASONS` groups use the generic repositories;
 the Android app never calls the TMDb metadata API.
 
+Manga uses the same optional, local-first generic path with `manga_catalog*`
+and `manga_groups*`; the Android app never calls the MangaDex metadata API.
+Search covers canonical and alias titles, with genre/tag, year, and demographic
+filters. `VARIANTS` groups replace their members only when Merge variants is
+enabled, while a missing Manga bundle produces the same unavailable state.
+
 ## Grouping policy
 
 The UI and rating semantics are common; provider identity rules are not.
@@ -252,10 +258,10 @@ not grouping evidence. A group requires at least two catalog members.
 ### Manga
 
 A MangaDex manga entity is the individual work; chapters and volumes are not
-synthesized as rating targets. A future initial Merge editions/variants mode may
-use only relation types verified in the current official schema as true variants
-(for example colored/monochrome or serialization variants). Franchise, universe,
-prequel/sequel, side-story, and spin-off relations are excluded from this mode.
+synthesized as rating targets. Merge variants uses only relation types verified
+in the current official schema as true variants (for example colored/monochrome
+or serialization variants). Franchise, universe, prequel/sequel, side-story,
+and spin-off relations are excluded from this mode.
 
 ### Books
 

@@ -256,12 +256,14 @@
     <string name="sort_final_score">Final score</string><string name="sort_quality_score">Quality</string><string name="sort_personal_taste">Personal taste</string><string name="sort_category_score">Category score</string>
     <string name="merge_seasons">Merge seasons</string>
     <string name="merge_collections">Merge collections</string>
+    <string name="merge_variants">Merge variants</string>
     <string name="search_catalog_hint">Search titles…</string>
     <string name="catalog_loading">Loading catalog…</string>
     <string name="catalog_not_available_yet">Catalog not available yet</string>
     <string name="catalog_unavailable_error">Catalog could not be loaded</string>
     <string name="filter_production_company">Production company</string>
     <string name="filter_network">Network</string>
+    <string name="filter_demographic">Demographic</string>
     <string name="group_format_series">Series</string>
     <string name="group_format_movies">Movies</string>
     <string name="group_format_specials">Special</string>

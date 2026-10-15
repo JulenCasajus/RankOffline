@@ -76,7 +76,8 @@ class GenericMediaRepository(
         mergeEnabled: Boolean
     ): List<MediaListEntry> = withContext(Dispatchers.IO) {
         requireIntegratedMediaType(mediaType)
-        val role = requireNotNull(mediaType.genericFilterCreditRole())
+        val role = mediaType.genericFilterCreditRole()
+        val groupType = requireNotNull(mediaType.genericGroupType())
         val individuals = dao.searchItems(
             mediaType.persistedValue,
             query.trim(),
@@ -84,22 +85,25 @@ class GenericMediaRepository(
             filters.genre,
             filters.year,
             role,
-            filters.creditName
+            filters.creditName,
+            filters.demographic
         )
         if (!mergeEnabled) return@withContext individuals.map { MediaListEntry.Item(it.toDomain()) }
 
-        val groupedIds = groupDao.groupedMediaIds(mediaType.persistedValue).toSet()
+        val groupedIds = groupDao.groupedMediaIds(mediaType.persistedValue, groupType).toSet()
         val ungrouped = individuals.asSequence()
             .filterNot { it.item.id in groupedIds }
             .map { MediaListEntry.Item(it.toDomain()) }
             .toList()
         val groups = groupDao.matchingGroups(
             mediaType.persistedValue,
+            groupType,
             query.trim(),
             filters.genre,
             filters.year,
             role,
-            filters.creditName
+            filters.creditName,
+            filters.demographic
         ).mapNotNull { group -> groupRepository.groupDetail(group.id)?.toListEntry() }
         sortCatalogEntries(ungrouped + groups, sortOrder)
     }
@@ -113,21 +117,23 @@ class GenericMediaRepository(
         mergeEnabled: Boolean
     ): List<MediaListEntry> = withContext(Dispatchers.IO) {
         requireIntegratedMediaType(mediaType)
-        val role = requireNotNull(mediaType.genericFilterCreditRole())
+        val role = mediaType.genericFilterCreditRole()
+        val groupType = requireNotNull(mediaType.genericGroupType())
         val categoryScores = if (sortOrder == RankingSortOrder.CATEGORY_SCORE && categoryId != null) {
             dao.categoryScores(mediaType.persistedValue, categoryId)
                 .filter { it.applicable && it.score?.isFinite() == true }
                 .associate { it.mediaId to it.score }
         } else emptyMap()
         val groupedIds = if (mergeEnabled) {
-            groupDao.groupedMediaIds(mediaType.persistedValue).toSet()
+            groupDao.groupedMediaIds(mediaType.persistedValue, groupType).toSet()
         } else emptySet()
         val individuals = dao.ratedItems(
             mediaType.persistedValue,
             filters.genre,
             filters.year,
             role,
-            filters.creditName
+            filters.creditName,
+            filters.demographic
         ).asSequence()
             .filterNot { it.item.id in groupedIds }
             .map { row -> MediaListEntry.Item(row.toDomain(categoryScores[row.item.id])) }
@@ -137,11 +143,13 @@ class GenericMediaRepository(
         if (mergeEnabled) {
             groupDao.matchingGroups(
                 mediaType.persistedValue,
+                groupType,
                 "",
                 filters.genre,
                 filters.year,
                 role,
-                filters.creditName
+                filters.creditName,
+                filters.demographic
             ).mapNotNullTo(individuals) { group ->
                 val detail = groupRepository.groupDetail(group.id) ?: return@mapNotNullTo null
                 val explicitCategory = if (sortOrder == RankingSortOrder.CATEGORY_SCORE && categoryId != null) {
@@ -166,11 +174,12 @@ class GenericMediaRepository(
     suspend fun filterOptions(mediaType: MediaType): GenericMediaFilterOptions =
         withContext(Dispatchers.IO) {
             requireIntegratedMediaType(mediaType)
-            val role = requireNotNull(mediaType.genericFilterCreditRole())
+            val role = mediaType.genericFilterCreditRole()
             GenericMediaFilterOptions(
                 genres = dao.genres(mediaType.persistedValue),
                 years = dao.years(mediaType.persistedValue),
-                creditNames = dao.creditNames(mediaType.persistedValue, role)
+                creditNames = role?.let { dao.creditNames(mediaType.persistedValue, it) }.orEmpty(),
+                demographics = dao.demographics(mediaType.persistedValue)
             )
         }
 
@@ -268,7 +277,7 @@ class GenericMediaRepository(
 }
 
 private fun requireIntegratedMediaType(mediaType: MediaType) {
-    require(mediaType == MediaType.MOVIE || mediaType == MediaType.SERIES)
+    require(mediaType in setOf(MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES))
 }
 
 private fun MediaGroupDetail.toListEntry(
@@ -276,8 +285,19 @@ private fun MediaGroupDetail.toListEntry(
     explicitCategoryScore: Double? = null
 ): MediaListEntry.Group {
     val explicit = explicitRating
+    val representative = members.firstOrNull { it.id == group.representativeMediaId }
+        ?: members.firstOrNull()
+    val displayGroup = if (group.mediaType == MediaType.MANGA && group.localCoverPath == null) {
+        group.copy(
+            localCoverPath = representative?.localCoverPath,
+            coverResolutionState = representative?.coverResolutionState
+                ?: CoverResolutionState.UNKNOWN
+        )
+    } else {
+        group
+    }
     return MediaListEntry.Group(
-        value = group,
+        value = displayGroup,
         finalScore = explicit?.finalScore ?: derivedRating.finalScore,
         qualityScore = explicit?.qualityScore ?: derivedRating.qualityScore,
         additiveScore = explicit?.additiveScore ?: derivedRating.additiveScore,
@@ -286,7 +306,7 @@ private fun MediaGroupDetail.toListEntry(
         popularity = members.mapNotNull { it.popularity?.takeIf(Double::isFinite) }.maxOrNull(),
         memberCount = members.size,
         ratedCount = derivedRating.ratedCount,
-        representativeMediaId = group.representativeMediaId ?: members.firstOrNull()?.id,
+        representativeMediaId = group.representativeMediaId ?: representative?.id,
         derived = explicit == null
     )
 }

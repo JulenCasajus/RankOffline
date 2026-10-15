@@ -46,12 +46,14 @@
     <string name="sort_final_score">最終スコア</string><string name="sort_quality_score">完成度</string><string name="sort_personal_taste">個人の好み</string><string name="sort_category_score">カテゴリー別スコア</string>
     <string name="merge_seasons">シーズンを統合</string>
     <string name="merge_collections">コレクションを統合</string>
+    <string name="merge_variants">バリエーションを統合</string>
     <string name="search_catalog_hint">タイトルを検索…</string>
     <string name="catalog_loading">カタログを読み込み中…</string>
     <string name="catalog_not_available_yet">カタログはまだ利用できません</string>
     <string name="catalog_unavailable_error">カタログを読み込めませんでした</string>
     <string name="filter_production_company">制作会社</string>
     <string name="filter_network">ネットワーク</string>
+    <string name="filter_demographic">対象層</string>
     <string name="group_format_series">シリーズ</string>
     <string name="group_format_movies">映画</string>
     <string name="group_format_specials">スペシャル</string>

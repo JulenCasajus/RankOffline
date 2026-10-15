@@ -27,7 +27,8 @@ val MediaType.mergeLabelResource: Int?
     get() = when (this) {
         MediaType.ANIME, MediaType.SERIES -> R.string.merge_seasons
         MediaType.MOVIE -> R.string.merge_collections
-        MediaType.MANGA, MediaType.BOOK -> null
+        MediaType.MANGA -> R.string.merge_variants
+        MediaType.BOOK -> null
     }
 
 @get:StringRes

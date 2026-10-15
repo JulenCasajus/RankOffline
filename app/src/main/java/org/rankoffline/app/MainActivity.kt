@@ -912,6 +912,15 @@ private fun GenericMediaFiltersDialog(
                         options.years.map(Int::toString)
                     ) { draft = draft.copy(year = it?.toIntOrNull()) }
                 }
+                if (mediaType == MediaType.MANGA) {
+                    item {
+                        FilterChoice(
+                            R.string.filter_demographic,
+                            draft.demographic,
+                            options.demographics
+                        ) { draft = draft.copy(demographic = it) }
+                    }
+                }
                 mediaType.creditFilterLabelResource?.let { label ->
                     item {
                         FilterChoice(label, draft.creditName, options.creditNames) {
