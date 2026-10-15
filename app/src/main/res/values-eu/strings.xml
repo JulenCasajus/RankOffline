@@ -54,6 +54,8 @@
     <string name="filter_production_company">Ekoiztetxea</string>
     <string name="filter_network">Telebista-katea</string>
     <string name="filter_demographic">Demografia</string>
+    <string name="filter_subject">Gaia</string>
+    <string name="filter_author">Egilea</string>
     <string name="group_format_series">Serieak</string>
     <string name="group_format_movies">Filmak</string>
     <string name="group_format_specials">Berezia</string>

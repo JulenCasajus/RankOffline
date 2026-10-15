@@ -341,7 +341,7 @@ private fun AnimeListScreen(
                     expanded = sortMenuExpanded,
                     onDismissRequest = { sortMenuExpanded = false }
                 ) {
-                    listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC).forEach { option ->
+                    activeMediaType.catalogSortCriteria().forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option.criterionLabel()) },
                             onClick = {
@@ -901,7 +901,7 @@ private fun GenericMediaFiltersDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
-                    FilterChoice(R.string.filter_genre, draft.genre, options.genres) {
+                    FilterChoice(mediaType.genreFilterLabelResource, draft.genre, options.genres) {
                         draft = draft.copy(genre = it)
                     }
                 }

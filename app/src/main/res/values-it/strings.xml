@@ -54,6 +54,8 @@
     <string name="filter_production_company">Casa di produzione</string>
     <string name="filter_network">Rete</string>
     <string name="filter_demographic">Demografia</string>
+    <string name="filter_subject">Argomento</string>
+    <string name="filter_author">Autore</string>
     <string name="group_format_series">Serie</string>
     <string name="group_format_movies">Film</string>
     <string name="group_format_specials">Speciale</string>

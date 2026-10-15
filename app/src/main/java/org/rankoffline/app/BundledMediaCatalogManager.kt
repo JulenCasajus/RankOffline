@@ -17,7 +17,7 @@ class BundledMediaCatalogManager(
 
     suspend fun importOptional(mediaType: MediaType): CatalogAvailability =
         withContext(Dispatchers.IO) {
-            require(mediaType in setOf(MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES))
+            require(mediaType != MediaType.ANIME)
             val prefix = mediaType.persistedValue
             val itemManifest = optionalAsset("${prefix}_catalog.manifest.json")
             val itemCatalog = optionalAsset("${prefix}_catalog.jsonl.gz")
@@ -35,6 +35,9 @@ class BundledMediaCatalogManager(
                 }
                 require(manifest.mediaType == prefix)
                 itemImporter.importIfNeeded(manifest, itemCatalog)
+
+                // Open Library Works are already the logical Book item; there is no group artifact.
+                if (!mediaType.supportsMerge()) return@withContext CatalogAvailability.AVAILABLE
 
                 val groupManifest = optionalAsset("${prefix}_groups.manifest.json")
                 val groupCatalog = optionalAsset("${prefix}_groups.jsonl.gz")

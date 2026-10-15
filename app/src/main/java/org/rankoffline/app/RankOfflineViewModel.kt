@@ -86,7 +86,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         ActiveSearchSnapshot(
             mediaType = currentSettings.activeMediaType,
             state = states.searchStateFor(currentSettings.activeMediaType),
-            merge = currentSettings.mergeEnabled
+            merge = currentSettings.mergeEnabled && currentSettings.activeMediaType.supportsMerge()
         )
     }.stateIn(
         viewModelScope,
@@ -102,7 +102,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         ActiveRankingSnapshot(
             mediaType = currentSettings.activeMediaType,
             state = states.rankingStateFor(currentSettings.activeMediaType).withValidCategory(validCategories),
-            merge = currentSettings.mergeEnabled
+            merge = currentSettings.mergeEnabled && currentSettings.activeMediaType.supportsMerge()
         )
     }.stateIn(
         viewModelScope,
@@ -118,19 +118,14 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         mapOf(
             MediaType.MANGA to GenericMediaFilterOptions(),
             MediaType.MOVIE to GenericMediaFilterOptions(),
-            MediaType.SERIES to GenericMediaFilterOptions()
+            MediaType.SERIES to GenericMediaFilterOptions(),
+            MediaType.BOOK to GenericMediaFilterOptions()
         )
     )
     val genericFilterOptions: StateFlow<Map<MediaType, GenericMediaFilterOptions>> =
         _genericFilterOptions.asStateFlow()
     private val _catalogAvailability = MutableStateFlow(
-        MediaType.entries.associateWith { type ->
-            when (type) {
-                MediaType.ANIME, MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES ->
-                    CatalogAvailability.LOADING
-                else -> CatalogAvailability.UNAVAILABLE
-            }
-        }
+        MediaType.entries.associateWith { CatalogAvailability.LOADING }
     )
     val catalogAvailability: StateFlow<Map<MediaType, CatalogAvailability>> =
         _catalogAvailability.asStateFlow()
@@ -249,7 +244,12 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                 _filterOptions.value = repository.filterOptions()
                 _catalogAvailability.value = _catalogAvailability.value +
                     (MediaType.ANIME to CatalogAvailability.AVAILABLE)
-                for (mediaType in listOf(MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES)) {
+                for (mediaType in listOf(
+                    MediaType.MANGA,
+                    MediaType.MOVIE,
+                    MediaType.SERIES,
+                    MediaType.BOOK
+                )) {
                     val availability = bundledCatalogManager.importOptional(mediaType)
                     _catalogAvailability.value = _catalogAvailability.value +
                         (mediaType to availability)

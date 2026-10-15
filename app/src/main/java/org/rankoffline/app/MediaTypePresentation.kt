@@ -24,7 +24,7 @@ val MediaType.accentColor: Color
 
 @get:StringRes
 val MediaType.mergeLabelResource: Int?
-    get() = when (this) {
+    get() = if (!supportsMerge()) null else when (this) {
         MediaType.ANIME, MediaType.SERIES -> R.string.merge_seasons
         MediaType.MOVIE -> R.string.merge_collections
         MediaType.MANGA -> R.string.merge_variants
@@ -32,9 +32,14 @@ val MediaType.mergeLabelResource: Int?
     }
 
 @get:StringRes
+val MediaType.genreFilterLabelResource: Int
+    get() = if (this == MediaType.BOOK) R.string.filter_subject else R.string.filter_genre
+
+@get:StringRes
 val MediaType.creditFilterLabelResource: Int?
     get() = when (this) {
         MediaType.MOVIE -> R.string.filter_production_company
         MediaType.SERIES -> R.string.filter_network
+        MediaType.BOOK -> R.string.filter_author
         else -> null
     }

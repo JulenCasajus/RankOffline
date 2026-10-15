@@ -233,6 +233,11 @@ Search covers canonical and alias titles, with genre/tag, year, and demographic
 filters. `VARIANTS` groups replace their members only when Merge variants is
 enabled, while a missing Manga bundle produces the same unavailable state.
 
+Books use the generic path with an optional local `book_catalog*` bundle and no
+group artifact. One Open Library Work is one item; Search covers its canonical
+and stored alias titles with subject, year, and `AUTHOR` filters. Books expose
+no Merge control, and Android never calls Open Library metadata APIs.
+
 ## Grouping policy
 
 The UI and rating semantics are common; provider identity rules are not.
@@ -270,9 +275,10 @@ fake Merge editions control. If Edition items are later deliberately imported,
 their Work OLID provides the stable group identity. Book series/sagas are not
 inferred from titles.
 
-For every medium, Merge off shows individuals. Merge on replaces two or more
-valid members with one group row. Active filters use independent `ANY(member)`
-conditions combined with `AND` at group level, matching the existing Anime
+For media that support grouping, Merge off shows individuals and Merge on
+replaces two or more valid members with one group row. Books remain Work-level
+individuals. Active filters use independent `ANY(member)` conditions combined
+with `AND` at group level, matching the existing Anime
 semantics.
 
 ## Covers

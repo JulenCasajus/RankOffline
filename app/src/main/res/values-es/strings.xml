@@ -61,6 +61,8 @@
     <string name="filter_production_company">Productora</string>
     <string name="filter_network">Cadena</string>
     <string name="filter_demographic">Demografía</string>
+    <string name="filter_subject">Tema</string>
+    <string name="filter_author">Autor</string>
     <string name="group_format_series">Series</string>
     <string name="group_format_movies">Películas</string>
     <string name="group_format_specials">Especial</string>

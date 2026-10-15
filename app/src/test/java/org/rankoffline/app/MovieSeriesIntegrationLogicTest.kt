@@ -11,7 +11,7 @@ class MovieSeriesIntegrationLogicTest {
         assertEquals(MediaDataPath.GENERIC, MediaType.MANGA.dataPath())
         assertEquals(MediaDataPath.GENERIC, MediaType.MOVIE.dataPath())
         assertEquals(MediaDataPath.GENERIC, MediaType.SERIES.dataPath())
-        assertEquals(MediaDataPath.UNSUPPORTED, MediaType.BOOK.dataPath())
+        assertEquals(MediaDataPath.GENERIC, MediaType.BOOK.dataPath())
     }
 
     @Test
@@ -20,7 +20,7 @@ class MovieSeriesIntegrationLogicTest {
         assertEquals("NETWORK", MediaType.SERIES.genericFilterCreditRole())
         assertNull(MediaType.ANIME.genericFilterCreditRole())
         assertNull(MediaType.MANGA.genericFilterCreditRole())
-        assertNull(MediaType.BOOK.genericFilterCreditRole())
+        assertEquals("AUTHOR", MediaType.BOOK.genericFilterCreditRole())
     }
 
     @Test
@@ -34,6 +34,17 @@ class MovieSeriesIntegrationLogicTest {
         assertEquals("VARIANTS", MediaType.MANGA.genericGroupType())
         assertEquals("COLLECTION", MediaType.MOVIE.genericGroupType())
         assertEquals("SEASONS", MediaType.SERIES.genericGroupType())
+    }
+
+    @Test
+    fun booksDoNotSupportMergeOrResolveAMergeLabel() {
+        assertEquals(false, MediaType.BOOK.supportsMerge())
+        assertNull(MediaType.BOOK.mergeLabelResource)
+        assertNull(MediaType.BOOK.genericGroupType())
+        assertEquals(true, MediaType.ANIME.supportsMerge())
+        assertEquals(true, MediaType.MANGA.supportsMerge())
+        assertEquals(true, MediaType.MOVIE.supportsMerge())
+        assertEquals(true, MediaType.SERIES.supportsMerge())
     }
 
     @Test
@@ -52,12 +63,14 @@ class MovieSeriesIntegrationLogicTest {
     }
 
     @Test
-    fun mangaStartsTitleSortedWithoutChangingOtherMediaDefaults() {
+    fun mediaWithoutPopularityStartsTitleSortedWithoutChangingOtherMediaDefaults() {
         val states = defaultSearchUiStates()
 
         assertEquals(CatalogSortOrder.TITLE_ASC, states.searchStateFor(MediaType.MANGA).sortOrder)
+        assertEquals(CatalogSortOrder.TITLE_ASC, states.searchStateFor(MediaType.BOOK).sortOrder)
         assertEquals(CatalogSortOrder.POPULARITY, states.searchStateFor(MediaType.ANIME).sortOrder)
         assertEquals(CatalogSortOrder.POPULARITY, states.searchStateFor(MediaType.MOVIE).sortOrder)
         assertEquals(CatalogSortOrder.POPULARITY, states.searchStateFor(MediaType.SERIES).sortOrder)
+        assertEquals(listOf(CatalogSortOrder.TITLE_ASC), MediaType.BOOK.catalogSortCriteria())
     }
 }

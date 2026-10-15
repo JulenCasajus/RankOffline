@@ -54,6 +54,8 @@
     <string name="filter_production_company">制作会社</string>
     <string name="filter_network">ネットワーク</string>
     <string name="filter_demographic">対象層</string>
+    <string name="filter_subject">主題</string>
+    <string name="filter_author">著者</string>
     <string name="group_format_series">シリーズ</string>
     <string name="group_format_movies">映画</string>
     <string name="group_format_specials">スペシャル</string>

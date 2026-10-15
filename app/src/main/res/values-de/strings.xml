@@ -54,6 +54,8 @@
     <string name="filter_production_company">Produktionsfirma</string>
     <string name="filter_network">Sender</string>
     <string name="filter_demographic">Zielgruppe</string>
+    <string name="filter_subject">Thema</string>
+    <string name="filter_author">Autor</string>
     <string name="group_format_series">Serien</string>
     <string name="group_format_movies">Filme</string>
     <string name="group_format_specials">Special</string>

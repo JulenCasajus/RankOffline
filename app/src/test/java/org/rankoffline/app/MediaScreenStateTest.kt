@@ -57,7 +57,10 @@ class MediaScreenStateTest {
                 it.copy(query = "Naruto", filters = AnimeFilters(genre = "Action"))
             }
 
-        assertEquals(SearchUiState(), states.searchStateFor(MediaType.BOOK))
+        assertEquals(
+            SearchUiState(sortOrder = CatalogSortOrder.TITLE_ASC),
+            states.searchStateFor(MediaType.BOOK)
+        )
         assertNotSame(states.searchStateFor(MediaType.ANIME), states.searchStateFor(MediaType.BOOK))
     }
 

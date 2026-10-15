@@ -54,6 +54,8 @@
     <string name="filter_production_company">Société de production</string>
     <string name="filter_network">Chaîne</string>
     <string name="filter_demographic">Démographie</string>
+    <string name="filter_subject">Sujet</string>
+    <string name="filter_author">Auteur</string>
     <string name="group_format_series">Séries</string>
     <string name="group_format_movies">Films</string>
     <string name="group_format_specials">Spécial</string>

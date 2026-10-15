@@ -35,13 +35,13 @@ enum class MediaDataPath { ANIME, GENERIC, UNSUPPORTED }
 
 fun MediaType.dataPath(): MediaDataPath = when (this) {
     MediaType.ANIME -> MediaDataPath.ANIME
-    MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES -> MediaDataPath.GENERIC
-    MediaType.BOOK -> MediaDataPath.UNSUPPORTED
+    MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES, MediaType.BOOK -> MediaDataPath.GENERIC
 }
 
 fun MediaType.genericFilterCreditRole(): String? = when (this) {
     MediaType.MOVIE -> "PRODUCTION_COMPANY"
     MediaType.SERIES -> "NETWORK"
+    MediaType.BOOK -> "AUTHOR"
     else -> null
 }
 
@@ -52,10 +52,17 @@ fun MediaType.genericGroupType(): String? = when (this) {
     else -> null
 }
 
+fun MediaType.supportsMerge(): Boolean = this != MediaType.BOOK
+
+fun MediaType.catalogSortCriteria(): List<CatalogSortOrder> = when (this) {
+    MediaType.BOOK -> listOf(CatalogSortOrder.TITLE_ASC)
+    else -> listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC)
+}
+
 internal fun defaultSearchUiStates(): Map<MediaType, SearchUiState> =
     MediaType.entries.associateWith { mediaType ->
         SearchUiState(
-            sortOrder = if (mediaType == MediaType.MANGA) {
+            sortOrder = if (mediaType == MediaType.MANGA || mediaType == MediaType.BOOK) {
                 CatalogSortOrder.TITLE_ASC
             } else {
                 CatalogSortOrder.POPULARITY

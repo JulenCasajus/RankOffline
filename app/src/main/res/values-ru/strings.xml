@@ -54,6 +54,8 @@
     <string name="filter_production_company">Производственная компания</string>
     <string name="filter_network">Телеканал</string>
     <string name="filter_demographic">Демография</string>
+    <string name="filter_subject">Тематика</string>
+    <string name="filter_author">Автор</string>
     <string name="group_format_series">Сериалы</string>
     <string name="group_format_movies">Фильмы</string>
     <string name="group_format_specials">Спецвыпуск</string>

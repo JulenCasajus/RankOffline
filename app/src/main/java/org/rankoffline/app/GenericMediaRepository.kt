@@ -77,7 +77,7 @@ class GenericMediaRepository(
     ): List<MediaListEntry> = withContext(Dispatchers.IO) {
         requireIntegratedMediaType(mediaType)
         val role = mediaType.genericFilterCreditRole()
-        val groupType = requireNotNull(mediaType.genericGroupType())
+        val groupType = mediaType.genericGroupType().takeIf { mergeEnabled }
         val individuals = dao.searchItems(
             mediaType.persistedValue,
             query.trim(),
@@ -88,7 +88,7 @@ class GenericMediaRepository(
             filters.creditName,
             filters.demographic
         )
-        if (!mergeEnabled) return@withContext individuals.map { MediaListEntry.Item(it.toDomain()) }
+        if (groupType == null) return@withContext individuals.map { MediaListEntry.Item(it.toDomain()) }
 
         val groupedIds = groupDao.groupedMediaIds(mediaType.persistedValue, groupType).toSet()
         val ungrouped = individuals.asSequence()
@@ -118,13 +118,13 @@ class GenericMediaRepository(
     ): List<MediaListEntry> = withContext(Dispatchers.IO) {
         requireIntegratedMediaType(mediaType)
         val role = mediaType.genericFilterCreditRole()
-        val groupType = requireNotNull(mediaType.genericGroupType())
+        val groupType = mediaType.genericGroupType().takeIf { mergeEnabled }
         val categoryScores = if (sortOrder == RankingSortOrder.CATEGORY_SCORE && categoryId != null) {
             dao.categoryScores(mediaType.persistedValue, categoryId)
                 .filter { it.applicable && it.score?.isFinite() == true }
                 .associate { it.mediaId to it.score }
         } else emptyMap()
-        val groupedIds = if (mergeEnabled) {
+        val groupedIds = if (groupType != null) {
             groupDao.groupedMediaIds(mediaType.persistedValue, groupType).toSet()
         } else emptySet()
         val individuals = dao.ratedItems(
@@ -140,7 +140,7 @@ class GenericMediaRepository(
             .filter { it.rankingScore(sortOrder) != null }
             .toMutableList<MediaListEntry>()
 
-        if (mergeEnabled) {
+        if (groupType != null) {
             groupDao.matchingGroups(
                 mediaType.persistedValue,
                 groupType,
@@ -277,7 +277,7 @@ class GenericMediaRepository(
 }
 
 private fun requireIntegratedMediaType(mediaType: MediaType) {
-    require(mediaType in setOf(MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES))
+    require(mediaType != MediaType.ANIME)
 }
 
 private fun MediaGroupDetail.toListEntry(

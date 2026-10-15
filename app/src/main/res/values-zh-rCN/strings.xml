@@ -54,6 +54,8 @@
     <string name="filter_production_company">制作公司</string>
     <string name="filter_network">电视网</string>
     <string name="filter_demographic">受众群体</string>
+    <string name="filter_subject">主题</string>
+    <string name="filter_author">作者</string>
     <string name="group_format_series">系列</string>
     <string name="group_format_movies">电影</string>
     <string name="group_format_specials">特别篇</string>

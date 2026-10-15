@@ -264,6 +264,8 @@
     <string name="filter_production_company">Production company</string>
     <string name="filter_network">Network</string>
     <string name="filter_demographic">Demographic</string>
+    <string name="filter_subject">Subject</string>
+    <string name="filter_author">Author</string>
     <string name="group_format_series">Series</string>
     <string name="group_format_movies">Movies</string>
     <string name="group_format_specials">Special</string>
