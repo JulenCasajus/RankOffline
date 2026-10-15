@@ -144,9 +144,9 @@ without first reassessing MangaDex permission.
 
 ## Open Library: Books
 
-The initial Book catalog is Work-level. Editions are deliberately excluded
-until measurements demonstrate a useful edition-level catalog and grouping
-experience. Work-only data means the UI hides Merge editions.
+The initial Book catalog is Work-level: one Open Library Work is one RankOffline
+item. Editions and chapters are deliberately excluded, no Book group artifact
+is generated, and the UI hides Merge editions.
 
 Open Library distinguishes Works from Editions and publishes monthly bulk
 files. Its [Developer Center](https://openlibrary.org/developers) and
@@ -156,20 +156,33 @@ therefore consumes local monthly files from the
 [data dumps page](https://openlibrary.org/developers/dumps), streaming gzip
 records without loading a full dump into memory.
 
+The offline generator streams a local Works dump and can optionally build and
+reuse a disk-backed SQLite index from a local Authors dump to resolve canonical
+`AUTHOR` credits. Work subjects become bounded generic genre/filter metadata,
+and the first valid Work Cover ID is stored for later explicit, on-demand cover
+retrieval. Catalog records retain the deterministic Works dump order so full
+generation remains streaming and approximately constant-memory. The tool never
+crawls Open Library or the Covers API.
+
 Tooling must:
 
-- require explicit local Works and Authors dump paths;
+- require an explicit local Works dump path and accept an optional local Authors
+  dump/index;
 - never automatically download multi-gigabyte dumps without an explicit flag;
 - use a streaming/two-pass join or a bounded on-disk index when authors are
   required;
-- accept optional Editions, ratings, and reading-log inputs only when the
-  selected catalog design uses them;
+- keep Editions, ratings, and reading-log inputs out of the initial generator;
 - explain missing inputs and stop instead of falling back to mass API calls;
 - validate with tiny compressed fixtures before production processing.
 
 Book popularity is not invented. If exposed, its documented formula derives
 from source counts such as reading-log or rating counts and retains useful raw
 counts. It is only meaningful inside Books.
+
+Work records do not provide a complete set of translated Edition titles. The
+initial catalog therefore searches the canonical Work title plus conservative
+Work-level aliases such as title and subtitle combined. A future offline
+Edition pass may enrich aliases without turning Editions into rankable items.
 
 Cover ID is the preferred stored reference. Explicit user download resolves a
 Large HTTPS cover URL and uses `default=false` so a missing image returns a real
