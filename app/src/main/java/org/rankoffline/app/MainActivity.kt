@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -108,10 +109,15 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
+private data class CoverViewerState(
+    val displayAnime: Anime,
+    val coverAnime: Anime = displayAnime.coverTarget()
+)
+
 @Composable
 fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     var tab by remember { mutableIntStateOf(0) }
-    var coverViewerAnime by remember { mutableStateOf<Anime?>(null) }
+    var coverViewer by remember { mutableStateOf<CoverViewerState?>(null) }
     val settings by viewModel.settings.collectAsState()
     val ready by viewModel.ready.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -171,14 +177,23 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         return
     }
 
-    coverViewerAnime?.let { anime ->
+    coverViewer?.let { viewer ->
         CoverViewerDialog(
-            anime = anime,
+            coverAnime = viewer.coverAnime,
+            displayAnime = viewer.displayAnime,
             coverRepository = viewModel.coverRepository,
-            onDismiss = { coverViewerAnime = null },
+            onDismiss = { coverViewer = null },
+            onGroupDetails = if (viewer.displayAnime.usesGroupEntriesCoverSubtitle()) {
+                {
+                    coverViewer = null
+                    viewModel.openGroupDetails(viewer.displayAnime)
+                }
+            } else {
+                null
+            },
             onDeleteConfirmed = { onResult ->
-                viewModel.deleteDownloadedCover(anime) { deleted ->
-                    if (deleted) coverViewerAnime = null
+                viewModel.deleteDownloadedCover(viewer.coverAnime) { deleted ->
+                    if (deleted) coverViewer = null
                     onResult(deleted)
                 }
             }
@@ -218,7 +233,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
             onRate = viewModel::rateGroup,
             onMember = viewModel::openRating,
             onCoverDownload = viewModel::downloadCover,
-            onCoverOpen = { coverViewerAnime = it }
+            onCoverOpen = { coverViewer = CoverViewerState(it) }
         )
         return
     }
@@ -259,7 +274,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     onAnime = viewModel::openAnime,
                     onGroupDetails = viewModel::openGroupDetails,
                     onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
-                    onCoverOpen = { coverViewerAnime = it.coverTarget() },
+                    onCoverOpen = { coverViewer = CoverViewerState(it) },
                     errorMessage = errorMessage,
                     catalogAvailability = catalogAvailability
                 )
@@ -288,7 +303,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     onAnime = viewModel::openAnime,
                     onGroupDetails = viewModel::openGroupDetails,
                     onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
-                    onCoverOpen = { coverViewerAnime = it.coverTarget() },
+                    onCoverOpen = { coverViewer = CoverViewerState(it) },
                     catalogAvailability = catalogAvailability
                 )
                 else -> SettingsScreen(settings, catalogCount, viewModel)
@@ -1292,25 +1307,27 @@ private fun DefaultCover(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CoverViewerDialog(
-    anime: Anime,
+    coverAnime: Anime,
+    displayAnime: Anime,
     coverRepository: CoverRepository,
     onDismiss: () -> Unit,
+    onGroupDetails: (() -> Unit)?,
     onDeleteConfirmed: ((Boolean) -> Unit) -> Unit
 ) {
-    val pathFlow = remember(anime.id, anime.mediaType, anime.localCoverPath) {
-        if (anime.mediaType == MediaType.ANIME) coverRepository.observeLocalCoverPath(anime.id)
-        else flowOf(anime.localCoverPath)
+    val pathFlow = remember(coverAnime.id, coverAnime.mediaType, coverAnime.localCoverPath) {
+        if (coverAnime.mediaType == MediaType.ANIME) coverRepository.observeLocalCoverPath(coverAnime.id)
+        else flowOf(coverAnime.localCoverPath)
     }
-    val initialPath = remember(anime.id, anime.localCoverPath) {
-        if (anime.mediaType == MediaType.ANIME) {
-            coverRepository.immediateLocalCoverPath(anime.id, anime.localCoverPath)
+    val initialPath = remember(coverAnime.id, coverAnime.localCoverPath) {
+        if (coverAnime.mediaType == MediaType.ANIME) {
+            coverRepository.immediateLocalCoverPath(coverAnime.id, coverAnime.localCoverPath)
         } else {
-            anime.localCoverPath
+            coverAnime.localCoverPath
         }
     }
     val localPath by pathFlow.collectAsState(initial = initialPath)
-    var bitmap by remember(anime.id, localPath) {
-        mutableStateOf(localPath?.let { coverRepository.cachedBitmap(anime.id, it) })
+    var bitmap by remember(coverAnime.id, localPath) {
+        mutableStateOf(localPath?.let { coverRepository.cachedBitmap(coverAnime.id, it) })
     }
     var confirmDelete by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
@@ -1318,15 +1335,18 @@ private fun CoverViewerDialog(
         image.width.toFloat().div(image.height.toFloat()).takeIf { it.isFinite() && it > 0f }
     } ?: (2f / 3f)
 
-    LaunchedEffect(anime.id, localPath) {
+    LaunchedEffect(coverAnime.id, localPath) {
         val currentPath = localPath
         if (currentPath == null) {
             onDismiss()
         } else if (bitmap == null) {
-            val loaded = coverRepository.loadBitmap(anime.id, currentPath)
+            val loaded = coverRepository.loadBitmap(coverAnime.id, currentPath)
             if (loaded == null) {
-                if (anime.mediaType == MediaType.ANIME) coverRepository.invalidateLocalCover(anime, currentPath)
-                else onDismiss()
+                if (coverAnime.mediaType == MediaType.ANIME) {
+                    coverRepository.invalidateLocalCover(coverAnime, currentPath)
+                } else {
+                    onDismiss()
+                }
             } else {
                 bitmap = loaded
             }
@@ -1350,19 +1370,32 @@ private fun CoverViewerDialog(
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    AnimeTopAppBar(anime.localizedDisplayTitle(), onDismiss)
-                    val subtitle = anime.metadataSubtitle()
-                    if (subtitle.isNotEmpty()) {
+                    AnimeTopAppBar(displayAnime.localizedDisplayTitle(), onDismiss)
+                    if (displayAnime.usesGroupEntriesCoverSubtitle() && onGroupDetails != null) {
                         Text(
-                            subtitle,
-                            color = Color.LightGray,
+                            stringResource(R.string.group_entries_count, displayAnime.memberCount),
+                            color = Cyan,
                             fontSize = 13.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.SemiBold,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clickable(role = Role.Button, onClick = onGroupDetails)
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         )
+                    } else {
+                        val subtitle = coverAnime.metadataSubtitle()
+                        if (subtitle.isNotEmpty()) {
+                            Text(
+                                subtitle,
+                                color = Color.LightGray,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
                     }
                     Box(
                         modifier = Modifier.fillMaxWidth().height(imageHeight).background(Color.Black),
@@ -1371,7 +1404,7 @@ private fun CoverViewerDialog(
                         bitmap?.let { image ->
                             Image(
                                 bitmap = image.asImageBitmap(),
-                                contentDescription = anime.title,
+                                contentDescription = displayAnime.title,
                                 contentScale = ContentScale.Fit,
                                 modifier = Modifier.fillMaxSize()
                             )

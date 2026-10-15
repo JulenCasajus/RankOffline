@@ -141,6 +141,9 @@ internal fun animeListRowAction(anime: Anime, memberCountClicked: Boolean): Anim
 internal fun usesGroupScoreLabel(isGroup: Boolean, memberCount: Int): Boolean =
     isGroup && memberCount > 1
 
+internal fun Anime.usesGroupEntriesCoverSubtitle(): Boolean =
+    groupId != null && memberCount > 1
+
 fun Anime.coverTarget(): Anime = when {
     groupId == null -> this
     mediaType == MediaType.ANIME || mediaType == MediaType.MANGA ->

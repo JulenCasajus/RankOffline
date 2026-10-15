@@ -76,6 +76,14 @@ class GroupRatingTest {
         assertEquals(false, usesGroupScoreLabel(isGroup = false, memberCount = 2))
     }
 
+    @Test fun coverViewerUsesEntryLinkOnlyForActualMultiMemberGroups() {
+        val group = Anime(id = "group:1", title = "Group", groupId = "group:1", memberCount = 2)
+
+        assertEquals(true, group.usesGroupEntriesCoverSubtitle())
+        assertEquals(false, group.copy(memberCount = 1).usesGroupEntriesCoverSubtitle())
+        assertEquals(false, group.copy(groupId = null).usesGroupEntriesCoverSubtitle())
+    }
+
     @Test fun groupRowRoutesMainAreaToRatingAndMemberCountToDetails() {
         val group = Anime(id = "group:1:SERIES", title = "Example", groupId = "group:1:SERIES", memberCount = 2)
         val individual = Anime(id = "1", title = "Example")

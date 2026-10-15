@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_anime">Anime</string><string name="nav_ranking">Mi ranking</string><string name="nav_settings">Ajustes</string>
-    <string name="media_anime">Anime</string><string name="media_manga">Manga</string><string name="media_series">Series</string><string name="media_movies">Películas</string><string name="media_books">Libros</string>
+    <string name="media_anime">Animes</string><string name="media_manga">Mangas</string><string name="media_series">Series</string><string name="media_movies">Películas</string><string name="media_books">Libros</string>
     <string name="catalog_local_count">Catálogo local: %1$s entradas.</string><string name="search_anime_hint">Buscar anime…</string><string name="no_search_results">No hay resultados.</string>
     <string name="ranking_title">MiRanking</string><string name="no_saved_ratings">Todavía no hay valoraciones guardadas.</string><string name="sort_popularity">Popularidad</string><string name="sort_popularity_descending">↓ Popularidad</string><string name="sort_popularity_ascending">↑ Popularidad</string>
     <string name="cover_download">Descargar portada</string><string name="cover_close">Cerrar</string><string name="cover_delete">Eliminar portada</string><string name="cover_delete_title">¿Eliminar esta portada?</string><string name="cover_delete_explanation">Podrás volver a descargarla cuando quieras.</string>

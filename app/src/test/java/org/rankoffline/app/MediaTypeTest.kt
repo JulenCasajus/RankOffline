@@ -1,6 +1,7 @@
 package org.rankoffline.app
 
 import androidx.compose.ui.graphics.Color
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -64,5 +65,28 @@ class MediaTypeTest {
         assertEquals(Color(0xFFE6E530), MediaType.SERIES.accentColor)
         assertEquals(Color(0xFF2E2EDE), MediaType.MOVIE.accentColor)
         assertEquals(Color(0xFF27CF24), MediaType.BOOK.accentColor)
+    }
+
+    @Test
+    fun mediaScreenTitleJoinsTheScreenAndPluralCategoryWithoutWhitespace() {
+        assertEquals("RankOfflineMangas", mediaScreenTitle("RankOffline", "Mangas", Color.Magenta).text)
+        assertEquals("MiRankingLibros", mediaScreenTitle("MiRanking", "Libros", Color.Green).text)
+        assertEquals("AjustesPelículas", mediaScreenTitle("Ajustes", "Películas", Color.Blue).text)
+    }
+
+    @Test
+    fun mediaMenuShowsOnlyOtherCategoriesInLocalizedAlphabeticalOrder() {
+        val labels = mapOf(
+            MediaType.ANIME to "Animes",
+            MediaType.MANGA to "Mangas",
+            MediaType.SERIES to "Series",
+            MediaType.MOVIE to "Películas",
+            MediaType.BOOK to "Libros"
+        )
+
+        assertEquals(
+            listOf(MediaType.ANIME, MediaType.BOOK, MediaType.MOVIE, MediaType.SERIES),
+            mediaTypeMenuOptions(MediaType.MANGA, labels, Locale.forLanguageTag("es"))
+        )
     }
 }
