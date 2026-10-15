@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 11,
-    "identityHash": "acfcad59476955a4940e8970f175a85e",
+    "identityHash": "dd61047ec1cbc806d8cada4c869961cf",
     "entities": [
       {
         "tableName": "anime",
@@ -190,6 +190,76 @@
           }
         ],
         "foreignKeys": []
+      },
+      {
+        "tableName": "anime_alias",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`anime_id` TEXT NOT NULL, `title` TEXT NOT NULL, `language` TEXT, `kind` TEXT, PRIMARY KEY(`anime_id`, `title`), FOREIGN KEY(`anime_id`) REFERENCES `anime`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "animeId",
+            "columnName": "anime_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "language",
+            "columnName": "language",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "anime_id",
+            "title"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_anime_alias_anime",
+            "unique": false,
+            "columnNames": [
+              "anime_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_anime_alias_anime` ON `${TABLE_NAME}` (`anime_id`)"
+          },
+          {
+            "name": "idx_anime_alias_title",
+            "unique": false,
+            "columnNames": [
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_anime_alias_title` ON `${TABLE_NAME}` (`title`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "anime",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "anime_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       },
       {
         "tableName": "anime_genre",
@@ -1533,7 +1603,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'acfcad59476955a4940e8970f175a85e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dd61047ec1cbc806d8cada4c869961cf')"
     ]
   }
 }

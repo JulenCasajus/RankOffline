@@ -78,6 +78,7 @@ Schema 11 is an additive, non-destructive migration. These schema 10
 tables remain the Anime source of truth without destructive changes:
 
 - `anime`, `anime_genre`, `anime_studio`
+- `anime_alias` (catalog-owned alternative titles)
 - `rating`, `rating_score`
 - `anime_group`, `anime_group_member`
 - `group_rating`, `group_rating_score`
@@ -237,6 +238,12 @@ Books use the generic path with an optional local `book_catalog*` bundle and no
 group artifact. One Open Library Work is one item; Search covers its canonical
 and stored alias titles with subject, year, and `AUTHOR` filters. Books expose
 no Merge control, and Android never calls Open Library metadata APIs.
+
+Anime remains on its legacy tables and adds the catalog-owned `anime_alias`
+relation in schema 11. Normal Anime search matches the canonical title or an
+alias with `EXISTS` semantics, while merged-season search also checks every
+member's aliases. Aliases never become visible/rankable rows and are refreshed
+transactionally from their independently versioned bundled asset.
 
 ## Grouping policy
 

@@ -38,6 +38,17 @@ This block does not remove current published behavior. Any future replacement
 must preserve stable Anime IDs, catalog coverage, popularity, relations, cover
 fallbacks, and all user data.
 
+Anime title search is separately enriched from the pinned `2026-42` release of
+[cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database),
+the active continuation of
+[manami-project/anime-offline-database](https://github.com/manami-project/anime-offline-database).
+The offline generator uses only exact MAL/AniList IDs from `sources`, `title`,
+and `synonyms`; it performs no title matching and makes no additional AniList
+requests. The derived `anime_aliases` asset is kept separate from the AnimeAPI
+catalog under ODbL 1.0/DbCL 1.0 provenance. Synonyms do not carry reliable
+language labels, so stored alias language is null; coverage is source-provided
+and no translations are generated.
+
 ## TMDb: Movies and Series
 
 TMDb supplies movie, TV-series, season, collection, and poster metadata.

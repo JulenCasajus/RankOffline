@@ -82,6 +82,7 @@ class MediaDatabaseMigrationTest {
             assertRow(db, "SELECT final_score FROM group_rating WHERE group_id='group:mal:10:SERIES'", 9.2)
             assertRow(db, "SELECT score FROM group_rating_score WHERE group_id='group:mal:10:SERIES'", 9.5)
             assertRow(db, "SELECT metadata_value FROM catalog_metadata WHERE metadata_key='catalog_version'", "v10")
+            assertEquals(0L, count(db, "anime_alias"))
             NEW_MEDIA_TABLES.forEach { table -> assertEquals("$table must start empty", 0L, count(db, table)) }
         }
     }

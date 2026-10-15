@@ -55,6 +55,27 @@ data class AnimeEntity(
 )
 
 @Entity(
+    tableName = "anime_alias",
+    primaryKeys = ["anime_id", "title"],
+    indices = [
+        Index(value = ["anime_id"], name = "idx_anime_alias_anime"),
+        Index(value = ["title"], name = "idx_anime_alias_title")
+    ],
+    foreignKeys = [ForeignKey(
+        entity = AnimeEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["anime_id"],
+        onDelete = ForeignKey.CASCADE
+    )]
+)
+data class AnimeAliasEntity(
+    @ColumnInfo(name = "anime_id") val animeId: String,
+    val title: String,
+    val language: String? = null,
+    val kind: String? = null
+)
+
+@Entity(
     tableName = "anime_group",
     indices = [Index(value = ["type"], name = "idx_anime_group_type"), Index(value = ["root_anime_id"], name = "idx_anime_group_root")],
     foreignKeys = [ForeignKey(entity = AnimeEntity::class, parentColumns = ["id"], childColumns = ["root_anime_id"])]
@@ -226,7 +247,11 @@ interface AnimeDao {
                NULL AS groupId, NULL AS groupType, NULL AS rootAnimeId,
                0 AS memberCount, 0 AS ratedCount, 0 AS derived
         FROM anime a LEFT JOIN rating r ON a.id = r.anime_id
-        WHERE (:query = '' OR a.title LIKE '%' || :query || '%' COLLATE NOCASE)
+        WHERE (:query = '' OR a.title LIKE '%' || :query || '%' COLLATE NOCASE
+               OR EXISTS (
+                   SELECT 1 FROM anime_alias aa
+                   WHERE aa.anime_id=a.id AND aa.title LIKE '%' || :query || '%' COLLATE NOCASE
+               ))
           AND (:genre IS NULL OR EXISTS (SELECT 1 FROM anime_genre ag WHERE ag.anime_id=a.id AND ag.genre=:genre))
           AND (:format IS NULL
                OR (:format='SERIES' AND a.format IN ('TV','TV_SHORT','ONA'))
@@ -475,6 +500,15 @@ interface AnimeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun putMetadata(metadata: CatalogMetadataEntity)
 
+    @Query("SELECT id FROM anime WHERE id IN (:animeIds)")
+    suspend fun existingAnimeIds(animeIds: List<String>): List<String>
+
+    @Query("DELETE FROM anime_alias")
+    suspend fun deleteAllAnimeAliases()
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAnimeAliases(aliases: List<AnimeAliasEntity>)
+
     @Query("SELECT * FROM rating WHERE anime_id = :animeId")
     suspend fun rating(animeId: String): RatingEntity?
 
@@ -562,6 +596,7 @@ interface AnimeDao {
 @Database(
     entities = [
         AnimeEntity::class,
+        AnimeAliasEntity::class,
         AnimeGenreEntity::class,
         AnimeStudioEntity::class,
         AnimeGroupEntity::class,
@@ -672,6 +707,9 @@ abstract class AnimeDatabase : RoomDatabase() {
         }
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `anime_alias` (`anime_id` TEXT NOT NULL, `title` TEXT NOT NULL, `language` TEXT, `kind` TEXT, PRIMARY KEY(`anime_id`, `title`), FOREIGN KEY(`anime_id`) REFERENCES `anime`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_anime_alias_anime` ON `anime_alias` (`anime_id`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_anime_alias_title` ON `anime_alias` (`title`)")
                 db.execSQL("CREATE TABLE IF NOT EXISTS `media_item` (`id` TEXT NOT NULL, `media_type` TEXT NOT NULL, `provider` TEXT NOT NULL, `provider_id` TEXT NOT NULL, `title` TEXT NOT NULL, `original_title` TEXT, `year` INTEGER, `start_date` TEXT, `format` TEXT, `status` TEXT, `original_language` TEXT, `demographic` TEXT, `part_number` INTEGER, `popularity` REAL, `popularity_rank` INTEGER, `remote_cover_ref` TEXT, `local_cover_path` TEXT, `cover_resolution_state` TEXT NOT NULL DEFAULT 'UNKNOWN', PRIMARY KEY(`id`))")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_item_media_type` ON `media_item` (`media_type`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_item_type_title` ON `media_item` (`media_type`, `title`)")

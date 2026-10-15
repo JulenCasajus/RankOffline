@@ -67,6 +67,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     private val genericRepository = GenericMediaRepository(database)
     private val genericGroupRepository = GenericMediaGroupRepository(database)
     private val bundledCatalogManager = BundledMediaCatalogManager(application, database)
+    private val bundledAnimeAliasCatalogManager = BundledAnimeAliasCatalogManager(application, database)
     private val settingsRepository = SettingsRepository(application)
     val coverRepository = CoverRepository(application, repository)
     private val genericCoverRepository = GenericMediaCoverRepository(application, database)
@@ -250,6 +251,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                     repository.deleteRatingCategory(categoryId)
                 }
                 repository.updateCatalogIfNeeded()
+                bundledAnimeAliasCatalogManager.importIfNeeded()
                 coverRepository.initialize()
                 _catalogCount.value = repository.animeCount()
                 _filterOptions.value = repository.filterOptions()

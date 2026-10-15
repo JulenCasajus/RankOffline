@@ -60,16 +60,22 @@ internal object GroupedQueries {
         val groupText = if (query.isBlank()) "" else {
             args += "%$query%"
             args += "%$query%"
+            args += "%$query%"
             "AND (g.display_title LIKE ? COLLATE NOCASE OR EXISTS (" +
                 "SELECT 1 FROM anime_group_member tm JOIN anime ta ON ta.id=tm.anime_id " +
-                "WHERE tm.group_id=g.id AND ta.title LIKE ? COLLATE NOCASE))"
+                "WHERE tm.group_id=g.id AND (ta.title LIKE ? COLLATE NOCASE OR EXISTS (" +
+                "SELECT 1 FROM anime_alias aa WHERE aa.anime_id=ta.id " +
+                "AND aa.title LIKE ? COLLATE NOCASE))))"
         }
         val groupFilters = groupFilterConditions(filters, args)
 
         args += categoryId
         val individualText = if (query.isBlank()) "" else {
             args += "%$query%"
-            "AND a.title LIKE ? COLLATE NOCASE"
+            args += "%$query%"
+            "AND (a.title LIKE ? COLLATE NOCASE OR EXISTS (" +
+                "SELECT 1 FROM anime_alias aa WHERE aa.anime_id=a.id " +
+                "AND aa.title LIKE ? COLLATE NOCASE))"
         }
         val individualFilters = individualFilterConditions("a", filters, args)
         return """
