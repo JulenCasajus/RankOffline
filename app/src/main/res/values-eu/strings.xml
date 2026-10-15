@@ -36,9 +36,12 @@
     <string name="profile_visual_action">Ikusizkoa / Akzioa</string>
     <string name="profile_world_adventure">Mundua / Abentura</string>
     <string name="profile_atmospheric">Atmosferikoa</string>
-    <string name="covers_settings_title">Ospe-sailkapena eta azalak</string>
-    <string name="covers_settings_description">Eguneratu ospe-sailkapena eta kudeatu lineaz kanpoko azalak.</string>
-    <string name="covers_settings_explanation">Aukeratu Top tartea. RankOffline-k ospe-sailkapena eguneratuko du, eta falta diren azalak soilik deskargatuko ditu.</string>
+    <string name="covers_settings_title">Azalak</string>
+    <string name="covers_settings_description">Kudeatu hautatutako multimedia motaren lineaz kanpoko azalak.</string>
+    <string name="covers_settings_explanation">Ekintzek hautatutako multimedia motari bakarrik eragiten diote. Aurrekargak baloratutako elementuen falta diren azalak deskargatzen ditu.</string>
+    <string name="covers_download_rated">Deskargatu baloratutako elementuen azalak</string>
+    <string name="covers_downloading_rated">Azalak deskargatzen…</string>
+    <string name="covers_progress_details_rated">%1$d saltatuta · %2$d deskargatuta · %3$d huts eginda</string>
     <string name="covers_download_top">Deskargatu Top %1$d</string>
     <string name="filters_title">Iragazkiak</string><string name="filters_active">Iragazkiak (%1$d)</string><string name="filters_clear">Garbitu iragazkiak</string><string name="filters_all">Guztiak / Iragazkirik gabe</string>
     <string name="filter_genre">Generoa</string><string name="filter_format">Formatua</string><string name="filter_year">Urtea</string><string name="filter_studio">Estudioa</string>

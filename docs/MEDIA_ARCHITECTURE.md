@@ -299,6 +299,15 @@ Storage is namespaced (`covers/anime`, `covers/manga`, `covers/series`,
 `covers/movie`, `covers/book`) and filename generation must not accept provider
 path separators. Existing Anime paths remain valid.
 
+`showImages` is global, but downloaded-cover counts and clear actions are scoped
+to the active media type. Rendering never downloads a cover: network access is
+limited to an explicit placeholder tap or the foreground “rated items” preload,
+which includes a `0.0` rating and uses at most two concurrent downloads. TMDb
+collection/season groups may store their own local cover; Manga variant groups
+reuse an already-downloaded representative member cover and never trigger that
+member's download. All installs remain atomic and clearing covers preserves
+catalog data, ratings, and group membership.
+
 ## Localization and privacy
 
 The existing nine Android resource locales remain authoritative. Persisted

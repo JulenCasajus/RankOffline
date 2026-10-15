@@ -248,7 +248,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     onAnime = viewModel::openAnime,
                     onGroupDetails = viewModel::openGroupDetails,
                     onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
-                    onCoverOpen = { if (it.mediaType == MediaType.ANIME) coverViewerAnime = it.coverTarget() },
+                    onCoverOpen = { coverViewerAnime = it.coverTarget() },
                     errorMessage = errorMessage,
                     catalogAvailability = catalogAvailability
                 )
@@ -277,7 +277,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     onAnime = viewModel::openAnime,
                     onGroupDetails = viewModel::openGroupDetails,
                     onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
-                    onCoverOpen = { if (it.mediaType == MediaType.ANIME) coverViewerAnime = it.coverTarget() },
+                    onCoverOpen = { coverViewerAnime = it.coverTarget() },
                     catalogAvailability = catalogAvailability
                 )
                 else -> SettingsScreen(settings, catalogCount, viewModel)
@@ -1113,7 +1113,8 @@ private fun AnimeListRow(
                     onCoverDownload,
                     onCoverOpen,
                     Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)),
-                    allowDownload = anime.mediaType == MediaType.ANIME || anime.groupId == null
+                    allowDownload = anime.mediaType == MediaType.ANIME ||
+                        anime.groupId == null || anime.supportsRemoteGroupCover()
                 )
                 Spacer(Modifier.width(12.dp))
             }
@@ -1255,9 +1256,16 @@ private fun CoverViewerDialog(
     onDismiss: () -> Unit,
     onDeleteConfirmed: ((Boolean) -> Unit) -> Unit
 ) {
-    val pathFlow = remember(anime.id) { coverRepository.observeLocalCoverPath(anime.id) }
+    val pathFlow = remember(anime.id, anime.mediaType, anime.localCoverPath) {
+        if (anime.mediaType == MediaType.ANIME) coverRepository.observeLocalCoverPath(anime.id)
+        else flowOf(anime.localCoverPath)
+    }
     val initialPath = remember(anime.id, anime.localCoverPath) {
-        coverRepository.immediateLocalCoverPath(anime.id, anime.localCoverPath)
+        if (anime.mediaType == MediaType.ANIME) {
+            coverRepository.immediateLocalCoverPath(anime.id, anime.localCoverPath)
+        } else {
+            anime.localCoverPath
+        }
     }
     val localPath by pathFlow.collectAsState(initial = initialPath)
     var bitmap by remember(anime.id, localPath) {
@@ -1276,7 +1284,8 @@ private fun CoverViewerDialog(
         } else if (bitmap == null) {
             val loaded = coverRepository.loadBitmap(anime.id, currentPath)
             if (loaded == null) {
-                coverRepository.invalidateLocalCover(anime, currentPath)
+                if (anime.mediaType == MediaType.ANIME) coverRepository.invalidateLocalCover(anime, currentPath)
+                else onDismiss()
             } else {
                 bitmap = loaded
             }
@@ -1993,9 +2002,11 @@ private fun SettingsScreen(settings: AppSettingsState, catalogCount: Int, viewMo
             onBack = goBack
         )
         SettingsDestination.GENERAL_DOWNLOADS -> PopularityAndCoversScreen(
+            activeMediaType = settings.activeMediaType,
             preloadProgress = preloadProgress,
             downloadedCoverCount = downloadedCoverCount,
-            onDownloadPopular = viewModel::downloadPopularCovers,
+            onDownloadRated = viewModel::downloadRatedCovers,
+            onCancelPreload = viewModel::cancelCoverPreload,
             onClearCovers = viewModel::clearDownloadedCovers,
             onVisibilityChanged = viewModel::setGeneralSettingsVisible,
             onBack = goBack
@@ -2337,15 +2348,16 @@ private fun GeneralSettingsScreen(
 
 @Composable
 private fun PopularityAndCoversScreen(
+    activeMediaType: MediaType,
     preloadProgress: CoverPreloadProgress,
     downloadedCoverCount: Int,
-    onDownloadPopular: (PopularCoverBatch) -> Unit,
+    onDownloadRated: () -> Unit,
+    onCancelPreload: () -> Unit,
     onClearCovers: () -> Unit,
     onVisibilityChanged: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     var showClearConfirmation by remember { mutableStateOf(false) }
-    var showTop5000Confirmation by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
         onVisibilityChanged(true)
         onDispose { onVisibilityChanged(false) }
@@ -2371,21 +2383,27 @@ private fun PopularityAndCoversScreen(
                             color = Color.LightGray,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
-                        PopularCoverBatch.entries.forEach { batch ->
-                            Button(
-                                onClick = {
-                                    if (batch == PopularCoverBatch.TOP_5000) showTop5000Confirmation = true
-                                    else onDownloadPopular(batch)
-                                },
-                                enabled = !preloadProgress.isActive,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                            ) {
-                                Icon(Icons.Default.Download, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.covers_download_top, batch.count))
-                            }
+                        Text(
+                            stringResource(activeMediaType.labelResource),
+                            color = Cyan,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Button(
+                            onClick = onDownloadRated,
+                            enabled = !preloadProgress.isActive,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.covers_download_rated))
                         }
                         PopularityAndCoverProgress(preloadProgress)
+                        if (preloadProgress.isActive) {
+                            TextButton(
+                                onClick = onCancelPreload,
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text(stringResource(R.string.action_cancel)) }
+                        }
                         OutlinedButton(
                             onClick = { showClearConfirmation = true },
                             enabled = !preloadProgress.isActive,
@@ -2416,22 +2434,6 @@ private fun PopularityAndCoversScreen(
             }
         )
     }
-    if (showTop5000Confirmation) {
-        AlertDialog(
-            onDismissRequest = { showTop5000Confirmation = false },
-            title = { Text(stringResource(R.string.covers_update_top_5000_title)) },
-            text = { Text(stringResource(R.string.covers_update_top_5000_warning)) },
-            dismissButton = {
-                TextButton(onClick = { showTop5000Confirmation = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showTop5000Confirmation = false
-                    onDownloadPopular(PopularCoverBatch.TOP_5000)
-                }) { Text(stringResource(R.string.action_continue)) }
-            }
-        )
-    }
 }
 
 @Composable
@@ -2440,54 +2442,12 @@ private fun PopularityAndCoverProgress(preloadProgress: CoverPreloadProgress) {
     Spacer(Modifier.height(12.dp))
     Text(
         when (preloadProgress.status) {
-            CoverPreloadStatus.COMPLETED -> stringResource(R.string.covers_update_completed, preloadProgress.target)
-            CoverPreloadStatus.FAILED -> stringResource(R.string.covers_update_interrupted, preloadProgress.target)
-            else -> stringResource(R.string.covers_updating, preloadProgress.target)
+            CoverPreloadStatus.COMPLETED -> stringResource(R.string.covers_completed)
+            CoverPreloadStatus.FAILED -> stringResource(R.string.covers_download_interrupted)
+            else -> stringResource(R.string.covers_downloading_rated)
         },
         fontWeight = FontWeight.SemiBold
     )
-    Text(
-        stringResource(R.string.popularity_title),
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(top = 10.dp)
-    )
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        when {
-            preloadProgress.status == CoverPreloadStatus.FETCHING_POPULARITY -> {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(
-                        R.string.popularity_updating_progress,
-                        preloadProgress.popularityProcessed,
-                        preloadProgress.target
-                    ),
-                    color = Color.LightGray
-                )
-            }
-            preloadProgress.status == CoverPreloadStatus.APPLYING_POPULARITY -> {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.popularity_applying), color = Color.LightGray)
-            }
-            preloadProgress.popularityUpdated -> {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Mint)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.popularity_updated), color = Color.LightGray)
-            }
-            preloadProgress.status == CoverPreloadStatus.FAILED -> {
-                Icon(Icons.Default.Error, contentDescription = null, tint = Coral)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.popularity_update_failed), color = Coral)
-            }
-        }
-    }
-    if (preloadProgress.status == CoverPreloadStatus.FETCHING_POPULARITY) {
-        LinearProgressIndicator(
-            progress = { preloadProgress.popularityFraction },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-        )
-    }
     Text(
         stringResource(R.string.covers_progress, preloadProgress.processed, preloadProgress.target),
         color = Color.LightGray,
@@ -2499,7 +2459,7 @@ private fun PopularityAndCoverProgress(preloadProgress: CoverPreloadProgress) {
     )
     Text(
         stringResource(
-            R.string.covers_progress_details,
+            R.string.covers_progress_details_rated,
             preloadProgress.existing,
             preloadProgress.downloaded,
             preloadProgress.errors
@@ -2515,7 +2475,7 @@ private fun PopularityAndCoverProgress(preloadProgress: CoverPreloadProgress) {
             fontSize = 13.sp,
             modifier = Modifier.padding(top = 6.dp)
         )
-        preloadProgress.status == CoverPreloadStatus.FAILED && preloadProgress.popularityUpdated -> Text(
+        preloadProgress.status == CoverPreloadStatus.FAILED -> Text(
             stringResource(R.string.covers_download_interrupted),
             color = Coral,
             fontSize = 13.sp,

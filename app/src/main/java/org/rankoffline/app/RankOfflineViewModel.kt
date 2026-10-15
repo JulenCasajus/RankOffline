@@ -70,7 +70,12 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     private val settingsRepository = SettingsRepository(application)
     val coverRepository = CoverRepository(application, repository)
     private val genericCoverRepository = GenericMediaCoverRepository(application, database)
-    private val coverPreloadManager = CoverPreloadManager(repository, coverRepository)
+    private val genericGroupCoverRepository = GenericMediaGroupCoverRepository(application, database)
+    private val coverPreloadManager = CoverPreloadManager(
+        repository,
+        coverRepository,
+        genericCoverRepository
+    )
 
     val settings: StateFlow<AppSettingsState> = settingsRepository.state
     val coverPreloadProgress: StateFlow<CoverPreloadProgress> = coverPreloadManager.progress
@@ -214,7 +219,13 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val downloadedCoverCount: StateFlow<Int> = repository.observeDownloadedCoverCount()
+    val downloadedCoverCount: StateFlow<Int> = settings
+        .map { it.activeMediaType }
+        .distinctUntilChanged()
+        .flatMapLatest { mediaType ->
+            if (mediaType == MediaType.ANIME) repository.observeDownloadedCoverCount()
+            else genericCoverRepository.observeDownloadedCoverCount(mediaType)
+        }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     private val _catalogCount = MutableStateFlow(0)
@@ -556,6 +567,8 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
             try {
                 val result = if (anime.mediaType == MediaType.ANIME) {
                     coverRepository.downloadCover(anime)
+                } else if (anime.supportsRemoteGroupCover()) {
+                    genericGroupCoverRepository.downloadCover(anime.id)
                 } else {
                     genericCoverRepository.downloadCover(anime.id)
                 }
@@ -576,9 +589,13 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         if (previous == null) job.start() else job.cancel()
     }
 
-    fun downloadPopularCovers(batch: PopularCoverBatch) {
+    fun downloadRatedCovers() {
         if (preloadJob?.isActive == true || coverPreloadProgress.value.isActive) return
-        startPreload(batch.count)
+        startPreload(settings.value.activeMediaType)
+    }
+
+    fun cancelCoverPreload() {
+        preloadJob?.cancel()
     }
 
     fun setGeneralSettingsVisible(visible: Boolean) {
@@ -594,7 +611,11 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
 
     fun deleteDownloadedCover(anime: Anime, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
-            val deleted = coverRepository.deleteDownloadedCover(anime)
+            val deleted = when {
+                anime.mediaType == MediaType.ANIME -> coverRepository.deleteDownloadedCover(anime)
+                anime.supportsRemoteGroupCover() -> genericGroupCoverRepository.removeLocalCover(anime.id)
+                else -> genericCoverRepository.removeLocalCover(anime.id)
+            }
             if (deleted) {
                 dataVersion.value++
                 _messages.send(UserMessage.Text(R.string.message_cover_deleted))
@@ -607,11 +628,17 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
 
     fun clearDownloadedCovers() {
         viewModelScope.launch {
+            val mediaType = settings.value.activeMediaType
             preloadJob?.cancelAndJoin()
             val manualJobs = manualDownloadJobs.values.toList()
             manualJobs.forEach { it.cancel() }
             manualJobs.forEach { it.join() }
-            val removed = coverRepository.clearDownloadedCovers()
+            val removed = if (mediaType == MediaType.ANIME) {
+                coverRepository.clearDownloadedCovers()
+            } else {
+                genericCoverRepository.clearDownloadedCovers(mediaType) +
+                    genericGroupCoverRepository.clearDownloadedCovers(mediaType)
+            }
             dataVersion.value++
             coverPreloadManager.resetProgress()
             _messages.send(
@@ -621,14 +648,13 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    private fun startPreload(count: Int) {
+    private fun startPreload(mediaType: MediaType) {
         val previous = preloadJob
         preloadJob = viewModelScope.launch {
             previous?.cancelAndJoin()
-            coverPreloadManager.preload(count)
+            coverPreloadManager.preload(mediaType)
             dataVersion.value++
             if (!generalSettingsVisible) clearTerminalTopUpdateState()
-            coverPreloadProgress.value.message?.let { _messages.send(it) }
         }
     }
 

@@ -138,7 +138,15 @@ enum class AnimeListRowAction { RATE, GROUP_DETAILS }
 internal fun animeListRowAction(anime: Anime, memberCountClicked: Boolean): AnimeListRowAction =
     if (anime.groupId != null && memberCountClicked) AnimeListRowAction.GROUP_DETAILS else AnimeListRowAction.RATE
 
-fun Anime.coverTarget(): Anime = rootAnimeId?.let { copy(id = it, groupId = null, groupType = null) } ?: this
+fun Anime.coverTarget(): Anime = when {
+    groupId == null -> this
+    mediaType == MediaType.ANIME || mediaType == MediaType.MANGA ->
+        rootAnimeId?.let { copy(id = it, groupId = null, groupType = null) } ?: this
+    else -> this
+}
+
+internal fun Anime.supportsRemoteGroupCover(): Boolean =
+    groupId != null && mediaType in setOf(MediaType.MOVIE, MediaType.SERIES)
 
 data class DerivedGroupRating(
     val finalScore: Double?,

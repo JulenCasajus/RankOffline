@@ -36,9 +36,12 @@
     <string name="profile_visual_action">视觉 / 动作导向</string>
     <string name="profile_world_adventure">世界 / 冒险导向</string>
     <string name="profile_atmospheric">氛围导向</string>
-    <string name="covers_settings_title">人气排名与封面</string>
-    <string name="covers_settings_description">更新人气排名并管理离线封面。</string>
-    <string name="covers_settings_explanation">请选择榜单范围。RankOffline 会更新人气排名，并且只下载缺失的封面。</string>
+    <string name="covers_settings_title">封面</string>
+    <string name="covers_settings_description">管理所选媒体类型的离线封面。</string>
+    <string name="covers_settings_explanation">封面操作仅应用于所选媒体类型。预下载只会获取已评分条目缺失的封面。</string>
+    <string name="covers_download_rated">下载已评分条目的封面</string>
+    <string name="covers_downloading_rated">正在下载封面…</string>
+    <string name="covers_progress_details_rated">已跳过 %1$d · 已下载 %2$d · 失败 %3$d</string>
     <string name="covers_download_top">下载前 %1$d 名</string>
     <string name="filters_title">筛选</string><string name="filters_active">筛选（%1$d）</string><string name="filters_clear">清除筛选</string><string name="filters_all">全部 / 不筛选</string>
     <string name="filter_genre">类型</string><string name="filter_format">形式</string><string name="filter_year">年份</string><string name="filter_studio">制作公司</string>

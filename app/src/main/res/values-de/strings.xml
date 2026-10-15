@@ -36,9 +36,12 @@
     <string name="profile_visual_action">Visuell / Action</string>
     <string name="profile_world_adventure">Welt / Abenteuer</string>
     <string name="profile_atmospheric">Atmosphärisch</string>
-    <string name="covers_settings_title">Beliebtheit &amp; Cover</string>
-    <string name="covers_settings_description">Aktualisiere die Beliebtheitsrangliste und verwalte Offline-Cover.</string>
-    <string name="covers_settings_explanation">Wähle einen Top-Bereich. RankOffline aktualisiert die Beliebtheitsrangliste und lädt nur fehlende Cover herunter.</string>
+    <string name="covers_settings_title">Cover</string>
+    <string name="covers_settings_description">Verwalte Offline-Cover für den ausgewählten Medientyp.</string>
+    <string name="covers_settings_explanation">Cover-Aktionen gelten nur für den ausgewählten Medientyp. Vorab geladen werden fehlende Cover bewerteter Einträge.</string>
+    <string name="covers_download_rated">Cover für bewertete Einträge herunterladen</string>
+    <string name="covers_downloading_rated">Cover werden heruntergeladen…</string>
+    <string name="covers_progress_details_rated">%1$d übersprungen · %2$d geladen · %3$d fehlgeschlagen</string>
     <string name="covers_download_top">Top %1$d herunterladen</string>
     <string name="filters_title">Filter</string><string name="filters_active">Filter (%1$d)</string><string name="filters_clear">Filter löschen</string><string name="filters_all">Alle / Kein Filter</string>
     <string name="filter_genre">Genre</string><string name="filter_format">Format</string><string name="filter_year">Jahr</string><string name="filter_studio">Studio</string>

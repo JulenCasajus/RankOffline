@@ -105,6 +105,21 @@ interface MediaGroupDao {
     @Query("SELECT * FROM media_group WHERE id = :groupId")
     suspend fun group(groupId: String): MediaGroupEntity?
 
+    @Query(
+        "UPDATE media_group SET local_cover_path = :path, cover_resolution_state = :state " +
+            "WHERE id = :groupId"
+    )
+    suspend fun updateGroupCover(groupId: String, path: String?, state: String): Int
+
+    @Query("SELECT * FROM media_group WHERE media_type = :mediaType AND local_cover_path IS NOT NULL")
+    suspend fun groupsWithLocalCovers(mediaType: String): List<MediaGroupEntity>
+
+    @Query(
+        "UPDATE media_group SET local_cover_path = NULL, cover_resolution_state = 'UNKNOWN' " +
+            "WHERE media_type = :mediaType AND local_cover_path IS NOT NULL"
+    )
+    suspend fun clearLocalCovers(mediaType: String): Int
+
     @Query("SELECT media_type FROM media_group WHERE id = :groupId")
     suspend fun groupMediaType(groupId: String): String?
 

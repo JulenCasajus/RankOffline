@@ -8,6 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
 
 data class MediaItemRatingRow(
     @Embedded val item: MediaItemEntity,
@@ -154,6 +155,27 @@ interface MediaDao {
 
     @Query("SELECT * FROM media_item WHERE id = :mediaId")
     suspend fun item(mediaId: String): MediaItemEntity?
+
+    @Query(
+        "SELECT COUNT(*) FROM media_item WHERE media_type = :mediaType " +
+            "AND local_cover_path IS NOT NULL AND cover_resolution_state = 'AVAILABLE'"
+    )
+    fun observeDownloadedCoverCount(mediaType: String): Flow<Int>
+
+    @Query(
+        "SELECT item.* FROM media_item item INNER JOIN media_rating rating ON rating.media_id = item.id " +
+            "WHERE item.media_type = :mediaType AND rating.final_score IS NOT NULL ORDER BY item.id"
+    )
+    suspend fun ratedCoverItems(mediaType: String): List<MediaItemEntity>
+
+    @Query("SELECT * FROM media_item WHERE media_type = :mediaType AND local_cover_path IS NOT NULL")
+    suspend fun itemsWithLocalCovers(mediaType: String): List<MediaItemEntity>
+
+    @Query(
+        "UPDATE media_item SET local_cover_path = NULL, cover_resolution_state = 'UNKNOWN' " +
+            "WHERE media_type = :mediaType AND local_cover_path IS NOT NULL"
+    )
+    suspend fun clearLocalCovers(mediaType: String): Int
 
     @Query("SELECT media_type FROM media_item WHERE id = :mediaId")
     suspend fun mediaType(mediaId: String): String?

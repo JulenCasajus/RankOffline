@@ -129,6 +129,10 @@ class AnimeRepository(
 
     fun observeDownloadedCoverCount(): Flow<Int> = dao.observeDownloadedCoverCount()
 
+    suspend fun ratedCoverAnime(): List<Anime> = withContext(Dispatchers.IO) {
+        dao.ratedCoverAnime().map { it.toDomain() }
+    }
+
     suspend fun loadRating(animeId: String): RatingDraft = withContext(Dispatchers.IO) {
         val rating = dao.rating(animeId) ?: return@withContext RatingDraft()
         val scores = dao.ratingScores(animeId).associate { entity ->

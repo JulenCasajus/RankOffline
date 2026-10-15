@@ -36,9 +36,12 @@
     <string name="profile_visual_action">Визуал / Экшен</string>
     <string name="profile_world_adventure">Мир / Приключения</string>
     <string name="profile_atmospheric">Атмосферный</string>
-    <string name="covers_settings_title">Популярность и обложки</string>
-    <string name="covers_settings_description">Обновляйте рейтинг популярности и управляйте офлайн-обложками.</string>
-    <string name="covers_settings_explanation">Выберите размер топа. RankOffline обновит рейтинг популярности и скачает только недостающие обложки.</string>
+    <string name="covers_settings_title">Обложки</string>
+    <string name="covers_settings_description">Управляйте офлайн-обложками выбранного типа медиа.</string>
+    <string name="covers_settings_explanation">Действия применяются только к выбранному типу медиа. Предзагрузка скачивает недостающие обложки оценённых элементов.</string>
+    <string name="covers_download_rated">Скачать обложки оценённых элементов</string>
+    <string name="covers_downloading_rated">Загрузка обложек…</string>
+    <string name="covers_progress_details_rated">Пропущено: %1$d · скачано: %2$d · ошибок: %3$d</string>
     <string name="covers_download_top">Скачать топ-%1$d</string>
     <string name="filters_title">Фильтры</string><string name="filters_active">Фильтры (%1$d)</string><string name="filters_clear">Сбросить фильтры</string><string name="filters_all">Все / Без фильтра</string>
     <string name="filter_genre">Жанр</string><string name="filter_format">Формат</string><string name="filter_year">Год</string><string name="filter_studio">Студия</string>

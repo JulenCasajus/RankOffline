@@ -36,9 +36,12 @@
     <string name="profile_visual_action">Visivo / Azione</string>
     <string name="profile_world_adventure">Mondo / Avventura</string>
     <string name="profile_atmospheric">Atmosferico</string>
-    <string name="covers_settings_title">Popolarità e copertine</string>
-    <string name="covers_settings_description">Aggiorna la classifica di popolarità e gestisci le copertine offline.</string>
-    <string name="covers_settings_explanation">Scegli un intervallo Top. RankOffline aggiorna la classifica di popolarità e scarica solo le copertine mancanti.</string>
+    <string name="covers_settings_title">Copertine</string>
+    <string name="covers_settings_description">Gestisci le copertine offline per il tipo di contenuto selezionato.</string>
+    <string name="covers_settings_explanation">Le azioni riguardano solo il tipo selezionato. Il precaricamento scarica le copertine mancanti degli elementi valutati.</string>
+    <string name="covers_download_rated">Scarica le copertine degli elementi valutati</string>
+    <string name="covers_downloading_rated">Download delle copertine…</string>
+    <string name="covers_progress_details_rated">%1$d ignorate · %2$d scaricate · %3$d non riuscite</string>
     <string name="covers_download_top">Scarica Top %1$d</string>
     <string name="filters_title">Filtri</string><string name="filters_active">Filtri (%1$d)</string><string name="filters_clear">Cancella filtri</string><string name="filters_all">Tutti / Nessun filtro</string>
     <string name="filter_genre">Genere</string><string name="filter_format">Formato</string><string name="filter_year">Anno</string><string name="filter_studio">Studio</string>

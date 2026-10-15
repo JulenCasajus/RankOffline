@@ -43,9 +43,12 @@
     <string name="profile_visual_action">Visual / Acción</string>
     <string name="profile_world_adventure">Mundo / Aventura</string>
     <string name="profile_atmospheric">Atmosférico</string>
-    <string name="covers_settings_title">Popularidad y portadas</string>
-    <string name="covers_settings_description">Actualiza el ranking de popularidad y gestiona las portadas sin conexión.</string>
-    <string name="covers_settings_explanation">Elige un Top. RankOffline actualiza su ranking de popularidad y descarga solo las portadas que faltan.</string>
+    <string name="covers_settings_title">Portadas</string>
+    <string name="covers_settings_description">Gestiona las portadas sin conexión del tipo de contenido seleccionado.</string>
+    <string name="covers_settings_explanation">Las acciones solo afectan al tipo seleccionado. La precarga descarga las portadas que faltan de los elementos puntuados.</string>
+    <string name="covers_download_rated">Descargar portadas de elementos puntuados</string>
+    <string name="covers_downloading_rated">Descargando portadas…</string>
+    <string name="covers_progress_details_rated">%1$d omitidas · %2$d descargadas · %3$d fallidas</string>
     <string name="covers_download_top">Descargar Top %1$d</string>
     <string name="filters_title">Filtros</string><string name="filters_active">Filtros (%1$d)</string><string name="filters_clear">Limpiar filtros</string><string name="filters_all">Todos / Sin filtro</string>
     <string name="filter_genre">Género</string><string name="filter_format">Formato</string><string name="filter_year">Año</string><string name="filter_studio">Estudio</string>

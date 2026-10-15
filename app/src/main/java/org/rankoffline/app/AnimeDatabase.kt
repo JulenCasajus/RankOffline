@@ -463,6 +463,12 @@ interface AnimeDao {
     @Query("SELECT COUNT(*) FROM anime WHERE local_cover_path IS NOT NULL")
     fun observeDownloadedCoverCount(): Flow<Int>
 
+    @Query(
+        "SELECT a.* FROM anime a INNER JOIN rating r ON r.anime_id = a.id " +
+            "WHERE r.final_score IS NOT NULL ORDER BY a.id"
+    )
+    suspend fun ratedCoverAnime(): List<AnimeEntity>
+
     @Query("SELECT metadata_value FROM catalog_metadata WHERE metadata_key = :key")
     suspend fun metadata(key: String): String?
 

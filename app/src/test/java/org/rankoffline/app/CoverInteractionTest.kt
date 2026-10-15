@@ -44,6 +44,22 @@ class CoverInteractionTest {
     }
 
     @Test
+    fun tmdbGroupsKeepTheirOwnCoverTarget() {
+        val group = Anime(
+            id = "movie:tmdb:collection:10",
+            title = "Collection",
+            mediaType = MediaType.MOVIE,
+            groupId = "movie:tmdb:collection:10",
+            groupType = "COLLECTION",
+            rootAnimeId = "movie:tmdb:11"
+        )
+
+        assertEquals(group.id, group.coverTarget().id)
+        assertTrue(group.supportsRemoteGroupCover())
+        assertFalse(group.copy(mediaType = MediaType.MANGA).supportsRemoteGroupCover())
+    }
+
+    @Test
     fun temporaryNetworkErrorsDoNotBecomeNotFound() {
         assertEquals(
             CoverResolutionState.UNKNOWN,

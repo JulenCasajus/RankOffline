@@ -246,9 +246,12 @@
     <string name="profile_prose_style">Prose / Style</string>
     <string name="profile_visual_direction">Visual / Direction</string>
     <string name="profile_technical_craft">Technical Craft</string>
-    <string name="covers_settings_title">Popularity &amp; covers</string>
-    <string name="covers_settings_description">Refresh popularity rankings and manage offline covers.</string>
-    <string name="covers_settings_explanation">Choose a Top range. RankOffline refreshes its popularity ranking and downloads only missing covers.</string>
+    <string name="covers_settings_title">Covers</string>
+    <string name="covers_settings_description">Manage offline covers for the selected media type.</string>
+    <string name="covers_settings_explanation">Cover actions apply only to the selected media type. Preload downloads missing covers for individually rated items.</string>
+    <string name="covers_download_rated">Download covers for rated items</string>
+    <string name="covers_downloading_rated">Downloading covers…</string>
+    <string name="covers_progress_details_rated">%1$d skipped · %2$d downloaded · %3$d failed</string>
     <string name="covers_download_top">Download Top %1$d</string>
     <string name="filters_title">Filters</string><string name="filters_active">Filters (%1$d)</string><string name="filters_clear">Clear filters</string><string name="filters_all">All / No filter</string>
     <string name="filter_genre">Genre</string><string name="filter_format">Format</string><string name="filter_year">Year</string><string name="filter_studio">Studio</string>

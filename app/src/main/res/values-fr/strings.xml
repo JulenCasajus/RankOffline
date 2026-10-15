@@ -36,9 +36,12 @@
     <string name="profile_visual_action">Visuel / Action</string>
     <string name="profile_world_adventure">Univers / Aventure</string>
     <string name="profile_atmospheric">Atmosphérique</string>
-    <string name="covers_settings_title">Popularité et jaquettes</string>
-    <string name="covers_settings_description">Actualisez le classement de popularité et gérez les jaquettes hors ligne.</string>
-    <string name="covers_settings_explanation">Choisissez une plage du Top. RankOffline actualise son classement de popularité et télécharge uniquement les jaquettes manquantes.</string>
+    <string name="covers_settings_title">Jaquettes</string>
+    <string name="covers_settings_description">Gérez les jaquettes hors ligne du type de média sélectionné.</string>
+    <string name="covers_settings_explanation">Les actions ne concernent que le type sélectionné. Le préchargement télécharge les jaquettes manquantes des éléments notés.</string>
+    <string name="covers_download_rated">Télécharger les jaquettes des éléments notés</string>
+    <string name="covers_downloading_rated">Téléchargement des jaquettes…</string>
+    <string name="covers_progress_details_rated">%1$d ignorées · %2$d téléchargées · %3$d échouées</string>
     <string name="covers_download_top">Télécharger le Top %1$d</string>
     <string name="filters_title">Filtres</string><string name="filters_active">Filtres (%1$d)</string><string name="filters_clear">Effacer les filtres</string><string name="filters_all">Tous / Aucun filtre</string>
     <string name="filter_genre">Genre</string><string name="filter_format">Format</string><string name="filter_year">Année</string><string name="filter_studio">Studio</string>

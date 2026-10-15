@@ -36,9 +36,12 @@
     <string name="profile_visual_action">映像 / アクション重視</string>
     <string name="profile_world_adventure">世界観 / 冒険重視</string>
     <string name="profile_atmospheric">雰囲気重視</string>
-    <string name="covers_settings_title">人気ランキングとカバー</string>
-    <string name="covers_settings_description">人気ランキングを更新し、オフライン用カバーを管理します。</string>
-    <string name="covers_settings_explanation">更新する上位件数を選択してください。RankOffline は人気ランキングを更新し、不足しているカバーのみをダウンロードします。</string>
+    <string name="covers_settings_title">カバー</string>
+    <string name="covers_settings_description">選択中のメディアのオフラインカバーを管理します。</string>
+    <string name="covers_settings_explanation">カバー操作は選択中のメディアだけに適用されます。事前ダウンロードは評価済み項目の不足しているカバーのみを取得します。</string>
+    <string name="covers_download_rated">評価済み項目のカバーをダウンロード</string>
+    <string name="covers_downloading_rated">カバーをダウンロード中…</string>
+    <string name="covers_progress_details_rated">スキップ %1$d · ダウンロード %2$d · 失敗 %3$d</string>
     <string name="covers_download_top">トップ%1$dをダウンロード</string>
     <string name="filters_title">フィルター</string><string name="filters_active">フィルター（%1$d）</string><string name="filters_clear">フィルターをクリア</string><string name="filters_all">すべて / フィルターなし</string>
     <string name="filter_genre">ジャンル</string><string name="filter_format">形式</string><string name="filter_year">年</string><string name="filter_studio">スタジオ</string>
