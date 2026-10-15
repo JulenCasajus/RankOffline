@@ -17,6 +17,18 @@ val releaseKeystoreProperties = Properties().apply {
 val releaseSigningPropertyNames = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
 val hasReleaseSigningProperties = releaseKeystorePropertiesFile.isFile &&
     releaseSigningPropertyNames.all { !releaseKeystoreProperties.getProperty(it).isNullOrBlank() }
+val packagedMainAssets = layout.buildDirectory.dir("generated/rankoffline/mainAssets")
+val stageMainAssets by tasks.registering(Sync::class) {
+    from("src/main/assets") {
+        exclude("anime_aliases.jsonl.gz")
+    }
+    from("src/main/assets/anime_aliases.jsonl.gz") {
+        rename { name ->
+            if (name == "anime_aliases.jsonl.gz") "anime_aliases.jsonl.gzip" else name
+        }
+    }
+    into(packagedMainAssets)
+}
 
 android {
     namespace = "org.rankoffline.app"
@@ -65,7 +77,20 @@ android {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
 
+    // AGP expands .gz assets during merge. Package an identical build-only .gzip copy so the
+    // importer can stream compressed bytes while the committed catalog remains unchanged.
+    androidResources {
+        noCompress += "gzip"
+    }
+
+    sourceSets.getByName("main") {
+        assets.setSrcDirs(listOf(packagedMainAssets))
+    }
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+}
+
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn(stageMainAssets)
 }
 
 val verifyReleaseSigning by tasks.registering {

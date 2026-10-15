@@ -19,7 +19,7 @@ class BundledAnimeAliasCatalogManager(
     }
 
     companion object {
-        const val CATALOG_ASSET = "anime_aliases.jsonl.gz"
+        const val CATALOG_ASSET = "anime_aliases.jsonl.gzip"
         const val MANIFEST_ASSET = "anime_aliases.manifest.json"
     }
 }
