@@ -131,17 +131,27 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing
 
 ## Data attribution
 
-The bundled catalog is built from [AnimeAPI by nattadasu](https://github.com/nattadasu/animeApi/tree/v3)
-and its upstream/open data sources. AnimeAPI documents its compiled database
-under [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) with the
-individual contents under [DbCL 1.0](https://opendatacommons.org/licenses/dbcl/1-0/),
-while some raw source components are published under
-[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Review the
-upstream terms before redistributing the bundled derived database and preserve
-the required attribution/share-alike notices.
+- **Anime:** [AnimeAPI](https://github.com/nattadasu/animeApi) provides the
+  catalog foundation; AniList provides selected metadata, explicit relations,
+  popularity, and primary cover metadata; Jikan is an existing cover fallback.
+  Title aliases come only from pinned release `2026-42` of
+  [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database),
+  continuing the original
+  [manami-project](https://github.com/manami-project/anime-offline-database).
+- **Manga:** [MangaDex](https://mangadex.org) provides metadata, aliases,
+  creator/tag relationships, conservative variant relations, and cover
+  references. RankOffline does not read or distribute chapters.
+- **Movies / Series:** [TMDB](https://www.themoviedb.org) provides metadata,
+  canonical collection/season grouping, alternative titles, and poster
+  references.
+- **Books:** [Open Library](https://openlibrary.org) bulk dumps provide Work and
+  author metadata. Cover images are retrieved separately through its Covers
+  service and are not claimed to be CC0 or public domain.
 
-AniList provides catalog metadata, explicit relations, popularity, and primary
-cover metadata. Jikan is used as a cover fallback where needed.
+Application code and bundled/remote data have separate licences. See
+[Data sources and provider constraints](docs/DATA_SOURCES.md) and
+[Third-party notices](THIRD_PARTY_NOTICES.md) for licence scopes, attribution,
+policy limitations, and non-endorsement notices.
 
 ## Architecture and privacy
 

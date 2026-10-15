@@ -84,4 +84,18 @@
 <string name="category_series_writing_description">プロット、テーマ、台詞、テンポ、シーズン構成、物語の決着。</string><string name="category_series_characters_description">主要・脇役キャラクター、成長、深み、魅力、関係性。</string><string name="category_series_direction_description">演出、ショット選択、演技、トーン、総合的な映像・音響演出。</string><string name="category_series_visuals_description">撮影、美術、特殊効果、照明、映像表現。</string><string name="category_series_worldbuilding_description">必要に応じた舞台、設定、内部ルール、連続性。</string><string name="category_series_audio_description">音楽、サウンドデザイン、ミキシング、音の活用。</string>
 <string name="category_movie_writing_description">プロット、テーマ、台詞、物語構成、決着。</string><string name="category_movie_characters_description">キャラクター造形、役としての演技、成長、関係性。</string><string name="category_movie_direction_description">演出、演技、トーン、ショット選択、監督としての完成度。</string><string name="category_movie_visuals_description">撮影、美術、特殊効果、照明、視覚的な個性。</string><string name="category_editing_description">カッティング、リズム、場面転換、構成、上映時間の活用。</string><string name="category_movie_audio_description">劇伴、音楽、サウンドデザイン、ミキシング、映像との統合。</string>
 <string name="profile_art_focused">作画重視</string><string name="profile_prose_style">文章 / 文体</string><string name="profile_visual_direction">映像 / 演出</string><string name="profile_technical_craft">技術力</string>
+<string name="about_summary_multimedia">オフラインのメディアカタログ兼評価アプリです。評価、メモ、設定は端末内に保存されます。</string>
+<string name="about_source_code">ソースコード</string><string name="about_data_sources">データ提供元</string><string name="about_data_licences">データライセンス</string><string name="about_open_source_software">オープンソースソフトウェア</string><string name="about_legal_trademarks">法的情報 / 商標</string><string name="about_movies_series">映画・シリーズ</string>
+<string name="about_anime_sources_description">AnimeAPIはカタログの基盤、AniListは一部のメタデータと関連情報を提供します。Jikanはカバー用の非公式MyAnimeList APIです。cedya77によるanime-offline-databaseの継続版は別名を提供し、元のmanami-projectを明記します。</string>
+<string name="about_manga_source_description">MangaDexはマンガのメタデータとカバー参照を提供します。RankOfflineにチャプター閲覧機能はありません。</string>
+<string name="about_tmdb_source_description">TMDBは映画・シリーズのメタデータとポスター参照を提供します。</string>
+<string name="about_open_library_source_description">書籍メタデータはOpen Libraryから取得します。表紙はOpen Library Coversサービスから別途取得されます。</string>
+<string name="about_tmdb_logo_description">TMDB公式ロゴ</string>
+<string name="about_anime_database_licences">AnimeAPIのコンパイル済みデータベースはODbL 1.0、個々の内容はDbCL 1.0です。</string>
+<string name="about_alias_database_licences">anime-offline-databaseから派生した別名データベースはODbL 1.0 / DbCL 1.0です。</string>
+<string name="about_cc0_scope">CC0 1.0は、来歴で明示されたAnimeAPIの未加工ソース要素にのみ適用されます。</string>
+<string name="about_open_library_licence_caveat">Open Libraryへの投稿は、適用可能な場合は一般にCC0で提供されます。すべての書籍表紙がCC0またはパブリックドメインという意味ではありません。</string>
+<string name="about_software_licences">RankOfflineのソースコードはGPL-3.0-onlyです。該当するAndroidX、Jetpack、Kotlin、Kotlinxのランタイム部品はApache-2.0です。</string>
+<string name="about_packaged_notices">完全なソフトウェアライセンス本文とデータ通知はアプリに同梱されています。</string>
+<string name="about_non_affiliation">提供元の名称と商標はデータ源を示すもので、提携、認証、推奨を意味しません。</string><string name="about_trademark_policy">商標ポリシー</string>
 </resources>

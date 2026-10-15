@@ -206,6 +206,27 @@
     <string name="about_android_licence">AndroidX, Jetpack Compose, DataStore and Kotlinx Serialization: Apache License 2.0.</string>
     <string name="about_acknowledgements">Acknowledgements</string>
     <string name="about_acknowledgements_text">AnimeAPI and its upstream contributors provide catalog mappings. AniList and Jikan provide anime cover metadata when a cover is not already available locally.</string>
+    <string name="about_summary_multimedia">An offline media catalog and rating app. Your ratings, notes and preferences stay on your device.</string>
+    <string name="about_source_code">Source code</string>
+    <string name="about_data_sources">Data sources</string>
+    <string name="about_data_licences">Data licences</string>
+    <string name="about_open_source_software">Open-source software</string>
+    <string name="about_legal_trademarks">Legal / trademarks</string>
+    <string name="about_movies_series">Movies &amp; Series</string>
+    <string name="about_anime_sources_description">AnimeAPI provides the catalog foundation; AniList provides selected metadata and relations; Jikan is an unofficial MyAnimeList API used as a cover fallback; the cedya77 continuation of anime-offline-database provides title aliases and credits the original manami-project.</string>
+    <string name="about_manga_source_description">Manga metadata and cover references are provided by MangaDex. RankOffline does not provide chapter reading.</string>
+    <string name="about_tmdb_source_description">Movie and Series metadata and poster references are provided by TMDB.</string>
+    <string name="about_open_library_source_description">Book metadata is from Open Library. Book covers are retrieved separately through the Open Library Covers service.</string>
+    <string name="about_tmdb_notice" translatable="false">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="about_tmdb_logo_description">Official TMDB logo</string>
+    <string name="about_anime_database_licences">The AnimeAPI compiled database is under ODbL 1.0, with individual contents under DbCL 1.0.</string>
+    <string name="about_alias_database_licences">The separate anime-offline-database-derived title-alias database is under ODbL 1.0 / DbCL 1.0.</string>
+    <string name="about_cc0_scope">CC0 1.0 applies only to AnimeAPI raw source components identified by their provenance.</string>
+    <string name="about_open_library_licence_caveat">Open Library contributions are generally offered under CC0 where applicable. This does not mean all Book cover images are CC0 or public domain.</string>
+    <string name="about_software_licences">RankOffline application source is GPL-3.0-only. Applicable AndroidX, Jetpack, Kotlin and Kotlinx runtime components use Apache-2.0.</string>
+    <string name="about_packaged_notices">Complete software licence texts and data notices are packaged with the app.</string>
+    <string name="about_non_affiliation">Provider names and marks identify data sources. They do not imply affiliation, certification or endorsement.</string>
+    <string name="about_trademark_policy">Trademark policy</string>
 
     <string name="error_initialize_local_data">Unable to initialize local data.</string>
     <string name="message_no_internet">No Internet connection</string>

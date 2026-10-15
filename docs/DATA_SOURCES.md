@@ -12,8 +12,8 @@ change.
 | --- | --- | --- | --- | --- |
 | Anime | AnimeAPI | Anime entry | Existing conservative AniList relations + normalized format | Existing stored URL; AniList/Jikan fallback |
 | Manga | MangaDex | Manga work/title | Verified variant/edition relations only | MangaDex cover-art CDN |
-| Series | TMDb | Numbered TV season | Parent TMDb series ID | TMDb image CDN |
-| Movies | TMDb | Movie | Canonical TMDb collection ID | TMDb image CDN |
+| Series | TMDB | Numbered TV season | Parent TMDB series ID | TMDB image CDN |
+| Movies | TMDB | Movie | Canonical TMDB collection ID | TMDB image CDN |
 | Books | Open Library | Work | None initially; Work ID only if Editions are later loaded | Open Library Covers API |
 
 No provider popularity metric is comparable across media types. It is used only
@@ -25,6 +25,11 @@ AnimeAPI remains the master catalog and the existing 40,742-entry asset remains
 unchanged during the multi-media architecture work. AniList currently enriches
 known IDs with popularity, metadata, relations, and cover lookup; Jikan is a
 cover fallback by MAL ID.
+
+AnimeAPI software is MIT-licensed. AnimeAPI identifies its compiled database as
+ODbL 1.0 with contents under DbCL 1.0, and requires database users to credit
+both AnimeAPI and Anime Offline Database. Some specifically identified raw
+components use CC0 1.0; that narrower scope does not relicense all Anime data.
 
 This integration carries a material permission risk. The current
 [AniList API Terms of Use](https://docs.anilist.co/guide/terms-of-use) prohibit
@@ -49,18 +54,22 @@ catalog under ODbL 1.0/DbCL 1.0 provenance. Synonyms do not carry reliable
 language labels, so stored alias language is null; coverage is source-provided
 and no translations are generated.
 
-## TMDb: Movies and Series
+AnimeAPI and anime-offline-database inputs are build-time/offline catalog
+sources. Existing runtime Anime cover/popularity behavior uses the already
+documented AniList/Jikan hosts only; this attribution work adds no request.
 
-TMDb supplies movie, TV-series, season, collection, and poster metadata.
+## TMDB: Movies and Series
+
+TMDB supplies movie, TV-series, season, collection, and poster metadata.
 
 ### Generation
 
-The [TMDb daily ID exports](https://developer.themoviedb.org/docs/daily-id-exports)
+The [TMDB daily ID exports](https://developer.themoviedb.org/docs/daily-id-exports)
 are discovery/index files, not complete metadata dumps. Offline tooling will
 select candidate IDs and enrich them through details endpoints using a bearer
 token provided only as `TMDB_READ_ACCESS_TOKEN`. The token must never enter
 source, Gradle configuration, Android resources, generated catalogs, logs, or
-the APK. TMDb documents bearer application authentication in its
+the APK. TMDB documents bearer application authentication in its
 [authentication guide](https://developer.themoviedb.org/docs/authentication-application).
 
 Tooling requirements:
@@ -80,29 +89,31 @@ The offline Movie generator reads explicit IDs or a bounded local daily export,
 then requests deterministic English details with appended credits and
 alternative titles. It emits the generic Movie catalog plus a separate
 canonical-collection artifact; it does not infer broader universes. Publishing
-Movie data in the application still requires the TMDb attribution described
+Movie data in the application still requires the TMDB attribution described
 below.
 
 ### Images and attribution
 
 Only `poster_path` (and a collection poster reference when relevant) is stored.
-At runtime the app constructs an HTTPS URL using TMDb's documented image
-configuration; `w500` is the initial intended poster size. TMDb's
+At runtime the app constructs an HTTPS URL using TMDB's documented image
+configuration; `w500` is the initial intended poster size. TMDB's
 [image guide](https://developer.themoviedb.org/docs/image-basics) documents
 this URL model.
 
-TMDb requires attribution in an About/Credits area, the acknowledgement:
+TMDB requires attribution in an About/Credits area, the acknowledgement:
 
 > This product uses the TMDB API but is not endorsed or certified by TMDB.
 
-and an approved, unmodified TMDb logo. See the official
-[TMDb FAQ](https://developer.themoviedb.org/docs/faq). No logo should be
-redrawn or fabricated. An approved asset is a release-readiness requirement if
-it is not safely acquired during implementation.
+and an approved, unmodified TMDB logo. See the official
+[TMDB FAQ](https://developer.themoviedb.org/docs/faq). RankOffline bundles the
+official Primary short (blue) logo from TMDB's Logos &amp; Attribution page; its
+source URL and hashes are recorded in `assets/legal/TMDB_LOGO_PROVENANCE.txt`.
+The logo is not downloaded at runtime.
 
-TMDb licensing/terms, including the distinction between non-commercial and
-commercial API use, must be checked for the intended distribution before
-publication.
+TMDB metadata generation is build-time/offline. Android never calls the TMDB
+metadata API; explicit cover retrieval uses only `image.tmdb.org`. Current use
+is non-commercial. Commercial use requires a separate licensing review/contact
+with TMDB before publication.
 
 ## MangaDex: Manga
 
@@ -152,6 +163,11 @@ the exact acceptable-use/monetization policy must be re-verified immediately
 before production integration and release. RankOffline currently has no ads,
 paid service, accounts, or telemetry; those constraints must not be relaxed
 without first reassessing MangaDex permission.
+
+Catalog generation may use `api.mangadex.org` in explicit bounded tooling.
+Android does not call that metadata API; explicit cover retrieval uses only
+`uploads.mangadex.org`. RankOffline does not read chapters, so it neither
+distributes scanlation content nor presents scanlation-group credits.
 
 ## Open Library: Books
 
@@ -206,6 +222,12 @@ database while warning that underlying contributions may carry existing rights.
 About/licence text must credit Open Library/Internet Archive without claiming
 that its data is covered by RankOffline's GPL license.
 
+Contributions are generally offered under CC0 where the contributor can make
+that dedication, but this does not establish that every record or underlying
+work is public domain. Book cover-image rights can differ; RankOffline does not
+claim that Open Library covers are CC0. Dump ingestion is offline, and Android
+uses only `covers.openlibrary.org` for explicit cover retrieval.
+
 ## Catalog production and legal checkpoints
 
 Production generation is pending until each provider tool passes deterministic
@@ -223,6 +245,6 @@ Before a production catalog or release:
 6. confirm that no credential or user data is embedded;
 7. retain source-specific licensing separately from RankOffline GPL-3.0-only.
 
-Current unresolved release items include AniList authorization, the approved
-TMDb logo asset, MangaDex enumeration/policy verification, provider catalog
+Current unresolved release items include AniList authorization, MangaDex
+enumeration/policy verification, provider catalog
 scope, and whether Book Editions have sufficient product value to include.

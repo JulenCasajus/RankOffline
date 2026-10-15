@@ -1,0 +1,18 @@
+TMDB approved logo provenance
+
+Variant: Primary short (blue), SVG
+Official logos page:
+https://www.themoviedb.org/about/logos-attribution
+
+Official source asset:
+https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_1-5bdc75aaebeb75dc7ae79426ddd9be3b2be1e342510f8202baf6bffa71d7f5c4.svg
+
+Source SVG SHA-256:
+5bdc75aaebeb75dc7ae79426ddd9be3b2be1e342510f8202baf6bffa71d7f5c4
+
+Bundled PNG SHA-256:
+5481b08510a36d28f8d11e17c09c124a87734e3d438c406141347ed51d6d90a0
+
+The official SVG was converted once to a 190 x 82 transparent PNG for Android
+resource compatibility. Its geometry, aspect ratio, and colors were not
+modified. The logo is bundled locally and is never downloaded at runtime.

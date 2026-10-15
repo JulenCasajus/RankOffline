@@ -84,4 +84,18 @@
 <string name="category_series_writing_description">情节、主题、对白、节奏、季结构和叙事回报。</string><string name="category_series_characters_description">主要与配角人物、成长、深度、魅力和互动关系。</string><string name="category_series_direction_description">场面调度、镜头选择、表演、基调和整体视听导演。</string><string name="category_series_visuals_description">摄影、制作设计、特效、灯光和视觉呈现。</string><string name="category_series_worldbuilding_description">在适用时考量背景设定、世界观、内部规则和连续性。</string><string name="category_series_audio_description">音乐、声音设计、混音和声音运用。</string>
 <string name="category_movie_writing_description">情节、主题、对白、叙事构建和收束。</string><string name="category_movie_characters_description">人物塑造、角色表演、成长和互动关系。</string><string name="category_movie_direction_description">场面调度、表演、基调、镜头选择和整体导演执行。</string><string name="category_movie_visuals_description">摄影、制作设计、特效、灯光和视觉特色。</string><string name="category_editing_description">剪辑、节奏、场景转接、结构和片长运用。</string><string name="category_movie_audio_description">配乐、音乐、声音设计、混音和视听融合。</string>
 <string name="profile_art_focused">画面导向</string><string name="profile_prose_style">文笔 / 风格</string><string name="profile_visual_direction">视觉 / 导演</string><string name="profile_technical_craft">技术工艺</string>
+<string name="about_summary_multimedia">离线媒体目录和评分应用。你的评分、笔记和偏好仅保存在设备上。</string>
+<string name="about_source_code">源代码</string><string name="about_data_sources">数据来源</string><string name="about_data_licences">数据许可</string><string name="about_open_source_software">开源软件</string><string name="about_legal_trademarks">法律信息 / 商标</string><string name="about_movies_series">电影和剧集</string>
+<string name="about_anime_sources_description">AnimeAPI 提供目录基础；AniList 提供部分元数据和关系；Jikan 是用于封面备用查询的非官方 MyAnimeList API；cedya77 延续的 anime-offline-database 提供标题别名并注明原始 manami-project。</string>
+<string name="about_manga_source_description">MangaDex 提供漫画元数据和封面引用。RankOffline 不提供章节阅读功能。</string>
+<string name="about_tmdb_source_description">TMDB 提供电影和剧集元数据及海报引用。</string>
+<string name="about_open_library_source_description">图书元数据来自 Open Library。图书封面通过 Open Library Covers 服务单独获取。</string>
+<string name="about_tmdb_logo_description">TMDB 官方标志</string>
+<string name="about_anime_database_licences">AnimeAPI 编译数据库采用 ODbL 1.0，单项内容采用 DbCL 1.0。</string>
+<string name="about_alias_database_licences">从 anime-offline-database 派生的独立标题别名数据库采用 ODbL 1.0 / DbCL 1.0。</string>
+<string name="about_cc0_scope">CC0 1.0 仅适用于来源说明中明确标识的 AnimeAPI 原始组件。</string>
+<string name="about_open_library_licence_caveat">Open Library 投稿在适用时通常以 CC0 提供。这并不表示所有图书封面均为 CC0 或属于公共领域。</string>
+<string name="about_software_licences">RankOffline 源代码采用 GPL-3.0-only。适用的 AndroidX、Jetpack、Kotlin 和 Kotlinx 运行时组件采用 Apache-2.0。</string>
+<string name="about_packaged_notices">完整的软件许可文本和数据声明已随应用打包。</string>
+<string name="about_non_affiliation">提供方名称和商标仅用于标识数据来源，不表示隶属、认证或认可。</string><string name="about_trademark_policy">商标政策</string>
 </resources>

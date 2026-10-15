@@ -1,5 +1,8 @@
 package org.rankoffline.app
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -2751,69 +2755,161 @@ private fun LicenceAboutScreen(catalogCount: Int, onBack: () -> Unit) {
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("RankOffline", fontWeight = FontWeight.Bold, color = Mint)
-                        Text(
-                            stringResource(R.string.about_version, versionName),
-                            color = Color.Gray,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                        Text(
-                            stringResource(R.string.catalog_local_count, formattedCatalogCount),
-                            color = Color.Gray,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                        Text(
-                            stringResource(R.string.about_summary),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
+                AboutCard("RankOffline", Mint) {
+                    Text(
+                        stringResource(R.string.about_version, versionName),
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Text(
+                        stringResource(R.string.catalog_local_count, formattedCatalogCount),
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    AboutBody(stringResource(R.string.about_summary_multimedia))
+                    AboutBody(stringResource(R.string.about_rankoffline_licence))
+                    AttributionLink(
+                        stringResource(R.string.about_source_code),
+                        AttributionRegistry.SOURCE_CODE_URL
+                    )
                 }
             }
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.about_licences), fontWeight = FontWeight.Bold, color = Cyan)
-                        Text(stringResource(R.string.about_rankoffline_licence), color = Color.LightGray, modifier = Modifier.padding(top = 8.dp))
-                        Text(
-                            stringResource(R.string.about_rankoffline_trademarks),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                        Text(
-                            stringResource(R.string.about_catalog_licence),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                        Text(
-                            stringResource(R.string.about_android_licence),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                    }
+                AboutCard(stringResource(R.string.about_data_sources), Cyan) {
+                    AboutProviderSection(
+                        stringResource(R.string.nav_anime),
+                        stringResource(R.string.about_anime_sources_description),
+                        AttributionRegistry.providers.take(4)
+                    )
+                    AttributionLink(
+                        "manami-project/anime-offline-database",
+                        AttributionRegistry.ANIME_OFFLINE_DATABASE_ORIGINAL_URL
+                    )
+                    AboutProviderSection(
+                        stringResource(R.string.media_manga),
+                        stringResource(R.string.about_manga_source_description),
+                        listOf(AttributionRegistry.providers[4])
+                    )
+                    Text(
+                        stringResource(R.string.about_movies_series),
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                    Image(
+                        painter = painterResource(R.drawable.tmdb_primary_short_blue),
+                        contentDescription = stringResource(R.string.about_tmdb_logo_description),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .width(114.dp)
+                            .height(49.dp)
+                            .clickable { openTrustedUrl(context, AttributionRegistry.TMDB_URL) }
+                    )
+                    AboutBody(stringResource(R.string.about_tmdb_source_description), topPadding = 4.dp)
+                    AboutBody(stringResource(R.string.about_tmdb_notice), topPadding = 6.dp)
+                    AttributionLink("TMDB", AttributionRegistry.TMDB_URL)
+                    AboutProviderSection(
+                        stringResource(R.string.media_books),
+                        stringResource(R.string.about_open_library_source_description),
+                        listOf(AttributionRegistry.providers[6])
+                    )
                 }
             }
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.about_acknowledgements), fontWeight = FontWeight.Bold, color = Magenta)
-                        Text(
-                            stringResource(R.string.about_acknowledgements_text),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
+                AboutCard(stringResource(R.string.about_data_licences), Magenta) {
+                    AboutBody(stringResource(R.string.about_anime_database_licences))
+                    AboutBody(stringResource(R.string.about_alias_database_licences))
+                    AboutBody(stringResource(R.string.about_cc0_scope))
+                    AboutBody(stringResource(R.string.about_open_library_licence_caveat))
+                    AttributionLink("ODbL 1.0", AttributionRegistry.ODBL_URL)
+                    AttributionLink("DbCL 1.0", AttributionRegistry.DBCL_URL)
+                    AttributionLink("CC0 1.0", AttributionRegistry.CC0_URL)
+                }
+            }
+            item {
+                AboutCard(stringResource(R.string.about_open_source_software), Orange) {
+                    AboutBody(stringResource(R.string.about_software_licences))
+                    AboutBody(stringResource(R.string.about_packaged_notices))
+                    AttributionLink("GPL-3.0", AttributionRegistry.GPL_URL)
+                    AttributionLink("Apache-2.0", AttributionRegistry.APACHE_URL)
+                }
+            }
+            item {
+                AboutCard(stringResource(R.string.about_legal_trademarks), Coral) {
+                    AboutBody(stringResource(R.string.about_non_affiliation))
+                    AboutBody(stringResource(R.string.about_rankoffline_trademarks))
+                    AttributionLink(
+                        stringResource(R.string.about_trademark_policy),
+                        AttributionRegistry.TRADEMARKS_URL
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun AboutCard(
+    title: String,
+    titleColor: Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text(title, fontWeight = FontWeight.Bold, color = titleColor)
+            content()
+        }
+    }
+}
+
+@Composable
+private fun AboutBody(text: String, topPadding: androidx.compose.ui.unit.Dp = 8.dp) {
+    Text(
+        text,
+        color = Color.LightGray,
+        fontSize = 13.sp,
+        modifier = Modifier.padding(top = topPadding)
+    )
+}
+
+@Composable
+private fun AboutProviderSection(
+    heading: String,
+    description: String,
+    providers: List<ProviderAttribution>
+) {
+    Text(
+        heading,
+        fontWeight = FontWeight.SemiBold,
+        color = Color.White,
+        modifier = Modifier.padding(top = 12.dp)
+    )
+    AboutBody(description, topPadding = 4.dp)
+    providers.forEach { provider -> AttributionLink(provider.name, provider.url) }
+}
+
+@Composable
+private fun AttributionLink(label: String, url: String) {
+    val context = LocalContext.current
+    TextButton(
+        onClick = { openTrustedUrl(context, url) },
+        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+    ) {
+        Text(label, color = Cyan, fontSize = 13.sp)
+        Icon(
+            Icons.AutoMirrored.Filled.OpenInNew,
+            contentDescription = null,
+            tint = Cyan,
+            modifier = Modifier.padding(start = 4.dp).size(14.dp)
+        )
+    }
+}
+
+private fun openTrustedUrl(context: Context, url: String) {
+    if (url !in AttributionRegistry.trustedUrls) return
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
+    runCatching { context.startActivity(intent) }
 }
 
 @Composable

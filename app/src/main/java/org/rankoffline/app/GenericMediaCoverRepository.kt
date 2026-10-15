@@ -318,7 +318,7 @@ class GenericMediaCoverRepository(
     }
 }
 
-/** Explicit, on-demand cover operations for TMDb collection and season groups. */
+/** Explicit, on-demand cover operations for TMDB collection and season groups. */
 class GenericMediaGroupCoverRepository(
     context: Context,
     database: AnimeDatabase,
