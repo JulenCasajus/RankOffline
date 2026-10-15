@@ -397,6 +397,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
             mediaType = detail.mediaType,
             groupId = detail.id, groupType = detail.type,
             rootAnimeId = root.id,
+            memberCount = detail.members.size,
             finalScore = detail.explicitFinalScore
         )
         _ratingEditor.value = RatingEditorState(target, isGroup = true)

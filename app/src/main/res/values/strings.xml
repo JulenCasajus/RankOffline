@@ -307,4 +307,6 @@
     <string name="group_start_fresh">Start from scratch</string>
     <string name="group_use_member_ratings">Use individual ratings</string>
     <string name="group_explicit_rating">Group rating</string>
+    <string name="score_group_title">Group score</string>
+    <string name="search_clear">Clear search</string>
 </resources>

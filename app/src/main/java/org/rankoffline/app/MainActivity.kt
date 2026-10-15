@@ -15,6 +15,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
@@ -36,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -45,6 +49,8 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -187,6 +193,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         } else {
             RatingScreen(
                 anime = editor.anime,
+                groupScore = usesGroupScoreLabel(editor.isGroup, editor.anime.memberCount),
                 initial = editor.draft,
                 settings = settings,
                 onBack = viewModel::closeRating,
@@ -320,8 +327,15 @@ private fun AnimeListScreen(
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
-    Column(Modifier.fillMaxSize().background(Bg).padding(16.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Bg)
+            .dismissFocusOnUnconsumedTap(focusManager)
+            .padding(16.dp)
+    ) {
         MediaScreenTitle(
             title = stringResource(R.string.app_name),
             activeMediaType = activeMediaType,
@@ -364,6 +378,18 @@ private fun AnimeListScreen(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             leadingIcon = { Icon(Icons.Default.Search, null) },
+            trailingIcon = if (query.isNotEmpty()) {
+                {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(
+                            Icons.Default.Clear,
+                            contentDescription = stringResource(R.string.search_clear)
+                        )
+                    }
+                }
+            } else {
+                null
+            },
             placeholder = { Text(stringResource(R.string.search_catalog_hint)) }
         )
         Spacer(Modifier.height(12.dp))
@@ -409,6 +435,17 @@ private fun AnimeListScreen(
         }
     }
 }
+
+private fun Modifier.dismissFocusOnUnconsumedTap(focusManager: FocusManager): Modifier =
+    pointerInput(focusManager) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val up = waitForUpOrCancellation()
+            if (!down.isConsumed && up != null && !up.isConsumed) {
+                focusManager.clearFocus()
+            }
+        }
+    }
 
 @Composable
 private fun RankingScreen(
@@ -1305,7 +1342,7 @@ private fun CoverViewerDialog(
             contentAlignment = Alignment.Center
         ) {
             val viewerWidth = minOf(maxWidth, 560.dp)
-            val maxImageHeight = (maxHeight - 152.dp).coerceAtLeast(120.dp)
+            val maxImageHeight = (maxHeight - 184.dp).coerceAtLeast(120.dp)
             val imageHeight = minOf(viewerWidth / imageAspectRatio, maxImageHeight)
             Surface(
                 modifier = Modifier.width(viewerWidth).wrapContentHeight(),
@@ -1314,6 +1351,19 @@ private fun CoverViewerDialog(
             ) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     AnimeTopAppBar(anime.localizedDisplayTitle(), onDismiss)
+                    val subtitle = anime.metadataSubtitle()
+                    if (subtitle.isNotEmpty()) {
+                        Text(
+                            subtitle,
+                            color = Color.LightGray,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
                     Box(
                         modifier = Modifier.fillMaxWidth().height(imageHeight).background(Color.Black),
                         contentAlignment = Alignment.Center
@@ -1371,6 +1421,7 @@ private fun CoverViewerDialog(
 @Composable
 private fun RatingScreen(
     anime: Anime,
+    groupScore: Boolean,
     initial: RatingDraft,
     settings: AppSettingsState,
     onBack: () -> Unit,
@@ -1432,13 +1483,13 @@ private fun RatingScreen(
         ) {
             if (stickyScore) {
                 stickyHeader {
-                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config) {
+                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config, groupScore) {
                         showDirectScoreDialog = true
                     }
                 }
             } else {
                 item {
-                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config) {
+                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config, groupScore) {
                         showDirectScoreDialog = true
                     }
                 }
@@ -1594,11 +1645,16 @@ private fun ScoreHeader(
     additive: Double,
     final: Double?,
     config: RatingSystemConfig,
+    groupScore: Boolean = false,
     onFinalScoreClick: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(18.dp)) {
-            Text(stringResource(R.string.score_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(if (groupScore) R.string.score_group_title else R.string.score_title),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {

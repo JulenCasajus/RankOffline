@@ -98,4 +98,6 @@
 <string name="about_software_licences">Исходный код RankOffline имеет лицензию GPL-3.0-only. Применимые runtime-компоненты AndroidX, Jetpack, Kotlin и Kotlinx используют Apache-2.0.</string>
 <string name="about_packaged_notices">Полные тексты лицензий ПО и уведомления о данных включены в приложение.</string>
 <string name="about_non_affiliation">Названия и знаки поставщиков обозначают источники данных. Они не означают аффилированность, сертификацию или одобрение.</string><string name="about_trademark_policy">Политика товарных знаков</string>
+<string name="score_group_title">Оценка группы</string>
+<string name="search_clear">Очистить поиск</string>
 </resources>

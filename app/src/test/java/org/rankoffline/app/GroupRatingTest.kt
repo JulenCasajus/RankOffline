@@ -66,7 +66,14 @@ class GroupRatingTest {
         assertEquals("Series · Madhouse", joinMetadataSubtitle(metadataSubtitleSegments("Series", null, "Madhouse")))
         assertEquals("2023 · Madhouse", joinMetadataSubtitle(metadataSubtitleSegments(null, 2023, "Madhouse")))
         assertEquals("Series", joinMetadataSubtitle(metadataSubtitleSegments("Series", null, null)))
+        assertEquals("2023", joinMetadataSubtitle(metadataSubtitleSegments(null, 2023, null)))
         assertEquals("", joinMetadataSubtitle(metadataSubtitleSegments(null, null, null)))
+    }
+
+    @Test fun groupScoreLabelRequiresAnActualMultiMemberGroup() {
+        assertEquals(true, usesGroupScoreLabel(isGroup = true, memberCount = 2))
+        assertEquals(false, usesGroupScoreLabel(isGroup = true, memberCount = 1))
+        assertEquals(false, usesGroupScoreLabel(isGroup = false, memberCount = 2))
     }
 
     @Test fun groupRowRoutesMainAreaToRatingAndMemberCountToDetails() {

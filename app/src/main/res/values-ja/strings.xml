@@ -98,4 +98,6 @@
 <string name="about_software_licences">RankOfflineのソースコードはGPL-3.0-onlyです。該当するAndroidX、Jetpack、Kotlin、Kotlinxのランタイム部品はApache-2.0です。</string>
 <string name="about_packaged_notices">完全なソフトウェアライセンス本文とデータ通知はアプリに同梱されています。</string>
 <string name="about_non_affiliation">提供元の名称と商標はデータ源を示すもので、提携、認証、推奨を意味しません。</string><string name="about_trademark_policy">商標ポリシー</string>
+<string name="score_group_title">グループスコア</string>
+<string name="search_clear">検索をクリア</string>
 </resources>

@@ -138,6 +138,9 @@ enum class AnimeListRowAction { RATE, GROUP_DETAILS }
 internal fun animeListRowAction(anime: Anime, memberCountClicked: Boolean): AnimeListRowAction =
     if (anime.groupId != null && memberCountClicked) AnimeListRowAction.GROUP_DETAILS else AnimeListRowAction.RATE
 
+internal fun usesGroupScoreLabel(isGroup: Boolean, memberCount: Int): Boolean =
+    isGroup && memberCount > 1
+
 fun Anime.coverTarget(): Anime = when {
     groupId == null -> this
     mediaType == MediaType.ANIME || mediaType == MediaType.MANGA ->

@@ -17,6 +17,17 @@ class MediaScreenStateTest {
     }
 
     @Test
+    fun clearingQueryUsesTheActiveMediaUpdateWithoutChangingOtherQueries() {
+        val states = defaultSearchUiStates()
+            .updateSearchUiState(MediaType.ANIME) { it.copy(query = "Frieren") }
+            .updateSearchUiState(MediaType.MANGA) { it.copy(query = "Berserk") }
+            .updateSearchUiState(MediaType.MANGA) { it.copy(query = "") }
+
+        assertEquals("Frieren", states.searchStateFor(MediaType.ANIME).query)
+        assertEquals("", states.searchStateFor(MediaType.MANGA).query)
+    }
+
+    @Test
     fun searchSortAndFiltersAreIndependent() {
         val animeFilters = AnimeFilters(genre = "Drama", year = 2004)
         val movieFilters = AnimeFilters(studio = "Studio", year = 1999)

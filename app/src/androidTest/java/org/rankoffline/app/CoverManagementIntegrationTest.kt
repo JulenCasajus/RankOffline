@@ -49,8 +49,8 @@ class CoverManagementIntegrationTest {
         val movie = item(MediaType.MOVIE, "count-movie", "tmdb", "/cover.jpg")
         mediaRepository.upsertItems(listOf(manga, movie))
 
-        covers.downloadCover(manga.id)
-        covers.downloadCover(movie.id)
+        assertEquals(CoverDownloadResult.Downloaded, covers.downloadCover(manga.id))
+        assertEquals(CoverDownloadResult.Downloaded, covers.downloadCover(movie.id))
 
         assertEquals(1, covers.observeDownloadedCoverCount(MediaType.MANGA).first())
         assertEquals(1, covers.observeDownloadedCoverCount(MediaType.MOVIE).first())
@@ -64,8 +64,8 @@ class CoverManagementIntegrationTest {
         val movie = item(MediaType.MOVIE, "clear-movie", "tmdb", "/cover.jpg")
         mediaRepository.upsertItems(listOf(manga, movie))
         mediaRepository.saveSimpleRating(movie.id, RatingDraft(), 8.0, 8.0)
-        covers.downloadCover(manga.id)
-        covers.downloadCover(movie.id)
+        assertEquals(CoverDownloadResult.Downloaded, covers.downloadCover(manga.id))
+        assertEquals(CoverDownloadResult.Downloaded, covers.downloadCover(movie.id))
         val moviePath = database.mediaDao().item(movie.id)!!.localCoverPath
 
         assertEquals(1, covers.clearDownloadedCovers(MediaType.MANGA))
@@ -148,7 +148,7 @@ class CoverManagementIntegrationTest {
         id = "${type.persistedValue}:$provider:$suffix",
         mediaType = type.persistedValue,
         provider = provider,
-        providerId = suffix,
+        providerId = if (type == MediaType.MANGA) TEST_MANGADEX_ID else suffix,
         title = suffix,
         remoteCoverRef = remote
     )
@@ -163,5 +163,9 @@ class CoverManagementIntegrationTest {
             bitmap.recycle()
             return MediaCoverTransferResult.DOWNLOADED
         }
+    }
+
+    private companion object {
+        const val TEST_MANGADEX_ID = "00000000-0000-0000-0000-000000000001"
     }
 }

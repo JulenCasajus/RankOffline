@@ -98,4 +98,6 @@
 <string name="about_software_licences">Der RankOffline-Quellcode ist GPL-3.0-only. Anwendbare AndroidX-, Jetpack-, Kotlin- und Kotlinx-Laufzeitkomponenten verwenden Apache-2.0.</string>
 <string name="about_packaged_notices">Vollständige Softwarelizenztexte und Datenhinweise sind in der App enthalten.</string>
 <string name="about_non_affiliation">Anbieternamen und Marken kennzeichnen Datenquellen. Sie bedeuten keine Verbindung, Zertifizierung oder Empfehlung.</string><string name="about_trademark_policy">Markenrichtlinie</string>
+<string name="score_group_title">Gruppenwertung</string>
+<string name="search_clear">Suche löschen</string>
 </resources>

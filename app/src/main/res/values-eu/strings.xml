@@ -98,4 +98,6 @@
 <string name="about_software_licences">RankOfflineren iturburu-kodea GPL-3.0-only da. AndroidX, Jetpack, Kotlin eta Kotlinx runtime osagai aplikagarriek Apache-2.0 erabiltzen dute.</string>
 <string name="about_packaged_notices">Software-lizentzien testu osoak eta datu-oharrak aplikazioarekin paketatzen dira.</string>
 <string name="about_non_affiliation">Hornitzaileen izenek eta markek datu-iturriak identifikatzen dituzte. Ez dute afiliazio, ziurtapen edo babesik adierazten.</string><string name="about_trademark_policy">Marken politika</string>
+<string name="score_group_title">Taldearen puntuazioa</string>
+<string name="search_clear">Garbitu bilaketa</string>
 </resources>

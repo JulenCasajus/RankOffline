@@ -98,4 +98,6 @@
 <string name="about_software_licences">RankOffline 源代码采用 GPL-3.0-only。适用的 AndroidX、Jetpack、Kotlin 和 Kotlinx 运行时组件采用 Apache-2.0。</string>
 <string name="about_packaged_notices">完整的软件许可文本和数据声明已随应用打包。</string>
 <string name="about_non_affiliation">提供方名称和商标仅用于标识数据来源，不表示隶属、认证或认可。</string><string name="about_trademark_policy">商标政策</string>
+<string name="score_group_title">组评分</string>
+<string name="search_clear">清除搜索</string>
 </resources>
