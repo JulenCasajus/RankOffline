@@ -1,26 +1,32 @@
-# RankOffline roadmap
+# Roadmap
 
-This roadmap is a collection of ideas and likely directions, not a commitment to a specific release or schedule.
+This roadmap describes direction, not a guaranteed release schedule.
 
-## UI and experience
+## v0.2.0
 
-- Improve podium images and the overall podium presentation.
-- Add a light theme alongside the current dark theme.
+The current development focus is turning RankOffline into a broader personal media-ranking app.
 
-## Imports and interoperability
+Planned / in-progress areas:
 
-- Import or download a user's existing ratings from popular anime platforms.
+- Anime
+- Manga
+- Movies
+- Series
+- Books
+- First-launch onboarding
+- Category switching and management
+- Downloadable/removable catalog packs
+- Preservation of user ratings when catalogs are removed
+- Smaller base APK through optional catalog downloads
+- Real-device and migration testing before release
 
-## Localization
+## Later
 
-- Add more UI languages.
+Possible future work:
 
-## Beyond anime
-
-Evolve RankOffline into a broader offline personal-ranking app while keeping the same local-first philosophy:
-
-- manga;
-- books;
-- TV series;
-- movies;
-- video games.
+- Import ratings from external platforms
+- More UI languages
+- Light theme
+- Better podium and cover presentation
+- Additional media types such as video games
+- Export/backup tools for user-owned data
