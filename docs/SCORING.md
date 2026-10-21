@@ -1,51 +1,24 @@
 # Scoring
 
-RankOffline supports two rating styles that both produce one canonical saved final score.
+RankOffline produces one saved score for each rated entry.
 
-## Simple rating
+## Simple mode
 
-Choose a score from **0.0 to 10.0** in **0.5** steps.
+Choose a 0–10 score (typically in 0.5 steps). It becomes the final score.
 
-The selected value becomes the saved final score.
+## Elaborate mode
 
-## Elaborate rating
-
-Elaborate mode combines:
-
-1. category scores;
-2. a weighting profile;
-3. an optional personal-taste bonus.
-
-For applicable categories:
+Define categories and weighting profiles. Mark irrelevant categories N/A; they are excluded from the weighted mean:
 
 ```text
-quality = sum(score × weight) / sum(weight)
+quality = sum(category score × category weight) / sum(applicable weights)
+final   = min(10, quality + personal-taste bonus)
 ```
 
-Categories marked **N/A** are excluded.
+The optional bonus is separate from quality. Profiles decide how much each category matters; categories decide what you rate. Stable category IDs allow renaming/recoloring without silently breaking a profile.
 
-The personal-taste bonus is then added and the final result is capped at 10:
+Changing rating mode or profile does not silently rewrite previously saved final scores. Editing and saving a rating persists the canonical score and any applicable elaborated details in Room.
 
-```text
-final = min(10, quality + personal_taste)
-```
+## Data safety
 
-## Categories and profiles
-
-Categories define **what** is rated.
-
-Profiles define **how much each category matters**.
-
-Users can customize both. Stable category IDs are used internally so renaming or recoloring a category does not break profile relationships.
-
-## Persistence
-
-Switching between simple and elaborate mode does not create separate rankings.
-
-Existing elaborate details can remain stored even when the user saves a simple score.
-
-Editing a profile later does not silently recalculate previously saved ratings. A final score changes only when the user explicitly saves that item again.
-
-## Principle
-
-Catalog updates, category-pack removal, and application upgrades must preserve user-owned rating data unless the user explicitly chooses a destructive delete action.
+Normal catalog updates and recovery should preserve personal ratings and notes. The deliberate **Delete pack** action is different: in the v0.2.0 design, it explicitly purges that pack's ratings, notes, cover cache and pack-specific settings after confirmation. Back up anything important before deleting a pack.

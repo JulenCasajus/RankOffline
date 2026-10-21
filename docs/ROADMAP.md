@@ -1,32 +1,29 @@
 # Roadmap
 
-This roadmap describes direction, not a guaranteed release schedule.
+This is a direction, **not a release promise**.
 
-## v0.2.0
+## Available in stable v0.1.3
 
-The current development focus is turning RankOffline into a broader personal media-ranking app.
+Anime-focused offline rating/ranking with local user data.
 
-Planned / in-progress areas:
+## v0.2.0 — in development
 
-- Anime
-- Manga
-- Movies
-- Series
-- Books
-- First-launch onboarding
-- Category switching and management
-- Downloadable/removable catalog packs
-- Preservation of user ratings when catalogs are removed
-- Smaller base APK through optional catalog downloads
-- Real-device and migration testing before release
+- Multi-media packs: Anime, Manga, Movies, Series, Books.
+- Smaller base APK; catalogs downloaded and installed independently.
+- First-run setup, pack management, local recovery and atomic updates.
+- Precomputed Merge (Anime related entries, Manga variants, Movie collections, Series seasons).
+- Personal rating profiles/categories, custom color themes and refined settings.
+- Nine locales, redesigned covers and podium.
+- Full physical-Android QA and migration testing **before** stable release.
 
-## Later
+See the [development record](V0.2.0_DEVELOPMENT.md) for what has been implemented and measured.
 
-Possible future work:
+## Later / exploratory
 
-- Import ratings from external platforms
-- More UI languages
-- Light theme
-- Better podium and cover presentation
-- Additional media types such as video games
-- Export/backup tools for user-owned data
+- **Import and manage personal/third-party packs inside the app** (not shipped).
+- Export, import and backup of ratings and other user-owned data.
+- Broader catalog providers and improved book-cover availability.
+- More media types (for example, video games).
+- Faster first-time Room import and more compact data indexes.
+
+External data sources and artwork are subject to provider rights and terms.

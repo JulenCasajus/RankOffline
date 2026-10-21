@@ -1,104 +1,47 @@
 # RankOffline
 
-RankOffline is a **local-first Android app for rating and ranking media** without an account, telemetry, or cloud-stored ratings.
+**Rate what you love. Rank it your way. Keep it offline.**
 
-The current stable release is **v0.1.3**, focused on anime. The upcoming **v0.2.0** expands the app to Anime, Manga, Movies, Series, and Books.
+A private, customizable Android app for rating and ranking your favorite media — without an account or cloud-stored ratings.
 
-## What it does
+![RankOffline preview placeholder — screenshots coming soon](docs/images/preview-placeholder.svg)
 
-- Rate items with a **simple 0–10 score** or an **elaborate weighted system**.
-- Build a personal ranking from your saved scores.
-- Keep ratings, notes, preferences, and configuration on-device.
-- Browse supported catalogs offline once they are available locally.
-- Customize rating categories, profiles, language, launcher icon, and display preferences.
-- Use the app without creating an account.
+> **Current stable:** [v0.1.3](https://github.com/JulenCasajus/RankOffline/releases/latest) (anime-focused). **In development:** v0.2.0 (Anime, Manga, Movies, Series & Books). Preview images are placeholders, not app screenshots.
 
-## Privacy
+## ✨ Why RankOffline?
 
-RankOffline is designed around local data.
+- **Your ranking, your rules.** Choose a quick 0–10 score or detailed, weighted ratings.
+- **Made for your collections.** Browse Anime, Manga, Movies, Series and Books in the upcoming multi-media release.
+- **Offline first.** Download only the catalogs you want; browse and rate without a connection.
+- **Personal by design.** Ratings, notes and preferences stay on your device.
+- **Make it yours.** Custom rating categories, profiles, color themes and appearance settings.
+- **Smarter collections.** Precomputed Merge relationships keep related seasons, variants and movie collections together.
 
-- No analytics or telemetry.
-- No account system.
-- No cloud rating storage.
-- Personal ratings and notes are not sent to catalog providers.
-- Network access is only used when a feature explicitly needs remote catalog or cover data.
+## 📱 A look inside
 
-## Versions
+| Discover & browse | Rate & rank |
+|:---:|:---:|
+| ![Browse screenshot placeholder](docs/images/browse-placeholder.svg) | ![Rating screenshot placeholder](docs/images/rating-placeholder.svg) |
+| *Screenshot coming soon* | *Screenshot coming soon* |
 
-### Stable — v0.1.3
+## ⬇️ Get RankOffline
 
-The stable app currently focuses on anime and is available from GitHub Releases.
+**[Download the stable Android APK →](https://github.com/JulenCasajus/RankOffline/releases/latest)**
 
-### In development — v0.2.0
+Want to test the upcoming multi-media app? Find clearly labeled **pre-releases** on the [Releases page](https://github.com/JulenCasajus/RankOffline/releases). Development builds may be unstable and are separate from the stable app.
 
-The multi-media version is being developed with support for:
+## 🛠 Build & documentation
 
-- Anime
-- Manga
-- Movies
-- Series
-- Books
-- First-launch onboarding
-- Category switching and management
-- Downloadable/removable catalog packs
-- Separate debug builds that can coexist with the stable app
-
-Development builds may be incomplete and should not be treated as stable releases.
-
-## Install
-
-### GitHub Releases
-
-Download the latest stable APK from the repository's **Releases** page.
-
-### Obtainium
-
-Add this GitHub repository to Obtainium to follow stable releases.
-
-If you intentionally want development builds, enable pre-releases for a separate development installation. Debug builds use a different application ID and can coexist with the stable app.
-
-## Build locally
-
-Requirements:
-
-- Android Studio
-- JDK 17
-- Android SDK 35
-
-Build a debug APK:
+Built with **Kotlin · Jetpack Compose · Room · DataStore**. Requires Android Studio, JDK 17 and Android SDK 35.
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-Output:
+Read more: [Architecture](docs/ARCHITECTURE.md) · [Pack format](docs/PACK_FORMAT.md) · [Personal packs](docs/CUSTOM_PACKS.md) · [Scoring](docs/SCORING.md) · [v0.2.0 progress](docs/V0.2.0_DEVELOPMENT.md) · [Roadmap](docs/ROADMAP.md) · [Releasing](docs/RELEASING.md)
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
+## 🔒 Privacy & license
 
-Release builds require the signing setup described in [docs/RELEASING.md](docs/RELEASING.md).
+No account, analytics, telemetry or cloud rating storage. Network access is used for requested downloads, covers and other online features; personal scores and notes are not uploaded to catalog providers.
 
-## Documentation
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Scoring](docs/SCORING.md)
-- [Releasing](docs/RELEASING.md)
-- [Roadmap](docs/ROADMAP.md)
-
-## Tech
-
-RankOffline is built with:
-
-- Kotlin
-- Jetpack Compose
-- Room
-- DataStore
-
-## License
-
-RankOffline is free and open-source software licensed under the [GNU GPL v3.0](LICENSE).
-
-The RankOffline name, logo, launcher icons, and distinctive branding are covered separately by [TRADEMARKS.md](TRADEMARKS.md).
-
-Third-party catalog data, dependencies, and media metadata remain subject to their own licenses and terms.
+Code is licensed under **[GPL-3.0](LICENSE)**. See [trademarks](TRADEMARKS.md) for branding; catalog data and artwork belong to their respective providers and rights holders.

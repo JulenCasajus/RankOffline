@@ -1,77 +1,47 @@
 # Releasing RankOffline
 
-Stable releases are signed and published through GitHub Actions.
+Stable releases are built, signed and published with GitHub Actions. Debug builds use a separate application ID so they can coexist with stable builds.
 
-## Important rules
+## Safety requirements
 
-- Keep the same release signing key across versions.
-- Increment `versionCode` for every public Android update.
-- Set the intended `versionName`.
-- Never use destructive Room migrations for user data.
-- Test upgrades from the previous public APK when persistence changes.
+- Preserve the release signing key and increment `versionCode` on public updates.
+- Maintain explicit non-destructive Room migrations; **do not clear app storage** as a fix for schema/import bugs.
+- Keep personal data on pack **updates**. Destructive pack **deletion** is different and must use a strong confirmation.
+- Never commit signing keys, `keystore.properties` or secrets.
 
-## Local validation
-
-Before release:
+## Local checks
 
 ```bash
 git diff --check
 ./gradlew testDebugUnitTest
 ./gradlew assembleDebug
+./gradlew connectedDebugAndroidTest  # with emulator/device attached
 ```
 
-When a device or emulator is available:
+Verify physical-device behavior: install a compatible pack, reach READY, search/rank, Merge, download/open covers, save/reopen ratings, force-stop/relaunch, update and explicitly purge. Pure JVM tests are not sufficient.
+
+## v0.2.0 pack/index coherence
+
+The base APK embeds `category_pack_index.json`. The index declares **each** `.pack` archive's filename, download byte length, SHA-256, installed byte count and manifest. The APK and all five packs must be generated **from the same state**. Strict validation must never be weakened to accept stale assets.
+
+Typical development workflow from the v0.2.0 source tree:
 
 ```bash
-./gradlew connectedDebugAndroidTest
+python3 tools/category_packs/build_category_packs.py
+./gradlew assembleDebug \
+  -Prankoffline.categoryPackBaseUrl=https://github.com/JulenCasajus/RankOffline/releases/download/<NEXT_DEBUG_TAG>/
 ```
 
-For locally signed release verification:
+**Replace `<NEXT_DEBUG_TAG>` with the actual prerelease tag before running.** Verify that the generated BuildConfig URL is correct, that `app-debug.apk` contains the intended index, and that all archive hashes and sizes match. Release assets should include the APK **and all five matching packs**. Do not re-use an old index with newly built packs.
 
-```bash
-tools/build_release.sh
-```
+Publish a debug test version using a **new prerelease tag**, and explicitly describe it as a development build. Do not overwrite old debug assets silently when format/hashes changed.
 
-Signing configuration is read from `keystore.properties`, which must never be committed.
+## Stable release
 
-## Publishing a stable release
+1. Commit the intended code, docs and compatible pack manifests.
+2. Test upgrade from previous stable app **without clearing user data**.
+3. Update version, tag and push a tested commit to `main`.
+4. Let the signed release workflow publish and verify the APK.
+5. Confirm Obtainium recognizes the stable release.
 
-1. Commit the intended code and documentation.
-2. Update `versionName` and increment `versionCode`.
-3. Run tests and migration checks.
-4. Push the release commit to `main`.
-5. Create and push the matching tag:
-
-```bash
-git tag -a vX.Y.Z -m "RankOffline vX.Y.Z"
-git push origin vX.Y.Z
-```
-
-6. Let the release workflow build, sign, verify, and publish the APK.
-7. Confirm the APK updates the previous stable installation without clearing user data.
-8. Confirm Obtainium detects the release correctly.
-
-## Development builds
-
-Debug builds may use a separate application ID such as:
-
-```text
-org.rankoffline.app.debug
-```
-
-This allows **RankOffline Dev** to coexist with the stable app.
-
-Development builds should be published only as GitHub **pre-releases**, clearly labelled as unstable/testing builds.
-
-## Signing
-
-The definitive keystore must be backed up securely outside the repository.
-
-Required GitHub Actions secrets:
-
-- `RANKOFFLINE_KEYSTORE_BASE64`
-- `RANKOFFLINE_KEYSTORE_PASSWORD`
-- `RANKOFFLINE_KEY_ALIAS`
-- `RANKOFFLINE_KEY_PASSWORD`
-
-Never commit the keystore, passwords, `keystore.properties`, or signed APKs.
+Local signing is described by `tools/build_release.sh` and `keystore.properties.example`; see the repository workflow for exact production signing secrets.
