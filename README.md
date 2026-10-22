@@ -56,8 +56,6 @@ Your support helps cover development time, maintenance, testing, and future impr
 
 **[Support via GitHub Sponsors](https://github.com/sponsors/JulenCasajus).**
 
-*GitHub Sponsors is currently pending approval. Contributions will be available once GitHub activates the profile.*
-
 Donations are completely optional. RankOffline will remain free and open source.
 
 Thank you for supporting the project! ❤️
