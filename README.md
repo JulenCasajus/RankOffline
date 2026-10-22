@@ -45,3 +45,19 @@ Read more: [Architecture](docs/ARCHITECTURE.md) · [Pack format](docs/PACK_FORMA
 No account, analytics, telemetry or cloud rating storage. Network access is used for requested downloads, covers and other online features; personal scores and notes are not uploaded to catalog providers.
 
 Code is licensed under **[GPL-3.0](LICENSE)**. See [trademarks](TRADEMARKS.md) for branding; catalog data and artwork belong to their respective providers and rights holders.
+
+## ❤️ Support RankOffline
+
+RankOffline is free and open source, built to make personal media ranking simple, customizable, and available offline.
+
+If you enjoy the project and would like to support its continued development, you can make a one-time contribution or become a monthly supporter.
+
+Your support helps cover development time, maintenance, testing, and future improvements.
+
+**[Support via GitHub Sponsors](https://github.com/sponsors/JulenCasajus).**
+
+*GitHub Sponsors is currently pending approval. Contributions will be available once GitHub activates the profile.*
+
+Donations are completely optional. RankOffline will remain free and open source.
+
+Thank you for supporting the project! ❤️
