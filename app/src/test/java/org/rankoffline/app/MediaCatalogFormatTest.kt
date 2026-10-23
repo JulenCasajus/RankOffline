@@ -2,7 +2,6 @@ package org.rankoffline.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MediaCatalogFormatTest {
@@ -23,12 +22,16 @@ class MediaCatalogFormatTest {
     }
 
     @Test
-    fun animeCatalogIsRejectedByGenericFormat() {
-        val exception = assertThrows(IllegalArgumentException::class.java) {
-            validateMediaCatalogManifest(manifest(mediaType = "anime"))
-        }
+    fun animeCatalogUsesGenericFormatAndKeepsCanonicalProviderIds() {
+        val animeManifest = manifest(mediaType = "anime", provider = "anilist")
+        val animeRecord = record(
+            id = "anilist:1",
+            mediaType = "anime",
+            provider = "anilist"
+        )
 
-        assertTrue(exception.message.orEmpty().contains("anime"))
+        assertEquals(MediaType.ANIME, validateMediaCatalogManifest(animeManifest))
+        validateMediaCatalogRecord(animeRecord, animeManifest)
     }
 
     @Test

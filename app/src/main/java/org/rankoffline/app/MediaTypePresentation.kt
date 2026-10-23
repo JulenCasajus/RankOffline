@@ -18,7 +18,7 @@ val MediaType.accentColor: Color
         MediaType.ANIME -> Color(0xFF25D6E5)
         MediaType.MANGA -> Color(0xFFE04BCF)
         MediaType.SERIES -> Color(0xFFE6E530)
-        MediaType.MOVIE -> Color(0xFF2E2EDE)
+        MediaType.MOVIE -> Color(0xFFEF4444)
         MediaType.BOOK -> Color(0xFF27CF24)
     }
 
@@ -38,6 +38,7 @@ val MediaType.genreFilterLabelResource: Int
 @get:StringRes
 val MediaType.creditFilterLabelResource: Int?
     get() = when (this) {
+        MediaType.MANGA -> R.string.filter_author
         MediaType.MOVIE -> R.string.filter_production_company
         MediaType.SERIES -> R.string.filter_network
         MediaType.BOOK -> R.string.filter_author

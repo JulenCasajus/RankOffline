@@ -23,7 +23,7 @@ class MovieSeriesIntegrationTest {
             InstrumentationRegistry.getInstrumentation().targetContext,
             AnimeDatabase::class.java
         ).build()
-        mediaRepository = GenericMediaRepository(database) { 100L }
+        mediaRepository = GenericMediaRepository(database, now = { 100L })
         groupRepository = GenericMediaGroupRepository(database) { 200L }
     }
 
@@ -94,15 +94,49 @@ class MovieSeriesIntegrationTest {
             MediaType.MOVIE,
             query = "",
             sortOrder = CatalogSortOrder.POPULARITY,
-            filters = GenericMediaFilters("Drama", 2020, "Rank Studio"),
+            filters = GenericMediaFilters(genre = "Drama", year = 2020, creditName = "Rank Studio"),
             mergeEnabled = false
         )
 
         assertEquals(listOf(popular.id, lessPopular.id, nullPopularity.id), results.map { it.id })
+        val first = (results.first() as MediaListEntry.Item).value
+        assertEquals("Drama", first.genre)
+        assertEquals("Rank Studio", first.filterCredit)
         assertEquals(
             listOf("Other", "Rank Studio"),
             mediaRepository.filterOptions(MediaType.MOVIE).creditNames
         )
+    }
+
+    @Test
+    fun mangaFilteringUsesAuthorRatherThanDemographic() = runBlocking {
+        val manga = MediaItemEntity(
+            id = "manga:mangadex:author-filter",
+            mediaType = "manga",
+            provider = "mangadex",
+            providerId = "author-filter",
+            title = "Authored Manga",
+            year = 2024,
+            demographic = "shounen"
+        )
+        addItem(manga)
+        database.mediaCatalogDao().insertGenres(listOf(MediaGenreEntity(manga.id, "Drama")))
+        database.mediaCatalogDao().insertCredits(
+            listOf(MediaCreditEntity(manga.id, "AUTHOR", "Example Author"))
+        )
+
+        val results = mediaRepository.search(
+            MediaType.MANGA,
+            query = "",
+            sortOrder = CatalogSortOrder.TITLE_ASC,
+            filters = GenericMediaFilters(genre = "Drama", year = 2024, creditName = "Example Author"),
+            mergeEnabled = false
+        )
+
+        val item = (results.single() as MediaListEntry.Item).value
+        assertEquals("Drama", item.genre)
+        assertEquals("Example Author", item.filterCredit)
+        assertTrue(mediaRepository.filterOptions(MediaType.MANGA).demographics.isEmpty())
     }
 
     @Test
@@ -129,6 +163,41 @@ class MovieSeriesIntegrationTest {
 
         assertEquals(setOf(first.id, second.id, ungrouped.id), unmerged.map { it.id }.toSet())
         assertEquals(setOf("movie:tmdb:collection:7", ungrouped.id), merged.map { it.id }.toSet())
+    }
+
+    @Test
+    fun mergedCatalogPaginationIsAppliedToTheCombinedSqlResult() = runBlocking {
+        val alpha = movie("31", "Alpha")
+        val first = movie("32", "Bravo Part One")
+        val second = movie("33", "Bravo Part Two")
+        val charlie = movie("34", "Charlie")
+        for (item in listOf(alpha, first, second, charlie)) addItem(item)
+        addGroup(
+            MediaGroupEntity(
+                id = "movie:tmdb:collection:32",
+                mediaType = "movie",
+                groupType = "COLLECTION",
+                provider = "tmdb",
+                providerGroupId = "32",
+                displayTitle = "Bravo"
+            ),
+            first.id,
+            second.id
+        )
+
+        suspend fun page(offset: Int) = mediaRepository.search(
+            MediaType.MOVIE,
+            query = "",
+            sortOrder = CatalogSortOrder.TITLE_ASC,
+            filters = GenericMediaFilters(),
+            mergeEnabled = true,
+            limit = 1,
+            offset = offset
+        ).single().id
+
+        assertEquals(alpha.id, page(0))
+        assertEquals("movie:tmdb:collection:32", page(1))
+        assertEquals(charlie.id, page(2))
     }
 
     @Test

@@ -76,6 +76,39 @@ class GenericMediaCatalogImporterTest {
     }
 
     @Test
+    fun normalizedAnimeUsesTheSameCatalogEngineAndKeepsLegacyCanonicalId() = runBlocking {
+        val record = MediaCatalogRecord(
+            id = "mal:16498",
+            mediaType = "anime",
+            provider = "anime_offline_database",
+            providerId = "mal:16498",
+            title = "Attack on Titan",
+            year = 2013,
+            format = "SERIES",
+            genres = listOf("Action"),
+            credits = listOf(MediaCatalogCredit("STUDIO", "Wit Studio")),
+            aliases = listOf(MediaCatalogAlias("Shingeki no Kyojin", "ja"))
+        )
+        val bytes = catalog(listOf(record))
+        val manifest = manifestFor("anime", "anime_offline_database", "v1", bytes, 1)
+
+        assertEquals(
+            MediaCatalogImportResult.Imported(1),
+            importer.importIfNeeded(manifest, ByteArrayInputStream(bytes))
+        )
+        val imported = database.mediaDao().item(record.id)
+        assertNotNull(imported)
+        assertEquals("anime", imported?.mediaType)
+        assertEquals("SERIES", imported?.format)
+        assertEquals(listOf("Action"), strings("SELECT genre FROM media_genre WHERE media_id = ?", record.id))
+        assertEquals(listOf("Wit Studio"), strings("SELECT name FROM media_credit WHERE media_id = ?", record.id))
+        assertEquals(
+            listOf("Shingeki no Kyojin"),
+            strings("SELECT title FROM media_alias WHERE media_id = ?", record.id)
+        )
+    }
+
+    @Test
     fun reimportPreservesUserDataAndRefreshesCatalogRelations() = runBlocking {
         val original = movie(
             "10",
@@ -94,10 +127,20 @@ class GenericMediaCatalogImporterTest {
             )
         )
         mediaDao.upsertRating(
-            MediaRatingEntity(original.id, 0.5, 8.0, 8.5, "note", "Rated", 7L, "general")
+            MediaRatingEntity(
+                original.id, 0.5, 8.0, 8.5, "note", "Rated", 7L, "general", "movies"
+            )
         )
         mediaDao.upsertRatingScores(
-            listOf(MediaRatingScoreEntity(original.id, "writing", 8.0, applicable = true))
+            listOf(
+                MediaRatingScoreEntity(
+                    original.id,
+                    "writing",
+                    8.0,
+                    applicable = true,
+                    packId = "movies"
+                )
+            )
         )
 
         val refreshed = original.copy(
@@ -114,8 +157,8 @@ class GenericMediaCatalogImporterTest {
         assertEquals("/private/movie-10.jpg", item.localCoverPath)
         assertEquals("AVAILABLE", item.coverResolutionState)
         assertEquals(listOf("Drama"), strings("SELECT genre FROM media_genre WHERE media_id = ?", original.id))
-        assertEquals(8.5, mediaDao.rating(original.id)!!.finalScore!!, 0.0)
-        assertEquals(8.0, mediaDao.ratingScores(original.id).single().score!!, 0.0)
+        assertEquals(8.5, mediaDao.rating("movies", original.id)!!.finalScore!!, 0.0)
+        assertEquals(8.0, mediaDao.ratingScores("movies", original.id).single().score!!, 0.0)
         assertEquals(
             "v2",
             database.mediaCatalogDao().metadata("movie", GenericMediaCatalogImporter.METADATA_VERSION)
@@ -151,6 +194,28 @@ class GenericMediaCatalogImporterTest {
         )
     }
 
+    @Test
+    fun replacementRemovesStaleReferenceItemButKeepsCanonicalUserRating() = runBlocking {
+        val removed = movie("30", "Removed")
+        val retained = movie("31", "Retained")
+        val first = catalog(listOf(removed, retained))
+        importer.importIfNeeded(manifest("v1", first, 2), ByteArrayInputStream(first))
+        database.mediaDao().upsertRating(
+            MediaRatingEntity(
+                removed.id, 0.0, 8.0, 8.0, "personal", "Completed", 1L,
+                packId = "movies"
+            )
+        )
+
+        val second = catalog(listOf(retained.copy(title = "Updated")))
+        importer.importIfNeeded(manifest("v2", second, 1), ByteArrayInputStream(second))
+
+        assertNull(database.mediaDao().item(removed.id))
+        assertEquals("personal", database.mediaDao().rating("movies", removed.id)?.notes)
+        assertEquals("Updated", database.mediaDao().item(retained.id)?.title)
+        assertEquals(1L, database.mediaCatalogDao().catalogItemCount("movie"))
+    }
+
     private fun movie(
         providerId: String,
         title: String,
@@ -184,6 +249,22 @@ class GenericMediaCatalogImporterTest {
         formatVersion = MEDIA_CATALOG_FORMAT_VERSION,
         mediaType = "movie",
         provider = "tmdb",
+        catalogVersion = version,
+        sha256 = MessageDigest.getInstance("SHA-256").digest(catalog)
+            .joinToString("") { "%02x".format(it) },
+        itemCount = itemCount
+    )
+
+    private fun manifestFor(
+        mediaType: String,
+        provider: String,
+        version: String,
+        catalog: ByteArray,
+        itemCount: Long
+    ) = MediaCatalogManifest(
+        formatVersion = MEDIA_CATALOG_FORMAT_VERSION,
+        mediaType = mediaType,
+        provider = provider,
         catalogVersion = version,
         sha256 = MessageDigest.getInstance("SHA-256").digest(catalog)
             .joinToString("") { "%02x".format(it) },

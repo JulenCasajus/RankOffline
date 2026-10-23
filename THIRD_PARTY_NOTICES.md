@@ -34,8 +34,9 @@ GPL-3.0 and Apache-2.0 texts are packaged in `assets/legal/`.
   competing-service restrictions remain unresolved for release; attribution
   does not grant broader permission or imply endorsement.
 - [MangaDex](https://mangadex.org) supplies Manga metadata, aliases, tags,
-  creators, conservative variant relations, and cover references. RankOffline
-  does not provide chapter reading or distribute scanlation content. Its
+  creators, conservative variant relations, and cover references. Android may
+  request bounded title-search pages only after an explicit user action.
+  RankOffline does not provide chapter reading or distribute scanlation content. Its
   current acceptable-use policy requires credit and must be reassessed before
   adding advertising or paid service features.
 - [TMDB](https://www.themoviedb.org) supplies Movie and Series metadata,
@@ -43,7 +44,8 @@ GPL-3.0 and Apache-2.0 texts are packaged in `assets/legal/`.
   references. Current use is non-commercial; commercial use requires a
   separate licensing review/contact with TMDB.
 - [Open Library](https://openlibrary.org) supplies Work metadata and author
-  records from bulk dumps. Contributions are generally offered under CC0 where
+  records from bulk dumps, plus bounded Work search pages after an explicit
+  user action. Contributions are generally offered under CC0 where
   contributors can make that dedication, but underlying rights can remain.
   This notice does not characterize all Open Library content as public domain.
 

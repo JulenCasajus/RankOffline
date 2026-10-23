@@ -15,7 +15,10 @@ data class MediaItemRatingRow(
     @ColumnInfo(name = "rating_additive_score") val additiveScore: Double?,
     @ColumnInfo(name = "rating_quality_score") val qualityScore: Double?,
     @ColumnInfo(name = "rating_final_score") val finalScore: Double?,
-    @ColumnInfo(name = "rating_profile_id") val profileId: String?
+    @ColumnInfo(name = "rating_profile_id") val profileId: String?,
+    @ColumnInfo(name = "rating_pack_id") val ratingPackId: String?,
+    @ColumnInfo(name = "filter_genre") val filterGenre: String? = null,
+    @ColumnInfo(name = "filter_credit") val filterCredit: String? = null
 ) {
     fun toDomain(categoryScore: Double? = null): MediaItem = item.toDomain(
         rating = finalScore?.let {
@@ -27,10 +30,13 @@ data class MediaItemRatingRow(
                 notes = "",
                 status = "",
                 updatedAt = 0L,
-                profileId = profileId
+                profileId = profileId,
+                packId = ratingPackId.orEmpty()
             )
         },
-        categoryScore = categoryScore
+        categoryScore = categoryScore,
+        genre = filterGenre,
+        filterCredit = filterCredit
     )
 }
 
@@ -42,15 +48,24 @@ data class MediaCategoryScoreRow(
 
 @Dao
 interface MediaDao {
+    @Query("SELECT COUNT(*) FROM media_item WHERE media_type = :mediaType")
+    suspend fun itemCount(mediaType: String): Int
+
     @Query(
         """
         SELECT item.*,
                rating.additive_score AS rating_additive_score,
                rating.quality_score AS rating_quality_score,
                rating.final_score AS rating_final_score,
-               rating.profile_id AS rating_profile_id
+               rating.profile_id AS rating_profile_id,
+               rating.pack_id AS rating_pack_id,
+               (SELECT genreRow.genre FROM media_genre genreRow
+                WHERE genreRow.media_id = item.id ORDER BY genreRow.genre COLLATE NOCASE LIMIT 1) AS filter_genre,
+               (SELECT credit.name FROM media_credit credit
+                WHERE credit.media_id = item.id AND credit.role = :creditRole
+                ORDER BY credit.name COLLATE NOCASE LIMIT 1) AS filter_credit
         FROM media_item item
-        LEFT JOIN media_rating rating ON rating.media_id = item.id
+        LEFT JOIN media_rating rating ON rating.media_id = item.id AND rating.pack_id = :packId
         WHERE item.media_type = :mediaType
           AND (:query = '' OR item.title LIKE '%' || :query || '%' COLLATE NOCASE
                OR item.original_title LIKE '%' || :query || '%' COLLATE NOCASE
@@ -60,30 +75,46 @@ interface MediaDao {
           AND (:genre IS NULL OR EXISTS (SELECT 1 FROM media_genre genreRow
                                         WHERE genreRow.media_id = item.id AND genreRow.genre = :genre))
           AND (:year IS NULL OR item.year = :year)
+          AND (:format IS NULL OR item.format = :format)
           AND (:demographic IS NULL OR item.demographic = :demographic)
           AND (:creditName IS NULL OR EXISTS (SELECT 1 FROM media_credit credit
                                              WHERE credit.media_id = item.id
                                                AND credit.role = :creditRole
                                                AND credit.name = :creditName))
+          AND (:excludedGroupType IS NULL OR item.id NOT IN (
+              SELECT excludedMember.media_id FROM media_group_member excludedMember
+              INNER JOIN media_group excludedGroup ON excludedGroup.id = excludedMember.group_id
+              WHERE excludedGroup.media_type = :mediaType
+                AND excludedGroup.group_type = :excludedGroupType
+          ))
         ORDER BY
           CASE WHEN :sortOrder = 'TITLE_ASC' THEN item.title END COLLATE NOCASE ASC,
           CASE WHEN :sortOrder = 'TITLE_DESC' THEN item.title END COLLATE NOCASE DESC,
-          CASE WHEN :sortOrder IN ('POPULARITY', 'POPULARITY_REVERSE') AND item.popularity IS NULL
+          CASE WHEN :sortOrder IN ('POPULARITY', 'POPULARITY_REVERSE')
+                    AND item.popularity_rank IS NULL AND item.popularity IS NULL
                THEN 1 ELSE 0 END ASC,
-          CASE WHEN :sortOrder = 'POPULARITY' THEN item.popularity END DESC,
-          CASE WHEN :sortOrder = 'POPULARITY_REVERSE' THEN item.popularity END ASC,
+          CASE WHEN :sortOrder = 'POPULARITY' THEN item.popularity_rank END ASC,
+          CASE WHEN :sortOrder = 'POPULARITY_REVERSE' THEN item.popularity_rank END DESC,
+          CASE WHEN :sortOrder = 'POPULARITY' AND item.popularity_rank IS NULL THEN item.popularity END DESC,
+          CASE WHEN :sortOrder = 'POPULARITY_REVERSE' AND item.popularity_rank IS NULL THEN item.popularity END ASC,
           item.title COLLATE NOCASE ASC, item.id ASC
+        LIMIT :limit OFFSET :offset
         """
     )
     suspend fun searchItems(
         mediaType: String,
+        packId: String,
         query: String,
         sortOrder: String,
         genre: String?,
+        format: String?,
         year: Int?,
         creditRole: String?,
         creditName: String?,
-        demographic: String?
+        demographic: String?,
+        excludedGroupType: String?,
+        limit: Int,
+        offset: Int
     ): List<MediaItemRatingRow>
 
     @Query(
@@ -92,28 +123,68 @@ interface MediaDao {
                rating.additive_score AS rating_additive_score,
                rating.quality_score AS rating_quality_score,
                rating.final_score AS rating_final_score,
-               rating.profile_id AS rating_profile_id
+               rating.profile_id AS rating_profile_id,
+               rating.pack_id AS rating_pack_id,
+               (SELECT genreRow.genre FROM media_genre genreRow
+                WHERE genreRow.media_id=item.id ORDER BY genreRow.genre COLLATE NOCASE LIMIT 1) AS filter_genre,
+               (SELECT credit.name FROM media_credit credit
+                WHERE credit.media_id=item.id AND credit.role=:creditRole
+                ORDER BY credit.name COLLATE NOCASE LIMIT 1) AS filter_credit
         FROM media_item item
-        INNER JOIN media_rating rating ON rating.media_id = item.id
+        LEFT JOIN media_rating rating ON rating.media_id=item.id AND rating.pack_id=:packId
+        WHERE item.id IN (:mediaIds)
+        """
+    )
+    suspend fun itemsByIds(
+        mediaIds: List<String>,
+        creditRole: String?,
+        packId: String
+    ): List<MediaItemRatingRow>
+
+    @Query(
+        """
+        SELECT item.*,
+               rating.additive_score AS rating_additive_score,
+               rating.quality_score AS rating_quality_score,
+               rating.final_score AS rating_final_score,
+               rating.profile_id AS rating_profile_id,
+               rating.pack_id AS rating_pack_id,
+               (SELECT genreRow.genre FROM media_genre genreRow
+                WHERE genreRow.media_id = item.id ORDER BY genreRow.genre COLLATE NOCASE LIMIT 1) AS filter_genre,
+               (SELECT credit.name FROM media_credit credit
+                WHERE credit.media_id = item.id AND credit.role = :creditRole
+                ORDER BY credit.name COLLATE NOCASE LIMIT 1) AS filter_credit
+        FROM media_item item
+        INNER JOIN media_rating rating ON rating.media_id = item.id AND rating.pack_id = :packId
         WHERE item.media_type = :mediaType
           AND (:genre IS NULL OR EXISTS (SELECT 1 FROM media_genre genreRow
                                         WHERE genreRow.media_id = item.id AND genreRow.genre = :genre))
           AND (:year IS NULL OR item.year = :year)
+          AND (:format IS NULL OR item.format = :format)
           AND (:demographic IS NULL OR item.demographic = :demographic)
           AND (:creditName IS NULL OR EXISTS (SELECT 1 FROM media_credit credit
                                              WHERE credit.media_id = item.id
                                                AND credit.role = :creditRole
                                                AND credit.name = :creditName))
+          AND (:excludedGroupType IS NULL OR item.id NOT IN (
+              SELECT excludedMember.media_id FROM media_group_member excludedMember
+              INNER JOIN media_group excludedGroup ON excludedGroup.id = excludedMember.group_id
+              WHERE excludedGroup.media_type = :mediaType
+                AND excludedGroup.group_type = :excludedGroupType
+          ))
         ORDER BY item.title COLLATE NOCASE ASC, item.id ASC
         """
     )
     suspend fun ratedItems(
         mediaType: String,
+        packId: String,
         genre: String?,
+        format: String?,
         year: Int?,
         creditRole: String?,
         creditName: String?,
-        demographic: String?
+        demographic: String?,
+        excludedGroupType: String?
     ): List<MediaItemRatingRow>
 
     @Query(
@@ -121,10 +192,15 @@ interface MediaDao {
         SELECT score.media_id, score.score, score.applicable
         FROM media_rating_score score
         INNER JOIN media_item item ON item.id = score.media_id
-        WHERE item.media_type = :mediaType AND score.category_id = :categoryId
+        WHERE item.media_type = :mediaType AND score.pack_id = :packId
+          AND score.category_id = :categoryId
         """
     )
-    suspend fun categoryScores(mediaType: String, categoryId: String): List<MediaCategoryScoreRow>
+    suspend fun categoryScores(
+        mediaType: String,
+        packId: String,
+        categoryId: String
+    ): List<MediaCategoryScoreRow>
 
     @Query(
         "SELECT DISTINCT genre FROM media_genre genreRow INNER JOIN media_item item " +
@@ -138,6 +214,12 @@ interface MediaDao {
             "ORDER BY year DESC"
     )
     suspend fun years(mediaType: String): List<Int>
+
+    @Query(
+        "SELECT DISTINCT format FROM media_item WHERE media_type = :mediaType AND format IS NOT NULL " +
+            "ORDER BY format COLLATE NOCASE ASC"
+    )
+    suspend fun formats(mediaType: String): List<String>
 
     @Query(
         "SELECT DISTINCT demographic FROM media_item " +
@@ -162,11 +244,24 @@ interface MediaDao {
     )
     fun observeDownloadedCoverCount(mediaType: String): Flow<Int>
 
+    @Query("SELECT local_cover_path FROM media_item WHERE id = :mediaId")
+    fun observeLocalCoverPath(mediaId: String): Flow<String?>
+
     @Query(
         "SELECT item.* FROM media_item item INNER JOIN media_rating rating ON rating.media_id = item.id " +
-            "WHERE item.media_type = :mediaType AND rating.final_score IS NOT NULL ORDER BY item.id"
+            "WHERE item.media_type = :mediaType AND rating.pack_id = :packId " +
+            "AND rating.final_score IS NOT NULL ORDER BY item.id"
     )
-    suspend fun ratedCoverItems(mediaType: String): List<MediaItemEntity>
+    suspend fun ratedCoverItems(mediaType: String, packId: String): List<MediaItemEntity>
+
+    @Query(
+        "SELECT * FROM media_item WHERE id IN (" +
+            "SELECT MIN(id) FROM media_item WHERE media_type = :mediaType " +
+            "AND popularity_rank IS NOT NULL GROUP BY popularity_rank " +
+            "ORDER BY popularity_rank ASC LIMIT :limit" +
+            ") ORDER BY popularity_rank ASC, id ASC"
+    )
+    suspend fun topPopularCoverItems(mediaType: String, limit: Int): List<MediaItemEntity>
 
     @Query("SELECT * FROM media_item WHERE media_type = :mediaType AND local_cover_path IS NOT NULL")
     suspend fun itemsWithLocalCovers(mediaType: String): List<MediaItemEntity>
@@ -192,11 +287,11 @@ interface MediaDao {
     )
     suspend fun updateMediaCover(mediaId: String, path: String?, state: String): Int
 
-    @Query("SELECT * FROM media_rating WHERE media_id = :mediaId")
-    suspend fun rating(mediaId: String): MediaRatingEntity?
+    @Query("SELECT * FROM media_rating WHERE pack_id = :packId AND media_id = :mediaId")
+    suspend fun rating(packId: String, mediaId: String): MediaRatingEntity?
 
-    @Query("SELECT * FROM media_rating_score WHERE media_id = :mediaId")
-    suspend fun ratingScores(mediaId: String): List<MediaRatingScoreEntity>
+    @Query("SELECT * FROM media_rating_score WHERE pack_id = :packId AND media_id = :mediaId")
+    suspend fun ratingScores(packId: String, mediaId: String): List<MediaRatingScoreEntity>
 
     @Upsert
     suspend fun upsertRating(rating: MediaRatingEntity)
@@ -204,8 +299,8 @@ interface MediaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRatingScores(scores: List<MediaRatingScoreEntity>)
 
-    @Query("DELETE FROM media_rating_score WHERE media_id = :mediaId")
-    suspend fun deleteRatingScores(mediaId: String)
+    @Query("DELETE FROM media_rating_score WHERE pack_id = :packId AND media_id = :mediaId")
+    suspend fun deleteRatingScores(packId: String, mediaId: String)
 
     @Transaction
     suspend fun replaceRatingAndScores(
@@ -213,36 +308,34 @@ interface MediaDao {
         scores: List<MediaRatingScoreEntity>
     ) {
         upsertRating(rating)
-        deleteRatingScores(rating.mediaId)
+        deleteRatingScores(rating.packId, rating.mediaId)
         if (scores.isNotEmpty()) upsertRatingScores(scores)
     }
 
-    @Query("DELETE FROM media_rating WHERE media_id = :mediaId")
-    suspend fun deleteRating(mediaId: String)
+    @Query("DELETE FROM media_rating WHERE pack_id = :packId AND media_id = :mediaId")
+    suspend fun deleteRating(packId: String, mediaId: String)
 
     @Query(
         """
         DELETE FROM media_rating_score
-        WHERE category_id = :categoryId
-          AND media_id IN (SELECT id FROM media_item WHERE media_type = :mediaType)
+        WHERE pack_id = :packId AND category_id = :categoryId
         """
     )
-    suspend fun deleteRatingScoresForCategory(mediaType: String, categoryId: String)
+    suspend fun deleteRatingScoresForCategory(packId: String, categoryId: String)
 
     @Query(
         """
         DELETE FROM media_rating_score
-        WHERE category_id NOT IN (:categoryIds)
-          AND media_id IN (SELECT id FROM media_item WHERE media_type = :mediaType)
+        WHERE pack_id = :packId AND category_id NOT IN (:categoryIds)
         """
     )
-    suspend fun deleteRatingScoresOutsideCategories(mediaType: String, categoryIds: List<String>)
+    suspend fun deleteRatingScoresOutsideCategories(packId: String, categoryIds: List<String>)
 
     @Query(
         """
         DELETE FROM media_rating_score
-        WHERE media_id IN (SELECT id FROM media_item WHERE media_type = :mediaType)
+        WHERE pack_id = :packId
         """
     )
-    suspend fun deleteAllRatingScores(mediaType: String)
+    suspend fun deleteAllRatingScores(packId: String)
 }

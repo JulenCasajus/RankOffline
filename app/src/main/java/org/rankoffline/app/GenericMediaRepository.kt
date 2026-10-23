@@ -2,6 +2,8 @@ package org.rankoffline.app
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.room.withTransaction
+import java.io.File
 
 data class GenericMediaRatingSave(
     val rating: MediaRatingEntity,
@@ -9,6 +11,7 @@ data class GenericMediaRatingSave(
 )
 
 internal fun buildGenericElaborateRating(
+    packId: String,
     mediaId: String,
     draft: RatingDraft,
     config: RatingSystemConfig,
@@ -30,20 +33,23 @@ internal fun buildGenericElaborateRating(
             notes = draft.notes,
             status = draft.status,
             updatedAt = updatedAt,
-            profileId = profileId
+            profileId = profileId,
+            packId = packId
         ),
         scores = draft.categoryScores.map { (categoryId, score) ->
             MediaRatingScoreEntity(
                 mediaId = mediaId,
                 categoryId = categoryId,
                 score = score?.takeIf(Double::isFinite),
-                applicable = score?.isFinite() == true
+                applicable = score?.isFinite() == true,
+                packId = packId
             )
         }
     )
 }
 
 internal fun buildGenericSimpleRating(
+    packId: String,
     mediaId: String,
     draft: RatingDraft,
     qualityScore: Double,
@@ -57,55 +63,83 @@ internal fun buildGenericSimpleRating(
     notes = draft.notes,
     status = draft.status,
     updatedAt = updatedAt,
-    profileId = draft.profileId
+    profileId = draft.profileId,
+    packId = packId
 )
 
 class GenericMediaRepository(
-    database: AnimeDatabase,
-    private val now: () -> Long = System::currentTimeMillis
+    private val database: AnimeDatabase,
+    private val now: () -> Long = System::currentTimeMillis,
+    private val packManifest: (MediaType) -> PackManifest? = { null }
 ) {
     private val dao = database.mediaDao()
     private val groupDao = database.mediaGroupDao()
-    private val groupRepository = GenericMediaGroupRepository(database, now)
+    private val catalogDao = database.mediaCatalogDao()
+
+    suspend fun itemCount(mediaType: MediaType): Int = withContext(Dispatchers.IO) {
+        dao.itemCount(mediaType.persistedValue)
+    }
+
+    suspend fun reconcileLegacyAnimeCoverMetadata(): Int = withContext(Dispatchers.IO) {
+        catalogDao.reconcileLegacyAnimeCoverMetadata()
+    }
 
     suspend fun search(
         mediaType: MediaType,
         query: String,
         sortOrder: CatalogSortOrder,
         filters: GenericMediaFilters,
-        mergeEnabled: Boolean
+        mergeEnabled: Boolean,
+        limit: Int = 200,
+        offset: Int = 0
     ): List<MediaListEntry> = withContext(Dispatchers.IO) {
         requireIntegratedMediaType(mediaType)
-        val role = mediaType.genericFilterCreditRole()
-        val groupType = mediaType.genericGroupType().takeIf { mergeEnabled }
-        val individuals = dao.searchItems(
-            mediaType.persistedValue,
-            query.trim(),
-            sortOrder.name,
-            filters.genre,
-            filters.year,
-            role,
-            filters.creditName,
-            filters.demographic
-        )
-        if (groupType == null) return@withContext individuals.map { MediaListEntry.Item(it.toDomain()) }
-
-        val groupedIds = groupDao.groupedMediaIds(mediaType.persistedValue, groupType).toSet()
-        val ungrouped = individuals.asSequence()
-            .filterNot { it.item.id in groupedIds }
-            .map { MediaListEntry.Item(it.toDomain()) }
-            .toList()
-        val groups = groupDao.matchingGroups(
-            mediaType.persistedValue,
-            groupType,
-            query.trim(),
-            filters.genre,
-            filters.year,
-            role,
-            filters.creditName,
-            filters.demographic
-        ).mapNotNull { group -> groupRepository.groupDetail(group.id)?.toListEntry() }
-        sortCatalogEntries(ungrouped + groups, sortOrder)
+        val role = packManifest(mediaType)?.creditRole() ?: mediaType.genericFilterCreditRole()
+        val packId = mediaType.toPackId().value
+        val configuredGroupType = packManifest(mediaType)?.groupTypeOrNull()
+            ?: mediaType.genericGroupType()
+        val groupType = configuredGroupType.takeIf { mergeEnabled }
+        val entries = if (groupType == null) {
+            dao.searchItems(
+                mediaType.persistedValue,
+                packId,
+                query.trim(),
+                sortOrder.name,
+                filters.genre,
+                filters.format,
+                filters.year,
+                role,
+                filters.creditName,
+                filters.demographic,
+                null,
+                limit,
+                offset
+            ).map { MediaListEntry.Item(it.toDomain()) }
+        } else {
+            val visibleIds = groupDao.visibleCatalogEntryIds(
+                GenericGroupedQueries.catalogIds(
+                    mediaType = mediaType.persistedValue,
+                    groupType = groupType,
+                    query = query,
+                    sortOrder = sortOrder,
+                    filters = filters,
+                    creditRole = role,
+                    limit = limit,
+                    offset = offset
+                )
+            )
+            val itemIds = visibleIds.filter { it.entryType == 0 }.map(GenericVisibleEntryId::id)
+            val groupIds = visibleIds.filter { it.entryType == 1 }.map(GenericVisibleEntryId::id)
+            val itemsById = if (itemIds.isEmpty()) emptyMap() else
+                dao.itemsByIds(itemIds, role, packId).associateBy { it.item.id }
+            val groupsById = if (groupIds.isEmpty()) emptyMap() else
+                groupDao.groupRowsByIds(groupIds, packId).associateBy { it.group.id }
+            visibleIds.mapNotNull { visible ->
+                if (visible.entryType == 1) groupsById[visible.id]?.toListEntry()
+                else itemsById[visible.id]?.let { MediaListEntry.Item(it.toDomain()) }
+            }
+        }
+        attachSharedCoverIdentities(entries, mediaType, configuredGroupType)
     }
 
     suspend fun ranking(
@@ -117,51 +151,50 @@ class GenericMediaRepository(
         mergeEnabled: Boolean
     ): List<MediaListEntry> = withContext(Dispatchers.IO) {
         requireIntegratedMediaType(mediaType)
-        val role = mediaType.genericFilterCreditRole()
-        val groupType = mediaType.genericGroupType().takeIf { mergeEnabled }
+        val role = packManifest(mediaType)?.creditRole() ?: mediaType.genericFilterCreditRole()
+        val packId = mediaType.toPackId().value
+        val configuredGroupType = packManifest(mediaType)?.groupTypeOrNull()
+            ?: mediaType.genericGroupType()
+        val groupType = configuredGroupType.takeIf { mergeEnabled }
         val categoryScores = if (sortOrder == RankingSortOrder.CATEGORY_SCORE && categoryId != null) {
-            dao.categoryScores(mediaType.persistedValue, categoryId)
+            dao.categoryScores(mediaType.persistedValue, packId, categoryId)
                 .filter { it.applicable && it.score?.isFinite() == true }
                 .associate { it.mediaId to it.score }
         } else emptyMap()
-        val groupedIds = if (groupType != null) {
-            groupDao.groupedMediaIds(mediaType.persistedValue, groupType).toSet()
-        } else emptySet()
         val individuals = dao.ratedItems(
             mediaType.persistedValue,
+            packId,
             filters.genre,
+            filters.format,
             filters.year,
             role,
             filters.creditName,
-            filters.demographic
+            filters.demographic,
+            groupType
         ).asSequence()
-            .filterNot { it.item.id in groupedIds }
             .map { row -> MediaListEntry.Item(row.toDomain(categoryScores[row.item.id])) }
             .filter { it.rankingScore(sortOrder) != null }
             .toMutableList<MediaListEntry>()
 
         if (groupType != null) {
-            groupDao.matchingGroups(
+            val matchingGroupRows = groupDao.ratedGroupRows(
                 mediaType.persistedValue,
+                packId,
                 groupType,
-                "",
                 filters.genre,
+                filters.format,
                 filters.year,
                 role,
                 filters.creditName,
-                filters.demographic
-            ).mapNotNullTo(individuals) { group ->
-                val detail = groupRepository.groupDetail(group.id) ?: return@mapNotNullTo null
-                val explicitCategory = if (sortOrder == RankingSortOrder.CATEGORY_SCORE && categoryId != null) {
-                    groupDao.groupRatingScores(group.id).firstOrNull {
-                        it.categoryId == categoryId && it.applicable && it.score?.isFinite() == true
-                    }?.score
-                } else null
-                detail.toListEntry(categoryId, explicitCategory)
-                    .takeIf { it.rankingScore(sortOrder) != null }
-            }
+                filters.demographic,
+                categoryId.takeIf { sortOrder == RankingSortOrder.CATEGORY_SCORE }
+            )
+            matchingGroupRows.asSequence()
+                .filter { it.finalScore != null }
+                .map(MediaMergedCatalogRow::toListEntry)
+                .filterTo(individuals) { it.rankingScore(sortOrder) != null }
         }
-        individuals.sortedWith { left, right ->
+        val sorted = individuals.sortedWith { left, right ->
             val leftScore = requireNotNull(left.rankingScore(sortOrder))
             val rightScore = requireNotNull(right.rankingScore(sortOrder))
             val scoreComparison = if (descending) rightScore.compareTo(leftScore)
@@ -169,23 +202,28 @@ class GenericMediaRepository(
             if (scoreComparison != 0) scoreComparison
             else compareValuesBy(left, right, { it.title.lowercase() }, { it.id })
         }
+        attachSharedCoverIdentities(sorted, mediaType, configuredGroupType)
     }
 
     suspend fun filterOptions(mediaType: MediaType): GenericMediaFilterOptions =
         withContext(Dispatchers.IO) {
             requireIntegratedMediaType(mediaType)
-            val role = mediaType.genericFilterCreditRole()
+            val role = packManifest(mediaType)?.creditRole() ?: mediaType.genericFilterCreditRole()
             GenericMediaFilterOptions(
                 genres = dao.genres(mediaType.persistedValue),
+                formats = dao.formats(mediaType.persistedValue),
                 years = dao.years(mediaType.persistedValue),
                 creditNames = role?.let { dao.creditNames(mediaType.persistedValue, it) }.orEmpty(),
-                demographics = dao.demographics(mediaType.persistedValue)
+                demographics = emptyList()
             )
         }
 
     suspend fun item(mediaId: String): MediaItem? = withContext(Dispatchers.IO) {
         val entity = dao.item(mediaId) ?: return@withContext null
-        entity.toDomain(dao.rating(mediaId))
+        val mediaType = requireNotNull(MediaType.entries.firstOrNull {
+            it.persistedValue == entity.mediaType
+        })
+        entity.toDomain(dao.rating(mediaType.toPackId().value, mediaId))
     }
 
     suspend fun upsertItem(item: MediaItemEntity) = withContext(Dispatchers.IO) {
@@ -198,17 +236,70 @@ class GenericMediaRepository(
         dao.upsertItems(items)
     }
 
-    suspend fun rating(mediaId: String): MediaRatingEntity? = withContext(Dispatchers.IO) {
-        dao.rating(mediaId)
+    suspend fun deleteCatalogReferenceData(mediaType: MediaType) = withContext(Dispatchers.IO) {
+        requireIntegratedMediaType(mediaType)
+        catalogDao.deleteCatalogReferenceData(mediaType.persistedValue)
     }
 
-    suspend fun ratingScores(mediaId: String): List<MediaRatingScoreEntity> =
-        withContext(Dispatchers.IO) { dao.ratingScores(mediaId) }
+    suspend fun deleteAllPersonalData(mediaType: MediaType) = withContext(Dispatchers.IO) {
+        requireIntegratedMediaType(mediaType)
+        catalogDao.deletePersonalData(mediaType.toPackId().value)
+    }
 
-    suspend fun loadRating(mediaId: String): RatingDraft = withContext(Dispatchers.IO) {
-        val rating = dao.rating(mediaId) ?: return@withContext RatingDraft()
+    suspend fun purgePackData(mediaType: MediaType) = withContext(Dispatchers.IO) {
+        requireIntegratedMediaType(mediaType)
+        catalogDao.purgePackData(
+            mediaType.persistedValue,
+            mediaType.toPackId().value
+        )
+    }
+
+    suspend fun installPackCovers(manifest: PackManifest, directory: File) = withContext(Dispatchers.IO) {
+        manifest.readCoverIndex(directory).forEach { cover ->
+            val path = File(directory, cover.relativePath).absolutePath
+            when {
+                dao.item(cover.canonicalId) != null ->
+                    dao.updateMediaCover(cover.canonicalId, path, CoverResolutionState.AVAILABLE.name)
+                groupDao.group(cover.canonicalId) != null ->
+                    groupDao.updateGroupCover(cover.canonicalId, path, CoverResolutionState.AVAILABLE.name)
+            }
+        }
+    }
+
+    suspend fun upsertDiscoveredItem(record: MediaCatalogRecord) = withContext(Dispatchers.IO) {
+        requireGenericMediaType(record.mediaType)
+        database.withTransaction {
+            catalogDao.insertNewItems(listOf(record.toNewEntity()))
+            if (catalogDao.updateCatalogFields(listOf(record.toCatalogFields())) != 1) {
+                throw IllegalArgumentException("Remote item identity conflicts with local catalog data")
+            }
+            val ids = listOf(record.id)
+            catalogDao.deleteGenres(ids)
+            catalogDao.deleteCredits(ids)
+            catalogDao.deleteAliases(ids)
+            val genres = record.genres.distinct().map { MediaGenreEntity(record.id, it) }
+            val credits = record.credits.distinct().map { MediaCreditEntity(record.id, it.role, it.name) }
+            val aliases = record.aliases.distinctBy { it.title }
+                .map { MediaAliasEntity(record.id, it.title, it.language, it.kind) }
+            if (genres.isNotEmpty()) catalogDao.insertGenres(genres)
+            if (credits.isNotEmpty()) catalogDao.insertCredits(credits)
+            if (aliases.isNotEmpty()) catalogDao.insertAliases(aliases)
+        }
+    }
+
+    suspend fun rating(mediaType: MediaType, mediaId: String): MediaRatingEntity? = withContext(Dispatchers.IO) {
+        dao.rating(mediaType.toPackId().value, mediaId)
+    }
+
+    suspend fun ratingScores(mediaType: MediaType, mediaId: String): List<MediaRatingScoreEntity> = withContext(Dispatchers.IO) {
+        dao.ratingScores(mediaType.toPackId().value, mediaId)
+    }
+
+    suspend fun loadRating(mediaType: MediaType, mediaId: String): RatingDraft = withContext(Dispatchers.IO) {
+        val packId = mediaType.toPackId().value
+        val rating = dao.rating(packId, mediaId) ?: return@withContext RatingDraft()
         RatingDraft(
-            categoryScores = dao.ratingScores(mediaId).associate { score ->
+            categoryScores = dao.ratingScores(packId, mediaId).associate { score ->
                 score.categoryId to score.score.takeIf { score.applicable }
             },
             additiveScore = rating.additiveScore,
@@ -226,8 +317,17 @@ class GenericMediaRepository(
         qualityScore: Double,
         finalScore: Double
     ) = withContext(Dispatchers.IO) {
-        requireGenericItem(mediaId)
-        dao.upsertRating(buildGenericSimpleRating(mediaId, draft, qualityScore, finalScore, now()))
+        val mediaType = requireGenericItem(mediaId)
+        dao.upsertRating(
+            buildGenericSimpleRating(
+                mediaType.toPackId().value,
+                mediaId,
+                draft,
+                qualityScore,
+                finalScore,
+                now()
+            )
+        )
     }
 
     suspend fun saveElaborateRating(
@@ -237,8 +337,9 @@ class GenericMediaRepository(
         finalScoreOverride: Double? = null,
         profileId: String? = null
     ) = withContext(Dispatchers.IO) {
-        requireGenericItem(mediaId)
+        val mediaType = requireGenericItem(mediaId)
         val save = buildGenericElaborateRating(
+            mediaType.toPackId().value,
             mediaId,
             draft,
             config,
@@ -249,66 +350,104 @@ class GenericMediaRepository(
         dao.replaceRatingAndScores(save.rating, save.scores)
     }
 
-    suspend fun deleteRating(mediaId: String) = withContext(Dispatchers.IO) {
-        dao.deleteRating(mediaId)
+    suspend fun deleteRating(mediaType: MediaType, mediaId: String) = withContext(Dispatchers.IO) {
+        dao.deleteRating(mediaType.toPackId().value, mediaId)
     }
+
+    /** Compatibility overloads for detached legacy identities and older tests. New UI paths pass pack ownership. */
+    suspend fun rating(mediaId: String): MediaRatingEntity? =
+        rating(mediaTypeForItemIdentity(mediaId), mediaId)
+
+    suspend fun ratingScores(mediaId: String): List<MediaRatingScoreEntity> =
+        ratingScores(mediaTypeForItemIdentity(mediaId), mediaId)
+
+    suspend fun loadRating(mediaId: String): RatingDraft =
+        loadRating(mediaTypeForItemIdentity(mediaId), mediaId)
+
+    suspend fun deleteRating(mediaId: String) =
+        deleteRating(mediaTypeForItemIdentity(mediaId), mediaId)
 
     suspend fun deleteRatingCategory(mediaType: MediaType, categoryId: String) =
         withContext(Dispatchers.IO) {
             requireGenericMediaType(mediaType.persistedValue)
-            dao.deleteRatingScoresForCategory(mediaType.persistedValue, categoryId)
+            dao.deleteRatingScoresForCategory(mediaType.toPackId().value, categoryId)
         }
 
     suspend fun deleteRatingScoresOutsideCategories(mediaType: MediaType, categoryIds: List<String>) =
         withContext(Dispatchers.IO) {
             requireGenericMediaType(mediaType.persistedValue)
             if (categoryIds.isEmpty()) {
-                dao.deleteAllRatingScores(mediaType.persistedValue)
+                dao.deleteAllRatingScores(mediaType.toPackId().value)
             } else {
-                dao.deleteRatingScoresOutsideCategories(mediaType.persistedValue, categoryIds)
+                dao.deleteRatingScoresOutsideCategories(mediaType.toPackId().value, categoryIds)
             }
         }
 
-    private suspend fun requireGenericItem(mediaId: String) {
+    private suspend fun requireGenericItem(mediaId: String): MediaType {
         val persistedType = requireNotNull(dao.mediaType(mediaId)) { "Unknown media item: $mediaId" }
         requireGenericMediaType(persistedType)
+        return requireNotNull(MediaType.entries.firstOrNull { it.persistedValue == persistedType })
+    }
+
+    private suspend fun mediaTypeForItemIdentity(mediaId: String): MediaType {
+        dao.mediaType(mediaId)?.let { persisted ->
+            return requireNotNull(MediaType.entries.firstOrNull { it.persistedValue == persisted })
+        }
+        return when {
+            mediaId.startsWith("manga:") -> MediaType.MANGA
+            mediaId.startsWith("movie:") -> MediaType.MOVIE
+            mediaId.startsWith("series:") -> MediaType.SERIES
+            mediaId.startsWith("book:") -> MediaType.BOOK
+            mediaId.startsWith("mal:") || mediaId.startsWith("anilist:") -> MediaType.ANIME
+            else -> error("Unknown detached media identity: $mediaId")
+        }
+    }
+
+    private suspend fun attachSharedCoverIdentities(
+        entries: List<MediaListEntry>,
+        mediaType: MediaType,
+        groupType: String?
+    ): List<MediaListEntry> {
+        if (entries.isEmpty() || groupType == null) return entries
+        val itemIds = entries.asSequence()
+            .filterIsInstance<MediaListEntry.Item>()
+            .map { it.id }
+            .toList()
+        val itemCoverIds = buildMap {
+            itemIds.chunked(SQLITE_ID_BATCH).forEach { batch ->
+                groupDao.sharedCoverIdentitiesForItems(
+                    mediaType.persistedValue,
+                    groupType,
+                    batch
+                ).forEach { put(it.targetId, it.coverMediaId) }
+            }
+        }
+        val groupIds = entries.asSequence()
+            .filterIsInstance<MediaListEntry.Group>()
+            .map { it.id }
+            .toList()
+        val groupCoverIds = buildMap {
+            groupIds.chunked(SQLITE_ID_BATCH).forEach { batch ->
+                groupDao.sharedCoverIdentitiesForGroups(batch)
+                    .forEach { put(it.targetId, it.coverMediaId) }
+            }
+        }
+        return entries.map { entry ->
+            when (entry) {
+                is MediaListEntry.Item -> entry.copy(
+                    value = entry.value.copy(sharedCoverMediaId = itemCoverIds[entry.id])
+                )
+                is MediaListEntry.Group -> entry.copy(sharedCoverMediaId = groupCoverIds[entry.id])
+            }
+        }
     }
 
 }
+
+private const val SQLITE_ID_BATCH = 900
 
 private fun requireIntegratedMediaType(mediaType: MediaType) {
-    require(mediaType != MediaType.ANIME)
-}
-
-private fun MediaGroupDetail.toListEntry(
-    categoryId: String? = null,
-    explicitCategoryScore: Double? = null
-): MediaListEntry.Group {
-    val explicit = explicitRating
-    val representative = members.firstOrNull { it.id == group.representativeMediaId }
-        ?: members.firstOrNull()
-    val displayGroup = if (group.mediaType == MediaType.MANGA && group.localCoverPath == null) {
-        group.copy(
-            localCoverPath = representative?.localCoverPath,
-            coverResolutionState = representative?.coverResolutionState
-                ?: CoverResolutionState.UNKNOWN
-        )
-    } else {
-        group
-    }
-    return MediaListEntry.Group(
-        value = displayGroup,
-        finalScore = explicit?.finalScore ?: derivedRating.finalScore,
-        qualityScore = explicit?.qualityScore ?: derivedRating.qualityScore,
-        additiveScore = explicit?.additiveScore ?: derivedRating.additiveScore,
-        categoryScore = explicitCategoryScore
-            ?: categoryId?.let(derivedRating.categoryScores::get),
-        popularity = members.mapNotNull { it.popularity?.takeIf(Double::isFinite) }.maxOrNull(),
-        memberCount = members.size,
-        ratedCount = derivedRating.ratedCount,
-        representativeMediaId = group.representativeMediaId ?: representative?.id,
-        derived = explicit == null
-    )
+    require(mediaType in MediaType.entries)
 }
 
 private fun MediaListEntry.rankingScore(sortOrder: RankingSortOrder): Double? = when (sortOrder) {
@@ -330,6 +469,20 @@ private fun sortCatalogEntries(
             is MediaListEntry.Item -> value.popularity
             is MediaListEntry.Group -> popularity
         }
+        fun MediaListEntry.popularityRank() = when (this) {
+            is MediaListEntry.Item -> value.popularityRank
+            is MediaListEntry.Group -> popularityRank
+        }
+        val leftRank = left.popularityRank()
+        val rightRank = right.popularityRank()
+        val rankComparison = when {
+            leftRank == null && rightRank == null -> 0
+            leftRank == null -> 1
+            rightRank == null -> -1
+            sortOrder == CatalogSortOrder.POPULARITY -> leftRank.compareTo(rightRank)
+            else -> rightRank.compareTo(leftRank)
+        }
+        if (rankComparison != 0) return@sortedWith rankComparison
         val a = left.popularity()
         val b = right.popularity()
         val score = when {
@@ -345,7 +498,7 @@ private fun sortCatalogEntries(
 
 internal fun requireGenericMediaType(persistedType: String) {
     val mediaType = MediaType.entries.firstOrNull { it.persistedValue == persistedType }
-    require(mediaType != null && mediaType != MediaType.ANIME) {
-        "Generic media persistence does not accept media type: $persistedType"
+    require(mediaType != null) {
+        "Media persistence does not accept media type: $persistedType"
     }
 }

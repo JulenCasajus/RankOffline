@@ -113,6 +113,10 @@ data class MediaAliasEntity(
     ],
     indices = [
         Index(value = ["media_type", "group_type"], name = "idx_media_group_type"),
+        Index(
+            value = ["media_type", "group_type", "group_popularity_rank"],
+            name = "idx_media_group_popularity_rank"
+        ),
         Index(value = ["representative_media_id"], name = "idx_media_group_representative"),
         Index(
             value = ["media_type", "group_type", "provider", "provider_group_id"],
@@ -129,6 +133,9 @@ data class MediaGroupEntity(
     @ColumnInfo(name = "provider_group_id") val providerGroupId: String? = null,
     @ColumnInfo(name = "display_title") val displayTitle: String,
     @ColumnInfo(name = "representative_media_id") val representativeMediaId: String? = null,
+    @ColumnInfo(name = "member_count", defaultValue = "0") val memberCount: Int = 0,
+    @ColumnInfo(name = "group_popularity") val popularity: Double? = null,
+    @ColumnInfo(name = "group_popularity_rank") val popularityRank: Int? = null,
     @ColumnInfo(name = "remote_cover_ref") val remoteCoverRef: String? = null,
     @ColumnInfo(name = "local_cover_path") val localCoverPath: String? = null,
     @ColumnInfo(name = "cover_resolution_state", defaultValue = "'UNKNOWN'")
@@ -160,86 +167,82 @@ data class MediaGroupMemberEntity(
     val position: Int
 )
 
+/** User-owned data keyed by a stable provider identity. It survives catalog-pack removal. */
 @Entity(
     tableName = "media_rating",
-    foreignKeys = [
-        ForeignKey(
-            entity = MediaItemEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["media_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+    primaryKeys = ["pack_id", "media_id"],
+    indices = [Index(value = ["media_id"], name = "idx_media_rating_media_id")]
 )
 data class MediaRatingEntity(
-    @PrimaryKey @ColumnInfo(name = "media_id") val mediaId: String,
+    @ColumnInfo(name = "media_id") val mediaId: String,
     @ColumnInfo(name = "additive_score") val additiveScore: Double,
     @ColumnInfo(name = "quality_score") val qualityScore: Double?,
     @ColumnInfo(name = "final_score") val finalScore: Double?,
     val notes: String,
     val status: String,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
-    @ColumnInfo(name = "profile_id") val profileId: String? = null
+    @ColumnInfo(name = "profile_id") val profileId: String? = null,
+    @ColumnInfo(name = "pack_id") val packId: String
 )
 
 @Entity(
     tableName = "media_rating_score",
-    primaryKeys = ["media_id", "category_id"],
+    primaryKeys = ["pack_id", "media_id", "category_id"],
     foreignKeys = [
         ForeignKey(
             entity = MediaRatingEntity::class,
-            parentColumns = ["media_id"],
-            childColumns = ["media_id"],
+            parentColumns = ["pack_id", "media_id"],
+            childColumns = ["pack_id", "media_id"],
             onDelete = ForeignKey.CASCADE
         )
-    ]
+    ],
+    indices = [Index(value = ["media_id"], name = "idx_media_rating_score_media_id")]
 )
 data class MediaRatingScoreEntity(
     @ColumnInfo(name = "media_id") val mediaId: String,
     @ColumnInfo(name = "category_id") val categoryId: String,
     val score: Double?,
-    val applicable: Boolean
+    val applicable: Boolean,
+    @ColumnInfo(name = "pack_id") val packId: String
 )
 
+/** User-owned data keyed by a stable provider group identity. It survives catalog-pack removal. */
 @Entity(
     tableName = "media_group_rating",
-    foreignKeys = [
-        ForeignKey(
-            entity = MediaGroupEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["group_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+    primaryKeys = ["pack_id", "group_id"],
+    indices = [Index(value = ["group_id"], name = "idx_media_group_rating_group_id")]
 )
 data class MediaGroupRatingEntity(
-    @PrimaryKey @ColumnInfo(name = "group_id") val groupId: String,
+    @ColumnInfo(name = "group_id") val groupId: String,
     @ColumnInfo(name = "additive_score") val additiveScore: Double,
     @ColumnInfo(name = "quality_score") val qualityScore: Double?,
     @ColumnInfo(name = "final_score") val finalScore: Double?,
     val notes: String,
     val status: String,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
-    @ColumnInfo(name = "profile_id") val profileId: String? = null
+    @ColumnInfo(name = "profile_id") val profileId: String? = null,
+    @ColumnInfo(name = "pack_id") val packId: String
 )
 
 @Entity(
     tableName = "media_group_rating_score",
-    primaryKeys = ["group_id", "category_id"],
+    primaryKeys = ["pack_id", "group_id", "category_id"],
     foreignKeys = [
         ForeignKey(
             entity = MediaGroupRatingEntity::class,
-            parentColumns = ["group_id"],
-            childColumns = ["group_id"],
+            parentColumns = ["pack_id", "group_id"],
+            childColumns = ["pack_id", "group_id"],
             onDelete = ForeignKey.CASCADE
         )
-    ]
+    ],
+    indices = [Index(value = ["group_id"], name = "idx_media_group_rating_score_group_id")]
 )
 data class MediaGroupRatingScoreEntity(
     @ColumnInfo(name = "group_id") val groupId: String,
     @ColumnInfo(name = "category_id") val categoryId: String,
     val score: Double?,
-    val applicable: Boolean
+    val applicable: Boolean,
+    @ColumnInfo(name = "pack_id") val packId: String
 )
 
 @Entity(tableName = "media_catalog_metadata", primaryKeys = ["media_type", "metadata_key"])

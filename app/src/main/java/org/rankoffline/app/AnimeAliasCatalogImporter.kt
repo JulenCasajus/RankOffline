@@ -1,5 +1,6 @@
 package org.rankoffline.app
 
+import android.util.Log
 import androidx.room.withTransaction
 import java.io.InputStream
 import java.security.DigestInputStream
@@ -30,13 +31,21 @@ class AnimeAliasCatalogImporter(
         manifest: AnimeAliasCatalogManifest,
         compressedCatalog: InputStream
     ): AnimeAliasCatalogImportResult = withContext(Dispatchers.IO) {
+        val startedAt = System.nanoTime()
         validateAnimeAliasCatalogManifest(manifest)
-        compressedCatalog.use { input ->
+        val result = compressedCatalog.use { input ->
             database.withTransaction {
                 if (isCurrent(manifest)) return@withTransaction AnimeAliasCatalogImportResult.NoChange
                 importCatalog(manifest, input)
             }
         }
+        if (BuildConfig.DEBUG) Log.d(
+            "RankOfflineCatalog",
+            "pack=${OfficialPackIds.Anime.value} operation=alias-import result=${result.javaClass.simpleName} " +
+                "records=${manifest.recordCount} aliases=${manifest.aliasCount} " +
+                "elapsedMs=${(System.nanoTime() - startedAt) / 1_000_000L}"
+        )
+        result
     }
 
     private suspend fun isCurrent(manifest: AnimeAliasCatalogManifest): Boolean =
@@ -47,7 +56,15 @@ class AnimeAliasCatalogImporter(
         manifest: AnimeAliasCatalogManifest,
         compressedCatalog: InputStream
     ): AnimeAliasCatalogImportResult.Imported {
+        val sqlite = database.openHelper.writableDatabase
+        // Maintaining the two secondary indexes for every one of the 200k+ alias inserts is
+        // substantially slower than rebuilding them once. This remains inside the surrounding
+        // Room transaction, so a parse/hash/FK failure restores the previous indexed catalog.
+        sqlite.execSQL("DROP INDEX IF EXISTS `idx_anime_alias_anime`")
+        sqlite.execSQL("DROP INDEX IF EXISTS `idx_anime_alias_title`")
         dao.deleteAllAnimeAliases()
+        var parseNanos = 0L
+        var writeNanos = 0L
         val digest = MessageDigest.getInstance("SHA-256")
         val digestInput = DigestInputStream(compressedCatalog, digest)
         val gzipInput = try {
@@ -62,6 +79,7 @@ class AnimeAliasCatalogImporter(
         var parsedAliases = 0L
         var lineNumber = 0L
         while (true) {
+            val parseStarted = System.nanoTime()
             val line = reader.readLine() ?: break
             lineNumber++
             if (line.isBlank()) {
@@ -81,12 +99,19 @@ class AnimeAliasCatalogImporter(
             records += record
             parsedRecords++
             parsedAliases += record.aliases.size
+            parseNanos += System.nanoTime() - parseStarted
             if (records.size == batchSize) {
+                val writeStarted = System.nanoTime()
                 writeBatch(records)
+                writeNanos += System.nanoTime() - writeStarted
                 records.clear()
             }
         }
-        if (records.isNotEmpty()) writeBatch(records)
+        if (records.isNotEmpty()) {
+            val writeStarted = System.nanoTime()
+            writeBatch(records)
+            writeNanos += System.nanoTime() - writeStarted
+        }
 
         val drainBuffer = ByteArray(8 * 1024)
         while (digestInput.read(drainBuffer) != -1) Unit
@@ -106,6 +131,10 @@ class AnimeAliasCatalogImporter(
                 "Anime alias count mismatch: expected ${manifest.aliasCount}, got $parsedAliases"
             )
         }
+        val indexStarted = System.nanoTime()
+        sqlite.execSQL("CREATE INDEX IF NOT EXISTS `idx_anime_alias_anime` ON `anime_alias` (`anime_id`)")
+        sqlite.execSQL("CREATE INDEX IF NOT EXISTS `idx_anime_alias_title` ON `anime_alias` (`title`)")
+        val indexNanos = System.nanoTime() - indexStarted
         listOf(
             CatalogMetadataEntity(METADATA_SOURCE_RELEASE, manifest.sourceRelease),
             CatalogMetadataEntity(METADATA_SHA256, manifest.sha256),
@@ -113,6 +142,12 @@ class AnimeAliasCatalogImporter(
             CatalogMetadataEntity(METADATA_ALIAS_COUNT, parsedAliases.toString()),
             CatalogMetadataEntity(METADATA_FORMAT_VERSION, manifest.formatVersion.toString())
         ).forEach { dao.putMetadata(it) }
+        if (BuildConfig.DEBUG) Log.d(
+            "RankOfflineCatalog",
+            "pack=${OfficialPackIds.Anime.value} operation=alias-write records=$parsedRecords " +
+                "aliases=$parsedAliases parseMs=${parseNanos / 1_000_000L} " +
+                "sqlMs=${writeNanos / 1_000_000L} indexMs=${indexNanos / 1_000_000L}"
+        )
         return AnimeAliasCatalogImportResult.Imported(parsedRecords, parsedAliases)
     }
 

@@ -9,20 +9,22 @@ internal object GroupedQueries {
         query: String,
         sortOrder: CatalogSortOrder,
         filters: AnimeFilters,
-        limit: Int
+        limit: Int,
+        offset: Int = 0
     ): SupportSQLiteQuery {
         val args = mutableListOf<Any?>()
         val base = visibleRows(query, filters, "", args)
         val order = when (sortOrder) {
             CatalogSortOrder.POPULARITY ->
-                "CASE WHEN popularityRank IS NULL THEN 1 ELSE 0 END, popularityRank ASC, title COLLATE NOCASE ASC"
+                "CASE WHEN popularityRank IS NULL THEN 1 ELSE 0 END, popularityRank ASC, title COLLATE NOCASE ASC, id ASC"
             CatalogSortOrder.POPULARITY_REVERSE ->
-                "CASE WHEN popularityRank IS NULL THEN 1 ELSE 0 END, popularityRank DESC, title COLLATE NOCASE ASC"
-            CatalogSortOrder.TITLE_ASC -> "title COLLATE NOCASE ASC, groupType ASC"
-            CatalogSortOrder.TITLE_DESC -> "title COLLATE NOCASE DESC, groupType DESC"
+                "CASE WHEN popularityRank IS NULL THEN 1 ELSE 0 END, popularityRank DESC, title COLLATE NOCASE ASC, id ASC"
+            CatalogSortOrder.TITLE_ASC -> "title COLLATE NOCASE ASC, id ASC"
+            CatalogSortOrder.TITLE_DESC -> "title COLLATE NOCASE DESC, id ASC"
         }
         args += limit
-        return SimpleSQLiteQuery("$base SELECT * FROM visible ORDER BY $order LIMIT ?", args.toTypedArray())
+        args += offset
+        return SimpleSQLiteQuery("$base SELECT * FROM visible ORDER BY $order LIMIT ? OFFSET ?", args.toTypedArray())
     }
 
     fun ranking(
@@ -104,6 +106,7 @@ internal object GroupedQueries {
                        a.local_cover_path AS localCoverPath,a.cover_resolution_state AS coverResolutionState,
                        g.type AS format,a.season_year AS seasonYear,a.start_date AS startDate,
                        (SELECT ast.studio FROM anime_studio ast WHERE ast.anime_id=a.id ORDER BY ast.studio COLLATE NOCASE LIMIT 1) AS studio,
+                       (SELECT ag.genre FROM anime_genre ag WHERE ag.anime_id=a.id ORDER BY ag.genre COLLATE NOCASE LIMIT 1) AS genre,
                        g.id AS groupId,g.type AS groupType,g.root_anime_id AS rootAnimeId,
                        gs.memberCount AS memberCount,gs.ratedCount AS ratedCount,
                        CASE WHEN gr.final_score IS NULL AND gs.ratedCount>0 THEN 1 ELSE 0 END AS derived
@@ -121,6 +124,7 @@ internal object GroupedQueries {
                        a.local_cover_path AS localCoverPath,a.cover_resolution_state AS coverResolutionState,
                        a.format,a.season_year AS seasonYear,a.start_date AS startDate,
                        (SELECT ast.studio FROM anime_studio ast WHERE ast.anime_id=a.id ORDER BY ast.studio COLLATE NOCASE LIMIT 1) AS studio,
+                       (SELECT ag.genre FROM anime_genre ag WHERE ag.anime_id=a.id ORDER BY ag.genre COLLATE NOCASE LIMIT 1) AS genre,
                        NULL AS groupId,NULL AS groupType,NULL AS rootAnimeId,
                        0 AS memberCount,0 AS ratedCount,0 AS derived
                 FROM anime a LEFT JOIN rating r ON r.anime_id=a.id

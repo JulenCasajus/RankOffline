@@ -32,9 +32,9 @@ class GenericGroupRatingLogicTest {
         val derived = deriveMediaGroupRating(
             ratings = listOf(rating("a", 8.0), rating("b", 7.0), rating("c", 6.0)),
             scores = listOf(
-                MediaRatingScoreEntity("a", "writing", 8.0, true),
-                MediaRatingScoreEntity("b", "writing", null, false),
-                MediaRatingScoreEntity("c", "writing", 6.0, true)
+                MediaRatingScoreEntity("a", "writing", 8.0, true, "movies"),
+                MediaRatingScoreEntity("b", "writing", null, false, "movies"),
+                MediaRatingScoreEntity("c", "writing", 6.0, true, "movies")
             )
         )
 
@@ -63,5 +63,5 @@ class GenericGroupRatingLogicTest {
         final: Double?,
         quality: Double? = final,
         additive: Double = 0.0
-    ) = MediaRatingEntity(id, additive, quality, final, "", "Completed", 1L)
+    ) = MediaRatingEntity(id, additive, quality, final, "", "Completed", 1L, packId = "movies")
 }

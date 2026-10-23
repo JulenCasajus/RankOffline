@@ -1,5 +1,6 @@
 package org.rankoffline.app
 
+import android.util.Log
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -11,18 +12,38 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
-/** Foreground-only, explicitly requested preload for individually rated items. */
+/** Bounded two-worker cover preload for explicit Top-N cover actions. */
 class CoverPreloadManager(
-    private val animeRepository: AnimeRepository,
-    private val animeCoverRepository: CoverRepository,
     private val genericCoverRepository: GenericMediaCoverRepository
 ) {
     private val _progress = MutableStateFlow(CoverPreloadProgress())
     val progress: StateFlow<CoverPreloadProgress> = _progress.asStateFlow()
 
     suspend fun preload(mediaType: MediaType) = withContext(Dispatchers.IO) {
+        preloadPlan(buildRatedPlan(mediaType))
+    }
+
+    suspend fun preloadTop(
+        mediaType: MediaType,
+        limit: Int,
+        oneCoverPerGroup: Boolean
+    ) = withContext(Dispatchers.IO) {
+        val candidates = when (mediaType) {
+            else -> genericCoverRepository.topPopularCoverItems(
+                mediaType,
+                limit,
+                oneCoverPerGroup
+            )
+                .map { RatedCoverCandidate.GenericItem(it) }
+        }
+        preloadPlan(buildPlan(candidates))
+    }
+
+    private suspend fun preloadPlan(
+        plan: RatedCoverPlan
+    ): CoverPreloadProgress =
+        withContext(Dispatchers.IO) {
         try {
-            val plan = buildPlan(mediaType)
             _progress.value = CoverPreloadProgress(
                 status = CoverPreloadStatus.DOWNLOADING_COVERS,
                 target = plan.total,
@@ -61,20 +82,32 @@ class CoverPreloadManager(
         } catch (exception: CancellationException) {
             _progress.value = CoverPreloadProgress()
             throw exception
-        } catch (_: Exception) {
+        } catch (exception: Exception) {
+            Log.e(
+                TAG,
+                "operation=preload processed=${_progress.value.processed} target=${plan.total} " +
+                    "failed=${exception.javaClass.simpleName}: ${exception.message}",
+                exception
+            )
             _progress.value = _progress.value.copy(status = CoverPreloadStatus.FAILED)
         }
+        _progress.value
     }
 
     fun resetProgress() {
         _progress.value = CoverPreloadProgress()
     }
 
-    private suspend fun buildPlan(mediaType: MediaType): RatedCoverPlan {
+    private suspend fun buildRatedPlan(mediaType: MediaType): RatedCoverPlan {
         val candidates = when (mediaType) {
-            MediaType.ANIME -> animeRepository.ratedCoverAnime().map { RatedCoverCandidate.AnimeItem(it) }
             else -> genericCoverRepository.ratedCoverItems(mediaType).map { RatedCoverCandidate.GenericItem(it) }
         }
+        return buildPlan(candidates)
+    }
+
+    private suspend fun buildPlan(
+        candidates: List<RatedCoverCandidate>
+    ): RatedCoverPlan {
         val pending = mutableListOf<RatedCoverCandidate>()
         var skipped = 0
         candidates.forEach { candidate ->
@@ -84,9 +117,6 @@ class CoverPreloadManager(
             } else if (!candidate.hasResolvableRemoteCover()) {
                 skipped++
             } else {
-                if (candidate is RatedCoverCandidate.AnimeItem && !localPath.isNullOrBlank()) {
-                    animeCoverRepository.invalidateLocalCover(candidate.anime, localPath)
-                }
                 pending += candidate
             }
         }
@@ -94,22 +124,18 @@ class CoverPreloadManager(
     }
 
     private suspend fun RatedCoverCandidate.download(): CoverDownloadResult = when (this) {
-        is RatedCoverCandidate.AnimeItem ->
-            animeCoverRepository.downloadPreselectedCover(anime, anime.remoteCoverUrl)
         is RatedCoverCandidate.GenericItem -> genericCoverRepository.downloadCover(item.id)
     }
 
     private fun RatedCoverCandidate.hasResolvableRemoteCover(): Boolean = when (this) {
-        is RatedCoverCandidate.AnimeItem -> !anime.remoteCoverUrl.isNullOrBlank()
-        is RatedCoverCandidate.GenericItem -> genericCoverRepository.resolvedRemoteUrl(item) != null
+        is RatedCoverCandidate.GenericItem ->
+            genericCoverRepository.resolvedRemoteUrl(item) != null ||
+                (item.mediaType == MediaType.ANIME &&
+                    (item.id.startsWith("mal:") || item.id.startsWith("anilist:")))
     }
 
     private sealed interface RatedCoverCandidate {
         val localCoverPath: String?
-
-        data class AnimeItem(val anime: Anime) : RatedCoverCandidate {
-            override val localCoverPath get() = anime.localCoverPath
-        }
 
         data class GenericItem(val item: MediaItem) : RatedCoverCandidate {
             override val localCoverPath get() = item.localCoverPath
@@ -122,5 +148,8 @@ class CoverPreloadManager(
         val pending: List<RatedCoverCandidate>
     )
 
-    private companion object { const val WORKER_COUNT = 2 }
+    private companion object {
+        const val WORKER_COUNT = 2
+        const val TAG = "RankOfflineCover"
+    }
 }

@@ -18,16 +18,45 @@ val releaseSigningPropertyNames = listOf("storeFile", "storePassword", "keyAlias
 val hasReleaseSigningProperties = releaseKeystorePropertiesFile.isFile &&
     releaseSigningPropertyNames.all { !releaseKeystoreProperties.getProperty(it).isNullOrBlank() }
 val packagedMainAssets = layout.buildDirectory.dir("generated/rankoffline/mainAssets")
+val categoryPackBaseUrl = providers.gradleProperty("rankoffline.categoryPackBaseUrl")
+    .orElse(providers.environmentVariable("RANKOFFLINE_CATEGORY_PACK_BASE_URL"))
+    .orElse("https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/")
+    .get()
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+val bundleProductionCatalogs = providers.gradleProperty("rankoffline.bundleProductionCatalogs")
+    .orElse("false")
+    .map(String::toBoolean)
+    .get()
 val stageMainAssets by tasks.registering(Sync::class) {
-    from("src/main/assets") {
-        exclude("anime_aliases.jsonl.gz")
-    }
-    from("src/main/assets/anime_aliases.jsonl.gz") {
-        rename { name ->
-            if (name == "anime_aliases.jsonl.gz") "anime_aliases.jsonl.gzip" else name
+    if (bundleProductionCatalogs) {
+        from("src/main/assets") {
+            exclude("**/*.jsonl.gz")
+        }
+        from("src/main/assets") {
+            include("**/*.jsonl.gz")
+            rename { name ->
+                if (name.endsWith(".jsonl.gz")) name.removeSuffix(".gz") + ".gzip" else name
+            }
+        }
+    } else {
+        from("src/main/assets") {
+            exclude("**/*.jsonl.gz")
+            exclude("anime_catalog.json")
+            exclude("anime_catalog.version")
+            exclude("anime_aliases.manifest.json")
+            exclude("*_catalog.manifest.json")
+            exclude("*_groups.manifest.json")
         }
     }
     into(packagedMainAssets)
+}
+val stagedAndroidTestCatalogAssets = layout.buildDirectory.dir("generated/rankoffline/androidTestAssets")
+val stageAndroidTestCatalogAssets by tasks.registering(Sync::class) {
+    from("src/main/assets") {
+        include("anime_catalog.json", "anime_catalog.version")
+    }
+    into(stagedAndroidTestCatalogAssets)
 }
 
 android {
@@ -41,6 +70,9 @@ android {
         versionCode = 4
         versionName = "0.1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "CATEGORY_PACK_BASE_URL", "\"$categoryPackBaseUrl\"")
+        buildConfigField("boolean", "BUNDLED_PRODUCTION_CATALOGS", bundleProductionCatalogs.toString())
+        buildConfigField("String", "PACK_API_VERSION", "\"0.2.0\"")
     }
 
     signingConfigs {
@@ -55,6 +87,10 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+        }
+
         getByName("release") {
             if (hasReleaseSigningProperties) {
                 signingConfig = signingConfigs.getByName("release")
@@ -62,7 +98,10 @@ android {
         }
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -77,8 +116,8 @@ android {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
 
-    // AGP expands .gz assets during merge. Package an identical build-only .gzip copy so the
-    // importer can stream compressed bytes while the committed catalog remains unchanged.
+    // AGP expands .gz assets during merge. Package identical build-only .gzip copies so the
+    // importers can hash and stream compressed bytes while committed catalogs stay unchanged.
     androidResources {
         noCompress += "gzip"
     }
@@ -86,11 +125,25 @@ android {
     sourceSets.getByName("main") {
         assets.setSrcDirs(listOf(packagedMainAssets))
     }
-    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    sourceSets.getByName("androidTest").assets.srcDirs("$projectDir/schemas", stagedAndroidTestCatalogAssets)
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.outputs.forEach { output ->
+            output.versionName.set("0.2.0-debug")
+        }
+    }
 }
 
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(stageMainAssets)
+    if (name.contains("AndroidTest")) dependsOn(stageAndroidTestCatalogAssets)
+}
+
+tasks.matching { it.name.contains("lint", ignoreCase = true) }.configureEach {
+    dependsOn(stageMainAssets)
+    if (name.contains("AndroidTest")) dependsOn(stageAndroidTestCatalogAssets)
 }
 
 val verifyReleaseSigning by tasks.registering {
@@ -128,10 +181,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
-    
+
     // DataStore for preferences
     implementation("androidx.datastore:datastore-preferences:1.1.1")
-    
+
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
@@ -144,7 +197,12 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    // Android 17 removed the reflective InputManager API used by Espresso 3.6.x.
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("androidx.room:room-testing:$roomVersion")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
 kapt {

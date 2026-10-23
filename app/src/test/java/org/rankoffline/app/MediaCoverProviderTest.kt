@@ -35,6 +35,41 @@ class MediaCoverProviderTest {
     }
 
     @Test
+    fun openLibraryCandidatesUsePrecomputedIdentifiersInFallbackOrder() {
+        val reference = encodeOpenLibraryCoverReference(
+            coverId = "12345",
+            isbn13 = "978-0-14-032872-1",
+            isbn10 = "0140328726",
+            editionOlid = "OL7353617M",
+            workOlid = "OL45804W"
+        )
+
+        assertEquals(
+            listOf(
+                "https://covers.openlibrary.org/b/id/12345-L.jpg?default=false",
+                "https://covers.openlibrary.org/b/isbn/9780140328721-L.jpg?default=false",
+                "https://covers.openlibrary.org/b/isbn/0140328726-L.jpg?default=false",
+                "https://covers.openlibrary.org/b/olid/OL7353617M-L.jpg?default=false",
+                "https://covers.openlibrary.org/b/olid/OL45804W-L.jpg?default=false"
+            ),
+            provider.resolveCandidates(item("openlibrary", "OL45804W", reference))
+                .map { it.toASCIIString() }
+        )
+    }
+
+    @Test
+    fun legacyOpenLibraryReferenceFallsBackToKnownWorkOlid() {
+        assertEquals(
+            listOf(
+                "https://covers.openlibrary.org/b/id/12345-L.jpg?default=false",
+                "https://covers.openlibrary.org/b/olid/OL45804W-L.jpg?default=false"
+            ),
+            provider.resolveCandidates(item("openlibrary", "OL45804W", "12345"))
+                .map { it.toASCIIString() }
+        )
+    }
+
+    @Test
     fun missingReferenceAndUnknownProviderReturnNull() {
         assertNull(provider.resolve(item("tmdb", "550", null)))
         assertNull(provider.resolve(item("unknown", "1", "cover.jpg")))

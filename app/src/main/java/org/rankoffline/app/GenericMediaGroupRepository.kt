@@ -9,6 +9,7 @@ data class GenericGroupRatingSave(
 )
 
 internal fun buildGenericElaborateGroupRating(
+    packId: String,
     groupId: String,
     draft: RatingDraft,
     config: RatingSystemConfig,
@@ -17,6 +18,7 @@ internal fun buildGenericElaborateGroupRating(
     updatedAt: Long
 ): GenericGroupRatingSave {
     val individual = buildGenericElaborateRating(
+        packId = packId,
         mediaId = groupId,
         draft = draft,
         config = config,
@@ -33,27 +35,30 @@ internal fun buildGenericElaborateGroupRating(
             notes = individual.rating.notes,
             status = individual.rating.status,
             updatedAt = individual.rating.updatedAt,
-            profileId = individual.rating.profileId
+            profileId = individual.rating.profileId,
+            packId = packId
         ),
         scores = individual.scores.map { score ->
             MediaGroupRatingScoreEntity(
                 groupId = groupId,
                 categoryId = score.categoryId,
                 score = score.score,
-                applicable = score.applicable
+                applicable = score.applicable,
+                packId = packId
             )
         }
     )
 }
 
 internal fun buildGenericSimpleGroupRating(
+    packId: String,
     groupId: String,
     draft: RatingDraft,
     qualityScore: Double,
     finalScore: Double,
     updatedAt: Long
 ): MediaGroupRatingEntity {
-    val individual = buildGenericSimpleRating(groupId, draft, qualityScore, finalScore, updatedAt)
+    val individual = buildGenericSimpleRating(packId, groupId, draft, qualityScore, finalScore, updatedAt)
     return MediaGroupRatingEntity(
         groupId = groupId,
         additiveScore = individual.additiveScore,
@@ -62,7 +67,8 @@ internal fun buildGenericSimpleGroupRating(
         notes = individual.notes,
         status = individual.status,
         updatedAt = individual.updatedAt,
-        profileId = individual.profileId
+        profileId = individual.profileId,
+        packId = packId
     )
 }
 
@@ -83,37 +89,49 @@ class GenericMediaGroupRepository(
                 "Group and member media types must match: ${member.mediaId}"
             }
         }
-        dao.upsertGroupWithMembers(group, members)
+        val orderedMembers = members.sortedWith(compareBy({ it.position }, { it.mediaId }))
+        dao.upsertGroupWithMembers(
+            group.copy(
+                representativeMediaId = group.representativeMediaId
+                    ?: orderedMembers.firstOrNull()?.mediaId,
+                memberCount = orderedMembers.size
+            ),
+            orderedMembers
+        )
     }
 
     suspend fun groupDetail(groupId: String): MediaGroupDetail? = withContext(Dispatchers.IO) {
         val group = dao.group(groupId) ?: return@withContext null
-        val ratings = dao.ratedMemberRatings(groupId)
-        val derived = deriveMediaGroupRating(ratings, dao.ratedMemberScores(groupId))
+        val packId = packId(group.mediaType)
+        val ratings = dao.ratedMemberRatings(packId, groupId)
+        val derived = deriveMediaGroupRating(ratings, dao.ratedMemberScores(packId, groupId))
         val ratingsById = ratings.associateBy { it.mediaId }
+        val members = dao.groupMembers(groupId).map { item -> item.toDomain(ratingsById[item.id]) }
+        val firstMemberId = members.firstOrNull()?.id
         MediaGroupDetail(
             group = group.toDomain(),
-            members = dao.groupMembers(groupId).map { item -> item.toDomain(ratingsById[item.id]) },
-            explicitRating = dao.groupRating(groupId)?.takeIf { it.finalScore?.isFinite() == true },
+            members = members.map { it.copy(sharedCoverMediaId = firstMemberId) },
+            explicitRating = dao.groupRating(packId, groupId)?.takeIf { it.finalScore?.isFinite() == true },
             derivedRating = derived
         )
     }
 
     suspend fun loadGroupRating(groupId: String, fromMembers: Boolean): RatingDraft =
         withContext(Dispatchers.IO) {
-            val rating = dao.groupRating(groupId)?.takeIf { it.finalScore?.isFinite() == true }
+            val packId = requireGenericGroup(groupId).toPackId().value
+            val rating = dao.groupRating(packId, groupId)?.takeIf { it.finalScore?.isFinite() == true }
             if (rating == null) {
                 return@withContext if (fromMembers) {
                     deriveMediaGroupRating(
-                        dao.ratedMemberRatings(groupId),
-                        dao.ratedMemberScores(groupId)
+                        dao.ratedMemberRatings(packId, groupId),
+                        dao.ratedMemberScores(packId, groupId)
                     ).asDraft()
                 } else {
                     RatingDraft()
                 }
             }
             RatingDraft(
-                categoryScores = dao.groupRatingScores(groupId).associate { score ->
+                categoryScores = dao.groupRatingScores(packId, groupId).associate { score ->
                     score.categoryId to score.score.takeIf { score.applicable }
                 },
                 additiveScore = rating.additiveScore,
@@ -126,7 +144,10 @@ class GenericMediaGroupRepository(
         }
 
     suspend fun groupRatingScores(groupId: String): List<MediaGroupRatingScoreEntity> =
-        withContext(Dispatchers.IO) { dao.groupRatingScores(groupId) }
+        withContext(Dispatchers.IO) {
+            val packId = requireGenericGroup(groupId).toPackId().value
+            dao.groupRatingScores(packId, groupId)
+        }
 
     suspend fun saveSimpleGroupRating(
         groupId: String,
@@ -134,9 +155,9 @@ class GenericMediaGroupRepository(
         qualityScore: Double,
         finalScore: Double
     ) = withContext(Dispatchers.IO) {
-        requireGenericGroup(groupId)
+        val packId = requireGenericGroup(groupId).toPackId().value
         dao.upsertGroupRating(
-            buildGenericSimpleGroupRating(groupId, draft, qualityScore, finalScore, now())
+            buildGenericSimpleGroupRating(packId, groupId, draft, qualityScore, finalScore, now())
         )
     }
 
@@ -147,8 +168,9 @@ class GenericMediaGroupRepository(
         finalScoreOverride: Double? = null,
         profileId: String? = null
     ) = withContext(Dispatchers.IO) {
-        requireGenericGroup(groupId)
+        val packId = requireGenericGroup(groupId).toPackId().value
         val save = buildGenericElaborateGroupRating(
+            packId,
             groupId,
             draft,
             config,
@@ -160,13 +182,14 @@ class GenericMediaGroupRepository(
     }
 
     suspend fun deleteGroupRating(groupId: String) = withContext(Dispatchers.IO) {
-        dao.deleteGroupRating(groupId)
+        val packId = requireGenericGroup(groupId).toPackId().value
+        dao.deleteGroupRating(packId, groupId)
     }
 
     suspend fun deleteGroupRatingCategory(mediaType: MediaType, categoryId: String) =
         withContext(Dispatchers.IO) {
             requireGenericMediaType(mediaType.persistedValue)
-            dao.deleteGroupRatingScoresForCategory(mediaType.persistedValue, categoryId)
+            dao.deleteGroupRatingScoresForCategory(mediaType.toPackId().value, categoryId)
         }
 
     suspend fun deleteGroupRatingScoresOutsideCategories(
@@ -175,14 +198,19 @@ class GenericMediaGroupRepository(
     ) = withContext(Dispatchers.IO) {
         requireGenericMediaType(mediaType.persistedValue)
         if (categoryIds.isEmpty()) {
-            dao.deleteAllGroupRatingScores(mediaType.persistedValue)
+            dao.deleteAllGroupRatingScores(mediaType.toPackId().value)
         } else {
-            dao.deleteGroupRatingScoresOutsideCategories(mediaType.persistedValue, categoryIds)
+            dao.deleteGroupRatingScoresOutsideCategories(mediaType.toPackId().value, categoryIds)
         }
     }
 
-    private suspend fun requireGenericGroup(groupId: String) {
+    private suspend fun requireGenericGroup(groupId: String): MediaType {
         val persistedType = requireNotNull(dao.groupMediaType(groupId)) { "Unknown media group: $groupId" }
         requireGenericMediaType(persistedType)
+        return requireNotNull(MediaType.entries.firstOrNull { it.persistedValue == persistedType })
     }
+
+    private fun packId(persistedMediaType: String): String =
+        requireNotNull(MediaType.entries.firstOrNull { it.persistedValue == persistedMediaType })
+            .toPackId().value
 }

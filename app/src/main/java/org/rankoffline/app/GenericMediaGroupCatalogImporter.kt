@@ -1,6 +1,7 @@
 package org.rankoffline.app
 
 import android.database.sqlite.SQLiteConstraintException
+import android.util.Log
 import androidx.room.withTransaction
 import java.io.InputStream
 import java.security.DigestInputStream
@@ -26,27 +27,56 @@ class GenericMediaGroupCatalogImporter(
 
     suspend fun importIfNeeded(
         manifest: MediaGroupCatalogManifest,
-        compressedCatalog: InputStream
+        compressedCatalog: InputStream,
+        expectedGroupType: String? = null
     ): MediaGroupCatalogImportResult = withContext(Dispatchers.IO) {
+        val startedAt = System.nanoTime()
         validateMediaGroupCatalogManifest(manifest)
-        compressedCatalog.use { input ->
+        val result = compressedCatalog.use { input ->
             database.withTransaction {
-                if (isCurrent(manifest)) return@withTransaction MediaGroupCatalogImportResult.NoChange
-                importCatalog(manifest, input)
+                if (isCurrent(manifest, expectedGroupType)) {
+                    return@withTransaction MediaGroupCatalogImportResult.NoChange
+                }
+                if (manifest.formatVersion < MEDIA_GROUP_CATALOG_FORMAT_VERSION) {
+                    throw MediaCatalogImportException(
+                        "Legacy group pack must be replaced; relationship summaries are no longer built on device"
+                    )
+                }
+                importCatalog(manifest, input, expectedGroupType)
             }
         }
+        if (BuildConfig.DEBUG) Log.d(
+            MERGE_LOG_TAG,
+            "pack=${manifest.mediaType} operation=group-import result=${result.javaClass.simpleName} " +
+                "groups=${manifest.groupCount} elapsedMs=${groupElapsedMs(startedAt)}"
+        )
+        result
     }
 
-    private suspend fun isCurrent(manifest: MediaGroupCatalogManifest): Boolean =
+    private suspend fun isCurrent(
+        manifest: MediaGroupCatalogManifest,
+        expectedGroupType: String?
+    ): Boolean =
         metadataDao.metadata(manifest.mediaType, METADATA_VERSION) == manifest.catalogVersion &&
-            metadataDao.metadata(manifest.mediaType, METADATA_SHA256) == manifest.sha256
+            metadataDao.metadata(manifest.mediaType, METADATA_SHA256) == manifest.sha256 &&
+            // Metadata alone can survive an interrupted/legacy table rebuild. Re-import when the
+            // actual membership graph is absent so merge starts working without an app restart or
+            // a manual pack reinstall.
+            (if (expectedGroupType == null) groupDao.usableGroupCount(manifest.mediaType)
+            else groupDao.groupCount(manifest.mediaType, expectedGroupType)) == manifest.groupCount &&
+            (manifest.membershipCount == null || expectedGroupType == null ||
+                groupDao.membershipCount(manifest.mediaType, expectedGroupType) == manifest.membershipCount)
 
     private suspend fun importCatalog(
         manifest: MediaGroupCatalogManifest,
-        compressedCatalog: InputStream
+        compressedCatalog: InputStream,
+        expectedGroupType: String?
     ): MediaGroupCatalogImportResult.Imported {
         val stageName = "media_group_catalog_seen_${UUID.randomUUID().toString().replace("-", "")}"
         val sqlite = database.openHelper.writableDatabase
+        var parseNanos = 0L
+        var writeNanos = 0L
+        var membershipCount = 0L
         sqlite.execSQL(
             "CREATE TABLE `$stageName` (id TEXT NOT NULL PRIMARY KEY, group_type TEXT NOT NULL, " +
                 "provider_group_id TEXT NOT NULL, UNIQUE(group_type, provider_group_id))"
@@ -70,13 +100,18 @@ class GenericMediaGroupCatalogImporter(
                 val line = reader.readLine() ?: break
                 lineNumber++
                 if (line.isBlank()) throw MediaCatalogImportException("Blank group record at line $lineNumber")
+                val parseStarted = System.nanoTime()
                 val record = try {
                     parseMediaGroupCatalogRecord(line).also {
                         validateMediaGroupCatalogRecord(it, manifest)
+                        require(expectedGroupType == null || it.groupType == expectedGroupType) {
+                            "Unexpected group type ${it.groupType}; expected $expectedGroupType"
+                        }
                     }
                 } catch (exception: Exception) {
                     throw MediaCatalogImportException("Invalid group record at line $lineNumber", exception)
                 }
+                parseNanos += System.nanoTime() - parseStarted
                 try {
                     seen.clearBindings()
                     seen.bindString(1, record.id)
@@ -87,13 +122,20 @@ class GenericMediaGroupCatalogImporter(
                     throw MediaCatalogImportException("Duplicate group identity at line $lineNumber", exception)
                 }
                 batch += record
+                membershipCount += record.memberCount
                 parsedCount++
                 if (batch.size == batchSize) {
+                    val writeStarted = System.nanoTime()
                     writeBatch(batch)
+                    writeNanos += System.nanoTime() - writeStarted
                     batch.clear()
                 }
             }
-            if (batch.isNotEmpty()) writeBatch(batch)
+            if (batch.isNotEmpty()) {
+                val writeStarted = System.nanoTime()
+                writeBatch(batch)
+                writeNanos += System.nanoTime() - writeStarted
+            }
 
             val drainBuffer = ByteArray(8 * 1024)
             while (digestInput.read(drainBuffer) != -1) Unit
@@ -106,14 +148,34 @@ class GenericMediaGroupCatalogImporter(
                     "Group catalog count mismatch: expected ${manifest.groupCount}, got $parsedCount"
                 )
             }
+            if (manifest.membershipCount != null && membershipCount != manifest.membershipCount) {
+                throw MediaCatalogImportException(
+                    "Group membership count mismatch: expected ${manifest.membershipCount}, got $membershipCount"
+                )
+            }
+            // The staging identity set is the complete precomputed graph for this pack version.
+            // Remove reference rows no longer present without touching the separately keyed
+            // media_group_rating tables, so an update never leaves stale merge membership.
+            sqlite.execSQL(
+                "DELETE FROM media_group WHERE media_type=? AND id NOT IN " +
+                    "(SELECT id FROM `$stageName`)",
+                arrayOf(manifest.mediaType)
+            )
             metadataDao.upsertMetadata(
                 listOf(
                     metadata(manifest, METADATA_VERSION, manifest.catalogVersion),
                     metadata(manifest, METADATA_SHA256, manifest.sha256),
                     metadata(manifest, METADATA_COUNT, parsedCount.toString()),
+                    metadata(manifest, METADATA_MEMBERSHIP_COUNT, membershipCount.toString()),
                     metadata(manifest, METADATA_PROVIDER, manifest.provider),
                     metadata(manifest, METADATA_FORMAT_VERSION, manifest.formatVersion.toString())
                 )
+            )
+            if (BuildConfig.DEBUG) Log.d(
+                MERGE_LOG_TAG,
+                "pack=${manifest.mediaType} operation=group-write groups=$parsedCount " +
+                    "members=$membershipCount parseMs=${parseNanos / 1_000_000L} " +
+                    "sqlMs=${writeNanos / 1_000_000L}"
             )
             return MediaGroupCatalogImportResult.Imported(parsedCount)
         } finally {
@@ -138,12 +200,16 @@ class GenericMediaGroupCatalogImporter(
             }
         }
 
-        groupDao.insertNewGroups(records.map { it.toNewEntity() })
-        if (groupDao.updateCatalogFields(records.map { it.toCatalogFields() }) != records.size) {
+        val existingIds = groupDao.existingGroupIds(records.map(MediaGroupCatalogRecord::id)).toHashSet()
+        val newRecords = records.filterNot { it.id in existingIds }
+        val existingRecords = records.filter { it.id in existingIds }
+        if (newRecords.isNotEmpty()) groupDao.insertNewGroups(newRecords.map { it.toNewEntity() })
+        val updated = if (existingRecords.isEmpty()) 0
+        else groupDao.updateCatalogFields(existingRecords.map { it.toCatalogFields() })
+        if (updated != existingRecords.size) {
             throw MediaCatalogImportException("Group identity conflicts with an existing provider group")
         }
-        val groupIds = records.map { it.id }
-        groupDao.deleteMembers(groupIds)
+        if (existingIds.isNotEmpty()) groupDao.deleteMembers(existingIds.toList())
         groupDao.insertMembers(records.flatMap { record ->
             record.members.map { MediaGroupMemberEntity(record.id, it.mediaId, it.position) }
         })
@@ -156,11 +222,25 @@ class GenericMediaGroupCatalogImporter(
         provider = provider,
         providerGroupId = providerGroupId,
         displayTitle = displayTitle,
+        representativeMediaId = representativeMediaId,
+        memberCount = memberCount,
+        popularity = popularity,
+        popularityRank = popularityRank,
         remoteCoverRef = remoteCoverRef
     )
 
     private fun MediaGroupCatalogRecord.toCatalogFields() = MediaGroupCatalogFields(
-        id, mediaType, groupType, provider, providerGroupId, displayTitle, remoteCoverRef
+        id,
+        mediaType,
+        groupType,
+        provider,
+        providerGroupId,
+        displayTitle,
+        representativeMediaId,
+        memberCount,
+        popularity,
+        popularityRank,
+        remoteCoverRef
     )
 
     private fun metadata(manifest: MediaGroupCatalogManifest, key: String, value: String) =
@@ -170,8 +250,13 @@ class GenericMediaGroupCatalogImporter(
         const val METADATA_VERSION = "group_catalog_version"
         const val METADATA_SHA256 = "group_catalog_sha256"
         const val METADATA_COUNT = "group_catalog_count"
+        const val METADATA_MEMBERSHIP_COUNT = "group_catalog_membership_count"
         const val METADATA_PROVIDER = "group_catalog_provider"
         const val METADATA_FORMAT_VERSION = "group_catalog_format_version"
         private const val SQLITE_SAFE_BATCH = 500
+        private const val MERGE_LOG_TAG = "RankOfflineMerge"
     }
 }
+
+private fun groupElapsedMs(startedAt: Long): Long =
+    (System.nanoTime() - startedAt) / 1_000_000L

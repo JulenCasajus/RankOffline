@@ -1,150 +1,62 @@
 # RankOffline architecture
 
-RankOffline is a single-module, local-first Android app. Jetpack Compose renders state exposed by `RankOfflineViewModel`; repositories handle persistence, files, catalog work, and network operations away from the main thread.
+RankOffline 0.2 is a local-first Android application made of a generic Core APK and independently installed, data-only packs. The five official `PackId` values are `animes`, `mangas`, `movies`, `series`, and `books`.
 
-## Persistence
+## Runtime layers
 
-### Room
+```text
+Compose UI
+  -> RankOfflineViewModel and domain coordinators
+  -> GenericMediaRepository / GenericMediaGroupRepository
+  -> shared Room media_* tables
+  -> verified files/packs/<pack_id>/ data
+```
 
-Room owns `anime_rank.db`, currently schema **10**.
+All five official media types use the shared catalog, alias, filter, search, pagination, group, rating, ranking, and cover infrastructure. Provider-specific code is limited to release-time normalization, remote discovery, and cover URL resolution. The legacy Anime repositories/tables remain only as an upgrade bridge and test surface for published 0.1.3 data; normal 0.2 catalog and rating writes use `media_*`.
 
-Main tables:
+## Room and user data
 
-- `anime` — bundled catalog data, AniList metadata, popularity, and local cover metadata.
-- `anime_genre` / `anime_studio` — indexed metadata used by Room filters.
-- `rating` — one row per rated anime, including the canonical `final_score`, shared notes/status, and nullable `profile_id` for the last elaborate profile used.
-- `rating_score` — detailed category values keyed by anime ID and stable category ID.
-- `anime_group` / `anime_group_member` — precomputed format-normalized groups derived from conservative AniList relations.
-- `group_rating` / `group_rating_score` — explicit group ratings, kept independent from member ratings.
-- `catalog_metadata` — bundled catalog version/integrity metadata.
+Room owns `anime_rank.db`, currently schema **14**. The active shared tables are:
 
-`rating.final_score` is the sole saved score for an individual anime. Simple
-and elaborate saves both write this field. Group rows use the independent
-`group_rating.final_score` when explicitly rated, otherwise a non-persisted
-derived average of their rated members.
+- `media_item`, `media_genre`, `media_credit`, and `media_alias` for catalog/reference data;
+- `media_group` and `media_group_member` for precomputed provider relationships;
+- `media_rating` / `media_rating_score` for item-owned personal state;
+- `media_group_rating` / `media_group_rating_score` for explicit group-owned personal state;
+- `media_catalog_metadata` for durable import version/hash/count verification.
 
-Migrations are explicit and non-destructive. Migration **7 → 8** adds the
-nullable rating profile reference; **8 → 9** adds searchable catalog metadata;
-and **9 → 10** adds dates, precomputed groups, and independent group ratings.
-No destructive fallback is configured.
+Personal rating identity is `(pack_id, canonical_id)`. Item and group identities stay distinct. A saved simple or elaborate rating writes one canonical final score plus notes, status, profile, bonus, and any applicable category values. Room is the durable source of truth; UI revisions only trigger queries after successful persistence.
 
-### DataStore
+Schema migrations are explicit and non-destructive. Migration 13 → 14 adds PackId ownership and moves stable Anime catalog, group, ratings, detailed scores, notes, status, profiles, and cover metadata into the common model. Conflicting legacy/common Anime ratings select one authoritative complete record by `updated_at`; ties retain the common record, and detailed scores follow the same winner. No destructive fallback is configured.
 
-The `app_preferences` DataStore owns:
+## Pack lifecycle
 
-- display preferences;
-- simple/elaborate rating mode;
-- editable rating categories;
-- rating profiles and their category weights;
-- launcher icon selection;
-- app language;
-- the optional Merge seasons view.
+A pack is not READY merely because files exist. Per-pack lifecycle serialization coordinates startup recovery, install, import, and purge:
 
-Category/profile relationships use stable category IDs, never localized or user-editable names.
+```text
+download -> verify -> atomic file install -> import catalog
+         -> import/verify precomputed groups -> finalize runtime -> READY
+```
 
-For compatibility, existing user category configuration is preserved. When profile support is initialized for an existing installation, the previous weighting configuration becomes the initial General profile rather than overwriting user choices.
+On process restart, unchanged catalog and group hashes take the `NoChange` path. Import failures produce ERROR/retry state; partial packs never activate. Operations for different packs may proceed independently, while operations for the same PackId cannot race.
 
-## Rating flow
+Pack deletion is an explicitly destructive product action: it purges that pack's reference data, ratings, detailed scores, notes/status, pack settings, covers, cache, and files. Global language, palette, onboarding, and app-icon settings remain.
 
-### Simple mode
+## Merge and search
 
-Compose editor → ViewModel → repository → `rating.final_score`.
+Relationships are computed by release tooling, never by the phone. Packs contain complete group records with provider group identity, representative ID, ordered members, member count, and popularity summary. Runtime Merge only switches between indexed, SQLite-paginated queries over imported memberships. It performs no title inference, provider request, or relationship write.
 
-The simple 0–10 score is saved directly. Existing detailed category values and the previously selected elaborate profile remain intact.
+Offline search uses the same repository for every media type, including Anime aliases and manifest-declared filters/subtitle fields. Books intentionally have no Merge capability.
 
-### Elaborate mode
+## Covers
 
-Compose editor selects a profile and category scores → ViewModel → repository → score calculator → Room.
+Item and group covers use explicit storage identities and separate Room columns. A common UI contract observes the local path and download state; group covers read `media_group.local_cover_path`. Files are decoded off the main thread and cached in memory.
 
-The calculator:
+Provider adapters resolve URLs only for explicit cover operations. Anime can fall back to AniList/Jikan using its stable ID; Open Library candidates are tried in the stored order cover ID, ISBN-13, ISBN-10, edition OLID, and work OLID. Existing local covers remain usable offline and normal browsing/startup never requires a provider call.
 
-1. excludes N/A categories;
-2. reads weights from the selected profile;
-3. normalizes applicable positive weights;
-4. calculates weighted quality;
-5. applies the personal-taste bonus;
-6. caps the result at 10.
+## Settings and themes
 
-Saving updates the same canonical `final_score`, stores detailed `rating_score` rows, and records the selected `profile_id`.
-
-Changing a profile definition never triggers background recalculation of existing anime.
-
-## Categories and profiles
-
-Categories define **what** is evaluated: stable ID, name, description, color, and order.
-
-Profiles define **how much** each category matters by mapping category IDs to weights.
-
-Important invariants:
-
-- renaming/recoloring a category does not break profiles;
-- new categories enter existing profiles at 0%;
-- deleting a category removes its detailed score rows and profile references while preserving existing final scores and notes;
-- at least one usable profile always exists;
-- deleting a profile never rewrites existing final scores;
-- category reset and profile reset are separate operations.
-
-## Catalog
-
-The versioned `anime_catalog.json` is imported transactionally only when
-`anime_catalog.version` changes. Metadata junction rows and group membership
-are reconciled inside the same transaction.
-
-The bundled catalog currently contains 40,742 unique entries and a complete local Top 5000 popularity snapshot. Catalog upserts preserve user ratings, notes, settings, profile/category configuration, and downloaded cover metadata.
-
-Catalog generation is an explicit manual operation through
-`tools/fetch_catalog.py`; it is not part of normal builds or CI. AnimeAPI
-remains the master catalog. AniList enrichment queries already-known IDs in
-batches, and group identity is derived offline from explicit relations rather
-than title matching.
-
-## Optional grouping
-
-Merge seasons is off by default. When enabled, persisted groups replace their
-members in search and ranking only when at least two entries share a
-conservative AniList family and normalized format bucket (Series, Movies,
-Special, or Music).
-
-An explicit group rating is independent from all member ratings. Without an
-explicit group rating, the UI derives a non-persisted average from rated
-members. Changing either side never silently rewrites the other.
-
-## Covers, popularity, and network
-
-Covers resolve locally first and are stored under app-private `filesDir/covers`. Downloads are validated and installed atomically.
-
-AniList supplies popularity and primary cover metadata. Jikan is a cover fallback by MAL ID.
-
-Top-X refreshes are explicit user actions. Scrolling lists does not trigger downloads, and the bundled popularity snapshot allows offline popularity sorting on first launch.
-
-Requests use HTTPS, finite timeouts/retries, and cancellation-aware coroutines.
-
-## Localization
-
-Android resources provide:
-
-- English
-- Spanish
-- German
-- French
-- Russian
-- Japanese
-- Simplified Chinese
-- Basque
-- Italian
-
-English is the default. AndroidX per-app locales apply the persisted language choice.
-
-Anime titles are canonical catalog data and are not machine-translated when the UI language changes.
-
-Default category/profile labels may be localized when defaults are created or reset, but user-edited persisted names are not silently renamed on language changes.
+DataStore owns global settings and PackId-namespaced media settings. Existing singular `MediaType` keys are still accepted during compatibility reads. Theme palettes persist only four source colors—background, surface, primary, and secondary. Material semantic colors are derived once per effective palette using contrast against the actual container. Old custom-theme JSON fields such as `mode` and `tertiary` are ignored safely.
 
 ## Privacy and security
 
-Ratings, notes, categories, profiles, database rows, preferences, and downloaded covers remain on-device.
-
-There is no analytics, telemetry, remote crash reporting, or account system.
-
-The app requests only INTERNET. Cleartext traffic and Android Auto Backup are disabled. Launcher aliases are the only intentionally exported entry points.
-
-Network requests use public anime IDs and cover/popularity metadata only; personal rating contents are never serialized into those requests.
+Ratings, notes, profiles, database rows, preferences, packs, and downloaded covers remain in app-private storage. RankOffline has no account, telemetry, analytics, or remote rating storage. Packs are data only: manifests, paths, sizes, and SHA-256 are validated, traversal is rejected, and executable payload types are forbidden.

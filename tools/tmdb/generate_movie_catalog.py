@@ -8,6 +8,7 @@ import concurrent.futures
 import dataclasses
 import datetime as dt
 import gzip
+import heapq
 import hashlib
 import json
 import math
@@ -25,6 +26,7 @@ import urllib.request
 
 API_BASE = "https://api.themoviedb.org"
 FORMAT_VERSION = 1
+GROUP_FORMAT_VERSION = 2
 MEDIA_TYPE = "movie"
 PROVIDER = "tmdb"
 TRANSIENT_HTTP_CODES = {429, 500, 502, 503, 504}
@@ -34,6 +36,7 @@ DEFAULT_WORKERS = 4
 DEFAULT_REQUESTS_PER_SECOND = 4.0
 DEFAULT_TIMEOUT_SECONDS = 20.0
 DEFAULT_MAX_ATTEMPTS = 3
+DEFAULT_AVAILABILITY_BUFFER = 100
 
 
 class TmdbToolError(RuntimeError):
@@ -60,6 +63,8 @@ class CollectionMembership:
     collection_id: int
     collection_name: str
     collection_poster_path: str | None
+    popularity: float | None = None
+    popularity_rank: int | None = None
 
 
 class TmdbClient:
@@ -185,7 +190,9 @@ class TmdbClient:
             self._last_request_started = self._clock()
 
 
-def map_movie_details(details: dict[str, Any]) -> tuple[dict[str, Any], CollectionMembership | None]:
+def map_movie_details(
+    details: dict[str, Any], popularity_rank: int | None = None
+) -> tuple[dict[str, Any], CollectionMembership | None]:
     movie_id = _positive_int(details.get("id"), "movie id")
     title = _nonblank(details.get("title"))
     if title is None:
@@ -214,7 +221,7 @@ def map_movie_details(details: dict[str, Any]) -> tuple[dict[str, Any], Collecti
         "demographic": None,
         "partNumber": None,
         "popularity": popularity,
-        "popularityRank": None,
+        "popularityRank": popularity_rank,
         "remoteCoverRef": _nonblank(details.get("poster_path")),
         "genres": genres,
         "credits": credits,
@@ -237,6 +244,8 @@ def map_movie_details(details: dict[str, Any]) -> tuple[dict[str, Any], Collecti
             collection_id=collection_id,
             collection_name=collection_name,
             collection_poster_path=_nonblank(collection.get("poster_path")),
+            popularity=popularity,
+            popularity_rank=popularity_rank,
         )
     return record, membership
 
@@ -252,6 +261,10 @@ def build_collection_groups(memberships: Iterable[CollectionMembership]) -> list
         if len(members) < 2:
             continue
         representative_metadata = members[0]
+        popularity_values = [member.popularity for member in members if member.popularity is not None]
+        popularity_ranks = [
+            member.popularity_rank for member in members if member.popularity_rank is not None
+        ]
         groups.append(
             {
                 "id": f"movie:tmdb:collection:{collection_id}",
@@ -260,6 +273,10 @@ def build_collection_groups(memberships: Iterable[CollectionMembership]) -> list
                 "provider": PROVIDER,
                 "providerGroupId": str(collection_id),
                 "displayTitle": representative_metadata.collection_name,
+                "representativeMediaId": representative_metadata.media_id,
+                "memberCount": len(members),
+                "popularity": max(popularity_values) if popularity_values else None,
+                "popularityRank": min(popularity_ranks) if popularity_ranks else None,
                 "remoteCoverRef": next(
                     (member.collection_poster_path for member in members if member.collection_poster_path),
                     None,
@@ -279,7 +296,8 @@ def read_daily_export(
     include_adult: bool = False,
     include_video: bool = False,
 ) -> Iterator[int]:
-    selected = 0
+    eligible: list[tuple[float, int]] = []
+    top: list[tuple[float, int, int]] = []
     with gzip.open(path, "rt", encoding="utf-8") as source:
         for line_number, line in enumerate(source, start=1):
             if not line.strip():
@@ -293,25 +311,41 @@ def read_daily_export(
                 continue
             if not include_video and entry.get("video") is True:
                 continue
-            yield movie_id
-            selected += 1
-            if limit is not None and selected >= limit:
-                return
+            popularity = _finite_float(entry.get("popularity"))
+            popularity = popularity if popularity is not None else float("-inf")
+            if limit is None:
+                eligible.append((popularity, movie_id))
+            else:
+                candidate = (popularity, -movie_id, movie_id)
+                if len(top) < limit:
+                    heapq.heappush(top, candidate)
+                elif candidate > top[0]:
+                    heapq.heapreplace(top, candidate)
+    if limit is not None:
+        eligible = [(popularity, movie_id) for popularity, _, movie_id in top]
+    eligible.sort(key=lambda value: (-value[0], value[1]))
+    for _, movie_id in eligible:
+        yield movie_id
 
 
 def generate_artifacts(
     details_by_id: dict[int, dict[str, Any]],
     output_dir: Path,
     catalog_version: str,
+    popularity_order: Iterable[int] | None = None,
 ) -> dict[str, Any]:
     if not catalog_version.strip():
         raise ValueError("catalog version must not be blank")
     records: list[dict[str, Any]] = []
     memberships: list[CollectionMembership] = []
-    for movie_id in sorted(details_by_id):
+    rank_by_id = {
+        movie_id: rank
+        for rank, movie_id in enumerate(popularity_order or sorted(details_by_id), start=1)
+    }
+    for movie_id in sorted(details_by_id, key=lambda value: (rank_by_id.get(value, 2**31), value)):
         details = details_by_id[movie_id]
         _validate_details_identity(details, movie_id)
-        record, membership = map_movie_details(details)
+        record, membership = map_movie_details(details, rank_by_id.get(movie_id))
         records.append(record)
         if membership is not None:
             memberships.append(membership)
@@ -323,7 +357,14 @@ def generate_artifacts(
     _write_deterministic_jsonl_gzip(catalog_path, records)
     _write_deterministic_jsonl_gzip(group_path, groups)
     catalog_manifest = _artifact_manifest(catalog_path, catalog_version, "itemCount", len(records))
-    group_manifest = _artifact_manifest(group_path, catalog_version, "groupCount", len(groups))
+    group_manifest = _artifact_manifest(
+        group_path,
+        catalog_version,
+        "groupCount",
+        len(groups),
+        format_version=GROUP_FORMAT_VERSION,
+    )
+    group_manifest["membershipCount"] = sum(group["memberCount"] for group in groups)
     _write_json_atomic(output_dir / "movie_catalog.manifest.json", catalog_manifest)
     _write_json_atomic(output_dir / "movie_groups.manifest.json", group_manifest)
     return {
@@ -390,6 +431,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--ids-file", type=Path)
     parser.add_argument("--export-file", type=Path)
     parser.add_argument("--limit", type=int)
+    parser.add_argument(
+        "--availability-buffer",
+        type=int,
+        default=DEFAULT_AVAILABILITY_BUFFER,
+        help=(
+            "extra daily-export candidates used to backfill IDs that become unavailable "
+            "between export publication and metadata enrichment"
+        ),
+    )
     parser.add_argument("--all-from-export", action="store_true")
     parser.add_argument("--confirm-large-run", action="store_true")
     parser.add_argument("--include-adult", action="store_true")
@@ -407,6 +457,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.limit is not None and args.limit <= 0:
         parser.error("--limit must be positive")
+    if args.availability_buffer < 0:
+        parser.error("--availability-buffer must not be negative")
     if args.export_file and args.limit is None and not (
         args.all_from_export and args.confirm_large_run
     ):
@@ -430,7 +482,13 @@ def main(argv: list[str] | None = None) -> int:
     token = os.environ.get("TMDB_READ_ACCESS_TOKEN", "")
     client = TmdbClient(token, args.cache_dir, args.requests_per_second)
     details, unavailable = enrich_movies(ids, client, args.workers)
-    generated = generate_artifacts(details, args.output_dir, args.catalog_version)
+    selected_ids = _available_target_ids(ids, details, args.limit)
+    generated = generate_artifacts(
+        {movie_id: details[movie_id] for movie_id in selected_ids},
+        args.output_dir,
+        args.catalog_version,
+        selected_ids,
+    )
     print(
         f"Generated {len(generated['records'])} movies and {len(generated['groups'])} collections. "
         f"Unavailable IDs: {len(unavailable)}."
@@ -445,10 +503,13 @@ def _selected_ids(args: argparse.Namespace) -> list[int]:
     if args.ids_file:
         ids.extend(_read_ids_file(args.ids_file))
     if args.export_file:
+        export_limit = args.limit
+        if export_limit is not None and not args.dry_run:
+            export_limit += args.availability_buffer
         ids.extend(
             read_daily_export(
                 args.export_file,
-                args.limit,
+                export_limit,
                 include_adult=args.include_adult,
                 include_video=args.include_video,
             )
@@ -456,7 +517,23 @@ def _selected_ids(args: argparse.Namespace) -> list[int]:
     valid = []
     for movie_id in ids:
         valid.append(_positive_int(movie_id, "movie id"))
-    return sorted(set(valid))
+    return list(dict.fromkeys(valid))
+
+
+def _available_target_ids(
+    popularity_order: Iterable[int],
+    details_by_id: dict[int, dict[str, Any]],
+    target_count: int | None,
+) -> list[int]:
+    available = [resource_id for resource_id in popularity_order if resource_id in details_by_id]
+    if target_count is None:
+        return available
+    if len(available) < target_count:
+        raise TmdbToolError(
+            f"Only {len(available)} available TMDb records were enriched for a "
+            f"target of {target_count}; increase --availability-buffer."
+        )
+    return available[:target_count]
 
 
 def _read_ids_file(path: Path) -> list[int]:
@@ -545,9 +622,10 @@ def _artifact_manifest(
     count: int,
     media_type: str = MEDIA_TYPE,
     provider: str = PROVIDER,
+    format_version: int = FORMAT_VERSION,
 ) -> dict[str, Any]:
     return {
-        "formatVersion": FORMAT_VERSION,
+        "formatVersion": format_version,
         "mediaType": media_type,
         "provider": provider,
         "catalogVersion": version,

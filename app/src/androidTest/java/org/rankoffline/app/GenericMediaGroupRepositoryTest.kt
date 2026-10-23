@@ -24,7 +24,7 @@ class GenericMediaGroupRepositoryTest {
             InstrumentationRegistry.getInstrumentation().targetContext,
             AnimeDatabase::class.java
         ).build()
-        mediaRepository = GenericMediaRepository(database) { 100L }
+        mediaRepository = GenericMediaRepository(database, now = { 100L })
         groupRepository = GenericMediaGroupRepository(database) { 200L }
     }
 

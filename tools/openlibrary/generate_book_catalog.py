@@ -25,6 +25,10 @@ MAX_SUBJECTS = 50
 INDEX_BATCH_SIZE = 1_000
 WORK_ID_PATTERN = re.compile(r"^OL[0-9]+W$")
 AUTHOR_ID_PATTERN = re.compile(r"^OL[0-9]+A$")
+EDITION_ID_PATTERN = re.compile(r"^OL[0-9]+M$")
+ISBN_13_PATTERN = re.compile(r"^97[89][0-9]{10}$")
+ISBN_10_PATTERN = re.compile(r"^[0-9]{9}[0-9X]$")
+OPEN_LIBRARY_COVER_REFERENCE_PREFIX = "openlibrary:v1"
 YEAR_PATTERN = re.compile(r"(?<![0-9])([12][0-9]{3})(?![0-9])")
 ISO_DATE_PATTERN = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
@@ -79,6 +83,9 @@ def map_work(
     work: dict[str, Any],
     dump_key: str | None = None,
     author_name: Callable[[str], str | None] | None = None,
+    popularity: int | None = None,
+    popularity_rank: int | None = None,
+    cover_metadata: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     work_id = normalize_work_id(dump_key or work.get("key"))
     record_key = work.get("key")
@@ -108,9 +115,9 @@ def map_work(
         "originalLanguage": None,
         "demographic": None,
         "partNumber": None,
-        "popularity": None,
-        "popularityRank": None,
-        "remoteCoverRef": select_cover_id(work.get("covers")),
+        "popularity": popularity,
+        "popularityRank": popularity_rank,
+        "remoteCoverRef": build_cover_reference(work_id, work.get("covers"), cover_metadata),
         "genres": normalize_subjects(work.get("subjects")),
         "credits": resolve_author_credits(work.get("authors"), author_name),
         "aliases": aliases,
@@ -141,6 +148,41 @@ def select_cover_id(value: Any) -> str | None:
         if isinstance(candidate, int) and not isinstance(candidate, bool) and candidate > 0:
             return str(candidate)
     return None
+
+
+def build_cover_reference(
+    work_id: str,
+    covers: Any,
+    metadata: dict[str, str] | None = None,
+) -> str:
+    """Encode pre-resolved cover candidates in runtime fallback order."""
+    metadata = metadata or {}
+    candidates = [
+        ("id", select_cover_id(covers) or _positive_integer_string(metadata.get("coverId"))),
+        ("isbn13", _normalize_isbn(metadata.get("isbn13"), ISBN_13_PATTERN)),
+        ("isbn10", _normalize_isbn(metadata.get("isbn10"), ISBN_10_PATTERN)),
+        ("edition", _matching_text(metadata.get("editionOlid"), EDITION_ID_PATTERN)),
+        ("work", normalize_work_id(work_id)),
+    ]
+    encoded = [f"{key}={value}" for key, value in candidates if value is not None]
+    return "|".join([OPEN_LIBRARY_COVER_REFERENCE_PREFIX, *encoded])
+
+
+def _positive_integer_string(value: Any) -> str | None:
+    text = str(value).strip() if value is not None else ""
+    return text if text.isdigit() and int(text) > 0 else None
+
+
+def _normalize_isbn(value: Any, pattern: re.Pattern[str]) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = re.sub(r"[-\s]", "", value).upper()
+    return normalized if pattern.fullmatch(normalized) else None
+
+
+def _matching_text(value: Any, pattern: re.Pattern[str]) -> str | None:
+    normalized = value.strip().upper() if isinstance(value, str) else ""
+    return normalized if pattern.fullmatch(normalized) else None
 
 
 def normalize_subjects(value: Any, limit: int = MAX_SUBJECTS) -> list[str]:
@@ -241,6 +283,8 @@ def generate_catalog(
     catalog_version: str,
     limit: int | None = None,
     selected_work_ids: set[str] | None = None,
+    popularity_by_work: dict[str, tuple[int, int]] | None = None,
+    cover_metadata_by_work: dict[str, dict[str, str]] | None = None,
     author_index_path: Path | None = None,
     all_from_dump: bool = False,
     skip_malformed: bool = False,
@@ -291,10 +335,16 @@ def generate_catalog(
                         work_id = normalize_work_id(dump_key)
                         if selected is not None and work_id not in selected:
                             continue
+                        popularity, popularity_rank = (popularity_by_work or {}).get(
+                            work_id, (None, None)
+                        )
                         record = map_work(
-                            work,
-                            dump_key,
-                            author_index.name if author_index is not None else None,
+                            work=work,
+                            dump_key=dump_key,
+                            author_name=author_index.name if author_index is not None else None,
+                            popularity=popularity,
+                            popularity_rank=popularity_rank,
+                            cover_metadata=(cover_metadata_by_work or {}).get(work_id),
                         )
                     except OpenLibraryToolError as error:
                         if skip_malformed:
@@ -410,6 +460,123 @@ def read_work_keys(path: Path) -> set[str]:
     return result
 
 
+def read_popularity_selection(path: Path) -> dict[str, tuple[int, int]]:
+    result: dict[str, tuple[int, int]] = {}
+    ranks: set[int] = set()
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+            work_id = normalize_work_id(value["workId"])
+            count = int(value["readinglogCount"])
+            rank = int(value["popularityRank"])
+            if count < 0 or rank <= 0 or work_id in result or rank in ranks:
+                raise ValueError("invalid or duplicate popularity entry")
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError, OpenLibraryToolError) as error:
+            raise OpenLibraryToolError(
+                f"Invalid popularity selection at {path}:{line_number}"
+            ) from error
+        result[work_id] = (count, rank)
+        ranks.add(rank)
+    return result
+
+
+def read_cover_metadata_selection(path: Path) -> dict[str, dict[str, str]]:
+    """Read identifiers already returned by the ranked Search snapshot."""
+    result: dict[str, dict[str, str]] = {}
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+            work_id = normalize_work_id(value["workId"])
+            if work_id in result:
+                raise ValueError("duplicate Work")
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError, OpenLibraryToolError) as error:
+            raise OpenLibraryToolError(
+                f"Invalid cover metadata selection at {path}:{line_number}"
+            ) from error
+        metadata: dict[str, str] = {}
+        for field in ("coverId", "isbn13", "isbn10", "editionOlid"):
+            candidate = value.get(field)
+            if isinstance(candidate, (str, int)) and not isinstance(candidate, bool):
+                metadata[field] = str(candidate)
+        result[work_id] = metadata
+    return result
+
+
+def select_available_popularity(
+    works_dump: Path,
+    popularity: dict[str, tuple[int, int]],
+    target_count: int,
+    skip_malformed: bool = False,
+    progress_stream: TextIO = sys.stderr,
+) -> tuple[dict[str, tuple[int, int]], dict[str, Any]]:
+    """Choose the highest-ranked resolvable Works and make snapshot ranks contiguous."""
+    if target_count <= 0:
+        raise ValueError("target count must be positive")
+    if len(popularity) < target_count:
+        raise OpenLibraryToolError(
+            f"Popularity selection has {len(popularity)} candidates for a {target_count}-Work target"
+        )
+
+    candidates = set(popularity)
+    available: set[str] = set()
+    for dump_key, work, line_number in iter_dump_records(
+        works_dump, WORK_TYPE, skip_malformed
+    ):
+        try:
+            work_id = normalize_work_id(dump_key)
+            if work_id not in candidates:
+                continue
+            # Validate required Work-level fields before accepting a candidate;
+            # author resolution remains optional and is performed during output.
+            map_work(work, dump_key)
+            available.add(work_id)
+        except OpenLibraryToolError as error:
+            if skip_malformed:
+                continue
+            raise OpenLibraryToolError(
+                f"Invalid selected Work at {works_dump}:{line_number}: {error}"
+            ) from error
+        if len(available) == len(candidates):
+            break
+
+    ordered_candidates = sorted(
+        popularity.items(), key=lambda item: (item[1][1], item[0])
+    )
+    resolved = [(work_id, values) for work_id, values in ordered_candidates if work_id in available]
+    if len(resolved) < target_count:
+        raise OpenLibraryToolError(
+            f"Only {len(resolved)} of {len(popularity)} ranked Work candidates are resolvable; "
+            f"cannot produce the required {target_count} Books"
+        )
+
+    original_top = {work_id for work_id, _ in ordered_candidates[:target_count]}
+    selected = resolved[:target_count]
+    result = {
+        work_id: (values[0], rank)
+        for rank, (work_id, values) in enumerate(selected, start=1)
+    }
+    missing_top = sorted(original_top - available)
+    replacements = [work_id for work_id, _ in selected if work_id not in original_top]
+    stats = {
+        "candidateCount": len(popularity),
+        "availableCandidateCount": len(available),
+        "missingTopCount": len(missing_top),
+        "missingTopWorkIds": missing_top,
+        "replacementCount": len(replacements),
+        "replacementWorkIds": replacements,
+    }
+    print(
+        f"Resolved {len(available)} / {len(popularity)} ranked candidates; "
+        f"replaced {len(replacements)} unavailable Top-{target_count} Works.",
+        file=progress_stream,
+    )
+    return result, stats
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--works-dump", type=Path, required=True)
@@ -423,6 +590,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         / "authors.sqlite",
     )
     parser.add_argument("--work-keys-file", type=Path)
+    parser.add_argument("--popular-works-file", type=Path)
+    parser.add_argument("--target-count", type=int)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--all-from-dump", action="store_true")
     parser.add_argument("--confirm-large-run", action="store_true")
@@ -432,18 +601,41 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.limit is not None and args.limit <= 0:
         parser.error("--limit must be positive")
+    if args.target_count is not None and args.target_count <= 0:
+        parser.error("--target-count must be positive")
+    if args.target_count is not None and args.popular_works_file is None:
+        parser.error("--target-count requires --popular-works-file")
     if args.all_from_dump != args.confirm_large_run:
         parser.error("full dump processing requires both --all-from-dump and --confirm-large-run")
-    if args.all_from_dump and (args.limit is not None or args.work_keys_file is not None):
+    if args.work_keys_file and args.popular_works_file:
+        parser.error("--work-keys-file and --popular-works-file are mutually exclusive")
+    if args.all_from_dump and (
+        args.limit is not None or args.work_keys_file is not None or args.popular_works_file is not None
+    ):
         parser.error("full dump flags cannot be combined with bounded selection")
-    if not args.all_from_dump and args.limit is None and args.work_keys_file is None:
-        parser.error("provide --limit or --work-keys-file for bounded generation")
+    if not args.all_from_dump and args.limit is None and args.work_keys_file is None and args.popular_works_file is None:
+        parser.error("provide --limit, --work-keys-file or --popular-works-file for bounded generation")
     return args
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    selected = read_work_keys(args.work_keys_file) if args.work_keys_file else None
+    popularity = read_popularity_selection(args.popular_works_file) if args.popular_works_file else None
+    cover_metadata = (
+        read_cover_metadata_selection(args.popular_works_file)
+        if args.popular_works_file
+        else None
+    )
+    if popularity is not None and args.target_count is not None:
+        popularity, _ = select_available_popularity(
+            args.works_dump,
+            popularity,
+            args.target_count,
+            args.skip_malformed,
+        )
+    selected = set(popularity) if popularity is not None else (
+        read_work_keys(args.work_keys_file) if args.work_keys_file else None
+    )
     index_path: Path | None = args.author_index
     if args.authors_dump is not None and not index_path.exists():
         count = build_author_index(args.authors_dump, index_path, args.skip_malformed)
@@ -460,6 +652,8 @@ def main(argv: list[str] | None = None) -> int:
         catalog_version=args.catalog_version,
         limit=args.limit,
         selected_work_ids=selected,
+        popularity_by_work=popularity,
+        cover_metadata_by_work=cover_metadata,
         author_index_path=index_path,
         all_from_dump=args.all_from_dump,
         skip_malformed=args.skip_malformed,

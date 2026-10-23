@@ -7,7 +7,7 @@ import org.junit.Test
 class MovieSeriesIntegrationLogicTest {
     @Test
     fun mediaTypesDispatchToExpectedPersistencePaths() {
-        assertEquals(MediaDataPath.ANIME, MediaType.ANIME.dataPath())
+        assertEquals(MediaDataPath.GENERIC, MediaType.ANIME.dataPath())
         assertEquals(MediaDataPath.GENERIC, MediaType.MANGA.dataPath())
         assertEquals(MediaDataPath.GENERIC, MediaType.MOVIE.dataPath())
         assertEquals(MediaDataPath.GENERIC, MediaType.SERIES.dataPath())
@@ -15,11 +15,11 @@ class MovieSeriesIntegrationLogicTest {
     }
 
     @Test
-    fun movieAndSeriesUseTheirProviderCreditRoles() {
+    fun genericMediaUseTheirProviderCreditRoles() {
         assertEquals("PRODUCTION_COMPANY", MediaType.MOVIE.genericFilterCreditRole())
         assertEquals("NETWORK", MediaType.SERIES.genericFilterCreditRole())
-        assertNull(MediaType.ANIME.genericFilterCreditRole())
-        assertNull(MediaType.MANGA.genericFilterCreditRole())
+        assertEquals("STUDIO", MediaType.ANIME.genericFilterCreditRole())
+        assertEquals("AUTHOR", MediaType.MANGA.genericFilterCreditRole())
         assertEquals("AUTHOR", MediaType.BOOK.genericFilterCreditRole())
     }
 
@@ -34,6 +34,7 @@ class MovieSeriesIntegrationLogicTest {
         assertEquals("VARIANTS", MediaType.MANGA.genericGroupType())
         assertEquals("COLLECTION", MediaType.MOVIE.genericGroupType())
         assertEquals("SEASONS", MediaType.SERIES.genericGroupType())
+        assertEquals("RELATIONS", MediaType.ANIME.genericGroupType())
     }
 
     @Test
@@ -51,10 +52,10 @@ class MovieSeriesIntegrationLogicTest {
     fun genericFiltersRemainIsolatedByMediaType() {
         val states = defaultSearchUiStates()
             .updateSearchUiState(MediaType.MOVIE) {
-                it.copy(genericFilters = GenericMediaFilters("Drama", 1999, "Studio"))
+                it.copy(genericFilters = GenericMediaFilters(genre = "Drama", year = 1999, creditName = "Studio"))
             }
             .updateSearchUiState(MediaType.SERIES) {
-                it.copy(genericFilters = GenericMediaFilters("Mystery", 2020, "Network"))
+                it.copy(genericFilters = GenericMediaFilters(genre = "Mystery", year = 2020, creditName = "Network"))
             }
 
         assertEquals("Studio", states.searchStateFor(MediaType.MOVIE).genericFilters.creditName)
@@ -63,14 +64,15 @@ class MovieSeriesIntegrationLogicTest {
     }
 
     @Test
-    fun mediaWithoutPopularityStartsTitleSortedWithoutChangingOtherMediaDefaults() {
+    fun everyMediaStartsWithMostPopularFirst() {
         val states = defaultSearchUiStates()
 
-        assertEquals(CatalogSortOrder.TITLE_ASC, states.searchStateFor(MediaType.MANGA).sortOrder)
-        assertEquals(CatalogSortOrder.TITLE_ASC, states.searchStateFor(MediaType.BOOK).sortOrder)
-        assertEquals(CatalogSortOrder.POPULARITY, states.searchStateFor(MediaType.ANIME).sortOrder)
-        assertEquals(CatalogSortOrder.POPULARITY, states.searchStateFor(MediaType.MOVIE).sortOrder)
-        assertEquals(CatalogSortOrder.POPULARITY, states.searchStateFor(MediaType.SERIES).sortOrder)
-        assertEquals(listOf(CatalogSortOrder.TITLE_ASC), MediaType.BOOK.catalogSortCriteria())
+        MediaType.entries.forEach { mediaType ->
+            assertEquals(CatalogSortOrder.POPULARITY, states.searchStateFor(mediaType).sortOrder)
+        }
+        assertEquals(
+            listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC),
+            MediaType.BOOK.catalogSortCriteria()
+        )
     }
 }

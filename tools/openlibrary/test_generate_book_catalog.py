@@ -64,6 +64,10 @@ class GenerateBookCatalogTest(unittest.TestCase):
         self.assertEqual("openlibrary", record["provider"])
         self.assertEqual("Fantastic Mr Fox", record["title"])
         self.assertEqual("BOOK", record["format"])
+        self.assertEqual(
+            "openlibrary:v1|id=12345|work=OL45804W",
+            record["remoteCoverRef"],
+        )
         self.assertIsNone(record["originalTitle"])
         self.assertIsNone(record["originalLanguage"])
         self.assertIsNone(record["popularity"])
@@ -89,6 +93,55 @@ class GenerateBookCatalogTest(unittest.TestCase):
     def test_first_positive_integer_cover_is_selected(self):
         self.assertEqual("12345", tool.select_cover_id([None, 0, -9, "44", True, 12345, 9]))
         self.assertIsNone(tool.select_cover_id([None, 0, -1, "44", False]))
+
+    def test_cover_reference_preserves_runtime_candidates_in_priority_order(self):
+        reference = tool.build_cover_reference(
+            WORK_ID,
+            [12345],
+            {
+                "coverId": "99999",
+                "isbn13": "978-0-14-032872-1",
+                "isbn10": "0140328726",
+                "editionOlid": "OL7353617M",
+            },
+        )
+
+        self.assertEqual(
+            "openlibrary:v1|id=12345|isbn13=9780140328721|isbn10=0140328726|"
+            "edition=OL7353617M|work=OL45804W",
+            reference,
+        )
+
+    def test_popularity_selection_preserves_cover_metadata_for_generation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selection = Path(directory) / "selection.jsonl"
+            selection.write_text(
+                json.dumps(
+                    {
+                        "workId": WORK_ID,
+                        "readinglogCount": 20,
+                        "popularityRank": 1,
+                        "coverId": "7",
+                        "isbn13": "9780140328721",
+                        "isbn10": "0140328726",
+                        "editionOlid": "OL7353617M",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                {
+                    WORK_ID: {
+                        "coverId": "7",
+                        "isbn13": "9780140328721",
+                        "isbn10": "0140328726",
+                        "editionOlid": "OL7353617M",
+                    }
+                },
+                tool.read_cover_metadata_selection(selection),
+            )
 
     def test_subjects_deduplicate_case_insensitively_and_cap_in_source_order(self):
         subjects = [" Drama ", "drama", "", None] + [f"Subject {index}" for index in range(60)]
@@ -214,6 +267,34 @@ class GenerateBookCatalogTest(unittest.TestCase):
                     "fixture-v1",
                     selected_work_ids=selected,
                 )
+
+    def test_unavailable_popular_works_use_ranked_candidates_and_contiguous_ranks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            dump = root / "works.txt.gz"
+            write_dump(
+                dump,
+                [
+                    ("/type/work", "/works/OL1W", work("OL1W", title="One")),
+                    ("/type/work", "/works/OL3W", work("OL3W", title="Three")),
+                    ("/type/work", "/works/OL4W", work("OL4W", title="Four")),
+                ],
+            )
+            popularity = {
+                "OL1W": (100, 1),
+                "OL2W": (90, 2),
+                "OL3W": (80, 3),
+                "OL4W": (70, 4),
+            }
+
+            selected, stats = tool.select_available_popularity(dump, popularity, 3)
+
+            self.assertEqual(
+                {"OL1W": (100, 1), "OL3W": (80, 2), "OL4W": (70, 3)},
+                selected,
+            )
+            self.assertEqual(["OL2W"], stats["missingTopWorkIds"])
+            self.assertEqual(["OL4W"], stats["replacementWorkIds"])
 
     def test_cli_is_bounded_by_default_and_full_mode_needs_two_explicit_flags(self):
         common = [

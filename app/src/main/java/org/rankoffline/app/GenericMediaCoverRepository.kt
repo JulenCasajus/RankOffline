@@ -21,6 +21,10 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
 
 enum class MediaCoverTransferResult { DOWNLOADED, NOT_FOUND, NETWORK_ERROR, TEMPORARY_ERROR }
@@ -158,22 +162,58 @@ class GenericMediaCoverRepository(
     context: Context,
     database: AnimeDatabase,
     private val provider: MediaCoverProvider = DefaultMediaCoverProvider(),
-    private val downloader: MediaCoverDownloader = SecureMediaCoverDownloader()
-) {
+    private val downloader: MediaCoverDownloader = SecureMediaCoverDownloader(),
+    private val animeResolver: AnimeMediaCoverResolver = DefaultAnimeMediaCoverResolver()
+) : CoverObservationSource {
     private val appContext = context.applicationContext
     private val dao = database.mediaDao()
+    private val groupDao = database.mediaGroupDao()
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
+    private val downloadStates = ConcurrentHashMap<String, MutableStateFlow<CoverDownloadState>>()
 
     fun resolvedRemoteUrl(item: MediaItem): String? = provider.resolve(item)?.toASCIIString()
+
+    override fun observeLocalCoverPath(mediaId: String): Flow<String?> =
+        dao.observeLocalCoverPath(mediaId).distinctUntilChanged()
+
+    override fun observeDownloadState(mediaId: String): StateFlow<CoverDownloadState> =
+        downloadStates.getOrPut(mediaId) { MutableStateFlow(CoverDownloadState.IDLE) }.asStateFlow()
+
+    /** Clears only transient state owned by one pack; Room remains the source of cover paths. */
+    fun invalidatePackRuntimeState(mediaType: MediaType) {
+        // Canonical provider IDs are intentionally stable and are not required to encode their
+        // owner (Anime uses mal:/anilist:). Pack replacement is rare, so clearing this small
+        // process-local map is safer than guessing ownership from an ID prefix.
+        inProgress.clear()
+        downloadStates.values.forEach { it.value = CoverDownloadState.IDLE }
+        downloadStates.clear()
+    }
 
     fun observeDownloadedCoverCount(mediaType: MediaType): Flow<Int> =
         dao.observeDownloadedCoverCount(mediaType.persistedValue)
 
     suspend fun ratedCoverItems(mediaType: MediaType): List<MediaItem> = withContext(Dispatchers.IO) {
-        dao.ratedCoverItems(mediaType.persistedValue).map(MediaItemEntity::toDomain)
+        dao.ratedCoverItems(mediaType.persistedValue, mediaType.toPackId().value)
+            .map(MediaItemEntity::toDomain)
     }
 
+    suspend fun topPopularCoverItems(
+        mediaType: MediaType,
+        limit: Int,
+        oneCoverPerGroup: Boolean = false
+    ): List<MediaItem> =
+        withContext(Dispatchers.IO) {
+            val groupType = mediaType.genericGroupType()
+            val items = if (oneCoverPerGroup && groupType != null) {
+                groupDao.topLogicalCoverItems(mediaType.persistedValue, groupType, limit)
+            } else {
+                dao.topPopularCoverItems(mediaType.persistedValue, limit)
+            }
+            items.map(MediaItemEntity::toDomain)
+        }
+
     suspend fun downloadCover(mediaId: String): CoverDownloadResult = withContext(Dispatchers.IO) {
+        val state = downloadStates.getOrPut(mediaId) { MutableStateFlow(CoverDownloadState.IDLE) }
         val entity = dao.item(mediaId) ?: return@withContext CoverDownloadResult.NotFound
         val mediaType = genericMediaType(entity.mediaType) ?: return@withContext CoverDownloadResult.NotFound
         val destination = coverFile(mediaType, mediaId)
@@ -189,11 +229,6 @@ class GenericMediaCoverRepository(
             dao.updateMediaCover(mediaId, null, CoverResolutionState.UNKNOWN.name)
         }
 
-        val remoteUri = provider.resolve(entity.toDomain())
-        if (remoteUri == null) {
-            dao.updateMediaCover(mediaId, null, CoverResolutionState.NOT_FOUND.name)
-            return@withContext CoverDownloadResult.NotFound
-        }
         if (!inProgress.add(mediaId)) return@withContext CoverDownloadResult.AlreadyInProgress
 
         destination.parentFile?.let { directory ->
@@ -202,48 +237,71 @@ class GenericMediaCoverRepository(
                 return@withContext CoverDownloadResult.TemporaryError
             }
         }
+        state.value = CoverDownloadState.DOWNLOADING
         var temporary: File? = null
         var installed = false
         try {
+            // Resolution is part of the download operation. In particular, normalized Anime
+            // entries intentionally carry stable provider IDs instead of requiring a URL in the
+            // pack, so provider failures must reach the same recoverable error path as HTTP.
+            val remoteUris = provider.resolveCandidates(entity.toDomain()).ifEmpty {
+                if (mediaType == MediaType.ANIME) animeResolver.resolve(entity.id) else emptyList()
+            }
+            if (remoteUris.isEmpty()) {
+                dao.updateMediaCover(mediaId, null, CoverResolutionState.NOT_FOUND.name)
+                return@withContext CoverDownloadResult.NotFound
+            }
             val downloadFile = File.createTempFile(
                 destination.nameWithoutExtension + "-",
                 ".part",
                 destination.parentFile
             )
             temporary = downloadFile
-            when (downloader.download(remoteUri, downloadFile)) {
-                MediaCoverTransferResult.DOWNLOADED -> {
-                    if (!isValidImage(downloadFile)) return@withContext CoverDownloadResult.TemporaryError
-                    moveAtomically(downloadFile, destination)
-                    installed = true
-                    if (dao.updateMediaCover(
-                            mediaId,
-                            destination.absolutePath,
-                            CoverResolutionState.AVAILABLE.name
-                        ) != 1
-                    ) {
-                        throw IOException("Media item disappeared while installing its cover")
+            var invalidImageReceived = false
+            for (remoteUri in remoteUris) {
+                when (downloader.download(remoteUri, downloadFile)) {
+                    MediaCoverTransferResult.DOWNLOADED -> {
+                        if (!isValidImage(downloadFile)) {
+                            invalidImageReceived = true
+                            downloadFile.delete()
+                            continue
+                        }
+                        moveAtomically(downloadFile, destination)
+                        installed = true
+                        if (dao.updateMediaCover(
+                                mediaId,
+                                destination.absolutePath,
+                                CoverResolutionState.AVAILABLE.name
+                            ) != 1
+                        ) {
+                            throw IOException("Media item disappeared while installing its cover")
+                        }
+                        installed = false
+                        return@withContext CoverDownloadResult.Downloaded
                     }
-                    installed = false
-                    CoverDownloadResult.Downloaded
+                    MediaCoverTransferResult.NOT_FOUND -> Unit
+                    MediaCoverTransferResult.NETWORK_ERROR -> return@withContext CoverDownloadResult.NetworkError
+                    MediaCoverTransferResult.TEMPORARY_ERROR ->
+                        return@withContext CoverDownloadResult.TemporaryError
                 }
-                MediaCoverTransferResult.NOT_FOUND -> {
-                    dao.updateMediaCover(mediaId, null, CoverResolutionState.NOT_FOUND.name)
-                    CoverDownloadResult.NotFound
-                }
-                MediaCoverTransferResult.NETWORK_ERROR -> CoverDownloadResult.NetworkError
-                MediaCoverTransferResult.TEMPORARY_ERROR -> CoverDownloadResult.TemporaryError
             }
+            if (invalidImageReceived) return@withContext CoverDownloadResult.TemporaryError
+            dao.updateMediaCover(mediaId, null, CoverResolutionState.NOT_FOUND.name)
+            CoverDownloadResult.NotFound
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: IOException) {
-            Log.w(TAG, "Generic cover operation failed for $mediaId", exception)
+            Log.w(TAG, "operation=item-cover mediaId=$mediaId failed=${exception.message}", exception)
             if (exception.isNetworkFailure()) CoverDownloadResult.NetworkError
             else CoverDownloadResult.TemporaryError
+        } catch (exception: Exception) {
+            Log.w(TAG, "operation=item-cover mediaId=$mediaId failed=${exception.message}", exception)
+            CoverDownloadResult.TemporaryError
         } finally {
             if (temporary?.exists() == true) temporary.delete()
             if (installed && destination.exists()) destination.delete()
             inProgress.remove(mediaId)
+            state.value = CoverDownloadState.IDLE
         }
     }
 
@@ -252,19 +310,26 @@ class GenericMediaCoverRepository(
         val mediaType = genericMediaType(entity.mediaType) ?: return@withContext false
         val expected = coverFile(mediaType, mediaId)
         val stored = entity.localCoverPath?.let(::File)
-        if (stored != null && isExpectedFile(stored, expected) && stored.exists() && !stored.delete()) {
+        val deletable = stored != null && (
+            isExpectedFile(stored, expected) ||
+                (mediaType == MediaType.ANIME && isLegacyAnimeCover(stored))
+            )
+        if (deletable && stored?.exists() == true && !stored.delete()) {
             return@withContext false
         }
         dao.updateMediaCover(mediaId, null, CoverResolutionState.UNKNOWN.name) == 1
     }
 
     suspend fun clearDownloadedCovers(mediaType: MediaType): Int = withContext(Dispatchers.IO) {
-        require(mediaType != MediaType.ANIME)
         val items = dao.itemsWithLocalCovers(mediaType.persistedValue)
         items.forEach { entity ->
             val expected = coverFile(mediaType, entity.id)
             val stored = entity.localCoverPath?.let(::File)
-            if (stored != null && isExpectedFile(stored, expected) && stored.exists() && !stored.delete()) {
+            val appOwned = stored != null && (
+                isExpectedFile(stored, expected) ||
+                    (mediaType == MediaType.ANIME && isLegacyAnimeCover(stored))
+                )
+            if (appOwned && stored?.exists() == true && !stored.delete()) {
                 Log.w(TAG, "Unable to remove generic cover ${stored.name}")
             }
         }
@@ -276,10 +341,14 @@ class GenericMediaCoverRepository(
         File(File(File(appContext.filesDir, "covers"), mediaType.persistedValue), mediaCoverFileName(mediaId))
 
     private fun genericMediaType(value: String): MediaType? =
-        MediaType.entries.firstOrNull { it.persistedValue == value && it != MediaType.ANIME }
+        MediaType.entries.firstOrNull { it.persistedValue == value }
 
     private fun isExpectedFile(file: File, expected: File): Boolean =
         runCatching { file.canonicalFile == expected.canonicalFile }.getOrDefault(false)
+
+    private fun isLegacyAnimeCover(file: File): Boolean = runCatching {
+        file.canonicalFile.parentFile == File(appContext.filesDir, "covers").canonicalFile
+    }.getOrDefault(false)
 
     private fun isValidImage(file: File): Boolean {
         if (!file.isFile || file.length() <= 0L || file.length() > SecureMediaCoverDownloader.MAX_COVER_BYTES) {
@@ -314,7 +383,7 @@ class GenericMediaCoverRepository(
     companion object {
         private const val MAX_IMAGE_DIMENSION = 20_000
         private const val MAX_IMAGE_PIXELS = 100_000_000L
-        private const val TAG = "GenericMediaCover"
+        private const val TAG = "RankOfflineCover"
     }
 }
 
@@ -324,12 +393,26 @@ class GenericMediaGroupCoverRepository(
     database: AnimeDatabase,
     private val provider: MediaCoverProvider = DefaultMediaCoverProvider(),
     private val downloader: MediaCoverDownloader = SecureMediaCoverDownloader()
-) {
+) : CoverObservationSource {
     private val appContext = context.applicationContext
     private val dao = database.mediaGroupDao()
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
+    private val downloadStates = ConcurrentHashMap<String, MutableStateFlow<CoverDownloadState>>()
+
+    override fun observeLocalCoverPath(mediaId: String): Flow<String?> =
+        dao.observeLocalCoverPath(mediaId).distinctUntilChanged()
+
+    override fun observeDownloadState(mediaId: String): StateFlow<CoverDownloadState> =
+        downloadStates.getOrPut(mediaId) { MutableStateFlow(CoverDownloadState.IDLE) }.asStateFlow()
+
+    fun invalidatePackRuntimeState(mediaType: MediaType) {
+        inProgress.clear()
+        downloadStates.values.forEach { it.value = CoverDownloadState.IDLE }
+        downloadStates.clear()
+    }
 
     suspend fun downloadCover(groupId: String): CoverDownloadResult = withContext(Dispatchers.IO) {
+        val state = downloadStates.getOrPut(groupId) { MutableStateFlow(CoverDownloadState.IDLE) }
         val entity = dao.group(groupId) ?: return@withContext CoverDownloadResult.NotFound
         val mediaType = MediaType.entries.firstOrNull {
             it.persistedValue == entity.mediaType && it in setOf(MediaType.MOVIE, MediaType.SERIES)
@@ -358,6 +441,7 @@ class GenericMediaGroupCoverRepository(
                 return@withContext CoverDownloadResult.TemporaryError
             }
         }
+        state.value = CoverDownloadState.DOWNLOADING
         var temporary: File? = null
         var installed = false
         try {
@@ -383,12 +467,13 @@ class GenericMediaGroupCoverRepository(
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: IOException) {
-            Log.w(TAG, "Group cover operation failed for $groupId", exception)
+            Log.w(TAG, "operation=group-cover groupId=$groupId failed=${exception.message}", exception)
             CoverDownloadResult.TemporaryError
         } finally {
             if (temporary?.exists() == true) temporary.delete()
             if (installed && destination.exists()) destination.delete()
             inProgress.remove(groupId)
+            state.value = CoverDownloadState.IDLE
         }
     }
 
@@ -429,7 +514,7 @@ class GenericMediaGroupCoverRepository(
         mediaCoverFileName(groupId)
     )
 
-    private companion object { const val TAG = "GenericGroupCover" }
+    private companion object { const val TAG = "RankOfflineCover" }
 }
 
 private fun sameFile(first: File, second: File): Boolean =

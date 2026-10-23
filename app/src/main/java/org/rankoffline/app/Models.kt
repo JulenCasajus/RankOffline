@@ -3,6 +3,8 @@ package org.rankoffline.app
 import android.content.Context
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import java.math.BigDecimal
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -37,9 +39,12 @@ data class Anime(
     val seasonYear: Int? = null,
     val startDate: String? = null,
     val studio: String? = null,
+    val genre: String? = null,
+    val filterCredit: String? = null,
     val groupId: String? = null,
     val groupType: String? = null,
     val rootAnimeId: String? = null,
+    val sharedCoverMediaId: String? = null,
     val memberCount: Int = 0,
     val ratedCount: Int = 0,
     val derived: Boolean = false
@@ -93,6 +98,22 @@ internal fun metadataSubtitleSegments(format: String?, year: Int?, studio: Strin
 
 internal fun joinMetadataSubtitle(segments: List<String>): String = segments.joinToString(" · ")
 
+internal fun filterMetadataSubtitleSegments(
+    mediaType: MediaType,
+    genre: String?,
+    format: String?,
+    year: Int?,
+    credit: String?
+): List<String> = mediaType.officialSubtitleFields().mapNotNull { field ->
+    when (field) {
+        "genre", "subject" -> genre
+        "format" -> format
+        "year" -> year?.toString()
+        "studio", "author", "production_company", "network" -> credit
+        else -> null
+    }?.takeIf(String::isNotBlank)
+}
+
 data class GroupDetail(
     val group: AnimeGroupEntity,
     val members: List<Anime>,
@@ -144,12 +165,39 @@ internal fun usesGroupScoreLabel(isGroup: Boolean, memberCount: Int): Boolean =
 internal fun Anime.usesGroupEntriesCoverSubtitle(): Boolean =
     groupId != null && memberCount > 1
 
-fun Anime.coverTarget(): Anime = when {
+fun Anime.coverTarget(oneCoverPerGroup: Boolean = false): Anime = when {
+    oneCoverPerGroup && sharedCoverMediaId != null -> copy(
+        id = sharedCoverMediaId,
+        remoteCoverUrl = null,
+        localCoverPath = localCoverPath.takeIf { id == sharedCoverMediaId },
+        coverResolutionState = if (id == sharedCoverMediaId) coverResolutionState
+            else CoverResolutionState.UNKNOWN,
+        groupId = null,
+        groupType = null,
+        rootAnimeId = null,
+        sharedCoverMediaId = null
+    )
     groupId == null -> this
     mediaType == MediaType.ANIME || mediaType == MediaType.MANGA ->
         rootAnimeId?.let { copy(id = it, groupId = null, groupType = null) } ?: this
     else -> this
 }
+
+/** Physical owner of a cover path. Group rows for Movies/Series are not media_item rows. */
+enum class CoverStorageKind { GENERIC_ITEM, GENERIC_GROUP }
+
+data class CoverStorageIdentity(
+    val id: String,
+    val kind: CoverStorageKind
+)
+
+fun Anime.coverStorageIdentity(): CoverStorageIdentity = CoverStorageIdentity(
+    id = id,
+    kind = when {
+        supportsRemoteGroupCover() -> CoverStorageKind.GENERIC_GROUP
+        else -> CoverStorageKind.GENERIC_ITEM
+    }
+)
 
 internal fun Anime.supportsRemoteGroupCover(): Boolean =
     groupId != null && mediaType in setOf(MediaType.MOVIE, MediaType.SERIES)
@@ -504,6 +552,11 @@ fun normalizeHexColor(value: String): String? = value.trim().takeIf(HEX_COLOR_PA
 
 fun RatingCategory.withHexColor(value: String): RatingCategory? =
     normalizeHexColor(value)?.let { copy(color = it) }
+
+internal fun Color.toHexRgb(): String = "#%06X".format(toArgb() and 0x00FF_FFFF)
+
+internal fun RatingCategory.withThemeColor(value: Color): RatingCategory =
+    copy(color = value.toHexRgb())
 
 object ScoreCalculator {
     fun calculate(categoryScores: Map<String, Double?>, additiveScore: Double, config: RatingSystemConfig): ScoreResult {

@@ -21,7 +21,10 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CoverManagementIntegrationTest {
-    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private val context = IsolatedTestContext(
+        InstrumentationRegistry.getInstrumentation().targetContext,
+        "cover-management"
+    )
     private lateinit var database: AnimeDatabase
     private lateinit var mediaRepository: GenericMediaRepository
     private lateinit var groupRepository: GenericMediaGroupRepository
@@ -35,10 +38,11 @@ class CoverManagementIntegrationTest {
 
     @After
     fun tearDown() {
-        listOf(MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES, MediaType.BOOK).forEach { type ->
+        MediaType.entries.forEach { type ->
             File(context.filesDir, "covers/${type.persistedValue}").deleteRecursively()
         }
         database.close()
+        context.delete()
     }
 
     @Test
@@ -92,11 +96,7 @@ class CoverManagementIntegrationTest {
         mediaRepository.saveSimpleRating(noRemote.id, RatingDraft(), 6.0, 6.0)
         covers.downloadCover(existing.id)
         downloader.invocations.set(0)
-        val manager = CoverPreloadManager(
-            AnimeRepository(context, database),
-            CoverRepository(context, AnimeRepository(context, database)),
-            covers
-        )
+        val manager = CoverPreloadManager(covers)
 
         manager.preload(MediaType.MOVIE)
 
@@ -107,6 +107,33 @@ class CoverManagementIntegrationTest {
         assertEquals(2, manager.progress.value.existing)
         assertNull(database.mediaDao().item(unrated.id)!!.localCoverPath)
         assertNotNull(database.mediaDao().item(ratedZero.id)!!.localCoverPath)
+    }
+
+    @Test
+    fun animePreloadResolvesStableProviderIdWithoutDirectUrl() = runBlocking {
+        val anime = MediaItemEntity(
+            id = "mal:5114",
+            mediaType = MediaType.ANIME.persistedValue,
+            provider = "anime_offline_database",
+            providerId = "mal:5114",
+            title = "Anime"
+        )
+        mediaRepository.upsertItem(anime)
+        mediaRepository.saveSimpleRating(anime.id, RatingDraft(), 9.0, 9.0)
+        val downloader = FakeDownloader()
+        val covers = GenericMediaCoverRepository(
+            context,
+            database,
+            downloader = downloader,
+            animeResolver = AnimeMediaCoverResolver {
+                listOf(URI("https://cdn.myanimelist.net/images/preload.jpg"))
+            }
+        )
+
+        CoverPreloadManager(covers).preload(MediaType.ANIME)
+
+        assertEquals(1, downloader.invocations.get())
+        assertNotNull(database.mediaDao().item(anime.id)?.localCoverPath)
     }
 
     @Test
@@ -140,7 +167,7 @@ class CoverManagementIntegrationTest {
 
         assertFalse(File(path).exists())
         assertNull(database.mediaGroupDao().group(group.id)!!.localCoverPath)
-        assertEquals(9.0, database.mediaGroupDao().groupRating(group.id)!!.finalScore!!, 0.0)
+        assertEquals(9.0, database.mediaGroupDao().groupRating("movies", group.id)!!.finalScore!!, 0.0)
         assertEquals(listOf(first.id, second.id), database.mediaGroupDao().groupMembers(group.id).map { it.id })
     }
 

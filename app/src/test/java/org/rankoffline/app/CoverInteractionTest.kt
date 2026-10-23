@@ -56,7 +56,30 @@ class CoverInteractionTest {
 
         assertEquals(group.id, group.coverTarget().id)
         assertTrue(group.supportsRemoteGroupCover())
+        assertEquals(CoverStorageKind.GENERIC_GROUP, group.coverStorageIdentity().kind)
         assertFalse(group.copy(mediaType = MediaType.MANGA).supportsRemoteGroupCover())
+        assertEquals(
+            CoverStorageKind.GENERIC_ITEM,
+            group.copy(mediaType = MediaType.MANGA).coverTarget().coverStorageIdentity().kind
+        )
+    }
+
+    @Test
+    fun sharedGroupCoverCanBeEnabledAndDisabledWithoutChangingStoredCover() {
+        val member = Anime(
+            id = "movie:tmdb:2",
+            title = "Second",
+            mediaType = MediaType.MOVIE,
+            localCoverPath = "/covers/second.webp",
+            sharedCoverMediaId = "movie:tmdb:1"
+        )
+
+        assertEquals(member.id, member.coverTarget(oneCoverPerGroup = false).id)
+        assertEquals("/covers/second.webp", member.coverTarget(false).localCoverPath)
+        val shared = member.coverTarget(oneCoverPerGroup = true)
+        assertEquals("movie:tmdb:1", shared.id)
+        assertEquals(null, shared.localCoverPath)
+        assertEquals("/covers/second.webp", member.localCoverPath)
     }
 
     @Test

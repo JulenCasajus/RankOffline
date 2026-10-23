@@ -8,6 +8,19 @@ import org.junit.Test
 
 class MediaSettingsTest {
     @Test
+    fun destructiveCategoryResetChangesOnlyTheSelectedMediaSettings() {
+        val original = DefaultSettings.allMediaSettings().mapValues { (mediaType, settings) ->
+            settings.copy(elaborateRatingEnabled = true, mergeEnabled = mediaType.supportsMerge())
+        }
+
+        val reset = resetMediaSettingsForCategory(original, MediaType.MOVIE)
+
+        assertEquals(DefaultSettings.mediaSettings(MediaType.MOVIE), reset.getValue(MediaType.MOVIE))
+        MediaType.entries.filterNot { it == MediaType.MOVIE }.forEach { mediaType ->
+            assertEquals(original.getValue(mediaType), reset.getValue(mediaType))
+        }
+    }
+    @Test
     fun freshSettingsContainAllFiveIndependentMediaDefaults() {
         val state = AppSettingsState()
 
@@ -179,15 +192,20 @@ class MediaSettingsTest {
 
     @Test
     fun snapshotUsesStablePersistedMediaKeysAndRoundTrips() {
-        val settings = DefaultSettings.allMediaSettings()
+        val settings = DefaultSettings.allMediaSettings() + (
+            MediaType.MOVIE to DefaultSettings.mediaSettings(MediaType.MOVIE)
+                .copy(oneCoverPerGroup = true)
+        )
         val encoded = encodeMediaSettingsSnapshot(settings)
 
-        MediaType.entries.forEach { assertTrue(encoded.contains("\"${it.persistedValue}\"")) }
+        MediaType.entries.forEach { assertTrue(encoded.contains("\"${it.toPackId().value}\"")) }
         val normalized = normalizeMediaSettingsSnapshot(
             decodeMediaSettingsSnapshot(encoded),
             settings.getValue(MediaType.ANIME)
         )
         assertEquals(settings, normalized)
+        assertTrue(normalized.getValue(MediaType.MOVIE).oneCoverPerGroup)
+        assertFalse(normalized.getValue(MediaType.ANIME).oneCoverPerGroup)
     }
 
     @Test
@@ -325,5 +343,5 @@ class MediaSettingsTest {
 
     private fun mediaJson(settings: MediaSettings): String = encodeMediaSettingsSnapshot(
         mapOf(MediaType.ANIME to settings)
-    ).substringAfter("\"anime\":").dropLast(2)
+    ).substringAfter("\"${MediaType.ANIME.toPackId().value}\":").dropLast(2)
 }

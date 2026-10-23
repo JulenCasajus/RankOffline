@@ -1,19 +1,19 @@
 # RankOffline
 
-RankOffline is a **local-first Android app** for browsing an offline anime catalog, rating anime with either a simple score or a configurable weighted system, and building a personal ranking without an account or telemetry.
+RankOffline is a **local-first Android app** for browsing independently installed Anime, Manga, Movies, Series, and Books catalogs, rating entries with either a simple score or a configurable weighted system, and building personal rankings without an account or telemetry.
 
 ## Highlights
 
-- **40,742 anime** bundled for offline browsing and search.
+- **Five independent data-only packs** installed outside the small Core APK.
 - **Simple rating** from 0 to 10 in 0.5-point steps.
 - **Elaborate rating** with reusable rating profiles, weighted categories, N/A support, and a separate personal-taste bonus.
 - **Custom categories** with editable names, descriptions, colors, and stable IDs.
 - **Custom profiles** with independent category weights; profiles can be created, renamed, edited, and deleted.
-- **Personal ranking** driven by one canonical saved score per anime.
+- **Personal ranking** driven by one canonical saved score per item or explicit group.
 - Notes and watch status stored locally.
-- Optional cover downloads and explicit Top 100/500/1000/5000 popularity refreshes.
+- Optional, validated provider cover downloads with local offline reuse.
 - Nine UI languages: English, Spanish, German, French, Russian, Japanese, Simplified Chinese, Basque, and Italian.
-- Five selectable launcher icons: Dark, Blue, Red, Green, and Yellow.
+- Eight selectable launcher icons backed by verified Android launcher aliases.
 - No analytics, telemetry, account system, or cloud rating storage.
 
 ## Rating system
@@ -53,22 +53,23 @@ See [docs/SCORING.md](docs/SCORING.md) for the complete model.
 
 ## Offline catalog
 
-The catalog is bundled into the APK, so browsing, search, ratings, notes, ranking, and settings work offline. Internet access is used only for explicit popularity/cover actions.
+RankOffline Core is a small APK. Production catalogs are independently downloaded, verified and
+installed as data-only packs; installed packs then provide browsing, search, ratings and ranking
+fully offline.
 
-The bundled catalog currently contains **40,742 unique entries** and a complete local Top 5000 popularity snapshot. Catalog updates are deliberate and versioned.
+Schema-v1 packs are verified and atomically installed below app-private `files/packs/`. Deleting a
+pack is an explicit destructive purge of that pack and its PackId-scoped personal state. See
+[`docs/CATEGORY_PACK_ARCHITECTURE.md`](docs/CATEGORY_PACK_ARCHITECTURE.md).
 
-To rebuild the catalog manually:
+To rebuild the normalized pack set manually:
 
 ```bash
-python tools/fetch_catalog.py
+python3 tools/category_packs/build_category_packs.py
 ```
 
-The script downloads AnimeAPI's master array, enriches known AniList IDs with
-metadata and explicit relations, adds the Top 5000 popularity snapshot,
-validates the result, and updates both `anime_catalog.json` and its
-content-version hash. Group membership is derived offline from those explicit
-relations; normal builds never contact AniList to rebuild the catalog. Do not
-regenerate the catalog as part of an unrelated change.
+Provider-specific source tools produce normalized catalog/group snapshots. Group membership is
+derived offline from explicit provider relationships; the Android Merge toggle never discovers or
+rewrites relationships.
 
 ## Install
 
@@ -125,6 +126,8 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Pack format](docs/PACK_FORMAT.md)
+- [Custom-pack status](docs/CUSTOM_PACKS.md)
 - [Scoring model](docs/SCORING.md)
 - [Releasing](docs/RELEASING.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -140,13 +143,15 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing
   [manami-project](https://github.com/manami-project/anime-offline-database).
 - **Manga:** [MangaDex](https://mangadex.org) provides metadata, aliases,
   creator/tag relationships, conservative variant relations, and cover
-  references. RankOffline does not read or distribute chapters.
+  references through bundled snapshots and explicit user-triggered discovery.
+  RankOffline does not read or distribute chapters.
 - **Movies / Series:** [TMDB](https://www.themoviedb.org) provides metadata,
   canonical collection/season grouping, alternative titles, and poster
   references.
 - **Books:** [Open Library](https://openlibrary.org) bulk dumps provide Work and
-  author metadata. Cover images are retrieved separately through its Covers
-  service and are not claimed to be CC0 or public domain.
+  author metadata; its Search API supports explicit user-triggered Work
+  discovery. Cover images are retrieved separately through its Covers service
+  and are not claimed to be CC0 or public domain.
 
 Application code and bundled/remote data have separate licences. See
 [Data sources and provider constraints](docs/DATA_SOURCES.md) and

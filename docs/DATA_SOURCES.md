@@ -111,7 +111,9 @@ source URL and hashes are recorded in `assets/legal/TMDB_LOGO_PROVENANCE.txt`.
 The logo is not downloaded at runtime.
 
 TMDB metadata generation is build-time/offline. Android never calls the TMDB
-metadata API; explicit cover retrieval uses only `image.tmdb.org`. Current use
+metadata API because an application credential cannot be kept secret in an APK;
+Movie/Series online discovery is capability-gated for a future RankOffline backend.
+Explicit cover retrieval uses only `image.tmdb.org`. Current use
 is non-commercial. Commercial use requires a separate licensing review/contact
 with TMDB before publication.
 
@@ -123,10 +125,10 @@ A MangaDex manga resource represents the RankOffline item; chapters and volumes
 are subordinate data and are not synthesized as items.
 
 The offline generator accepts explicit UUIDs or an explicitly bounded listing
-request, expands only cover/author/artist metadata, and caches successful public
-API responses for resumable runs. Production catalog selection remains bounded
-pending a provider-compliant enumeration strategy; it never scrapes HTML or
-uses authentication/user synchronization.
+request, orders production discovery by MangaDex `followedCount`, excludes
+`pornographic` content, expands only cover/author/artist metadata, and caches
+successful public API responses and discovery pages for resumable runs. It
+never scrapes HTML or uses authentication/user synchronization.
 
 The generator follows the current
 [official MangaDex API documentation](https://api.mangadex.org/docs/) and
@@ -165,8 +167,10 @@ paid service, accounts, or telemetry; those constraints must not be relaxed
 without first reassessing MangaDex permission.
 
 Catalog generation may use `api.mangadex.org` in explicit bounded tooling.
-Android does not call that metadata API; explicit cover retrieval uses only
-`uploads.mangadex.org`. RankOffline does not read chapters, so it neither
+Android calls that same fixed HTTPS host only after the user explicitly chooses
+to search for more Manga online; visible result pages are normalized and stored
+locally by provider UUID. Typing never triggers provider requests. Explicit
+cover retrieval uses only `uploads.mangadex.org`. RankOffline does not read chapters, so it neither
 distributes scanlation content nor presents scanlation-group credits.
 
 ## Open Library: Books
@@ -202,15 +206,19 @@ Tooling must:
 - explain missing inputs and stop instead of falling back to mass API calls;
 - validate with tiny compressed fixtures before production processing.
 
-Book popularity is not invented. If exposed, its documented formula derives
-from source counts such as reading-log or rating counts and retains useful raw
-counts. It is only meaningful inside Books.
+Book production selection uses a bounded Open Library Search whitelist with
+`sort=readinglog` (`readinglog_count DESC`), then enriches exactly those Work IDs from the local
+Works/Authors dumps. The raw reading-log count and deterministic snapshot rank
+are retained and are only meaningful inside Books.
 
 Work records do not provide a complete set of translated Edition titles. The
 initial catalog therefore searches the canonical Work title plus conservative
 Work-level aliases such as title and subtitle combined. A future offline
 Edition pass may enrich aliases without turning Editions into rankable items.
 
+Android may query Open Library Search only after the user explicitly chooses to
+search for more Books online. Results remain Work-level, are paged in bounded
+25-result requests, and are persisted locally; typing does not make requests.
 Cover ID is the preferred stored reference. Explicit user download resolves a
 Large HTTPS cover URL and uses `default=false` so a missing image returns a real
 failure. Open Library explicitly asks clients not to crawl the Covers API; see
@@ -230,9 +238,11 @@ uses only `covers.openlibrary.org` for explicit cover retrieval.
 
 ## Catalog production and legal checkpoints
 
-Production generation is pending until each provider tool passes deterministic
-fixture tests and the user approves scope after measurements. Caches, raw dumps,
-tokens, and multi-gigabyte generated files are not repository artifacts.
+The Block 21 production snapshots have been generated and validated: 10,000
+MangaDex Works, 50,000 TMDB Movies, numbered seasons from 10,000 TMDB parent
+series, and 50,000 Open Library Works. Exact snapshot dates, selection rules,
+counts, hashes, and sizes are recorded in `docs/PRODUCTION_CATALOG_REPORT.md`.
+Caches, raw dumps, and tokens are not repository artifacts.
 
 Before a production catalog or release:
 
@@ -245,6 +255,35 @@ Before a production catalog or release:
 6. confirm that no credential or user data is embedded;
 7. retain source-specific licensing separately from RankOffline GPL-3.0-only.
 
-Current unresolved release items include AniList authorization, MangaDex
-enumeration/policy verification, provider catalog
-scope, and whether Book Editions have sufficient product value to include.
+Current unresolved release items include the existing AniList authorization
+constraint and provider-specific cover-art redistribution rights. Book Editions
+are intentionally not rankable items: the production model is one Work per Book.
+
+### Cover warm-up and Book merge decision
+
+RankOffline does not redistribute provider cover binaries in its APK or catalog
+packs. Instead, choosing the image-enabled onboarding style starts a one-time,
+bounded Top-100 warm-up for installed catalogs using the same fixed HTTPS hosts,
+validation, atomic install, and private cover cache as an explicit cover tap.
+Two downloads run concurrently. TMDB documents its image CDN and permits
+non-commercial API data/image use with attribution; MangaDex exposes its cover
+thumbnail host but does not grant RankOffline redistribution rights; Open
+Library asks public clients to reference `covers.openlibrary.org` and explicitly
+warns not to crawl the Covers API. Consequently, these files remain per-device
+cache data and are never repackaged as RankOffline release artifacts.
+
+The production cover-reference coverage is 100/100 Manga, 100/100 Movies,
+98/100 Books, and 100/100 distinct Series popularity ranks (individual season
+poster coverage is lower). Anime production metadata has provider IDs rather
+than image URLs, so its warm-up uses the existing bounded AniList/Jikan resolver
+and stores only the resolved private-device copy. Missing or rejected covers
+remain honest placeholders.
+
+Books continue to hide Merge. One Open Library Work is already the canonical
+work-level merge of its Editions. The current snapshot contains neither a
+reliable explicit relationship between separate Works nor identifiers suitable
+for a deterministic secondary cover-provider join. Title/author fuzzy matching
+would risk merging unrelated books and is therefore deliberately rejected.
+Open Library cover references cover 45,459/50,000 Books (90.92%) and 98/100 of
+the Top 100; no secondary provider is added without a stable identifier mapping
+and compatible terms.

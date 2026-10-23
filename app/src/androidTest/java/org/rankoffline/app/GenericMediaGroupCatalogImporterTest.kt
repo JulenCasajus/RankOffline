@@ -32,7 +32,7 @@ class GenericMediaGroupCatalogImporterTest {
             AnimeDatabase::class.java
         ).build()
         importer = GenericMediaGroupCatalogImporter(database, batchSize = 2)
-        mediaRepository = GenericMediaRepository(database) { 10L }
+        mediaRepository = GenericMediaRepository(database, now = { 10L })
         groupRepository = GenericMediaGroupRepository(database) { 20L }
     }
 
@@ -62,6 +62,55 @@ class GenericMediaGroupCatalogImporterTest {
             "1",
             database.mediaCatalogDao().metadata("movie", GenericMediaGroupCatalogImporter.METADATA_COUNT)
         )
+    }
+
+    @Test
+    fun normalizedAnimeRelationsUseTheSamePrecomputedGroupImporter() = runBlocking {
+        val items = listOf("mal:1", "mal:2").mapIndexed { index, id ->
+            MediaItemEntity(
+                id = id,
+                mediaType = "anime",
+                provider = "anime_offline_database",
+                providerId = id,
+                title = "Season ${index + 1}"
+            )
+        }
+        mediaRepository.upsertItems(items)
+        val record = MediaGroupCatalogRecord(
+            id = "group:mal:1:SERIES",
+            mediaType = "anime",
+            groupType = "RELATIONS",
+            provider = "anime_offline_database",
+            providerGroupId = "group:mal:1:SERIES",
+            displayTitle = "Example series",
+            representativeMediaId = "mal:1",
+            memberCount = 2,
+            popularity = 100.0,
+            popularityRank = 1,
+            members = listOf(
+                MediaGroupCatalogMember("mal:1", 0),
+                MediaGroupCatalogMember("mal:2", 1)
+            )
+        )
+        val bytes = catalog(listOf(record))
+        val manifest = MediaGroupCatalogManifest(
+            formatVersion = MEDIA_GROUP_CATALOG_FORMAT_VERSION,
+            mediaType = "anime",
+            provider = "anime_offline_database",
+            catalogVersion = "v1",
+            sha256 = MessageDigest.getInstance("SHA-256").digest(bytes)
+                .joinToString("") { "%02x".format(it) },
+            groupCount = 1
+        )
+
+        assertEquals(
+            MediaGroupCatalogImportResult.Imported(1),
+            importer.importIfNeeded(manifest, ByteArrayInputStream(bytes), "RELATIONS")
+        )
+        val detail = groupRepository.groupDetail(record.id)
+        assertNotNull(detail)
+        assertEquals(listOf("mal:1", "mal:2"), detail?.members?.map(MediaItem::id))
+        assertEquals(2, database.mediaGroupDao().membershipCount("anime", "RELATIONS"))
     }
 
     @Test
@@ -127,6 +176,34 @@ class GenericMediaGroupCatalogImporterTest {
         assertNotNull(mediaRepository.item("movie:tmdb:1"))
     }
 
+    @Test
+    fun replacementDropsStaleRelationshipRowsButPreservesUserOwnedGroupRating() = runBlocking {
+        insertMovies("1", "2", "3")
+        val removed = collection("10", listOf("1" to 0, "2" to 1), title = "Removed")
+        val retained = collection("11", listOf("2" to 0, "3" to 1), title = "Retained")
+        val first = catalog(listOf(removed, retained))
+        importer.importIfNeeded(manifest("v1", first, 2), ByteArrayInputStream(first), "COLLECTION")
+        groupRepository.saveSimpleGroupRating(removed.id, RatingDraft(notes = "personal"), 7.0, 7.0)
+
+        val second = catalog(listOf(retained.copy(displayTitle = "Updated")))
+        importer.importIfNeeded(manifest("v2", second, 1), ByteArrayInputStream(second), "COLLECTION")
+
+        assertNull(database.mediaGroupDao().group(removed.id))
+        assertEquals("personal", database.mediaGroupDao().groupRating("movies", removed.id)?.notes)
+        assertEquals("Updated", database.mediaGroupDao().group(retained.id)?.displayTitle)
+    }
+
+    @Test
+    fun manifestDeclaredGroupTypeIsEnforcedBeforeReady() = runBlocking {
+        insertMovies("1", "2")
+        val bytes = catalog(listOf(collection("10", listOf("1" to 0, "2" to 1))))
+
+        assertTrue(runCatching {
+            importer.importIfNeeded(manifest("v1", bytes, 1), ByteArrayInputStream(bytes), "SEASONS")
+        }.isFailure)
+        assertEquals(0, database.mediaGroupDao().groupCount("movie", "COLLECTION"))
+    }
+
     private suspend fun insertMovies(vararg ids: String) {
         mediaRepository.upsertItems(ids.map { id ->
             MediaItemEntity(
@@ -151,6 +228,10 @@ class GenericMediaGroupCatalogImporterTest {
         provider = "tmdb",
         providerGroupId = id,
         displayTitle = title,
+        representativeMediaId = "movie:tmdb:${members.minBy { it.second }.first}",
+        memberCount = members.size,
+        popularity = 100.0,
+        popularityRank = 1,
         remoteCoverRef = remoteCoverRef,
         members = members.map { (mediaId, position) ->
             MediaGroupCatalogMember("movie:tmdb:$mediaId", position)

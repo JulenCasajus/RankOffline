@@ -19,7 +19,9 @@ class GenericMediaRatingLogicTest {
             year = 1999,
             coverResolutionState = "BROKEN_VALUE"
         )
-        val rating = MediaRatingEntity(entity.id, 0.4, 8.0, 8.4, "note", "Completed", 1L, "general")
+        val rating = MediaRatingEntity(
+            entity.id, 0.4, 8.0, 8.4, "note", "Completed", 1L, "general", "movies"
+        )
 
         val domain = entity.toDomain(rating, categoryScore = 9.0)
 
@@ -67,7 +69,9 @@ class GenericMediaRatingLogicTest {
             notes = "note"
         )
 
-        val save = buildGenericElaborateRating("book:test", draft, config, profileId = "general", updatedAt = 7L)
+        val save = buildGenericElaborateRating(
+            "books", "book:test", draft, config, profileId = "general", updatedAt = 7L
+        )
         val shared = ScoreCalculator.calculate(draft.categoryScores, draft.additiveScore, config)
 
         assertEquals(shared.qualityScore, save.rating.qualityScore)
@@ -81,6 +85,7 @@ class GenericMediaRatingLogicTest {
     fun elaborateAdapterRejectsNonDiscreteCategoryValues() {
         assertThrows(IllegalArgumentException::class.java) {
             buildGenericElaborateRating(
+                packId = "mangas",
                 mediaId = "manga:test",
                 draft = RatingDraft(categoryScores = mapOf("writing" to 8.2)),
                 config = config(),
@@ -92,6 +97,7 @@ class GenericMediaRatingLogicTest {
     @Test
     fun simpleAdapterKeepsZeroAsARealCanonicalScore() {
         val rating = buildGenericSimpleRating(
+            packId = "movies",
             mediaId = "movie:test",
             draft = RatingDraft(additiveScore = 0.0, notes = "zero", profileId = "visual_direction"),
             qualityScore = 0.0,

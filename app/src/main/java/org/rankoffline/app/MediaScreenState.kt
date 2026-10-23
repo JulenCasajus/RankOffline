@@ -7,6 +7,26 @@ data class SearchUiState(
     val genericFilters: GenericMediaFilters = GenericMediaFilters()
 )
 
+data class SearchPageAccumulator<T>(
+    val items: List<T> = emptyList(),
+    val nextOffset: Int = 0,
+    val hasMore: Boolean = true
+) {
+    fun append(page: List<T>, requestedSize: Int, identity: (T) -> String): SearchPageAccumulator<T> {
+        require(requestedSize > 0)
+        return SearchPageAccumulator(
+            items = (items + page).distinctBy(identity),
+            nextOffset = nextOffset + page.size,
+            hasMore = page.size == requestedSize
+        )
+    }
+}
+
+enum class BottomNavigationAction { SWITCH, RESELECT }
+
+internal fun bottomNavigationAction(current: Int, target: Int): BottomNavigationAction =
+    if (current == target) BottomNavigationAction.RESELECT else BottomNavigationAction.SWITCH
+
 data class RankingUiState(
     val sortOrder: RankingSortOrder = RankingSortOrder.FINAL_SCORE,
     val descending: Boolean = true,
@@ -17,28 +37,36 @@ data class RankingUiState(
 
 data class GenericMediaFilters(
     val genre: String? = null,
+    val format: String? = null,
     val year: Int? = null,
     val creditName: String? = null,
     val demographic: String? = null
 ) {
-    val activeCount: Int get() = listOf(genre, year, creditName, demographic).count { it != null }
+    val activeCount: Int get() = listOf(genre, format, year, creditName, demographic).count { it != null }
 }
 
 data class GenericMediaFilterOptions(
     val genres: List<String> = emptyList(),
+    val formats: List<String> = emptyList(),
     val years: List<Int> = emptyList(),
     val creditNames: List<String> = emptyList(),
     val demographics: List<String> = emptyList()
 )
 
-enum class MediaDataPath { ANIME, GENERIC, UNSUPPORTED }
+internal fun AnimeFilters.toGenericMediaFilters(): GenericMediaFilters = GenericMediaFilters(
+    genre = genre,
+    format = format,
+    year = year,
+    creditName = studio
+)
 
-fun MediaType.dataPath(): MediaDataPath = when (this) {
-    MediaType.ANIME -> MediaDataPath.ANIME
-    MediaType.MANGA, MediaType.MOVIE, MediaType.SERIES, MediaType.BOOK -> MediaDataPath.GENERIC
-}
+enum class MediaDataPath { GENERIC }
+
+fun MediaType.dataPath(): MediaDataPath = MediaDataPath.GENERIC
 
 fun MediaType.genericFilterCreditRole(): String? = when (this) {
+    MediaType.ANIME -> "STUDIO"
+    MediaType.MANGA -> "AUTHOR"
     MediaType.MOVIE -> "PRODUCTION_COMPANY"
     MediaType.SERIES -> "NETWORK"
     MediaType.BOOK -> "AUTHOR"
@@ -46,6 +74,7 @@ fun MediaType.genericFilterCreditRole(): String? = when (this) {
 }
 
 fun MediaType.genericGroupType(): String? = when (this) {
+    MediaType.ANIME -> "RELATIONS"
     MediaType.MANGA -> "VARIANTS"
     MediaType.SERIES -> "SEASONS"
     MediaType.MOVIE -> "COLLECTION"
@@ -54,21 +83,19 @@ fun MediaType.genericGroupType(): String? = when (this) {
 
 fun MediaType.supportsMerge(): Boolean = this != MediaType.BOOK
 
-fun MediaType.catalogSortCriteria(): List<CatalogSortOrder> = when (this) {
-    MediaType.BOOK -> listOf(CatalogSortOrder.TITLE_ASC)
-    else -> listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC)
-}
+fun MediaType.catalogSortCriteria(): List<CatalogSortOrder> =
+    listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC)
 
 internal fun defaultSearchUiStates(): Map<MediaType, SearchUiState> =
-    MediaType.entries.associateWith { mediaType ->
-        SearchUiState(
-            sortOrder = if (mediaType == MediaType.MANGA || mediaType == MediaType.BOOK) {
-                CatalogSortOrder.TITLE_ASC
-            } else {
-                CatalogSortOrder.POPULARITY
-            }
-        )
-    }
+    MediaType.entries.associateWith { SearchUiState(sortOrder = CatalogSortOrder.POPULARITY) }
+
+internal fun Map<MediaType, SearchUiState>.withCatalogSortOrders(
+    sortOrders: Map<MediaType, CatalogSortOrder>
+): Map<MediaType, SearchUiState> = MediaType.entries.associateWith { mediaType ->
+    searchStateFor(mediaType).copy(
+        sortOrder = sortOrders[mediaType] ?: CatalogSortOrder.POPULARITY
+    )
+}
 
 internal fun defaultRankingUiStates(): Map<MediaType, RankingUiState> =
     MediaType.entries.associateWith { RankingUiState() }

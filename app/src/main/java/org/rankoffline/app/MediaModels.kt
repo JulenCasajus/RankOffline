@@ -13,6 +13,8 @@ data class MediaItem(
     val status: String? = null,
     val originalLanguage: String? = null,
     val demographic: String? = null,
+    val genre: String? = null,
+    val filterCredit: String? = null,
     val partNumber: Int? = null,
     val popularity: Double? = null,
     val popularityRank: Int? = null,
@@ -22,7 +24,8 @@ data class MediaItem(
     val categoryScore: Double? = null,
     val remoteCoverRef: String? = null,
     val localCoverPath: String? = null,
-    val coverResolutionState: CoverResolutionState = CoverResolutionState.UNKNOWN
+    val coverResolutionState: CoverResolutionState = CoverResolutionState.UNKNOWN,
+    val sharedCoverMediaId: String? = null
 )
 
 data class MediaGroup(
@@ -71,9 +74,11 @@ sealed interface MediaListEntry {
         override val additiveScore: Double?,
         override val categoryScore: Double?,
         val popularity: Double?,
+        val popularityRank: Int?,
         val memberCount: Int,
         val ratedCount: Int,
         val representativeMediaId: String?,
+        val sharedCoverMediaId: String? = null,
         val derived: Boolean
     ) : MediaListEntry {
         override val id get() = value.id
@@ -84,7 +89,9 @@ sealed interface MediaListEntry {
 
 fun MediaItemEntity.toDomain(
     rating: MediaRatingEntity? = null,
-    categoryScore: Double? = null
+    categoryScore: Double? = null,
+    genre: String? = null,
+    filterCredit: String? = null
 ): MediaItem = MediaItem(
     id = id,
     mediaType = MediaType.fromPersistedValue(mediaType),
@@ -98,6 +105,8 @@ fun MediaItemEntity.toDomain(
     status = status,
     originalLanguage = originalLanguage,
     demographic = demographic,
+    genre = genre,
+    filterCredit = filterCredit,
     partNumber = partNumber,
     popularity = popularity,
     popularityRank = popularityRank,
@@ -130,43 +139,7 @@ fun Anime.toMediaItem(): MediaItem = MediaItem(
     coverResolutionState = coverResolutionState
 )
 
-fun MediaListEntry.toAnimeDisplay(): Anime = when (this) {
-    is MediaListEntry.Item -> Anime(
-        id = value.id,
-        title = value.title,
-        mediaType = value.mediaType,
-        popularity = value.popularity?.toInt(),
-        popularityRank = value.popularityRank,
-        finalScore = value.finalScore,
-        baseScore = value.qualityScore,
-        additiveScore = value.additiveScore,
-        categoryScore = value.categoryScore,
-        status = value.status,
-        localCoverPath = value.localCoverPath,
-        coverResolutionState = value.coverResolutionState,
-        format = value.format,
-        seasonYear = value.year,
-        startDate = value.startDate
-    )
-    is MediaListEntry.Group -> Anime(
-        id = value.id,
-        title = value.displayTitle,
-        mediaType = value.mediaType,
-        popularity = popularity?.toInt(),
-        finalScore = finalScore,
-        baseScore = qualityScore,
-        additiveScore = additiveScore,
-        categoryScore = categoryScore,
-        localCoverPath = value.localCoverPath,
-        coverResolutionState = value.coverResolutionState,
-        groupId = value.id,
-        groupType = value.groupType,
-        rootAnimeId = representativeMediaId,
-        memberCount = memberCount,
-        ratedCount = ratedCount,
-        derived = derived
-    )
-}
+fun MediaListEntry.toAnimeDisplay(): Anime = toCatalogItemUiModel().toLegacyAnimeDisplay()
 
 fun MediaGroupEntity.toDomain(): MediaGroup = MediaGroup(
     id = id,

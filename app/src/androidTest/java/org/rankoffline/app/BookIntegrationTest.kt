@@ -24,7 +24,7 @@ class BookIntegrationTest {
             InstrumentationRegistry.getInstrumentation().targetContext,
             AnimeDatabase::class.java
         ).build()
-        repository = GenericMediaRepository(database) { 100L }
+        repository = GenericMediaRepository(database, now = { 100L })
     }
 
     @After
@@ -158,13 +158,24 @@ class BookIntegrationTest {
 
     @Test
     fun missingOptionalBookCatalogIsUnavailableWithoutFallback() = runBlocking {
-        val manager = BundledMediaCatalogManager(
+        // Other instrumentation classes exercise the real pack installer in the same target-app
+        // sandbox. This test specifically verifies the no-files/no-bundled-assets branch.
+        val context = IsolatedTestContext(
             InstrumentationRegistry.getInstrumentation().targetContext,
-            database
+            "missing-book-pack"
         )
+        try {
+            val manager = BundledMediaCatalogManager(
+                context,
+                database,
+                bundledCatalogsAvailable = false
+            )
 
-        assertEquals(CatalogAvailability.UNAVAILABLE, manager.importOptional(MediaType.BOOK))
-        assertTrue(search().isEmpty())
+            assertEquals(CatalogAvailability.UNAVAILABLE, manager.importOptional(MediaType.BOOK))
+            assertTrue(search().isEmpty())
+        } finally {
+            context.delete()
+        }
     }
 
     private suspend fun search(

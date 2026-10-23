@@ -69,10 +69,32 @@ class MediaScreenStateTest {
             }
 
         assertEquals(
-            SearchUiState(sortOrder = CatalogSortOrder.TITLE_ASC),
+            SearchUiState(sortOrder = CatalogSortOrder.POPULARITY),
             states.searchStateFor(MediaType.BOOK)
         )
         assertNotSame(states.searchStateFor(MediaType.ANIME), states.searchStateFor(MediaType.BOOK))
+    }
+
+    @Test
+    fun persistedSortOrdersAreAppliedWithoutChangingOtherSearchState() {
+        val original = defaultSearchUiStates()
+            .updateSearchUiState(MediaType.ANIME) { it.copy(query = "Frieren") }
+            .updateSearchUiState(MediaType.BOOK) {
+                it.copy(genericFilters = GenericMediaFilters(year = 1965))
+            }
+
+        val restored = original.withCatalogSortOrders(
+            mapOf(
+                MediaType.ANIME to CatalogSortOrder.TITLE_ASC,
+                MediaType.BOOK to CatalogSortOrder.TITLE_DESC
+            )
+        )
+
+        assertEquals(CatalogSortOrder.TITLE_ASC, restored.getValue(MediaType.ANIME).sortOrder)
+        assertEquals("Frieren", restored.getValue(MediaType.ANIME).query)
+        assertEquals(CatalogSortOrder.TITLE_DESC, restored.getValue(MediaType.BOOK).sortOrder)
+        assertEquals(1965, restored.getValue(MediaType.BOOK).genericFilters.year)
+        assertEquals(CatalogSortOrder.POPULARITY, restored.getValue(MediaType.MANGA).sortOrder)
     }
 
     @Test

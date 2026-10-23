@@ -1,6 +1,7 @@
 package org.rankoffline.app
 
 import android.database.sqlite.SQLiteConstraintException
+import android.util.Log
 import androidx.room.withTransaction
 import java.io.InputStream
 import java.security.DigestInputStream
@@ -32,18 +33,27 @@ class GenericMediaCatalogImporter(
         manifest: MediaCatalogManifest,
         compressedCatalog: InputStream
     ): MediaCatalogImportResult = withContext(Dispatchers.IO) {
+        val startedAt = System.nanoTime()
         validateMediaCatalogManifest(manifest)
-        compressedCatalog.use { input ->
+        val result = compressedCatalog.use { input ->
             database.withTransaction {
                 if (isCurrent(manifest)) return@withTransaction MediaCatalogImportResult.NoChange
                 importCatalog(manifest, input)
             }
         }
+        if (BuildConfig.DEBUG) Log.d(
+            CATALOG_LOG_TAG,
+            "pack=${manifest.mediaType} operation=catalog-import result=${result.javaClass.simpleName} " +
+                "items=${manifest.itemCount} elapsedMs=${catalogElapsedMs(startedAt)}"
+        )
+        result
     }
 
     private suspend fun isCurrent(manifest: MediaCatalogManifest): Boolean =
         dao.metadata(manifest.mediaType, METADATA_VERSION) == manifest.catalogVersion &&
-            dao.metadata(manifest.mediaType, METADATA_SHA256) == manifest.sha256
+            dao.metadata(manifest.mediaType, METADATA_SHA256) == manifest.sha256 &&
+            dao.metadata(manifest.mediaType, METADATA_ITEM_COUNT) == manifest.itemCount.toString() &&
+            dao.catalogItemCount(manifest.mediaType) == manifest.itemCount
 
     private suspend fun importCatalog(
         manifest: MediaCatalogManifest,
@@ -51,6 +61,14 @@ class GenericMediaCatalogImporter(
     ): MediaCatalogImportResult.Imported {
         val stageName = "media_catalog_seen_${UUID.randomUUID().toString().replace("-", "")}"
         val sqlite = database.openHelper.writableDatabase
+        val timings = ImportTimings()
+        val freshCatalog = dao.catalogItemCount(manifest.mediaType) == 0L
+        // These secondary indexes make browsing fast but are expensive to maintain for tens of
+        // thousands of fresh auxiliary rows. DDL is transactional here: a failed import restores
+        // both the previous rows and indexes.
+        sqlite.execSQL("DROP INDEX IF EXISTS `idx_media_genre_genre`")
+        sqlite.execSQL("DROP INDEX IF EXISTS `idx_media_credit_role_name`")
+        sqlite.execSQL("DROP INDEX IF EXISTS `idx_media_alias_title`")
         sqlite.execSQL(
             "CREATE TABLE `$stageName` (" +
                 "id TEXT NOT NULL PRIMARY KEY, " +
@@ -80,6 +98,7 @@ class GenericMediaCatalogImporter(
                 if (line.isBlank()) {
                     throw MediaCatalogImportException("Blank JSONL record at line $lineNumber")
                 }
+                val parseStarted = System.nanoTime()
                 val record = try {
                     parseMediaCatalogRecord(line)
                 } catch (exception: Exception) {
@@ -104,14 +123,15 @@ class GenericMediaCatalogImporter(
                         exception
                     )
                 }
+                timings.parseNanos += System.nanoTime() - parseStarted
                 batch += record
                 parsedCount++
                 if (batch.size == batchSize) {
-                    writeBatch(batch)
+                    writeBatch(batch, timings, freshCatalog)
                     batch.clear()
                 }
             }
-            if (batch.isNotEmpty()) writeBatch(batch)
+            if (batch.isNotEmpty()) writeBatch(batch, timings, freshCatalog)
 
             // GZIPInputStream may stop with unread trailing raw bytes. Drain the digest stream so
             // the hash always covers the exact compressed asset supplied by the caller.
@@ -128,6 +148,23 @@ class GenericMediaCatalogImporter(
                     "Catalog item count mismatch: expected ${manifest.itemCount}, got $parsedCount"
                 )
             }
+            val reconcileStarted = System.nanoTime()
+            // The pack catalog is the complete reference snapshot. Personal rows are keyed by
+            // canonical ID without a catalog foreign key, so stale reference rows can be removed
+            // safely while ratings remain available for a future reappearance of that ID.
+            sqlite.execSQL(
+                "DELETE FROM media_item WHERE media_type=? AND id NOT IN " +
+                    "(SELECT id FROM `$stageName`)",
+                arrayOf(manifest.mediaType)
+            )
+            timings.reconcileSqlNanos += System.nanoTime() - reconcileStarted
+            val indexStarted = System.nanoTime()
+            sqlite.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_genre_genre` ON `media_genre` (`genre`)")
+            sqlite.execSQL(
+                "CREATE INDEX IF NOT EXISTS `idx_media_credit_role_name` ON `media_credit` (`role`, `name`)"
+            )
+            sqlite.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_alias_title` ON `media_alias` (`title`)")
+            timings.indexSqlNanos += System.nanoTime() - indexStarted
             dao.upsertMetadata(
                 listOf(
                     metadata(manifest, METADATA_VERSION, manifest.catalogVersion),
@@ -137,38 +174,122 @@ class GenericMediaCatalogImporter(
                     metadata(manifest, METADATA_FORMAT_VERSION, manifest.formatVersion.toString())
                 )
             )
+            if (BuildConfig.DEBUG) Log.d(
+                CATALOG_LOG_TAG,
+                "pack=${manifest.mediaType} operation=catalog-write items=$parsedCount " +
+                    "parseMs=${timings.parseNanos / 1_000_000L} " +
+                    "itemSqlMs=${timings.itemSqlNanos / 1_000_000L} " +
+                    "auxSqlMs=${timings.auxSqlNanos / 1_000_000L} " +
+                    "reconcileSqlMs=${timings.reconcileSqlNanos / 1_000_000L} " +
+                    "indexSqlMs=${timings.indexSqlNanos / 1_000_000L} fresh=$freshCatalog"
+            )
             return MediaCatalogImportResult.Imported(parsedCount)
         } finally {
             sqlite.execSQL("DROP TABLE IF EXISTS `$stageName`")
         }
     }
 
-    private suspend fun writeBatch(records: List<MediaCatalogRecord>) {
-        val newItems = records.map { it.toNewEntity() }
-        dao.insertNewItems(newItems)
-        val updated = dao.updateCatalogFields(records.map { it.toCatalogFields() })
-        if (updated != records.size) {
+    private suspend fun writeBatch(
+        records: List<MediaCatalogRecord>,
+        timings: ImportTimings,
+        freshCatalog: Boolean
+    ) {
+        val sqlite = database.openHelper.writableDatabase
+        val itemStarted = System.nanoTime()
+        val existingIds = if (freshCatalog) emptySet()
+        else dao.existingMediaIds(records.map(MediaCatalogRecord::id)).toHashSet()
+        val newRecords = if (freshCatalog) records else records.filterNot { it.id in existingIds }
+        val existingRecords = if (freshCatalog) emptyList() else records.filter { it.id in existingIds }
+        if (newRecords.isNotEmpty()) {
+            if (freshCatalog) insertFreshItems(sqlite, newRecords)
+            else dao.insertNewItems(newRecords.map { it.toNewEntity() })
+        }
+        val updated = if (existingRecords.isEmpty()) 0
+        else dao.updateCatalogFields(existingRecords.map { it.toCatalogFields() })
+        if (updated != existingRecords.size) {
             throw MediaCatalogImportException("Catalog item identity conflicts with an existing provider item")
         }
+        timings.itemSqlNanos += System.nanoTime() - itemStarted
 
-        val mediaIds = records.map { it.id }
-        dao.deleteGenres(mediaIds)
-        dao.deleteCredits(mediaIds)
-        dao.deleteAliases(mediaIds)
+        val auxiliaryStarted = System.nanoTime()
+        if (existingIds.isNotEmpty()) {
+            val mediaIds = existingIds.toList()
+            dao.deleteGenres(mediaIds)
+            dao.deleteCredits(mediaIds)
+            dao.deleteAliases(mediaIds)
+        }
 
         val genres = records.flatMap { record ->
-            record.genres.distinct().map { MediaGenreEntity(record.id, it) }
+            record.genres.distinct().map { listOf(record.id, it) }
         }
         val credits = records.flatMap { record ->
-            record.credits.distinct().map { MediaCreditEntity(record.id, it.role, it.name) }
+            record.credits.distinct().map { listOf(record.id, it.role, it.name) }
         }
         val aliases = records.flatMap { record ->
             record.aliases.distinctBy { it.title }
-                .map { MediaAliasEntity(record.id, it.title, it.language, it.kind) }
+                .map { listOf(record.id, it.title, it.language, it.kind) }
         }
-        if (genres.isNotEmpty()) dao.insertGenres(genres)
-        if (credits.isNotEmpty()) dao.insertCredits(credits)
-        if (aliases.isNotEmpty()) dao.insertAliases(aliases)
+        executeMultiRowInsert(sqlite, "media_genre", listOf("media_id", "genre"), genres)
+        executeMultiRowInsert(
+            sqlite,
+            "media_credit",
+            listOf("media_id", "role", "name"),
+            credits
+        )
+        executeMultiRowInsert(
+            sqlite,
+            "media_alias",
+            listOf("media_id", "title", "language", "kind"),
+            aliases
+        )
+        timings.auxSqlNanos += System.nanoTime() - auxiliaryStarted
+    }
+
+    /**
+     * A fresh pack has no local cover state to preserve. Multi-row INSERTs substantially reduce
+     * SQLite VM round trips while staying below Android's conservative bind-variable limit.
+     * Updates keep using Room's partial entity update so user-owned/local columns are untouched.
+     */
+    private fun insertFreshItems(
+        sqlite: androidx.sqlite.db.SupportSQLiteDatabase,
+        records: List<MediaCatalogRecord>
+    ) {
+        executeMultiRowInsert(
+            sqlite,
+            "media_item",
+            listOf(
+                "id", "media_type", "provider", "provider_id", "title", "original_title",
+                "year", "start_date", "format", "status", "original_language", "demographic",
+                "part_number", "popularity", "popularity_rank", "remote_cover_ref"
+            ),
+            records.map { record ->
+                listOf(
+                    record.id, record.mediaType, record.provider, record.providerId, record.title,
+                    record.originalTitle, record.year, record.startDate, record.format, record.status,
+                    record.originalLanguage, record.demographic, record.partNumber,
+                    record.popularity, record.popularityRank, record.remoteCoverRef
+                )
+            }
+        )
+    }
+
+    private fun executeMultiRowInsert(
+        sqlite: androidx.sqlite.db.SupportSQLiteDatabase,
+        table: String,
+        columns: List<String>,
+        rows: List<List<Any?>>
+    ) {
+        if (rows.isEmpty()) return
+        require(rows.all { it.size == columns.size }) { "Invalid $table insert row width" }
+        val rowsPerStatement = (MAX_SQL_BIND_ARGUMENTS / columns.size).coerceAtLeast(1)
+        rows.chunked(rowsPerStatement).forEach { chunk ->
+            val placeholders = List(chunk.size) {
+                List(columns.size) { "?" }.joinToString(prefix = "(", postfix = ")")
+            }.joinToString(",")
+            val sql = "INSERT INTO `$table`(" + columns.joinToString(",") { "`$it`" } +
+                ") VALUES $placeholders"
+            sqlite.execSQL(sql, chunk.flatten().toTypedArray())
+        }
     }
 
     private fun metadata(
@@ -177,50 +298,25 @@ class GenericMediaCatalogImporter(
         value: String
     ) = MediaCatalogMetadataEntity(manifest.mediaType, key, value)
 
-    private fun MediaCatalogRecord.toNewEntity() = MediaItemEntity(
-        id = id,
-        mediaType = mediaType,
-        provider = provider,
-        providerId = providerId,
-        title = title,
-        originalTitle = originalTitle,
-        year = year,
-        startDate = startDate,
-        format = format,
-        status = status,
-        originalLanguage = originalLanguage,
-        demographic = demographic,
-        partNumber = partNumber,
-        popularity = popularity,
-        popularityRank = popularityRank,
-        remoteCoverRef = remoteCoverRef
-    )
-
-    private fun MediaCatalogRecord.toCatalogFields() = MediaCatalogItemFields(
-        id = id,
-        mediaType = mediaType,
-        provider = provider,
-        providerId = providerId,
-        title = title,
-        originalTitle = originalTitle,
-        year = year,
-        startDate = startDate,
-        format = format,
-        status = status,
-        originalLanguage = originalLanguage,
-        demographic = demographic,
-        partNumber = partNumber,
-        popularity = popularity,
-        popularityRank = popularityRank,
-        remoteCoverRef = remoteCoverRef
-    )
-
     companion object {
-        const val DEFAULT_BATCH_SIZE = 250
+        const val DEFAULT_BATCH_SIZE = 500
+        private const val MAX_SQL_BIND_ARGUMENTS = 900
         const val METADATA_VERSION = "catalog_version"
         const val METADATA_SHA256 = "catalog_sha256"
         const val METADATA_ITEM_COUNT = "catalog_item_count"
         const val METADATA_PROVIDER = "catalog_provider"
         const val METADATA_FORMAT_VERSION = "catalog_format_version"
+        private const val CATALOG_LOG_TAG = "RankOfflineCatalog"
     }
+
+    private data class ImportTimings(
+        var parseNanos: Long = 0L,
+        var itemSqlNanos: Long = 0L,
+        var auxSqlNanos: Long = 0L,
+        var reconcileSqlNanos: Long = 0L,
+        var indexSqlNanos: Long = 0L
+    )
 }
+
+private fun catalogElapsedMs(startedAt: Long): Long =
+    (System.nanoTime() - startedAt) / 1_000_000L

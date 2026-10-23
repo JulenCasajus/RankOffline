@@ -54,6 +54,22 @@ data class MediaCatalogRecord(
     val aliases: List<MediaCatalogAlias> = emptyList()
 )
 
+internal fun MediaCatalogRecord.toNewEntity() = MediaItemEntity(
+    id = id, mediaType = mediaType, provider = provider, providerId = providerId,
+    title = title, originalTitle = originalTitle, year = year, startDate = startDate,
+    format = format, status = status, originalLanguage = originalLanguage,
+    demographic = demographic, partNumber = partNumber, popularity = popularity,
+    popularityRank = popularityRank, remoteCoverRef = remoteCoverRef
+)
+
+internal fun MediaCatalogRecord.toCatalogFields() = MediaCatalogItemFields(
+    id = id, mediaType = mediaType, provider = provider, providerId = providerId,
+    title = title, originalTitle = originalTitle, year = year, startDate = startDate,
+    format = format, status = status, originalLanguage = originalLanguage,
+    demographic = demographic, partNumber = partNumber, popularity = popularity,
+    popularityRank = popularityRank, remoteCoverRef = remoteCoverRef
+)
+
 private val catalogJson = Json {
     ignoreUnknownKeys = true
     encodeDefaults = true
@@ -73,8 +89,8 @@ internal fun validateMediaCatalogManifest(manifest: MediaCatalogManifest): Media
         "Unsupported media catalog format version: ${manifest.formatVersion}"
     }
     val mediaType = MediaType.entries.firstOrNull { it.persistedValue == manifest.mediaType }
-    require(mediaType != null && mediaType != MediaType.ANIME) {
-        "Unsupported generic catalog media type: ${manifest.mediaType}"
+    require(mediaType != null) {
+        "Unsupported catalog media type: ${manifest.mediaType}"
     }
     require(manifest.provider.isNotBlank()) { "Catalog provider must not be blank" }
     require(manifest.catalogVersion.isNotBlank()) { "Catalog version must not be blank" }
@@ -94,8 +110,8 @@ internal fun validateMediaCatalogRecord(
     require(record.providerId.isNotBlank()) { "Catalog record provider ID must not be blank" }
     require(record.title.isNotBlank()) { "Catalog record title must not be blank" }
     val mediaType = MediaType.entries.firstOrNull { it.persistedValue == record.mediaType }
-    require(mediaType != null && mediaType != MediaType.ANIME) {
-        "Unsupported generic catalog record media type: ${record.mediaType}"
+    require(mediaType != null) {
+        "Unsupported catalog record media type: ${record.mediaType}"
     }
     require(record.mediaType == manifest.mediaType) {
         "Catalog record media type ${record.mediaType} does not match ${manifest.mediaType}"
@@ -103,7 +119,7 @@ internal fun validateMediaCatalogRecord(
     require(record.provider == manifest.provider) {
         "Catalog record provider ${record.provider} does not match ${manifest.provider}"
     }
-    require(record.id.startsWith("${mediaType.persistedValue}:")) {
+    require(mediaType == MediaType.ANIME || record.id.startsWith("${mediaType.persistedValue}:")) {
         "Catalog record ID ${record.id} has the wrong media type prefix"
     }
     require(record.popularity == null || record.popularity.isFinite()) {

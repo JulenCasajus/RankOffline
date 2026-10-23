@@ -59,6 +59,20 @@ def series(seasons=None):
 
 
 class GenerateSeriesCatalogTest(unittest.TestCase):
+    def test_daily_export_orders_parent_popularity_and_excludes_adult(self):
+        rows = [
+            {"id": 1, "adult": True, "popularity": 100.0},
+            {"id": 3, "adult": False, "popularity": 4.0},
+            {"id": 2, "adult": False, "popularity": 8.0},
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            export = Path(directory) / "tv.json.gz"
+            with gzip.open(export, "wt", encoding="utf-8") as target:
+                for row in rows:
+                    target.write(json.dumps(row) + "\n")
+            selected = list(tool.read_daily_export(export, limit=2))
+        self.assertEqual([2, 3], selected)
+
     def test_stable_season_and_provider_ids(self):
         records, _ = tool.map_series_details(series())
 
@@ -98,6 +112,9 @@ class GenerateSeriesCatalogTest(unittest.TestCase):
         self.assertEqual("1396", group["providerGroupId"])
         self.assertEqual("Breaking Bad", group["displayTitle"])
         self.assertEqual("/series.jpg", group["remoteCoverRef"])
+        self.assertEqual("series:tmdb:1396:season:1", group["representativeMediaId"])
+        self.assertEqual(2, group["memberCount"])
+        self.assertEqual(91.25, group["popularity"])
 
     def test_group_members_are_ordered_and_positioned_by_season_number(self):
         _, group = tool.map_series_details(series())
@@ -158,6 +175,33 @@ class GenerateSeriesCatalogTest(unittest.TestCase):
             )
             self.assertEqual(2, first_result["catalogManifest"]["itemCount"])
             self.assertEqual(1, first_result["groupManifest"]["groupCount"])
+            self.assertEqual(2, first_result["groupManifest"]["formatVersion"])
+
+    def test_parent_rank_is_inherited_by_each_numbered_season(self):
+        records, _ = tool.map_series_details(series(), popularity_rank=7)
+        self.assertEqual([7, 7], [record["popularityRank"] for record in records])
+
+    def test_parent_backfill_keeps_exact_show_target_and_contiguous_ranks(self):
+        popularity_order = [100, 200, 300]
+        details = {100: {**series(), "id": 100}, 300: {**series(), "id": 300}}
+
+        selected = tool.common._available_target_ids(
+            popularity_order, details, target_count=2
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            result = tool.generate_artifacts(
+                {series_id: details[series_id] for series_id in selected},
+                Path(directory),
+                "v1",
+                selected,
+            )
+
+        self.assertEqual([100, 300], selected)
+        ranks_by_parent = {
+            int(row["providerId"].split(":", 1)[0]): row["popularityRank"]
+            for row in result["records"]
+        }
+        self.assertEqual({100: 1, 300: 2}, ranks_by_parent)
 
     def test_catalog_record_fields_match_block8_format(self):
         with tempfile.TemporaryDirectory() as directory:

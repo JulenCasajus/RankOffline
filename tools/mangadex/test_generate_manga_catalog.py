@@ -76,6 +76,15 @@ class GenerateMangaCatalogTest(unittest.TestCase):
         self.assertEqual("manga", record["mediaType"])
         self.assertEqual("mangadex", record["provider"])
 
+    def test_snapshot_order_becomes_deterministic_popularity_rank(self):
+        resources = {MANGA_A: manga(MANGA_A), MANGA_B: manga(MANGA_B)}
+        with tempfile.TemporaryDirectory() as directory:
+            result = tool.generate_artifacts(
+                resources, {}, Path(directory), "v1", [MANGA_B, MANGA_A]
+            )
+        self.assertEqual([MANGA_B, MANGA_A], [row["providerId"] for row in result["records"]])
+        self.assertEqual([1, 2], [row["popularityRank"] for row in result["records"]])
+
     def test_canonical_title_prefers_english(self):
         attributes = manga()["attributes"]
 
@@ -172,6 +181,12 @@ class GenerateMangaCatalogTest(unittest.TestCase):
         self.assertEqual("Alpha", group["displayTitle"])
         self.assertEqual("VARIANTS", group["groupType"])
         self.assertIsNone(group["remoteCoverRef"])
+        self.assertIn(group["representativeMediaId"], {
+            f"manga:mangadex:{MANGA_A}",
+            f"manga:mangadex:{MANGA_B}",
+            f"manga:mangadex:{MANGA_C}",
+        })
+        self.assertEqual(3, group["memberCount"])
         self.assertEqual(
             [
                 f"manga:mangadex:{MANGA_B}",
@@ -212,6 +227,7 @@ class GenerateMangaCatalogTest(unittest.TestCase):
             self.assertEqual(first_result["catalogManifest"], second_result["catalogManifest"])
             self.assertEqual(2, first_result["catalogManifest"]["itemCount"])
             self.assertEqual(1, first_result["groupManifest"]["groupCount"])
+            self.assertEqual(2, first_result["groupManifest"]["formatVersion"])
             with gzip.open(Path(first) / "manga_catalog.jsonl.gz", "rt", encoding="utf-8") as source:
                 record = json.loads(source.readline())
 

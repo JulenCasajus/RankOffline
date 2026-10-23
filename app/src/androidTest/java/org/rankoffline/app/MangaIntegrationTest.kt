@@ -24,7 +24,7 @@ class MangaIntegrationTest {
             InstrumentationRegistry.getInstrumentation().targetContext,
             AnimeDatabase::class.java
         ).build()
-        mediaRepository = GenericMediaRepository(database) { 100L }
+        mediaRepository = GenericMediaRepository(database, now = { 100L })
         groupRepository = GenericMediaGroupRepository(database) { 200L }
     }
 
@@ -57,16 +57,22 @@ class MangaIntegrationTest {
     @Test
     fun mangaSearchAndFiltersAreMediaScoped() = runBlocking {
         val matching = manga("match", "Shared", year = 2020, demographic = "seinen")
-        val wrongDemographic = manga("shounen", "Shared", year = 2020, demographic = "shounen")
+        val wrongAuthor = manga("other-author", "Shared", year = 2020, demographic = "shounen")
         val movie = movie("1", "Shared", year = 2020)
         val series = series("1", "Shared", year = 2020)
-        for (item in listOf(matching, wrongDemographic, movie, series)) addItem(item)
+        for (item in listOf(matching, wrongAuthor, movie, series)) addItem(item)
         database.mediaCatalogDao().insertGenres(
             listOf(
                 MediaGenreEntity(matching.id, "Drama"),
-                MediaGenreEntity(wrongDemographic.id, "Drama"),
+                MediaGenreEntity(wrongAuthor.id, "Drama"),
                 MediaGenreEntity(movie.id, "Drama"),
                 MediaGenreEntity(series.id, "Drama")
+            )
+        )
+        database.mediaCatalogDao().insertCredits(
+            listOf(
+                MediaCreditEntity(matching.id, "AUTHOR", "Target Author"),
+                MediaCreditEntity(wrongAuthor.id, "AUTHOR", "Other Author")
             )
         )
 
@@ -74,7 +80,7 @@ class MangaIntegrationTest {
             MediaType.MANGA,
             "Shared",
             CatalogSortOrder.TITLE_ASC,
-            GenericMediaFilters(genre = "Drama", year = 2020, demographic = "seinen"),
+            GenericMediaFilters(genre = "Drama", year = 2020, creditName = "Target Author"),
             mergeEnabled = false
         )
         val options = mediaRepository.filterOptions(MediaType.MANGA)
@@ -83,8 +89,8 @@ class MangaIntegrationTest {
         assertTrue(results.all { it.mediaType == MediaType.MANGA })
         assertEquals(listOf("Drama"), options.genres)
         assertEquals(listOf(2020), options.years)
-        assertEquals(listOf("seinen", "shounen"), options.demographics)
-        assertTrue(options.creditNames.isEmpty())
+        assertEquals(listOf("Other Author", "Target Author"), options.creditNames)
+        assertTrue(options.demographics.isEmpty())
     }
 
     @Test

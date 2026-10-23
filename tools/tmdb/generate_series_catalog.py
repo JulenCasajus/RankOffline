@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import gzip
+import heapq
 import json
 import os
 from pathlib import Path
@@ -16,6 +17,7 @@ import generate_movie_catalog as common
 
 
 FORMAT_VERSION = 1
+GROUP_FORMAT_VERSION = 2
 MEDIA_TYPE = "series"
 PROVIDER = "tmdb"
 MAX_ALIASES_PER_SEASON = 20
@@ -30,6 +32,7 @@ class SeasonCatalogItem:
 
 def map_series_details(
     details: dict[str, Any],
+    popularity_rank: int | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     series_id = common._positive_int(details.get("id"), "series id")
     series_name = common._nonblank(details.get("name"))
@@ -80,7 +83,7 @@ def map_series_details(
             "demographic": None,
             "partNumber": season_number,
             "popularity": popularity,
-            "popularityRank": None,
+            "popularityRank": popularity_rank,
             "remoteCoverRef": common._nonblank(season.get("poster_path")) or parent_poster,
             "genres": genres,
             "credits": credits,
@@ -99,6 +102,10 @@ def map_series_details(
             "provider": PROVIDER,
             "providerGroupId": str(series_id),
             "displayTitle": series_name,
+            "representativeMediaId": items[0].record["id"],
+            "memberCount": len(items),
+            "popularity": popularity,
+            "popularityRank": popularity_rank,
             "remoteCoverRef": parent_poster,
             "members": [
                 {"mediaId": item.record["id"], "position": item.season_number}
@@ -113,7 +120,8 @@ def read_daily_export(
     limit: int | None,
     include_adult: bool = False,
 ) -> Iterator[int]:
-    selected = 0
+    eligible: list[tuple[float, int]] = []
+    top: list[tuple[float, int, int]] = []
     with gzip.open(path, "rt", encoding="utf-8") as source:
         for line_number, line in enumerate(source, start=1):
             if not line.strip():
@@ -127,25 +135,41 @@ def read_daily_export(
                 ) from error
             if not include_adult and entry.get("adult") is True:
                 continue
-            yield series_id
-            selected += 1
-            if limit is not None and selected >= limit:
-                return
+            popularity = common._finite_float(entry.get("popularity"))
+            popularity = popularity if popularity is not None else float("-inf")
+            if limit is None:
+                eligible.append((popularity, series_id))
+            else:
+                candidate = (popularity, -series_id, series_id)
+                if len(top) < limit:
+                    heapq.heappush(top, candidate)
+                elif candidate > top[0]:
+                    heapq.heapreplace(top, candidate)
+    if limit is not None:
+        eligible = [(popularity, series_id) for popularity, _, series_id in top]
+    eligible.sort(key=lambda value: (-value[0], value[1]))
+    for _, series_id in eligible:
+        yield series_id
 
 
 def generate_artifacts(
     details_by_id: dict[int, dict[str, Any]],
     output_dir: Path,
     catalog_version: str,
+    popularity_order: Iterable[int] | None = None,
 ) -> dict[str, Any]:
     if not catalog_version.strip():
         raise ValueError("catalog version must not be blank")
     records: list[dict[str, Any]] = []
     groups: list[dict[str, Any]] = []
-    for series_id in sorted(details_by_id):
+    rank_by_id = {
+        series_id: rank
+        for rank, series_id in enumerate(popularity_order or sorted(details_by_id), start=1)
+    }
+    for series_id in sorted(details_by_id, key=lambda value: (rank_by_id.get(value, 2**31), value)):
         details = details_by_id[series_id]
         common._validate_details_identity(details, series_id)
-        series_records, group = map_series_details(details)
+        series_records, group = map_series_details(details, rank_by_id.get(series_id))
         records.extend(series_records)
         if group is not None:
             groups.append(group)
@@ -170,7 +194,9 @@ def generate_artifacts(
         len(groups),
         media_type=MEDIA_TYPE,
         provider=PROVIDER,
+        format_version=GROUP_FORMAT_VERSION,
     )
+    group_manifest["membershipCount"] = sum(group["memberCount"] for group in groups)
     common._write_json_atomic(output_dir / "series_catalog.manifest.json", catalog_manifest)
     common._write_json_atomic(output_dir / "series_groups.manifest.json", group_manifest)
     return {
@@ -196,6 +222,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--ids-file", type=Path)
     parser.add_argument("--export-file", type=Path)
     parser.add_argument("--limit", type=int)
+    parser.add_argument(
+        "--availability-buffer",
+        type=int,
+        default=common.DEFAULT_AVAILABILITY_BUFFER,
+        help=(
+            "extra daily-export candidates used to backfill IDs that become unavailable "
+            "between export publication and metadata enrichment"
+        ),
+    )
     parser.add_argument("--all-from-export", action="store_true")
     parser.add_argument("--confirm-large-run", action="store_true")
     parser.add_argument("--include-adult", action="store_true")
@@ -216,6 +251,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.limit is not None and args.limit <= 0:
         parser.error("--limit must be positive")
+    if args.availability_buffer < 0:
+        parser.error("--availability-buffer must not be negative")
     if args.export_file and args.limit is None and not (
         args.all_from_export and args.confirm_large_run
     ):
@@ -239,7 +276,13 @@ def main(argv: list[str] | None = None) -> int:
     token = os.environ.get("TMDB_READ_ACCESS_TOKEN", "")
     client = common.TmdbClient(token, args.cache_dir, args.requests_per_second)
     details, unavailable = enrich_series(ids, client, args.workers)
-    generated = generate_artifacts(details, args.output_dir, args.catalog_version)
+    selected_ids = common._available_target_ids(ids, details, args.limit)
+    generated = generate_artifacts(
+        {series_id: details[series_id] for series_id in selected_ids},
+        args.output_dir,
+        args.catalog_version,
+        selected_ids,
+    )
     print(
         f"Generated {len(generated['records'])} seasons and {len(generated['groups'])} series "
         f"groups. Unavailable IDs: {len(unavailable)}."
@@ -254,8 +297,11 @@ def _selected_ids(args: argparse.Namespace) -> list[int]:
     if args.ids_file:
         ids.extend(common._read_ids_file(args.ids_file))
     if args.export_file:
-        ids.extend(read_daily_export(args.export_file, args.limit, args.include_adult))
-    return sorted({common._positive_int(series_id, "series id") for series_id in ids})
+        export_limit = args.limit
+        if export_limit is not None and not args.dry_run:
+            export_limit += args.availability_buffer
+        ids.extend(read_daily_export(args.export_file, export_limit, args.include_adult))
+    return list(dict.fromkeys(common._positive_int(series_id, "series id") for series_id in ids))
 
 
 def _series_credits(details: dict[str, Any]) -> list[dict[str, str]]:

@@ -70,6 +70,19 @@ class GroupRatingTest {
         assertEquals("", joinMetadataSubtitle(metadataSubtitleSegments(null, null, null)))
     }
 
+    @Test fun metadataSubtitleMatchesFilterOrderForEveryMediaType() {
+        assertEquals(
+            listOf("Action", "Series", "2023", "Madhouse"),
+            filterMetadataSubtitleSegments(MediaType.ANIME, "Action", "Series", 2023, "Madhouse")
+        )
+        for (mediaType in listOf(MediaType.MANGA, MediaType.SERIES, MediaType.MOVIE, MediaType.BOOK)) {
+            assertEquals(
+                listOf("Drama", "2024", "Credit"),
+                filterMetadataSubtitleSegments(mediaType, "Drama", "ignored", 2024, "Credit")
+            )
+        }
+    }
+
     @Test fun groupScoreLabelRequiresAnActualMultiMemberGroup() {
         assertEquals(true, usesGroupScoreLabel(isGroup = true, memberCount = 2))
         assertEquals(false, usesGroupScoreLabel(isGroup = true, memberCount = 1))

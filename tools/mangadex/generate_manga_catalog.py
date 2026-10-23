@@ -23,6 +23,7 @@ import uuid
 
 API_BASE = "https://api.mangadex.org"
 FORMAT_VERSION = 1
+GROUP_FORMAT_VERSION = 2
 MEDIA_TYPE = "manga"
 PROVIDER = "mangadex"
 GROUP_TYPE = "VARIANTS"
@@ -133,11 +134,17 @@ class MangaDexClient:
         offset = 0
         while len(discovered) < limit:
             page_size = min(MAX_PAGE_SIZE, limit - len(discovered))
-            response = self._get_json(
-                "/manga",
-                [("limit", str(page_size)), ("offset", str(offset)), ("order[createdAt]", "asc")]
-                + [("includes[]", value) for value in MANGA_INCLUDES],
-            )
+            page_path = self._cache_dir / "discovery" / f"followed-{offset:05d}-{page_size}.json"
+            response = _read_cached_collection(page_path)
+            if response is None:
+                response = self._get_json(
+                    "/manga",
+                    [("limit", str(page_size)), ("offset", str(offset)), ("order[followedCount]", "desc")]
+                    + [("contentRating[]", value) for value in ("safe", "suggestive", "erotica")]
+                    + [("includes[]", value) for value in MANGA_INCLUDES],
+                    retry_bad_request=True,
+                )
+                _write_json_atomic(page_path, response)
             resources = _manga_collection(response)
             if not resources:
                 break
@@ -181,6 +188,7 @@ class MangaDexClient:
         path: str,
         query: list[tuple[str, str]],
         allow_not_found: bool = False,
+        retry_bad_request: bool = False,
     ) -> dict[str, Any] | None:
         if not path.startswith("/"):
             raise ValueError("MangaDex API path must be absolute")
@@ -213,7 +221,9 @@ class MangaDexClient:
                     raise MangaDexToolError(
                         f"MangaDex unexpectedly rejected the read-only request with HTTP {error.code}."
                     ) from error
-                if error.code not in TRANSIENT_HTTP_CODES:
+                if error.code not in TRANSIENT_HTTP_CODES and not (
+                    retry_bad_request and error.code == 400
+                ):
                     raise MangaDexToolError(f"MangaDex request failed with HTTP {error.code}.") from error
                 retry_after = error.headers.get("Retry-After") if error.headers else None
                 delay = _retry_delay(retry_after, attempt)
@@ -274,7 +284,7 @@ def resolve_original_title(attributes: dict[str, Any], canonical_title: str) -> 
     return candidate if candidate and candidate != canonical_title else None
 
 
-def map_manga(resource: dict[str, Any]) -> dict[str, Any]:
+def map_manga(resource: dict[str, Any], popularity_rank: int | None = None) -> dict[str, Any]:
     manga_id = _resource_manga_id(resource)
     attributes = resource.get("attributes")
     if not isinstance(attributes, dict):
@@ -296,7 +306,7 @@ def map_manga(resource: dict[str, Any]) -> dict[str, Any]:
         "demographic": _nonblank(attributes.get("publicationDemographic")),
         "partNumber": None,
         "popularity": None,
-        "popularityRank": None,
+        "popularityRank": popularity_rank,
         "remoteCoverRef": _cover_filename(resource),
         "genres": _genres(attributes),
         "credits": _credits(resource),
@@ -355,7 +365,6 @@ def build_variant_groups(
         digest = hashlib.sha256(
             ("mangadex-variants-v1\n" + "\n".join(member_ids)).encode("utf-8")
         ).hexdigest()
-        representative = records_by_uuid[member_ids[0]]
         ordered = sorted(
             (records_by_uuid[manga_id] for manga_id in member_ids),
             key=lambda record: (
@@ -366,6 +375,22 @@ def build_variant_groups(
                 record["id"],
             ),
         )
+        representative = min(
+            ordered,
+            key=lambda record: (
+                record["popularityRank"] is None,
+                record["popularityRank"] or 2**31,
+                record["id"],
+            ),
+        )
+        popularity_values = [
+            record["popularity"] for record in ordered if record["popularity"] is not None
+        ]
+        popularity_ranks = [
+            record["popularityRank"]
+            for record in ordered
+            if record["popularityRank"] is not None
+        ]
         groups.append(
             {
                 "id": f"manga:mangadex:variants:{digest}",
@@ -374,7 +399,10 @@ def build_variant_groups(
                 "provider": PROVIDER,
                 "providerGroupId": digest,
                 "displayTitle": representative["title"],
-                # The shared group format has no representative UUID for MangaDex cover resolution.
+                "representativeMediaId": representative["id"],
+                "memberCount": len(ordered),
+                "popularity": max(popularity_values) if popularity_values else None,
+                "popularityRank": min(popularity_ranks) if popularity_ranks else None,
                 "remoteCoverRef": None,
                 "members": [
                     {"mediaId": record["id"], "position": position}
@@ -415,10 +443,16 @@ def generate_artifacts(
     relations_by_manga: dict[str, dict[str, Any]],
     output_dir: Path,
     catalog_version: str,
+    popularity_order: Iterable[str] | None = None,
 ) -> dict[str, Any]:
     if not catalog_version.strip():
         raise ValueError("catalog version must not be blank")
-    records = [map_manga(manga_by_id[manga_id]) for manga_id in sorted(manga_by_id)]
+    ranked_ids = list(popularity_order) if popularity_order is not None else sorted(manga_by_id)
+    rank_by_id = {manga_id: rank for rank, manga_id in enumerate(ranked_ids, start=1)}
+    records = [
+        map_manga(manga_by_id[manga_id], rank_by_id.get(manga_id))
+        for manga_id in sorted(manga_by_id, key=lambda value: (rank_by_id.get(value, 2**31), value))
+    ]
     groups = build_variant_groups(records, relations_by_manga)
     output_dir.mkdir(parents=True, exist_ok=True)
     catalog_path = output_dir / "manga_catalog.jsonl.gz"
@@ -428,7 +462,14 @@ def generate_artifacts(
     catalog_manifest = _artifact_manifest(
         catalog_path, catalog_version, "itemCount", len(records)
     )
-    group_manifest = _artifact_manifest(group_path, catalog_version, "groupCount", len(groups))
+    group_manifest = _artifact_manifest(
+        group_path,
+        catalog_version,
+        "groupCount",
+        len(groups),
+        format_version=GROUP_FORMAT_VERSION,
+    )
+    group_manifest["membershipCount"] = sum(group["memberCount"] for group in groups)
     _write_json_atomic(output_dir / "manga_catalog.manifest.json", catalog_manifest)
     _write_json_atomic(output_dir / "manga_groups.manifest.json", group_manifest)
     return {
@@ -487,13 +528,16 @@ def main(argv: list[str] | None = None) -> int:
     if explicit_ids:
         selected, unavailable = client.manga_by_ids(explicit_ids)
         manga_by_id.update(selected)
+    popularity_order: list[str] | None = None
     if args.discover:
-        manga_by_id.update(client.discover(args.limit))
+        discovered = client.discover(args.limit)
+        popularity_order = list(discovered)
+        manga_by_id.update(discovered)
     relations = (
         fetch_relations(manga_by_id, client, args.workers) if args.include_variants else {}
     )
     generated = generate_artifacts(
-        manga_by_id, relations, args.output_dir, args.catalog_version
+        manga_by_id, relations, args.output_dir, args.catalog_version, popularity_order
     )
     print(
         f"Generated {len(generated['records'])} manga and {len(generated['groups'])} "
@@ -670,9 +714,10 @@ def _artifact_manifest(
     version: str,
     count_key: str,
     count: int,
+    format_version: int = FORMAT_VERSION,
 ) -> dict[str, Any]:
     return {
-        "formatVersion": FORMAT_VERSION,
+        "formatVersion": format_version,
         "mediaType": MEDIA_TYPE,
         "provider": PROVIDER,
         "catalogVersion": version,
@@ -717,6 +762,15 @@ def _read_cached_relations(path: Path) -> dict[str, Any] | None:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
         _relation_collection(value)
+        return value
+    except (OSError, json.JSONDecodeError, MangaDexToolError):
+        return None
+
+
+def _read_cached_collection(path: Path) -> dict[str, Any] | None:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        _manga_collection(value)
         return value
     except (OSError, json.JSONDecodeError, MangaDexToolError):
         return None

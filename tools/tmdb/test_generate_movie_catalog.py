@@ -101,6 +101,8 @@ class GenerateMovieCatalogTest(unittest.TestCase):
         self.assertEqual(1, len(groups))
         self.assertEqual("movie:tmdb:collection:10", groups[0]["id"])
         self.assertEqual("COLLECTION", groups[0]["groupType"])
+        self.assertEqual("movie:tmdb:1", groups[0]["representativeMediaId"])
+        self.assertEqual(2, groups[0]["memberCount"])
 
     def test_collection_members_sort_by_release_date_then_id_with_null_last(self):
         members = [
@@ -166,13 +168,13 @@ class GenerateMovieCatalogTest(unittest.TestCase):
         self.assertEqual(f"Bearer {token}", requests[0][0].get_header("Authorization"))
         self.assertNotIn(token, combined)
 
-    def test_daily_export_streaming_excludes_adult_and_video_and_honors_limit(self):
+    def test_daily_export_orders_popularity_and_excludes_adult_and_video(self):
         rows = [
             {"id": 1, "adult": True, "video": False},
             {"id": 2, "adult": False, "video": True},
-            {"id": 3, "adult": False, "video": False},
-            {"id": 4},
-            {"id": 5},
+            {"id": 3, "adult": False, "video": False, "popularity": 2.0},
+            {"id": 4, "popularity": 9.0},
+            {"id": 5, "popularity": 9.0},
         ]
         with tempfile.TemporaryDirectory() as directory:
             export = Path(directory) / "movie_ids.json.gz"
@@ -181,7 +183,34 @@ class GenerateMovieCatalogTest(unittest.TestCase):
                     target.write(json.dumps(row) + "\n")
             selected = list(tool.read_daily_export(export, limit=2))
 
-        self.assertEqual([3, 4], selected)
+        self.assertEqual([4, 5], selected)
+
+    def test_generation_assigns_snapshot_rank_without_changing_provider_popularity(self):
+        details = {2: movie(2), 1: movie(1)}
+        with tempfile.TemporaryDirectory() as directory:
+            result = tool.generate_artifacts(details, Path(directory), "v1", [2, 1])
+        self.assertEqual([2, 1], [int(row["providerId"]) for row in result["records"]])
+        self.assertEqual([1, 2], [row["popularityRank"] for row in result["records"]])
+
+    def test_unavailable_export_ids_are_backfilled_with_contiguous_snapshot_ranks(self):
+        popularity_order = [1, 2, 3, 4]
+        details = {1: movie(1), 3: movie(3), 4: movie(4)}
+
+        selected = tool._available_target_ids(popularity_order, details, target_count=3)
+        with tempfile.TemporaryDirectory() as directory:
+            result = tool.generate_artifacts(
+                {movie_id: details[movie_id] for movie_id in selected},
+                Path(directory),
+                "v1",
+                selected,
+            )
+
+        self.assertEqual([1, 3, 4], selected)
+        self.assertEqual([1, 2, 3], [row["popularityRank"] for row in result["records"]])
+
+    def test_insufficient_availability_buffer_fails_instead_of_emitting_short_catalog(self):
+        with self.assertRaisesRegex(tool.TmdbToolError, "increase --availability-buffer"):
+            tool._available_target_ids([1, 2], {1: movie(1)}, target_count=2)
 
     def test_successful_cache_is_reused_and_corrupt_cache_is_refetched(self):
         class Response:
