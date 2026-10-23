@@ -46,7 +46,6 @@ tools/mangadex/output/
 /app/src/main/res/icon_prompt.txt
 
 # Generated pack archives and local cache
-/tools/.cache/
 /tools/category_packs/.cache/
 /tools/category_packs/output/
 *.pack
