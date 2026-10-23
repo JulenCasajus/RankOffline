@@ -67,7 +67,7 @@ android {
         applicationId = "org.rankoffline.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
+        versionCode = 5
         versionName = "0.1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "CATEGORY_PACK_BASE_URL", "\"$categoryPackBaseUrl\"")
@@ -131,7 +131,7 @@ android {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         variant.outputs.forEach { output ->
-            output.versionName.set("0.2.0-debug")
+            output.versionName.set("0.2.0-debug.4")
         }
     }
 }

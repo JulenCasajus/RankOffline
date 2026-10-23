@@ -5,7 +5,7 @@ on:
   push:
     tags:
       - 'v*'
-
+      - '!v*-debug.*'
 permissions:
   contents: write
 
