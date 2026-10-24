@@ -46,8 +46,16 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     private val bundledCatalogManager = BundledMediaCatalogManager(application, database)
     private val settingsRepository = SettingsRepository(application)
     val coverRepository = CoverBitmapCache()
-    val genericCoverRepository = GenericMediaCoverRepository(application, database)
-    val genericGroupCoverRepository = GenericMediaGroupCoverRepository(application, database)
+    val genericCoverRepository = GenericMediaCoverRepository(
+        application,
+        database,
+        manifestProvider = { mediaType -> categoryPackManager.descriptor(mediaType)?.manifest }
+    )
+    val genericGroupCoverRepository = GenericMediaGroupCoverRepository(
+        application,
+        database,
+        manifestProvider = { mediaType -> categoryPackManager.descriptor(mediaType)?.manifest }
+    )
     private val coverPreloadManager = CoverPreloadManager(genericCoverRepository)
 
     val settings: StateFlow<AppSettingsState> = settingsRepository.state
@@ -71,24 +79,21 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         _catalogAvailability.asStateFlow()
     private val revisions = MediaRevisionTracker()
     private val ratingDisplayOverrides = MutableStateFlow<Map<String, RatingDisplayOverride>>(emptyMap())
-    private val remoteSearch = RemoteSearchCoordinator(viewModelScope, genericRepository) { mediaType ->
-        revisions.catalogChanged(mediaType)
-        _genericFilterOptions.value = _genericFilterOptions.value +
-            (mediaType to genericRepository.filterOptions(mediaType))
-        _catalogAvailability.value = _catalogAvailability.value +
-            (mediaType to CatalogAvailability.AVAILABLE)
-    }
     private val coverOperations = CoverOperationsCoordinator(
         viewModelScope,
         settings,
-        _catalogAvailability,
-        settingsRepository,
         genericCoverRepository,
         genericGroupCoverRepository,
         coverPreloadManager,
         _messages::send
     )
-    val coverPreloadProgress: StateFlow<CoverPreloadProgress> = coverOperations.progress
+    val coverPreloadProgress: StateFlow<CoverPreloadProgress> = combine(
+        coverOperations.progress,
+        settings
+    ) { progress, currentSettings ->
+        progress.takeIf { it.mediaType == null || it.mediaType == currentSettings.activeMediaType }
+            ?: CoverPreloadProgress()
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, CoverPreloadProgress())
     private val rankingStates = MutableStateFlow(defaultRankingUiStates())
     private val activeSearchSnapshot: StateFlow<ActiveSearchSnapshot> = combine(searchStates, settings) { states, currentSettings ->
         ActiveSearchSnapshot(
@@ -104,13 +109,6 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     val activeSearchState: StateFlow<SearchUiState> = activeSearchSnapshot
         .map { it.state }
         .stateIn(viewModelScope, SharingStarted.Eagerly, SearchUiState())
-    val activeRemoteSearchState: StateFlow<RemoteSearchUiState> = combine(
-        remoteSearch.states,
-        settings
-    ) { states, currentSettings ->
-        states[currentSettings.activeMediaType] ?: RemoteSearchUiState()
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, RemoteSearchUiState())
-
     private val activeRankingSnapshot: StateFlow<ActiveRankingSnapshot> = combine(rankingStates, settings) { states, currentSettings ->
         val validCategories = currentSettings.ratingConfig.categories.mapTo(mutableSetOf()) { it.id }
         ActiveRankingSnapshot(
@@ -160,17 +158,64 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     val searchPageState: StateFlow<SearchPageState> = searchRequest
         .flatMapLatest { request ->
             flow {
+                emit(
+                    SearchPageState(
+                        mediaType = request.mediaType,
+                        loadingInitial = true,
+                        hasMore = false
+                    )
+                )
                 var accumulator = SearchPageAccumulator<Anime>()
-                var page = loadSearchPage(request, INITIAL_SEARCH_PAGE_SIZE, accumulator.nextOffset)
-                accumulator = accumulator.append(page, INITIAL_SEARCH_PAGE_SIZE, Anime::id)
-                emit(SearchPageState(accumulator.items, hasMore = accumulator.hasMore))
-                searchPageRequests.filter { it == request.mediaType }.collect {
-                    if (accumulator.hasMore) {
-                        emit(SearchPageState(accumulator.items, loadingMore = true, hasMore = true))
-                        page = loadSearchPage(request, NEXT_SEARCH_PAGE_SIZE, accumulator.nextOffset)
-                        accumulator = accumulator.append(page, NEXT_SEARCH_PAGE_SIZE, Anime::id)
-                        emit(SearchPageState(accumulator.items, hasMore = accumulator.hasMore))
+                try {
+                    var page = loadSearchPage(request, INITIAL_SEARCH_PAGE_SIZE, accumulator.nextOffset)
+                    accumulator = accumulator.append(page, INITIAL_SEARCH_PAGE_SIZE, Anime::id)
+                    emit(
+                        SearchPageState(
+                            mediaType = request.mediaType,
+                            items = accumulator.items,
+                            loadingInitial = false,
+                            hasMore = accumulator.hasMore
+                        )
+                    )
+                    searchPageRequests.filter { it == request.mediaType }.collect {
+                        if (accumulator.hasMore) {
+                            emit(
+                                SearchPageState(
+                                    mediaType = request.mediaType,
+                                    items = accumulator.items,
+                                    loadingInitial = false,
+                                    loadingMore = true,
+                                    hasMore = true
+                                )
+                            )
+                            page = loadSearchPage(request, NEXT_SEARCH_PAGE_SIZE, accumulator.nextOffset)
+                            accumulator = accumulator.append(page, NEXT_SEARCH_PAGE_SIZE, Anime::id)
+                            emit(
+                                SearchPageState(
+                                    mediaType = request.mediaType,
+                                    items = accumulator.items,
+                                    loadingInitial = false,
+                                    hasMore = accumulator.hasMore
+                                )
+                            )
+                        }
                     }
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Log.e(
+                        "RankOfflineCatalog",
+                        "operation=search media=${request.mediaType.persistedValue} failed=${exception.javaClass.simpleName}: ${exception.message}",
+                        exception
+                    )
+                    emit(
+                        SearchPageState(
+                            mediaType = request.mediaType,
+                            loadingInitial = false,
+                            hasMore = false,
+                            failed = true
+                        )
+                    )
                 }
             }
         }
@@ -178,11 +223,14 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
 
     val searchResults: StateFlow<List<Anime>> = combine(
         searchPageState,
-        ratingDisplayOverrides
-    ) { page, overrides -> applyRatingOverrides(page.items, overrides) }
+        ratingDisplayOverrides,
+        settings
+    ) { page, overrides, currentSettings ->
+        page.visibleItemsFor(currentSettings.activeMediaType, overrides)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val ranking: StateFlow<List<Anime>> = combine(
+    val rankingResultState: StateFlow<RankingResultState> = combine(
         activeRankingSnapshot,
         revisions.catalog,
         revisions.ratings
@@ -203,19 +251,45 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         .distinctUntilChanged()
         .flatMapLatest { request ->
             flow {
-                emit(
-                    genericRepository.ranking(
-                        request.mediaType,
-                        request.filtersForMedia(),
-                        request.sort,
-                        request.categoryId,
-                        request.descending,
-                        request.merge
-                    ).map(MediaListEntry::toAnimeDisplay)
-                )
+                emit(RankingResultState(mediaType = request.mediaType, loading = true))
+                try {
+                    emit(
+                        RankingResultState(
+                            mediaType = request.mediaType,
+                            items = genericRepository.ranking(
+                                request.mediaType,
+                                request.filtersForMedia(),
+                                request.sort,
+                                request.categoryId,
+                                request.descending,
+                                request.merge
+                            ).map(MediaListEntry::toAnimeDisplay),
+                            loading = false
+                        )
+                    )
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Log.e(
+                        "RankOfflineCatalog",
+                        "operation=ranking media=${request.mediaType.persistedValue} failed=${exception.javaClass.simpleName}: ${exception.message}",
+                        exception
+                    )
+                    emit(
+                        RankingResultState(
+                            mediaType = request.mediaType,
+                            loading = false,
+                            failed = true
+                        )
+                    )
+                }
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RankingResultState())
+
+    val ranking: StateFlow<List<Anime>> = combine(rankingResultState, settings) { result, currentSettings ->
+        result.visibleItemsFor(currentSettings.activeMediaType)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val downloadedCoverCount: StateFlow<Int> = settings
         .map { it.activeMediaType }
@@ -305,22 +379,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun setSearchQuery(value: String) {
-        val mediaType = settings.value.activeMediaType
-        if (searchStates.value.searchStateFor(mediaType).query != value) {
-            remoteSearch.queryChanged(mediaType, value)
-        }
         updateActiveSearchState { it.copy(query = value) }
-    }
-
-    fun searchOnline() {
-        val mediaType = settings.value.activeMediaType
-        val query = searchStates.value.searchStateFor(mediaType).query.trim()
-        remoteSearch.search(mediaType, query)
-    }
-
-    fun loadMoreOnlineResults() {
-        val mediaType = settings.value.activeMediaType
-        remoteSearch.loadMore(mediaType)
     }
 
     fun requestNextSearchPage() {
@@ -662,8 +721,6 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                 if (recovered == CatalogAvailability.AVAILABLE) {
                     invalidatePackRuntimeState(mediaType)
                     selectAvailableMediaIfNeeded()
-                    // A failed first import that is later recovered must still warm its covers.
-                    coverOperations.startTopWarmup(listOf(mediaType))
                 } else {
                     _messages.send(UserMessage.Text(R.string.category_pack_invalid))
                 }
@@ -671,6 +728,9 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
             }
             // A pack replacement must never reset a previously chosen cover-sharing setting.
             val isFirstInstallation = categoryPackManager.installedDirectory(mediaType) == null
+            // Capture this pack's persisted choices once. Never use the currently selected pack
+            // while a different pack is being installed.
+            val packSettings = settings.value.mediaSettings.getValue(mediaType)
             when (categoryPackManager.downloadAndInstall(
                 mediaType = mediaType,
                 importInstalledPack = { reportPhase ->
@@ -683,19 +743,38 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                 },
                 finalizeRuntime = {
                     invalidatePackRuntimeState(mediaType)
+                },
+                downloadInitialCovers = packSettings.showImages,
+                acquireInitialCovers = { reportProgress ->
+                    coverOperations.preloadInitialTop(
+                        mediaType = mediaType,
+                        limit = CategoryPackManager.INITIAL_COVER_TARGET,
+                        oneCoverPerGroup = packSettings.oneCoverPerGroup,
+                        onProgress = reportProgress
+                    )
                 }
             )) {
                 CategoryPackDownloadResult.INSTALLED -> {
                     if (isFirstInstallation) {
                         categoryPackManager.descriptor(mediaType)?.manifest?.defaults?.let { defaults ->
-                            settingsRepository.applyNewPackCoverDefault(mediaType, defaults.oneCoverPerGroup)
+                            settingsRepository.applyNewPackDefaults(mediaType, defaults)
                         }
                     }
                     selectAvailableMediaIfNeeded()
-                    // Top-100 warm-up was already implemented but never called after installation.
-                    // It reads the now-persisted per-pack setting, selecting groups before LIMIT.
-                    coverOperations.startTopWarmup(listOf(mediaType))
-                    _messages.send(UserMessage.Text(R.string.category_download_complete))
+                    val covers = categoryPackManager.states.value[mediaType]?.initialCoverAcquisition
+                    _messages.send(
+                        when (covers?.status) {
+                            InitialCoverAcquisitionStatus.PARTIAL -> UserMessage.Text(
+                                R.string.category_cover_partial,
+                                listOf(covers.available, covers.target, covers.unavailable + covers.errors)
+                            )
+                            InitialCoverAcquisitionStatus.CANCELLED -> UserMessage.Text(
+                                R.string.category_cover_cancelled,
+                                listOf(covers.available, covers.target)
+                            )
+                            else -> UserMessage.Text(R.string.category_download_complete)
+                        }
+                    )
                 }
                 CategoryPackDownloadResult.UNAVAILABLE ->
                     _messages.send(UserMessage.Text(R.string.category_download_unavailable))
@@ -705,6 +784,10 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                     _messages.send(UserMessage.Text(R.string.category_pack_invalid))
             }
         }
+    }
+
+    fun cancelInitialCoverDownload(mediaType: MediaType) {
+        coverOperations.cancelInitialPreload(mediaType)
     }
 
     fun removeCategoryCatalog(mediaType: MediaType) {
@@ -727,13 +810,11 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                 purgeRuntimeData = {
                     genericRepository.purgePackData(mediaType)
                     settingsRepository.purgePackSettings(mediaType)
-                    settingsRepository.clearTopCoverWarmup(mediaType)
                 },
                 finalizeRuntime = {
                     searchStates.value = searchStates.value +
                         (mediaType to SearchUiState(sortOrder = CatalogSortOrder.POPULARITY))
                     rankingStates.value = rankingStates.value + (mediaType to RankingUiState())
-                    remoteSearch.queryChanged(mediaType, "")
                     _catalogAvailability.value = _catalogAvailability.value +
                         (mediaType to CatalogAvailability.UNAVAILABLE)
                     if (mediaType == MediaType.ANIME) {
@@ -890,7 +971,6 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateActiveMediaType(value: MediaType) {
         if (settings.value.activeMediaType == value) return
-        remoteSearch.cancel()
         viewModelScope.launch { settingsRepository.updateActiveMediaType(value) }
     }
 

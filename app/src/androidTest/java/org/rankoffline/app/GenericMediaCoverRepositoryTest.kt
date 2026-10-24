@@ -54,7 +54,11 @@ class GenericMediaCoverRepositoryTest {
         val stored = database.mediaDao().item(item.id)!!
         val file = File(requireNotNull(stored.localCoverPath)).also(createdFiles::add)
         assertTrue(file.isFile)
-        assertTrue(file.canonicalPath.startsWith(File(context.filesDir, "covers/movie").canonicalPath))
+        assertTrue(
+            file.canonicalPath.startsWith(
+                File(context.filesDir, "downloaded_covers/movies").canonicalPath
+            )
+        )
         assertEquals(CoverResolutionState.AVAILABLE.name, stored.coverResolutionState)
         assertEquals(1, downloader.invocations)
     }
@@ -89,7 +93,7 @@ class GenericMediaCoverRepositoryTest {
         val stored = database.mediaDao().item(item.id)!!
         assertNull(stored.localCoverPath)
         assertEquals(CoverResolutionState.UNKNOWN.name, stored.coverResolutionState)
-        val directory = File(context.filesDir, "covers/movie")
+        val directory = File(context.filesDir, "downloaded_covers/movies")
         assertTrue(directory.listFiles().orEmpty().none { it.extension == "part" })
     }
 

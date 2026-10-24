@@ -44,20 +44,32 @@ internal fun applyRatingOverrides(
 }
 
 data class SearchPageState(
+    val mediaType: MediaType? = null,
     val items: List<Anime> = emptyList(),
+    val loadingInitial: Boolean = true,
     val loadingMore: Boolean = false,
-    val hasMore: Boolean = true
+    val hasMore: Boolean = true,
+    val failed: Boolean = false
 )
 
-enum class RemoteSearchStatus { IDLE, LOADING, RESULTS, EMPTY, ERROR }
-
-data class RemoteSearchUiState(
-    val query: String = "",
-    val status: RemoteSearchStatus = RemoteSearchStatus.IDLE,
+data class RankingResultState(
+    val mediaType: MediaType? = null,
     val items: List<Anime> = emptyList(),
-    val nextOffset: Int = 0,
-    val hasMore: Boolean = false
+    val loading: Boolean = true,
+    val failed: Boolean = false
 )
+
+internal fun SearchPageState.visibleItemsFor(
+    activeMediaType: MediaType,
+    overrides: Map<String, RatingDisplayOverride> = emptyMap()
+): List<Anime> = if (mediaType == activeMediaType && !loadingInitial) {
+    applyRatingOverrides(items, overrides)
+} else {
+    emptyList()
+}
+
+internal fun RankingResultState.visibleItemsFor(activeMediaType: MediaType): List<Anime> =
+    if (mediaType == activeMediaType && !loading) items else emptyList()
 
 internal const val INITIAL_SEARCH_PAGE_SIZE = 200
 internal const val NEXT_SEARCH_PAGE_SIZE = 50

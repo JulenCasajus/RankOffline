@@ -257,33 +257,22 @@ class GenericMediaRepository(
     suspend fun installPackCovers(manifest: PackManifest, directory: File) = withContext(Dispatchers.IO) {
         manifest.readCoverIndex(directory).forEach { cover ->
             val path = File(directory, cover.relativePath).absolutePath
+            val item = dao.item(cover.canonicalId)
+            val group = if (item == null) groupDao.group(cover.canonicalId) else null
             when {
-                dao.item(cover.canonicalId) != null ->
-                    dao.updateMediaCover(cover.canonicalId, path, CoverResolutionState.AVAILABLE.name)
-                groupDao.group(cover.canonicalId) != null ->
-                    groupDao.updateGroupCover(cover.canonicalId, path, CoverResolutionState.AVAILABLE.name)
+                item != null -> {
+                    val existing = item.localCoverPath?.let(::File)
+                    if (existing == null || !existing.isFile || existing.length() <= 0L) {
+                        dao.updateMediaCover(cover.canonicalId, path, CoverResolutionState.AVAILABLE.name)
+                    }
+                }
+                group != null -> {
+                    val existing = group.localCoverPath?.let(::File)
+                    if (existing == null || !existing.isFile || existing.length() <= 0L) {
+                        groupDao.updateGroupCover(cover.canonicalId, path, CoverResolutionState.AVAILABLE.name)
+                    }
+                }
             }
-        }
-    }
-
-    suspend fun upsertDiscoveredItem(record: MediaCatalogRecord) = withContext(Dispatchers.IO) {
-        requireGenericMediaType(record.mediaType)
-        database.withTransaction {
-            catalogDao.insertNewItems(listOf(record.toNewEntity()))
-            if (catalogDao.updateCatalogFields(listOf(record.toCatalogFields())) != 1) {
-                throw IllegalArgumentException("Remote item identity conflicts with local catalog data")
-            }
-            val ids = listOf(record.id)
-            catalogDao.deleteGenres(ids)
-            catalogDao.deleteCredits(ids)
-            catalogDao.deleteAliases(ids)
-            val genres = record.genres.distinct().map { MediaGenreEntity(record.id, it) }
-            val credits = record.credits.distinct().map { MediaCreditEntity(record.id, it.role, it.name) }
-            val aliases = record.aliases.distinctBy { it.title }
-                .map { MediaAliasEntity(record.id, it.title, it.language, it.kind) }
-            if (genres.isNotEmpty()) catalogDao.insertGenres(genres)
-            if (credits.isNotEmpty()) catalogDao.insertCredits(credits)
-            if (aliases.isNotEmpty()) catalogDao.insertAliases(aliases)
         }
     }
 

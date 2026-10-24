@@ -143,7 +143,10 @@
 <string name="category_phase_installing">正在安装…</string>
 <string name="category_phase_importing_catalog">正在导入目录…</string>
 <string name="category_phase_importing_groups">正在准备合并…</string>
+<string name="category_phase_downloading_covers">正在下载封面：%1$d / %2$d</string>
 <string name="category_phase_finalizing">正在完成…</string>
+<string name="category_cover_partial">包已就绪 · %1$d/%2$d 张封面可用 · %3$d 张不可用</string>
+<string name="category_cover_cancelled">包已就绪 · %1$d/%2$d 张封面可用 · 封面下载已取消</string>
 <string name="category_pack_runtime_error">无法准备目录。点按重试。</string>
 <string name="message_rating_operation_failed">无法保存评分，请重试。</string>
     <string name="message_icon_change_failed">无法更改应用图标。</string>
@@ -160,4 +163,20 @@
     <string name="download_pack">下载内容包</string>
     <string name="color_picker_saturation_value">饱和度和明度</string>
     <string name="color_picker_hue">色相</string>
+    <string name="loading_list">正在加载列表…</string>
+    <string name="covers_progress_details_explicit">已有 %1$d · 已下载 %2$d · 不可用 %3$d · 失败 %4$d</string>
+    <string name="merge_book_series">合并图书系列</string>
+    <string name="book_genre_fantasy">奇幻</string>
+    <string name="book_genre_science_fiction">科幻</string>
+    <string name="book_genre_romance">爱情</string>
+    <string name="book_genre_mystery_thriller">悬疑与惊悚</string>
+    <string name="book_genre_horror">恐怖</string>
+    <string name="book_genre_adventure">冒险</string>
+    <string name="book_genre_historical_fiction">历史小说</string>
+    <string name="book_genre_classics">经典</string>
+    <string name="book_genre_biography">传记</string>
+    <string name="book_genre_history">历史</string>
+    <string name="book_genre_science_technology">科学与技术</string>
+    <string name="book_genre_philosophy">哲学</string>
+    <string name="book_genre_other">其他 / 未分类</string>
 </resources>

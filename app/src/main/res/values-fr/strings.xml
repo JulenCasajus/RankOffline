@@ -144,7 +144,10 @@
 <string name="category_phase_installing">Installation…</string>
 <string name="category_phase_importing_catalog">Importation du catalogue…</string>
 <string name="category_phase_importing_groups">Préparation de la fusion…</string>
+<string name="category_phase_downloading_covers">Téléchargement des jaquettes : %1$d / %2$d</string>
 <string name="category_phase_finalizing">Finalisation…</string>
+<string name="category_cover_partial">Pack prêt · %1$d/%2$d jaquettes disponibles · %3$d indisponibles</string>
+<string name="category_cover_cancelled">Pack prêt · %1$d/%2$d jaquettes disponibles · téléchargement annulé</string>
 <string name="category_pack_runtime_error">Impossible de préparer le catalogue. Touchez pour réessayer.</string>
 <string name="message_rating_operation_failed">Impossible d’enregistrer l’évaluation. Réessayez.</string>
     <string name="message_icon_change_failed">Impossible de modifier l’icône de l’application.</string>
@@ -161,4 +164,20 @@
     <string name="download_pack">Télécharger un paquet</string>
     <string name="color_picker_saturation_value">Saturation et luminosité</string>
     <string name="color_picker_hue">Teinte</string>
+    <string name="loading_list">Chargement de la liste…</string>
+    <string name="covers_progress_details_explicit">%1$d disponibles · %2$d téléchargées · %3$d indisponibles · %4$d échouées</string>
+    <string name="merge_book_series">Fusionner les séries de livres</string>
+    <string name="book_genre_fantasy">Fantasy</string>
+    <string name="book_genre_science_fiction">Science-fiction</string>
+    <string name="book_genre_romance">Romance</string>
+    <string name="book_genre_mystery_thriller">Mystère et thriller</string>
+    <string name="book_genre_horror">Horreur</string>
+    <string name="book_genre_adventure">Aventure</string>
+    <string name="book_genre_historical_fiction">Fiction historique</string>
+    <string name="book_genre_classics">Classiques</string>
+    <string name="book_genre_biography">Biographie</string>
+    <string name="book_genre_history">Histoire</string>
+    <string name="book_genre_science_technology">Science et technologie</string>
+    <string name="book_genre_philosophy">Philosophie</string>
+    <string name="book_genre_other">Autre / Non classé</string>
 </resources>

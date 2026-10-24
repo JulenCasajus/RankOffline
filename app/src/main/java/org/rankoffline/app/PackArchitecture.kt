@@ -70,6 +70,16 @@ enum class PackMergeStrategy {
 
 data class PackProvider(val id: String, val name: String)
 
+/** Declarative, data-only cover source. Templates may use {reference} and {providerId}. */
+data class PackCoverSource(
+    val id: String,
+    val providerId: String?,
+    val urlTemplates: List<String>,
+    val allowedHosts: Set<String>,
+    val attributionName: String,
+    val attributionUrl: String?
+)
+
 data class PackCapabilities(
     val search: Boolean,
     val filters: Boolean,
@@ -114,6 +124,7 @@ data class PackManifest(
     val version: String,
     val minRankOfflineVersion: String,
     val provider: PackProvider,
+    val coverSources: List<PackCoverSource>,
     val catalog: List<String>,
     val groups: List<String>,
     val covers: List<String>,
@@ -131,11 +142,14 @@ fun PackManifest.readCoverIndex(installedDirectory: File): List<PackCoverRecord>
     val index = File(installedDirectory, "metadata/cover_index.json")
     if (!index.isFile) return emptyList()
     val declared = files.mapTo(hashSetOf()) { it.path }
-    return JSONObject(index.readText()).getJSONArray("covers").objects().map { value ->
+    return JSONObject(index.readText()).getJSONArray("covers").objects().mapNotNull { value ->
         val path = value.getString("path").also(PackManifestParser::validateDataPath)
         require(path.startsWith("covers/") && path in declared)
         val resolved = File(installedDirectory, path)
-        require(resolved.isFile && resolved.canonicalPath.startsWith(installedDirectory.canonicalPath + File.separator))
+        require(resolved.canonicalPath.startsWith(installedDirectory.canonicalPath + File.separator))
+        // Pack-provided covers become a removable local cache after the archive was validated.
+        // A user deletion therefore leaves the index intact but intentionally removes this file.
+        if (!resolved.isFile) return@mapNotNull null
         PackCoverRecord(
             canonicalId = value.getString("canonicalId").also { require(it.isNotBlank()) },
             relativePath = path
@@ -196,6 +210,25 @@ object PackManifestParser {
         require(schemaVersion == SCHEMA_VERSION) { "Unsupported pack schema: $schemaVersion" }
         val packId = PackId(root.getString("packId"))
         val providerJson = root.getJSONObject("provider")
+        val coverSources = root.optJSONArray("coverSources")?.objects().orEmpty().map { source ->
+            val templates = source.getJSONArray("urlTemplates").strings()
+            val hosts = source.getJSONArray("allowedHosts").strings()
+                .map { it.lowercase() }.toSet()
+            require(templates.isNotEmpty() && templates.size <= 8)
+            require(hosts.isNotEmpty() && hosts.size <= 8)
+            templates.forEach { template -> validatePackCoverUrlTemplate(template, hosts) }
+            PackCoverSource(
+                id = source.getString("id").also { require(it.matches(FIELD_ID)) },
+                providerId = source.optString("providerId").takeIf(String::isNotBlank)
+                    ?.also { require(it.matches(FIELD_ID)) },
+                urlTemplates = templates,
+                allowedHosts = hosts,
+                attributionName = source.getString("attributionName").also { require(it.isNotBlank()) },
+                attributionUrl = source.optString("attributionUrl").takeIf(String::isNotBlank)
+                    ?.also { require(isSafeHttpsUri(java.net.URI.create(it), hosts = null)) }
+            )
+        }
+        require(coverSources.map(PackCoverSource::id).distinct().size == coverSources.size)
         val capabilityJson = root.getJSONObject("capabilities")
         val filters = root.getJSONArray("filters").objects().map { value ->
             PackFilterDefinition(
@@ -249,6 +282,7 @@ object PackManifestParser {
                 id = providerJson.getString("id").also { require(it.matches(FIELD_ID)) },
                 name = providerJson.getString("name").also { require(it.isNotBlank()) }
             ),
+            coverSources = coverSources,
             catalog = sections.getValue("catalog"),
             groups = sections.getValue("groups"),
             covers = sections.getValue("covers"),
@@ -290,10 +324,22 @@ object PackManifestParser {
             "Pack payload path is outside supported data directories"
         }
     }
+
+}
+
+internal fun validatePackCoverUrlTemplate(template: String, hosts: Set<String>) {
+    require(template.count { it == '{' } == template.count { it == '}' })
+    val withoutKnown = template
+        .replace("{reference}", "fixture")
+        .replace("{providerId}", "fixture")
+    require('{' !in withoutKnown && '}' !in withoutKnown) { "Unsupported cover URL placeholder" }
+    require(isSafeHttpsUri(java.net.URI.create(withoutKnown), hosts)) {
+        "Unsafe cover URL template"
+    }
 }
 
 private fun JSONArray.objects(): List<JSONObject> = List(length()) { index -> getJSONObject(index) }
-private fun JSONArray.strings(): List<String> = List(length()) { index -> getString(index) }
+internal fun JSONArray.strings(): List<String> = List(length()) { index -> getString(index) }
 
 fun PackManifest.creditRole(): String? = filters.firstNotNullOfOrNull { filter ->
     when (filter.field) {

@@ -114,8 +114,8 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val groupDetail by viewModel.groupDetail.collectAsState()
     val list by viewModel.searchResults.collectAsState()
     val searchPageState by viewModel.searchPageState.collectAsState()
-    val remoteSearchState by viewModel.activeRemoteSearchState.collectAsState()
     val ranked by viewModel.ranking.collectAsState()
+    val rankingResultState by viewModel.rankingResultState.collectAsState()
     val searchState by viewModel.activeSearchState.collectAsState()
     val rankingState by viewModel.activeRankingState.collectAsState()
     val query = searchState.query
@@ -133,9 +133,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val availableMediaTypes = categoryPackStates.values
         .filter(CategoryPackState::available)
         .mapTo(mutableSetOf(), CategoryPackState::mediaType)
-    val noInstalledPacks = categoryPackStates.values.none { state ->
-        state.origin != CategoryPackOrigin.UNAVAILABLE || state.installProgress != null
-    }
+    val noInstalledPacks = availableMediaTypes.isEmpty()
     val genericFilterOptions = genericFilterOptionsByMedia[settings.activeMediaType]
         ?: GenericMediaFilterOptions()
     val catalogAvailability = catalogAvailabilityByMedia[settings.activeMediaType]
@@ -191,6 +189,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         onLanguageSelected = viewModel::updateLanguage,
         onThemeSelected = viewModel::updateThemePalette,
         onDownloadCategory = viewModel::downloadCategory,
+        onCancelCategoryCoverDownload = viewModel::cancelInitialCoverDownload,
         onRemoveCategory = viewModel::removeCategoryCatalog,
         onMediaTypeSelected = viewModel::updateActiveMediaType,
         onOnboardingComplete = viewModel::completeOnboarding
@@ -343,14 +342,13 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     },
                     errorMessage = errorMessage,
                     catalogAvailability = catalogAvailability,
+                    listLoading = searchPageState.mediaType != settings.activeMediaType ||
+                        searchPageState.loadingInitial,
+                    listFailed = searchPageState.mediaType == settings.activeMediaType &&
+                        searchPageState.failed,
                     loadingMore = searchPageState.loadingMore,
                     hasMore = searchPageState.hasMore,
-                    onLoadMore = viewModel::requestNextSearchPage,
-                    remoteSearchState = remoteSearchState,
-                    onlineSearchAvailable = catalogAvailability == CatalogAvailability.AVAILABLE &&
-                        RemoteSearchProviders.supports(settings.activeMediaType),
-                    onSearchOnline = viewModel::searchOnline,
-                    onLoadMoreOnline = viewModel::loadMoreOnlineResults
+                    onLoadMore = viewModel::requestNextSearchPage
                 )
                 1 -> if (noInstalledPacks) NoInstalledPacksScreen(
                     title = stringResource(R.string.ranking_title),
@@ -390,7 +388,11 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     onCoverOpen = {
                         coverViewer = CoverViewerState(it, it.coverTarget(settings.oneCoverPerGroup))
                     },
-                    catalogAvailability = catalogAvailability
+                    catalogAvailability = catalogAvailability,
+                    listLoading = rankingResultState.mediaType != settings.activeMediaType ||
+                        rankingResultState.loading,
+                    listFailed = rankingResultState.mediaType == settings.activeMediaType &&
+                        rankingResultState.failed
                 )
                 else -> SettingsScreen(
                     settings,
@@ -471,24 +473,16 @@ private fun AnimeListScreen(
     onCoverOpen: (Anime) -> Unit,
     errorMessage: UserMessage?,
     catalogAvailability: CatalogAvailability,
+    listLoading: Boolean,
+    listFailed: Boolean,
     loadingMore: Boolean,
     hasMore: Boolean,
-    onLoadMore: () -> Unit,
-    remoteSearchState: RemoteSearchUiState,
-    onlineSearchAvailable: Boolean,
-    onSearchOnline: () -> Unit,
-    onLoadMoreOnline: () -> Unit
+    onLoadMore: () -> Unit
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
-    val onlineIds = remember(remoteSearchState.items) {
-        remoteSearchState.items.mapTo(hashSetOf()) { it.id }
-    }
-    val visibleLocalItems = remember(list, onlineIds) {
-        list.filterNot { it.id in onlineIds }
-    }
-    val visibleOnlineItems = remoteSearchState.items
+    val visibleLocalItems = list
 
     LaunchedEffect(listState, visibleLocalItems.size, hasMore, loadingMore) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
@@ -500,20 +494,6 @@ private fun AnimeListScreen(
                 if (nearEnd && hasMore && !loadingMore) onLoadMore()
             }
     }
-    LaunchedEffect(listState, remoteSearchState.items.size, remoteSearchState.hasMore) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
-            .map { lastVisible ->
-                remoteSearchState.items.isNotEmpty() &&
-                    lastVisible >= listState.layoutInfo.totalItemsCount - 3
-            }
-            .distinctUntilChanged()
-            .collect { nearEnd ->
-                if (nearEnd && remoteSearchState.hasMore &&
-                    remoteSearchState.status != RemoteSearchStatus.LOADING
-                ) onLoadMoreOnline()
-            }
-    }
-
     Column(
         Modifier
             .fillMaxSize()
@@ -597,7 +577,11 @@ private fun AnimeListScreen(
                 )
             }
             if (visibleLocalItems.isEmpty()) item {
-                val emptyText = when (catalogAvailability) {
+                val emptyText = if (listLoading) {
+                    R.string.loading_list
+                } else if (listFailed) {
+                    R.string.catalog_unavailable_error
+                } else when (catalogAvailability) {
                     CatalogAvailability.LOADING -> R.string.catalog_loading
                     CatalogAvailability.UNAVAILABLE -> R.string.catalog_not_available_yet
                     CatalogAvailability.ERROR -> R.string.catalog_unavailable_error
@@ -608,54 +592,6 @@ private fun AnimeListScreen(
             if (loadingMore) item(key = "search-loading-more") {
                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                }
-            }
-            if (query.isNotBlank() && onlineSearchAvailable &&
-                remoteSearchState.status == RemoteSearchStatus.IDLE
-            ) item(key = "online-search-action") {
-                OutlinedButton(onClick = onSearchOnline, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Public, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.search_more_online))
-                }
-            }
-            if (remoteSearchState.status != RemoteSearchStatus.IDLE) {
-                item(key = "online-results-heading") {
-                    Text(
-                        stringResource(R.string.search_online_results),
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
-                    )
-                }
-                items(
-                    visibleOnlineItems,
-                    key = { "online-${it.id}" }
-                ) { anime ->
-                    AnimeListRow(
-                        anime, imagesEnabled, oneCoverPerGroup, coverRepository, genericCoverRepository,
-                        genericGroupCoverRepository,
-                        onCoverDownload = { onCoverDownload(anime) },
-                        onCoverOpen = { onCoverOpen(anime) },
-                        onClick = { onAnime(anime) },
-                        onGroupDetails = { onGroupDetails(anime) }
-                    )
-                }
-                if (remoteSearchState.status == RemoteSearchStatus.LOADING) item(key = "online-loading") {
-                    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(10.dp))
-                        Text(stringResource(R.string.search_online_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                if (remoteSearchState.status == RemoteSearchStatus.EMPTY) item(key = "online-empty") {
-                    Text(stringResource(R.string.search_online_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-                }
-                if (remoteSearchState.status == RemoteSearchStatus.ERROR) item(key = "online-error") {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(stringResource(R.string.search_online_error), color = MaterialTheme.colorScheme.error)
-                        TextButton(onClick = onSearchOnline) { Text(stringResource(R.string.action_retry)) }
-                    }
                 }
             }
         }
@@ -712,7 +648,9 @@ private fun RankingScreen(
     onGroupDetails: (Anime) -> Unit,
     onCoverDownload: (Anime) -> Unit,
     onCoverOpen: (Anime) -> Unit,
-    catalogAvailability: CatalogAvailability
+    catalogAvailability: CatalogAvailability,
+    listLoading: Boolean,
+    listFailed: Boolean
 ) {
     var showFilters by remember { mutableStateOf(false) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -801,7 +739,7 @@ private fun RankingScreen(
                 )
             }
             if (rest.isEmpty() && top3.isEmpty()) {
-                item { EmptyRankingMessage(catalogAvailability) }
+                item { EmptyRankingMessage(catalogAvailability, listLoading, listFailed) }
             }
         } else {
             itemsIndexed(ranked, key = { _, anime -> anime.id }) { index, anime ->
@@ -821,7 +759,7 @@ private fun RankingScreen(
                 )
             }
             if (ranked.isEmpty()) {
-                item { EmptyRankingMessage(catalogAvailability) }
+                item { EmptyRankingMessage(catalogAvailability, listLoading, listFailed) }
             }
         }
     }
@@ -1177,8 +1115,14 @@ private fun GroupDetailScreen(
 }
 
 @Composable
-private fun EmptyRankingMessage(availability: CatalogAvailability) {
-    val resource = when (availability) {
+private fun EmptyRankingMessage(
+    availability: CatalogAvailability,
+    listLoading: Boolean,
+    listFailed: Boolean
+) {
+    val resource = if (listLoading) R.string.loading_list else if (listFailed) {
+        R.string.catalog_unavailable_error
+    } else when (availability) {
         CatalogAvailability.LOADING -> R.string.catalog_loading
         CatalogAvailability.UNAVAILABLE -> R.string.catalog_not_available_yet
         CatalogAvailability.ERROR -> R.string.catalog_unavailable_error
@@ -1196,6 +1140,7 @@ private fun GenericMediaFiltersDialog(
     onApply: (GenericMediaFilters) -> Unit
 ) {
     var draft by remember(current) { mutableStateOf(current) }
+    val genreLabels = if (mediaType == MediaType.BOOK) bookGenreLabels() else emptyMap()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.filters_title)) },
@@ -1205,7 +1150,12 @@ private fun GenericMediaFiltersDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
-                    FilterChoice(mediaType.genreFilterLabelResource, draft.genre, options.genres) {
+                    FilterChoice(
+                        mediaType.genreFilterLabelResource,
+                        draft.genre,
+                        options.genres,
+                        { genreLabels[it] ?: it }
+                    ) {
                         draft = draft.copy(genre = it)
                     }
                 }
@@ -1239,6 +1189,23 @@ private fun GenericMediaFiltersDialog(
         }
     )
 }
+
+@Composable
+private fun bookGenreLabels(): Map<String, String> = mapOf(
+    "Fantasy" to stringResource(R.string.book_genre_fantasy),
+    "Science Fiction" to stringResource(R.string.book_genre_science_fiction),
+    "Romance" to stringResource(R.string.book_genre_romance),
+    "Mystery & Thriller" to stringResource(R.string.book_genre_mystery_thriller),
+    "Horror" to stringResource(R.string.book_genre_horror),
+    "Adventure" to stringResource(R.string.book_genre_adventure),
+    "Historical Fiction" to stringResource(R.string.book_genre_historical_fiction),
+    "Classics" to stringResource(R.string.book_genre_classics),
+    "Biography" to stringResource(R.string.book_genre_biography),
+    "History" to stringResource(R.string.book_genre_history),
+    "Science & Technology" to stringResource(R.string.book_genre_science_technology),
+    "Philosophy" to stringResource(R.string.book_genre_philosophy),
+    "Other / Unclassified" to stringResource(R.string.book_genre_other)
+)
 
 @Composable
 private fun AnimeFiltersDialog(

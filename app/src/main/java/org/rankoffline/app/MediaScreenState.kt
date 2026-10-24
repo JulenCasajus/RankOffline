@@ -78,10 +78,11 @@ fun MediaType.genericGroupType(): String? = when (this) {
     MediaType.MANGA -> "VARIANTS"
     MediaType.SERIES -> "SEASONS"
     MediaType.MOVIE -> "COLLECTION"
+    MediaType.BOOK -> "BOOK_SERIES"
     else -> null
 }
 
-fun MediaType.supportsMerge(): Boolean = this != MediaType.BOOK
+fun MediaType.supportsMerge(): Boolean = genericGroupType() != null
 
 fun MediaType.catalogSortCriteria(): List<CatalogSortOrder> =
     listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC)

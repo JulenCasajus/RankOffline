@@ -244,6 +244,12 @@ interface MediaDao {
     )
     fun observeDownloadedCoverCount(mediaType: String): Flow<Int>
 
+    @Query(
+        "SELECT local_cover_path FROM media_item WHERE media_type = :mediaType " +
+            "AND local_cover_path IS NOT NULL AND cover_resolution_state = 'AVAILABLE'"
+    )
+    fun observeLocalCoverPaths(mediaType: String): Flow<List<String>>
+
     @Query("SELECT local_cover_path FROM media_item WHERE id = :mediaId")
     fun observeLocalCoverPath(mediaId: String): Flow<String?>
 
@@ -255,11 +261,10 @@ interface MediaDao {
     suspend fun ratedCoverItems(mediaType: String, packId: String): List<MediaItemEntity>
 
     @Query(
-        "SELECT * FROM media_item WHERE id IN (" +
-            "SELECT MIN(id) FROM media_item WHERE media_type = :mediaType " +
-            "AND popularity_rank IS NOT NULL GROUP BY popularity_rank " +
-            "ORDER BY popularity_rank ASC LIMIT :limit" +
-            ") ORDER BY popularity_rank ASC, id ASC"
+        "SELECT * FROM media_item WHERE media_type = :mediaType " +
+            "ORDER BY CASE WHEN popularity_rank IS NOT NULL THEN 0 " +
+            "WHEN popularity IS NOT NULL THEN 1 ELSE 2 END ASC, " +
+            "popularity_rank ASC, popularity DESC, title COLLATE NOCASE ASC, id ASC LIMIT :limit"
     )
     suspend fun topPopularCoverItems(mediaType: String, limit: Int): List<MediaItemEntity>
 

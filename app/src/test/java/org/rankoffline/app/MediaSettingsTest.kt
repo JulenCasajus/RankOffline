@@ -148,11 +148,84 @@ class MediaSettingsTest {
 
     @Test
     fun activeMediaChangesComputedSettingsImmediately() {
-        val state = AppSettingsState().withActiveMediaType(MediaType.BOOK)
+        val settings = DefaultSettings.allMediaSettings() +
+            (MediaType.BOOK to DefaultSettings.mediaSettings(MediaType.BOOK).copy(
+                showImages = true,
+                stickyScore = false,
+                oneCoverPerGroup = true
+            ))
+        val state = AppSettingsState(mediaSettings = settings).withActiveMediaType(MediaType.BOOK)
 
         assertEquals(MediaType.BOOK, state.activeMediaType)
         assertEquals(DefaultSettings.ratingConfig(MediaType.BOOK), state.ratingConfig)
         assertEquals(DefaultSettings.profiles(MediaType.BOOK), state.ratingProfiles)
+        assertTrue(state.showImages)
+        assertFalse(state.stickyScore)
+        assertTrue(state.oneCoverPerGroup)
+    }
+
+    @Test
+    fun displaySettingsArePersistedIndependentlyPerPack() {
+        val settings = updateMediaSettings(
+            updateMediaSettings(DefaultSettings.allMediaSettings(), MediaType.MANGA) {
+                it.copy(showImages = true, stickyScore = false, oneCoverPerGroup = true)
+            },
+            MediaType.BOOK
+        ) { it.copy(showImages = false, stickyScore = true, oneCoverPerGroup = false) }
+
+        val restored = normalizeMediaSettingsSnapshot(
+            decodeMediaSettingsSnapshot(encodeMediaSettingsSnapshot(settings)),
+            settings.getValue(MediaType.ANIME)
+        )
+
+        assertTrue(restored.getValue(MediaType.MANGA).showImages)
+        assertFalse(restored.getValue(MediaType.MANGA).stickyScore)
+        assertTrue(restored.getValue(MediaType.MANGA).oneCoverPerGroup)
+        assertFalse(restored.getValue(MediaType.BOOK).showImages)
+        assertTrue(restored.getValue(MediaType.BOOK).stickyScore)
+        assertFalse(restored.getValue(MediaType.BOOK).oneCoverPerGroup)
+    }
+
+    @Test
+    fun showImagesChoicesRoundTripIndependentlyForEveryOfficialPack() {
+        val expected = MediaType.entries.associateWith { mediaType ->
+            DefaultSettings.mediaSettings(mediaType).copy(
+                showImages = mediaType in setOf(MediaType.ANIME, MediaType.MOVIE, MediaType.BOOK)
+            )
+        }
+
+        val restored = normalizeMediaSettingsSnapshot(
+            decodeMediaSettingsSnapshot(encodeMediaSettingsSnapshot(expected)),
+            expected.getValue(MediaType.ANIME)
+        )
+
+        MediaType.entries.forEach { mediaType ->
+            assertEquals(expected.getValue(mediaType).showImages, restored.getValue(mediaType).showImages)
+        }
+        assertTrue(DefaultSettings.mediaSettings(MediaType.SERIES).oneCoverPerGroup)
+    }
+
+    @Test
+    fun oldSnapshotUsesLegacyGlobalDisplayPreferences() {
+        val oldJson = mediaJson(DefaultSettings.mediaSettings(MediaType.MANGA))
+            .replace(Regex(",?\\\"showImages\\\":(true|false)"), "")
+            .replace(Regex(",?\\\"stickyScore\\\":(true|false)"), "")
+        val decoded = decodeMediaSettingsSnapshot(
+            """{"media":{"mangas":$oldJson}}""",
+            legacyShowImages = true,
+            legacyStickyScore = false
+        )
+        val restored = normalizeMediaSettingsSnapshot(
+            decoded,
+            DefaultSettings.mediaSettings(MediaType.ANIME),
+            legacyShowImages = true,
+            legacyStickyScore = false
+        )
+
+        MediaType.entries.forEach { mediaType ->
+            assertTrue(restored.getValue(mediaType).showImages)
+            assertFalse(restored.getValue(mediaType).stickyScore)
+        }
     }
 
     @Test

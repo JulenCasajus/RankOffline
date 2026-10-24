@@ -144,7 +144,10 @@
 <string name="category_phase_installing">Wird installiert…</string>
 <string name="category_phase_importing_catalog">Katalog wird importiert…</string>
 <string name="category_phase_importing_groups">Zusammenführung wird vorbereitet…</string>
+<string name="category_phase_downloading_covers">Cover werden heruntergeladen: %1$d / %2$d</string>
 <string name="category_phase_finalizing">Wird abgeschlossen…</string>
+<string name="category_cover_partial">Paket bereit · %1$d/%2$d Cover verfügbar · %3$d nicht verfügbar</string>
+<string name="category_cover_cancelled">Paket bereit · %1$d/%2$d Cover verfügbar · Cover-Download abgebrochen</string>
 <string name="category_pack_runtime_error">Der Katalog konnte nicht vorbereitet werden. Zum Wiederholen tippen.</string>
 <string name="message_rating_operation_failed">Die Bewertung konnte nicht gespeichert werden. Versuche es erneut.</string>
     <string name="message_icon_change_failed">Das App-Symbol konnte nicht geändert werden.</string>
@@ -161,4 +164,20 @@
     <string name="download_pack">Paket herunterladen</string>
     <string name="color_picker_saturation_value">Sättigung und Helligkeit</string>
     <string name="color_picker_hue">Farbton</string>
+    <string name="loading_list">Liste wird geladen…</string>
+    <string name="covers_progress_details_explicit">%1$d vorhanden · %2$d geladen · %3$d nicht verfügbar · %4$d fehlgeschlagen</string>
+    <string name="merge_book_series">Buchreihen zusammenführen</string>
+    <string name="book_genre_fantasy">Fantasy</string>
+    <string name="book_genre_science_fiction">Science-Fiction</string>
+    <string name="book_genre_romance">Liebesroman</string>
+    <string name="book_genre_mystery_thriller">Krimi &amp; Thriller</string>
+    <string name="book_genre_horror">Horror</string>
+    <string name="book_genre_adventure">Abenteuer</string>
+    <string name="book_genre_historical_fiction">Historischer Roman</string>
+    <string name="book_genre_classics">Klassiker</string>
+    <string name="book_genre_biography">Biografie</string>
+    <string name="book_genre_history">Geschichte</string>
+    <string name="book_genre_science_technology">Wissenschaft &amp; Technik</string>
+    <string name="book_genre_philosophy">Philosophie</string>
+    <string name="book_genre_other">Sonstige / Nicht klassifiziert</string>
 </resources>

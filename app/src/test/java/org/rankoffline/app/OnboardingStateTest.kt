@@ -164,7 +164,7 @@ class OnboardingStateTest {
     }
 
     @Test
-    fun networkProgressUsesInstalledSizeEquivalentWithoutChangingTrueFraction() {
+    fun networkProgressKeepsActualArchiveBytesAndTrueFraction() {
         val progress = CategoryPackInstallProgress(
             phase = CategoryPackInstallPhase.DOWNLOADING,
             downloadedBytes = 2_500,
@@ -172,10 +172,9 @@ class OnboardingStateTest {
             totalInstalledBytes = 20_000
         )
 
-        assertEquals(10_000L, progress.displayedInstalledBytes)
+        assertEquals(2_500L, progress.downloadedBytes)
+        assertEquals(5_000L, progress.totalDownloadBytes)
         assertEquals(0.5f, progress.fraction, 0.0f)
-        assertEquals(0L, installedSizeEquivalent(4L, 0L, 20L))
-        assertEquals(20_000L, progress.copy(downloadedBytes = 5_000).displayedInstalledBytes)
     }
 
     @Test

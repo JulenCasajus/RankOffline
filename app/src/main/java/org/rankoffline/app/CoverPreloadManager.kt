@@ -10,49 +10,56 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/** Bounded two-worker cover preload for explicit Top-N cover actions. */
+/** Shared bounded two-worker cover preload for installation and explicit Top-N actions. */
 class CoverPreloadManager(
     private val genericCoverRepository: GenericMediaCoverRepository
 ) {
     private val _progress = MutableStateFlow(CoverPreloadProgress())
     val progress: StateFlow<CoverPreloadProgress> = _progress.asStateFlow()
-
-    suspend fun preload(mediaType: MediaType) = withContext(Dispatchers.IO) {
-        preloadPlan(buildRatedPlan(mediaType))
-    }
+    private val operationMutex = Mutex()
 
     suspend fun preloadTop(
         mediaType: MediaType,
         limit: Int,
-        oneCoverPerGroup: Boolean
+        oneCoverPerGroup: Boolean,
+        onProgress: (CoverPreloadProgress) -> Unit = {}
     ) = withContext(Dispatchers.IO) {
-        val candidates = when (mediaType) {
-            else -> genericCoverRepository.topPopularCoverItems(
-                mediaType,
-                limit,
-                oneCoverPerGroup
-            )
-                .map { RatedCoverCandidate.GenericItem(it) }
+        operationMutex.withLock {
+            val candidates = when (mediaType) {
+                else -> genericCoverRepository.topPopularCoverItems(
+                    mediaType,
+                    limit,
+                    oneCoverPerGroup
+                )
+                    .map { RatedCoverCandidate.GenericItem(it) }
+            }
+            preloadPlan(mediaType, buildPlan(candidates, limit), onProgress)
         }
-        preloadPlan(buildPlan(candidates))
     }
 
     private suspend fun preloadPlan(
-        plan: RatedCoverPlan
+        mediaType: MediaType,
+        plan: RatedCoverPlan,
+        onProgress: (CoverPreloadProgress) -> Unit
     ): CoverPreloadProgress =
         withContext(Dispatchers.IO) {
         try {
-            _progress.value = CoverPreloadProgress(
+            publish(CoverPreloadProgress(
+                mediaType = mediaType,
                 status = CoverPreloadStatus.DOWNLOADING_COVERS,
                 target = plan.total,
-                processed = plan.skipped,
-                existing = plan.skipped
-            )
-            var processed = plan.skipped
-            var skipped = plan.skipped
+                processed = plan.existing + plan.unavailable,
+                existing = plan.existing,
+                unavailable = plan.unavailable
+            ), onProgress)
+            var processed = plan.existing + plan.unavailable
+            var existing = plan.existing
             var downloaded = 0
+            var unavailable = plan.unavailable
             var errors = 0
             plan.pending.chunked(WORKER_COUNT).forEach { batch ->
                 val results = coroutineScope {
@@ -61,26 +68,28 @@ class CoverPreloadManager(
                 results.forEach { result ->
                     when (result) {
                         CoverDownloadResult.Downloaded -> downloaded++
-                        CoverDownloadResult.AlreadyAvailable,
-                        CoverDownloadResult.AlreadyInProgress -> skipped++
+                        CoverDownloadResult.AlreadyAvailable -> existing++
+                        CoverDownloadResult.NotFound -> unavailable++
+                        CoverDownloadResult.AlreadyInProgress,
                         CoverDownloadResult.NetworkError,
-                        CoverDownloadResult.NotFound,
                         CoverDownloadResult.TemporaryError -> errors++
                     }
                     processed++
                 }
-                _progress.value = CoverPreloadProgress(
+                publish(CoverPreloadProgress(
+                    mediaType = mediaType,
                     status = CoverPreloadStatus.DOWNLOADING_COVERS,
                     target = plan.total,
                     processed = processed,
-                    existing = skipped,
+                    existing = existing,
                     downloaded = downloaded,
+                    unavailable = unavailable,
                     errors = errors
-                )
+                ), onProgress)
             }
-            _progress.value = _progress.value.copy(status = CoverPreloadStatus.COMPLETED)
+            publish(_progress.value.copy(status = CoverPreloadStatus.COMPLETED), onProgress)
         } catch (exception: CancellationException) {
-            _progress.value = CoverPreloadProgress()
+            publish(_progress.value.copy(status = CoverPreloadStatus.CANCELLED), onProgress)
             throw exception
         } catch (exception: Exception) {
             Log.e(
@@ -89,7 +98,7 @@ class CoverPreloadManager(
                     "failed=${exception.javaClass.simpleName}: ${exception.message}",
                 exception
             )
-            _progress.value = _progress.value.copy(status = CoverPreloadStatus.FAILED)
+            publish(_progress.value.copy(status = CoverPreloadStatus.FAILED), onProgress)
         }
         _progress.value
     }
@@ -98,29 +107,38 @@ class CoverPreloadManager(
         _progress.value = CoverPreloadProgress()
     }
 
-    private suspend fun buildRatedPlan(mediaType: MediaType): RatedCoverPlan {
-        val candidates = when (mediaType) {
-            else -> genericCoverRepository.ratedCoverItems(mediaType).map { RatedCoverCandidate.GenericItem(it) }
-        }
-        return buildPlan(candidates)
-    }
-
     private suspend fun buildPlan(
-        candidates: List<RatedCoverCandidate>
+        candidates: List<RatedCoverCandidate>,
+        requestedTarget: Int
     ): RatedCoverPlan {
         val pending = mutableListOf<RatedCoverCandidate>()
-        var skipped = 0
+        var existing = 0
+        var unavailable = 0
         candidates.forEach { candidate ->
             val localPath = candidate.localCoverPath
             if (!localPath.isNullOrBlank() && File(localPath).isFile) {
-                skipped++
+                existing++
             } else if (!candidate.hasResolvableRemoteCover()) {
-                skipped++
+                unavailable++
             } else {
                 pending += candidate
             }
         }
-        return RatedCoverPlan(candidates.size, skipped, pending)
+        val missingCandidates = (requestedTarget - candidates.size).coerceAtLeast(0)
+        return RatedCoverPlan(
+            total = requestedTarget,
+            existing = existing,
+            unavailable = unavailable + missingCandidates,
+            pending = pending
+        )
+    }
+
+    private fun publish(
+        progress: CoverPreloadProgress,
+        onProgress: (CoverPreloadProgress) -> Unit
+    ) {
+        _progress.value = progress
+        onProgress(progress)
     }
 
     private suspend fun RatedCoverCandidate.download(): CoverDownloadResult = when (this) {
@@ -144,7 +162,8 @@ class CoverPreloadManager(
 
     private data class RatedCoverPlan(
         val total: Int,
-        val skipped: Int,
+        val existing: Int,
+        val unavailable: Int,
         val pending: List<RatedCoverCandidate>
     )
 

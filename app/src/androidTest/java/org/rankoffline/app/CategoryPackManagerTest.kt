@@ -9,6 +9,7 @@ import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.async
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
@@ -91,6 +92,20 @@ class CategoryPackManagerTest {
         )
         assertTrue(manager.states.value.getValue(MediaType.MANGA).available)
         assertTrue(manager.states.value.getValue(MediaType.MANGA).reclaimableBytes > 0L)
+        assertArrayEquals(
+            manga.archive,
+            File(
+                File(context.filesDir, CategoryPackManager.PACK_ARCHIVE_ROOT),
+                manga.descriptor.archiveName
+            ).readBytes()
+        )
+        assertArrayEquals(
+            book.archive,
+            File(
+                File(context.filesDir, CategoryPackManager.PACK_ARCHIVE_ROOT),
+                book.descriptor.archiveName
+            ).readBytes()
+        )
         root.deleteRecursively()
         Unit
     }
@@ -114,6 +129,150 @@ class CategoryPackManagerTest {
         assertEquals(CategoryPackDownloadResult.INVALID_PACK, manager.downloadAndInstall(MediaType.BOOK))
         assertFalse(manager.states.value.getValue(MediaType.BOOK).available)
         assertFalse(root.walkTopDown().any { it.name.endsWith(".part") })
+    }
+
+    @Test
+    fun initialTopCoversRunAfterImportAndReadyIsPublishedOnlyAfterCompletion() = runBlocking {
+        val fixture = fixture(MediaType.MANGA, "manga_catalog.jsonl.gzip", "manga fixture".toByteArray())
+        val manager = managerFor(fixture)
+        var importFinished = false
+        var coverCallbackRan = false
+
+        assertEquals(
+            CategoryPackDownloadResult.INSTALLED,
+            manager.downloadAndInstall(
+                mediaType = MediaType.MANGA,
+                importInstalledPack = { phase ->
+                    phase(CategoryPackInstallPhase.IMPORTING_CATALOG)
+                    importFinished = true
+                    true
+                },
+                downloadInitialCovers = true,
+                acquireInitialCovers = { report ->
+                    assertTrue(importFinished)
+                    coverCallbackRan = true
+                    report(CoverPreloadProgress(
+                        mediaType = MediaType.MANGA,
+                        status = CoverPreloadStatus.DOWNLOADING_COVERS,
+                        target = 100,
+                        processed = 20,
+                        existing = 20
+                    ))
+                    val installing = manager.states.value.getValue(MediaType.MANGA)
+                    assertFalse(installing.available)
+                    assertEquals(
+                        CategoryPackInstallPhase.DOWNLOADING_COVERS,
+                        installing.installProgress?.phase
+                    )
+                    CoverPreloadProgress(
+                        mediaType = MediaType.MANGA,
+                        status = CoverPreloadStatus.COMPLETED,
+                        target = 100,
+                        processed = 100,
+                        existing = 20,
+                        downloaded = 80
+                    )
+                }
+            )
+        )
+
+        assertTrue(coverCallbackRan)
+        val ready = manager.states.value.getValue(MediaType.MANGA)
+        assertTrue(ready.available)
+        assertEquals(InitialCoverAcquisitionStatus.COMPLETED, ready.initialCoverAcquisition?.status)
+        assertEquals(100, ready.initialCoverAcquisition?.available)
+
+        val restarted = CategoryPackManager(
+            context,
+            injectedDownloader = CategoryPackArchiveDownloader { _, _, _ ->
+                throw AssertionError("Restart must not redownload initial covers")
+            },
+            injectedDescriptors = mapOf(OfficialPackIds.Manga to fixture.descriptor),
+            bundledCatalogsAvailable = false
+        )
+        restarted.recoverFilesystem()
+        restarted.refresh()
+        assertEquals(
+            InitialCoverAcquisitionStatus.COMPLETED,
+            restarted.states.value.getValue(MediaType.MANGA).initialCoverAcquisition?.status
+        )
+    }
+
+    @Test
+    fun showImagesOffSkipsCoverRequestsAndPartialOrCancelledCoversKeepCatalog() = runBlocking {
+        val book = fixture(MediaType.BOOK, "book_catalog.jsonl.gzip", "book fixture".toByteArray())
+        val skipped = managerFor(book)
+        var coverCalls = 0
+        assertEquals(
+            CategoryPackDownloadResult.INSTALLED,
+            skipped.downloadAndInstall(
+                mediaType = MediaType.BOOK,
+                downloadInitialCovers = false,
+                acquireInitialCovers = {
+                    coverCalls++
+                    error("Show Images is disabled")
+                }
+            )
+        )
+        assertEquals(0, coverCalls)
+        assertTrue(skipped.states.value.getValue(MediaType.BOOK).available)
+        assertEquals(
+            InitialCoverAcquisitionStatus.SKIPPED,
+            skipped.states.value.getValue(MediaType.BOOK).initialCoverAcquisition?.status
+        )
+
+        val movie = fixture(MediaType.MOVIE, "movie_catalog.jsonl.gzip", "movie fixture".toByteArray())
+        val partial = managerFor(movie)
+        assertEquals(
+            CategoryPackDownloadResult.INSTALLED,
+            partial.downloadAndInstall(
+                mediaType = MediaType.MOVIE,
+                downloadInitialCovers = true,
+                acquireInitialCovers = {
+                    CoverPreloadProgress(
+                        mediaType = MediaType.MOVIE,
+                        status = CoverPreloadStatus.COMPLETED,
+                        target = 100,
+                        processed = 100,
+                        downloaded = 84,
+                        unavailable = 12,
+                        errors = 4
+                    )
+                }
+            )
+        )
+        val partialState = partial.states.value.getValue(MediaType.MOVIE)
+        assertTrue(partialState.available)
+        assertEquals(InitialCoverAcquisitionStatus.PARTIAL, partialState.initialCoverAcquisition?.status)
+        assertEquals(84, partialState.initialCoverAcquisition?.available)
+
+        val anime = fixture(MediaType.ANIME, "anime_catalog.jsonl.gzip", "anime fixture".toByteArray())
+        val cancelled = managerFor(anime)
+        assertEquals(
+            CategoryPackDownloadResult.INSTALLED,
+            cancelled.downloadAndInstall(
+                mediaType = MediaType.ANIME,
+                downloadInitialCovers = true,
+                acquireInitialCovers = { report ->
+                    report(CoverPreloadProgress(
+                        mediaType = MediaType.ANIME,
+                        status = CoverPreloadStatus.DOWNLOADING_COVERS,
+                        target = 100,
+                        processed = 35,
+                        downloaded = 35
+                    ))
+                    throw CancellationException("fixture cancellation")
+                }
+            )
+        )
+        val cancelledState = cancelled.states.value.getValue(MediaType.ANIME)
+        assertTrue(cancelledState.available)
+        assertTrue(requireNotNull(cancelled.installedDirectory(MediaType.ANIME)).isDirectory)
+        assertEquals(
+            InitialCoverAcquisitionStatus.CANCELLED,
+            cancelledState.initialCoverAcquisition?.status
+        )
+        assertEquals(35, cancelledState.initialCoverAcquisition?.available)
     }
 
     @Test
@@ -192,6 +351,12 @@ class CategoryPackManagerTest {
         assertTrue(purge.await())
         assertTrue(purgeRuntimeStarted)
         assertFalse(manager.states.value.getValue(MediaType.BOOK).available)
+        assertFalse(
+            File(
+                File(context.filesDir, CategoryPackManager.PACK_ARCHIVE_ROOT),
+                fixture.descriptor.archiveName
+            ).exists()
+        )
     }
 
     private fun fixture(mediaType: MediaType, fileName: String, payload: ByteArray): PackFixture {
@@ -229,6 +394,17 @@ class CategoryPackManagerTest {
         )
         return PackFixture(payload, archive, descriptor)
     }
+
+    private fun managerFor(fixture: PackFixture) = CategoryPackManager(
+        context = context,
+        injectedDownloader = CategoryPackArchiveDownloader { _, destination, progress ->
+            destination.writeBytes(fixture.archive)
+            progress(fixture.archive.size.toLong())
+            CategoryPackDownloadResult.INSTALLED
+        },
+        injectedDescriptors = mapOf(fixture.descriptor.manifest.packId to fixture.descriptor),
+        bundledCatalogsAvailable = false
+    )
 
     private fun ByteArray.sha256(): String = MessageDigest.getInstance("SHA-256")
         .digest(this)

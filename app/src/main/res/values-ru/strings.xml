@@ -143,7 +143,10 @@
 <string name="category_phase_installing">Установка…</string>
 <string name="category_phase_importing_catalog">Импорт каталога…</string>
 <string name="category_phase_importing_groups">Подготовка объединения…</string>
+<string name="category_phase_downloading_covers">Загрузка обложек: %1$d / %2$d</string>
 <string name="category_phase_finalizing">Завершение…</string>
+<string name="category_cover_partial">Пакет готов · доступно обложек: %1$d/%2$d · недоступно: %3$d</string>
+<string name="category_cover_cancelled">Пакет готов · доступно обложек: %1$d/%2$d · загрузка отменена</string>
 <string name="category_pack_runtime_error">Не удалось подготовить каталог. Нажмите, чтобы повторить.</string>
 <string name="message_rating_operation_failed">Не удалось сохранить оценку. Повторите попытку.</string>
     <string name="message_icon_change_failed">Не удалось изменить значок приложения.</string>
@@ -160,4 +163,20 @@
     <string name="download_pack">Скачать пакет</string>
     <string name="color_picker_saturation_value">Насыщенность и яркость</string>
     <string name="color_picker_hue">Оттенок</string>
+    <string name="loading_list">Загрузка списка…</string>
+    <string name="covers_progress_details_explicit">Уже есть: %1$d · скачано: %2$d · недоступно: %3$d · ошибок: %4$d</string>
+    <string name="merge_book_series">Объединить книжные серии</string>
+    <string name="book_genre_fantasy">Фэнтези</string>
+    <string name="book_genre_science_fiction">Научная фантастика</string>
+    <string name="book_genre_romance">Романтика</string>
+    <string name="book_genre_mystery_thriller">Детектив и триллер</string>
+    <string name="book_genre_horror">Ужасы</string>
+    <string name="book_genre_adventure">Приключения</string>
+    <string name="book_genre_historical_fiction">Историческая проза</string>
+    <string name="book_genre_classics">Классика</string>
+    <string name="book_genre_biography">Биография</string>
+    <string name="book_genre_history">История</string>
+    <string name="book_genre_science_technology">Наука и технологии</string>
+    <string name="book_genre_philosophy">Философия</string>
+    <string name="book_genre_other">Другое / Без категории</string>
 </resources>

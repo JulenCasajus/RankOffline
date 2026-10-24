@@ -464,6 +464,12 @@ interface MediaGroupDao {
     suspend fun groupsWithLocalCovers(mediaType: String): List<MediaGroupEntity>
 
     @Query(
+        "SELECT local_cover_path FROM media_group WHERE media_type = :mediaType " +
+            "AND local_cover_path IS NOT NULL AND cover_resolution_state = 'AVAILABLE'"
+    )
+    fun observeLocalCoverPaths(mediaType: String): Flow<List<String>>
+
+    @Query(
         "UPDATE media_group SET local_cover_path = NULL, cover_resolution_state = 'UNKNOWN' " +
             "WHERE media_type = :mediaType AND local_cover_path IS NOT NULL"
     )

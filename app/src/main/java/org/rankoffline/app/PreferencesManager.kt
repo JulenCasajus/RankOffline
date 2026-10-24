@@ -65,7 +65,9 @@ data class MediaSettings(
     val ratingConfig: RatingSystemConfig,
     val ratingProfiles: RatingProfilesConfig,
     val mergeEnabled: Boolean,
-    val oneCoverPerGroup: Boolean = false
+    val oneCoverPerGroup: Boolean = false,
+    val showImages: Boolean = false,
+    val stickyScore: Boolean = true
 )
 
 @Serializable
@@ -204,7 +206,9 @@ object DefaultSettings {
             ratingConfig = config,
             ratingProfiles = profiles(mediaType, config.categories),
             mergeEnabled = false,
-            oneCoverPerGroup = mediaType == MediaType.SERIES
+            oneCoverPerGroup = mediaType == MediaType.SERIES,
+            showImages = false,
+            stickyScore = true
         )
     }
 
@@ -253,7 +257,6 @@ data class AppSettingsState(
     val language: SupportedLanguage = SupportedLanguage.DEFAULT,
     val hasCompletedWelcome: Boolean = false,
     val hasCompletedOnboarding: Boolean = false,
-    val completedTopCoverWarmups: Set<MediaType> = emptySet(),
     val settingsLoaded: Boolean = false
 ) {
     val themePalette: AppThemePalette
@@ -298,7 +301,6 @@ class SettingsRepository internal constructor(
     private val hasCompletedWelcomeKey = booleanPreferencesKey("has_completed_welcome")
     private val hasCompletedOnboardingKey = booleanPreferencesKey("has_completed_onboarding")
     private val completedOnboardingVersionKey = intPreferencesKey("completed_onboarding_version")
-    private val completedTopCoverWarmupsKey = stringSetPreferencesKey("completed_top_cover_warmups_v1")
 
     private val _state = MutableStateFlow(AppSettingsState(settingsLoaded = false))
     val state: StateFlow<AppSettingsState> = _state.asStateFlow()
@@ -316,8 +318,19 @@ class SettingsRepository internal constructor(
             mergeEnabled = prefs[mergeSeasonsEnabledKey]
         )
         val legacyMigration = migrateLegacyAnimeSettings(legacyInput)
-        val persistedSnapshot = decodeMediaSettingsSnapshot(prefs[mediaSettingsKey])
-        val mediaSettings = normalizeMediaSettingsSnapshot(persistedSnapshot, legacyMigration.settings)
+        val legacyShowImages = resolveShowImages(prefs[showImagesKey])
+        val legacyStickyScore = prefs[stickyScoreKey] ?: true
+        val persistedSnapshot = decodeMediaSettingsSnapshot(
+            prefs[mediaSettingsKey],
+            legacyShowImages,
+            legacyStickyScore
+        )
+        val mediaSettings = normalizeMediaSettingsSnapshot(
+            persistedSnapshot,
+            legacyMigration.settings,
+            legacyShowImages,
+            legacyStickyScore
+        )
         removedLegacyCategoryIds = if (
             persistedSnapshot?.media?.containsKey(MediaType.ANIME.persistedValue) != true
         ) {
@@ -368,10 +381,12 @@ class SettingsRepository internal constructor(
             mutablePrefs[themePaletteKey] = themeSelection.persistedValue
             mirrorLegacyAnimeSettings(mutablePrefs, animeMirror)
         }
+        val activeMediaType = resolveActiveMediaType(prefs[activeMediaTypeKey])
+        val activeSettings = mediaSettings.getValue(activeMediaType)
         _state.value = AppSettingsState(
-            showImages = resolveShowImages(prefs[showImagesKey]),
-            stickyScore = prefs[stickyScoreKey] ?: true,
-            activeMediaType = resolveActiveMediaType(prefs[activeMediaTypeKey]),
+            showImages = activeSettings.showImages,
+            stickyScore = activeSettings.stickyScore,
+            activeMediaType = activeMediaType,
             catalogSortOrders = resolveCatalogSortOrders(prefs[catalogSortOrdersKey]),
             mediaSettings = mediaSettings,
             appIcon = appIcon,
@@ -382,9 +397,6 @@ class SettingsRepository internal constructor(
             language = language,
             hasCompletedWelcome = if (BuildConfig.DEBUG) false else onboarding.hasCompletedWelcome,
             hasCompletedOnboarding = if (BuildConfig.DEBUG) true else onboarding.hasCompletedOnboarding,
-            completedTopCoverWarmups = prefs[completedTopCoverWarmupsKey].orEmpty()
-                .map(MediaType::fromPersistedValue)
-                .toSet(),
             settingsLoaded = true
         )
         localeController.apply(language)
@@ -394,13 +406,11 @@ class SettingsRepository internal constructor(
         removedLegacyCategoryIds.also { removedLegacyCategoryIds = emptyList() }
 
     suspend fun updateShowImages(value: Boolean) = updateMutex.withLock {
-        _state.value = _state.value.copy(showImages = value)
-        context.dataStore.edit { prefs -> prefs[showImagesKey] = value }
+        persistActiveMediaSettings { it.copy(showImages = value) }
     }
 
     suspend fun updateStickyScore(value: Boolean) = updateMutex.withLock {
-        _state.value = _state.value.copy(stickyScore = value)
-        context.dataStore.edit { prefs -> prefs[stickyScoreKey] = value }
+        persistActiveMediaSettings { it.copy(stickyScore = value) }
     }
 
     suspend fun updateActiveMediaType(value: MediaType) = updateMutex.withLock {
@@ -524,22 +534,31 @@ class SettingsRepository internal constructor(
         persistActiveMediaSettings { it.copy(oneCoverPerGroup = value) }
     }
 
-    /** Apply a pack's suggested cover behavior only on its first successful installation. */
-    suspend fun applyNewPackCoverDefault(mediaType: MediaType, value: Boolean) = updateMutex.withLock {
+    /** Apply manifest defaults only on the pack's first successful installation. */
+    suspend fun applyNewPackDefaults(mediaType: MediaType, defaults: PackDefaults) = updateMutex.withLock {
         val updated = updateMediaSettings(_state.value.mediaSettings, mediaType) {
-            it.copy(oneCoverPerGroup = value)
+            it.copy(
+                oneCoverPerGroup = defaults.oneCoverPerGroup,
+                stickyScore = defaults.stickyScoreHeader
+            )
         }
         context.dataStore.edit { prefs ->
             prefs[mediaSettingsKey] = encodeMediaSettingsSnapshot(updated)
         }
-        _state.value = _state.value.copy(mediaSettings = updated, settingsLoaded = true)
+        val selected = updated.getValue(_state.value.activeMediaType)
+        _state.value = _state.value.copy(
+            mediaSettings = updated,
+            showImages = selected.showImages,
+            stickyScore = selected.stickyScore,
+            settingsLoaded = true
+        )
     }
 
     suspend fun completeWelcome(showImages: Boolean, elaborateRating: Boolean) = updateMutex.withLock {
         val updatedMediaSettings = applyOnboardingRatingStyle(
             _state.value.mediaSettings,
             elaborateRating
-        )
+        ).mapValues { (_, mediaSettings) -> mediaSettings.copy(showImages = showImages) }
         context.dataStore.edit { prefs ->
             prefs[showImagesKey] = showImages
             prefs[mediaSettingsKey] = encodeMediaSettingsSnapshot(updatedMediaSettings)
@@ -570,22 +589,6 @@ class SettingsRepository internal constructor(
         )
     }
 
-    suspend fun markTopCoverWarmupCompleted(mediaType: MediaType) = updateMutex.withLock {
-        val updated = _state.value.completedTopCoverWarmups + mediaType
-        context.dataStore.edit { prefs ->
-            prefs[completedTopCoverWarmupsKey] = updated.mapTo(mutableSetOf()) { it.persistedValue }
-        }
-        _state.value = _state.value.copy(completedTopCoverWarmups = updated)
-    }
-
-    suspend fun clearTopCoverWarmup(mediaType: MediaType) = updateMutex.withLock {
-        val updated = _state.value.completedTopCoverWarmups - mediaType
-        context.dataStore.edit { prefs ->
-            prefs[completedTopCoverWarmupsKey] = updated.mapTo(mutableSetOf()) { it.persistedValue }
-        }
-        _state.value = _state.value.copy(completedTopCoverWarmups = updated)
-    }
-
     // Compatibility bridge until the existing Anime call sites use the generic name.
     suspend fun updateMergeSeasonsEnabled(value: Boolean) = updateMergeEnabled(value)
 
@@ -612,7 +615,13 @@ class SettingsRepository internal constructor(
                 mirrorLegacyAnimeSettings(prefs, updated.getValue(MediaType.ANIME).toLegacyAnimeSettings())
             }
         }
-        _state.value = _state.value.copy(mediaSettings = updated, settingsLoaded = true)
+        val selected = updated.getValue(_state.value.activeMediaType)
+        _state.value = _state.value.copy(
+            mediaSettings = updated,
+            showImages = selected.showImages,
+            stickyScore = selected.stickyScore,
+            settingsLoaded = true
+        )
     }
 
     suspend fun purgePackSettings(mediaType: MediaType) = updateMutex.withLock {
@@ -627,7 +636,13 @@ class SettingsRepository internal constructor(
         }
         _state.value = _state.value.copy(
             mediaSettings = updatedSettings,
-            catalogSortOrders = updatedSortOrders
+            catalogSortOrders = updatedSortOrders,
+            showImages = if (mediaType == _state.value.activeMediaType) {
+                updatedSettings.getValue(mediaType).showImages
+            } else _state.value.showImages,
+            stickyScore = if (mediaType == _state.value.activeMediaType) {
+                updatedSettings.getValue(mediaType).stickyScore
+            } else _state.value.stickyScore
         )
     }
 
@@ -640,7 +655,13 @@ class SettingsRepository internal constructor(
                 mirrorLegacyAnimeSettings(prefs, updated.getValue(MediaType.ANIME).toLegacyAnimeSettings())
             }
         }
-        _state.value = _state.value.copy(mediaSettings = updated, settingsLoaded = true)
+        val active = updated.getValue(mediaType)
+        _state.value = _state.value.copy(
+            mediaSettings = updated,
+            showImages = active.showImages,
+            stickyScore = active.stickyScore,
+            settingsLoaded = true
+        )
     }
 
     private suspend fun persistThemeSelection(selection: ThemeSelection) {
@@ -865,7 +886,13 @@ internal fun encodeCatalogSortOrders(
 }
 
 internal fun AppSettingsState.withActiveMediaType(value: MediaType): AppSettingsState =
-    copy(activeMediaType = value)
+    (mediaSettings[value] ?: DefaultSettings.mediaSettings(value)).let { selected ->
+        copy(
+            activeMediaType = value,
+            showImages = selected.showImages,
+            stickyScore = selected.stickyScore
+        )
+    }
 
 internal fun resolveElaborateRatingEnabled(persisted: Boolean?): Boolean = persisted ?: false
 
@@ -929,7 +956,11 @@ internal fun MediaSettings.toLegacyAnimeSettings(): LegacyAnimeSettings = Legacy
     mergeEnabled = mergeEnabled
 )
 
-internal fun decodeMediaSettingsSnapshot(value: String?): PersistedMediaSettings? {
+internal fun decodeMediaSettingsSnapshot(
+    value: String?,
+    legacyShowImages: Boolean = false,
+    legacyStickyScore: Boolean = true
+): PersistedMediaSettings? {
     if (value == null) return null
     return try {
         val mediaObject = settingsJson.parseToJsonElement(value)
@@ -938,8 +969,19 @@ internal fun decodeMediaSettingsSnapshot(value: String?): PersistedMediaSettings
             ?: return null
         PersistedMediaSettings(
             media = mediaObject.mapNotNull { (key, element) ->
+                val objectValue = runCatching { element.jsonObject }.getOrNull()
                 runCatching { settingsJson.decodeFromJsonElement<MediaSettings>(element) }
                     .getOrNull()
+                    ?.let { decoded ->
+                        decoded.copy(
+                            showImages = if (objectValue?.containsKey("showImages") == true) {
+                                decoded.showImages
+                            } else legacyShowImages,
+                            stickyScore = if (objectValue?.containsKey("stickyScore") == true) {
+                                decoded.stickyScore
+                            } else legacyStickyScore
+                        )
+                    }
                     ?.let { key to it }
             }.toMap()
         )
@@ -959,13 +1001,19 @@ internal fun encodeMediaSettingsSnapshot(settings: Map<MediaType, MediaSettings>
 
 internal fun normalizeMediaSettingsSnapshot(
     snapshot: PersistedMediaSettings?,
-    legacyAnimeSettings: MediaSettings
+    legacyAnimeSettings: MediaSettings,
+    legacyShowImages: Boolean = false,
+    legacyStickyScore: Boolean = true
 ): Map<MediaType, MediaSettings> = MediaType.entries.associateWith { mediaType ->
-    val fallback = if (mediaType == MediaType.ANIME) {
+    val fallbackBase = if (mediaType == MediaType.ANIME) {
         legacyAnimeSettings
     } else {
         DefaultSettings.mediaSettings(mediaType)
     }
+    val fallback = fallbackBase.copy(
+        showImages = legacyShowImages,
+        stickyScore = legacyStickyScore
+    )
     normalizeMediaSettings(
         mediaType,
         snapshot?.media?.get(mediaType.toPackId().value)

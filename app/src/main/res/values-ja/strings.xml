@@ -143,7 +143,10 @@
 <string name="category_phase_installing">インストール中…</string>
 <string name="category_phase_importing_catalog">カタログを読み込み中…</string>
 <string name="category_phase_importing_groups">統合を準備中…</string>
+<string name="category_phase_downloading_covers">カバーをダウンロード中：%1$d / %2$d</string>
 <string name="category_phase_finalizing">完了処理中…</string>
+<string name="category_cover_partial">パック準備完了 · %1$d/%2$d件のカバーを利用可能 · %3$d件は利用不可</string>
+<string name="category_cover_cancelled">パック準備完了 · %1$d/%2$d件のカバーを利用可能 · ダウンロードをキャンセルしました</string>
 <string name="category_pack_runtime_error">カタログを準備できませんでした。タップして再試行してください。</string>
 <string name="message_rating_operation_failed">評価を保存できませんでした。もう一度お試しください。</string>
     <string name="message_icon_change_failed">アプリアイコンを変更できませんでした。</string>
@@ -160,4 +163,20 @@
     <string name="download_pack">パッケージをダウンロード</string>
     <string name="color_picker_saturation_value">彩度と明るさ</string>
     <string name="color_picker_hue">色相</string>
+    <string name="loading_list">リストを読み込み中…</string>
+    <string name="covers_progress_details_explicit">既存 %1$d · ダウンロード %2$d · 利用不可 %3$d · 失敗 %4$d</string>
+    <string name="merge_book_series">シリーズ作品を統合</string>
+    <string name="book_genre_fantasy">ファンタジー</string>
+    <string name="book_genre_science_fiction">SF</string>
+    <string name="book_genre_romance">ロマンス</string>
+    <string name="book_genre_mystery_thriller">ミステリー・スリラー</string>
+    <string name="book_genre_horror">ホラー</string>
+    <string name="book_genre_adventure">冒険</string>
+    <string name="book_genre_historical_fiction">歴史小説</string>
+    <string name="book_genre_classics">古典</string>
+    <string name="book_genre_biography">伝記</string>
+    <string name="book_genre_history">歴史</string>
+    <string name="book_genre_science_technology">科学・技術</string>
+    <string name="book_genre_philosophy">哲学</string>
+    <string name="book_genre_other">その他・未分類</string>
 </resources>

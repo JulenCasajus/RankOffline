@@ -71,9 +71,7 @@ internal fun SettingsScreen(
     var destination by remember { mutableStateOf(SettingsDestination.HOME) }
     val preloadProgress by viewModel.coverPreloadProgress.collectAsState()
     val downloadedCoverCount by viewModel.downloadedCoverCount.collectAsState()
-    val noInstalledPacks = categoryPackStates.values.none { state ->
-        state.origin != CategoryPackOrigin.UNAVAILABLE || state.installProgress != null
-    }
+    val noInstalledPacks = availableMediaTypes.isEmpty()
     LaunchedEffect(availableMediaTypes) {
         if (availableMediaTypes.isEmpty() && destination in setOf(
                 SettingsDestination.ACTIVE_PACK,
@@ -162,6 +160,7 @@ internal fun SettingsScreen(
             categoryPackStates = categoryPackStates,
             downloadProgress = categoryDownloadProgress,
             onDownloadCategory = viewModel::downloadCategory,
+            onCancelCategoryCoverDownload = viewModel::cancelInitialCoverDownload,
             onRemoveCategory = viewModel::removeCategoryCatalog,
             onBack = goBack
         )
@@ -1042,6 +1041,7 @@ private fun CategorySettingsScreen(
     categoryPackStates: Map<MediaType, CategoryPackState>,
     downloadProgress: CategoryDownloadProgress?,
     onDownloadCategory: (MediaType) -> Unit,
+    onCancelCategoryCoverDownload: (MediaType) -> Unit,
     onRemoveCategory: (MediaType) -> Unit,
     onBack: () -> Unit
 ) {
@@ -1057,6 +1057,7 @@ private fun CategorySettingsScreen(
                         categoryPacks = categoryPackStates,
                         downloadProgress = downloadProgress,
                         onDownloadCategory = onDownloadCategory,
+                        onCancelCategoryCoverDownload = onCancelCategoryCoverDownload,
                         onRemoveCategory = onRemoveCategory
                     )
                 }
@@ -1164,6 +1165,7 @@ private fun CoverPreloadProgressView(preloadProgress: CoverPreloadProgress) {
     Text(
         when (preloadProgress.status) {
             CoverPreloadStatus.COMPLETED -> stringResource(R.string.covers_completed)
+            CoverPreloadStatus.CANCELLED -> stringResource(R.string.covers_download_interrupted)
             CoverPreloadStatus.FAILED -> stringResource(R.string.covers_download_interrupted)
             else -> stringResource(R.string.covers_downloading_rated)
         },
@@ -1180,9 +1182,10 @@ private fun CoverPreloadProgressView(preloadProgress: CoverPreloadProgress) {
     )
     Text(
         stringResource(
-            R.string.covers_progress_details_rated,
+            R.string.covers_progress_details_explicit,
             preloadProgress.existing,
             preloadProgress.downloaded,
+            preloadProgress.unavailable,
             preloadProgress.errors
         ),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1196,7 +1199,8 @@ private fun CoverPreloadProgressView(preloadProgress: CoverPreloadProgress) {
             fontSize = 13.sp,
             modifier = Modifier.padding(top = 6.dp)
         )
-        preloadProgress.status == CoverPreloadStatus.FAILED -> Text(
+        preloadProgress.status == CoverPreloadStatus.FAILED ||
+            preloadProgress.status == CoverPreloadStatus.CANCELLED -> Text(
             stringResource(R.string.covers_download_interrupted),
             color = MaterialTheme.colorScheme.error,
             fontSize = 13.sp,

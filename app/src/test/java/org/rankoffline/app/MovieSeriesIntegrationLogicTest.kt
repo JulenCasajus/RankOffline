@@ -1,7 +1,6 @@
 package org.rankoffline.app
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class MovieSeriesIntegrationLogicTest {
@@ -29,19 +28,20 @@ class MovieSeriesIntegrationLogicTest {
         assertEquals(R.string.merge_seasons, MediaType.SERIES.mergeLabelResource)
         assertEquals(R.string.merge_seasons, MediaType.ANIME.mergeLabelResource)
         assertEquals(R.string.merge_variants, MediaType.MANGA.mergeLabelResource)
-        assertNull(MediaType.BOOK.mergeLabelResource)
+        assertEquals(R.string.merge_book_series, MediaType.BOOK.mergeLabelResource)
 
         assertEquals("VARIANTS", MediaType.MANGA.genericGroupType())
         assertEquals("COLLECTION", MediaType.MOVIE.genericGroupType())
         assertEquals("SEASONS", MediaType.SERIES.genericGroupType())
         assertEquals("RELATIONS", MediaType.ANIME.genericGroupType())
+        assertEquals("BOOK_SERIES", MediaType.BOOK.genericGroupType())
     }
 
     @Test
-    fun booksDoNotSupportMergeOrResolveAMergeLabel() {
-        assertEquals(false, MediaType.BOOK.supportsMerge())
-        assertNull(MediaType.BOOK.mergeLabelResource)
-        assertNull(MediaType.BOOK.genericGroupType())
+    fun booksUseOnlyExplicitPrecomputedSeriesGroups() {
+        assertEquals(true, MediaType.BOOK.supportsMerge())
+        assertEquals(R.string.merge_book_series, MediaType.BOOK.mergeLabelResource)
+        assertEquals("BOOK_SERIES", MediaType.BOOK.genericGroupType())
         assertEquals(true, MediaType.ANIME.supportsMerge())
         assertEquals(true, MediaType.MANGA.supportsMerge())
         assertEquals(true, MediaType.MOVIE.supportsMerge())

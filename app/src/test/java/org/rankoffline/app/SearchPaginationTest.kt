@@ -44,6 +44,25 @@ class SearchPaginationTest {
     }
 
     @Test
+    fun switchingMediaNeverExposesThePreviousSearchOrRankingSnapshot() {
+        val anime = Anime("mal:1", "Anime", mediaType = MediaType.ANIME)
+        val manga = Anime("manga:1", "Manga", mediaType = MediaType.MANGA)
+        val animeSearch = SearchPageState(MediaType.ANIME, listOf(anime), loadingInitial = false)
+        val mangaLoading = SearchPageState(MediaType.MANGA, loadingInitial = true)
+        val animeRanking = RankingResultState(MediaType.ANIME, listOf(anime), loading = false)
+
+        assertEquals(listOf(anime), animeSearch.visibleItemsFor(MediaType.ANIME))
+        assertTrue(animeSearch.visibleItemsFor(MediaType.MANGA).isEmpty())
+        assertTrue(mangaLoading.visibleItemsFor(MediaType.MANGA).isEmpty())
+        assertTrue(animeRanking.visibleItemsFor(MediaType.BOOK).isEmpty())
+        assertEquals(
+            listOf(manga),
+            RankingResultState(MediaType.MANGA, listOf(manga), loading = false)
+                .visibleItemsFor(MediaType.MANGA)
+        )
+    }
+
+    @Test
     fun bottomNavigationOnlySignalsTopOnReselection() {
         assertEquals(BottomNavigationAction.RESELECT, bottomNavigationAction(0, 0))
         assertEquals(BottomNavigationAction.RESELECT, bottomNavigationAction(1, 1))

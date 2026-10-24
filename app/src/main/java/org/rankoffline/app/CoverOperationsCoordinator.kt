@@ -2,18 +2,22 @@ package org.rankoffline.app
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import java.util.concurrent.ConcurrentHashMap
 
 /** Coordinates cover operations without coupling catalog query invalidation to visual state. */
 internal class CoverOperationsCoordinator(
     private val scope: CoroutineScope,
     private val settings: StateFlow<AppSettingsState>,
-    private val catalogAvailability: StateFlow<Map<MediaType, CatalogAvailability>>,
-    private val settingsRepository: SettingsRepository,
     private val genericCoverRepository: GenericMediaCoverRepository,
     private val genericGroupCoverRepository: GenericMediaGroupCoverRepository,
     private val preloadManager: CoverPreloadManager,
@@ -21,7 +25,8 @@ internal class CoverOperationsCoordinator(
 ) {
     val progress: StateFlow<CoverPreloadProgress> = preloadManager.progress
     private var preloadJob: Job? = null
-    private val manualDownloadJobs = ConcurrentHashMap<String, Job>()
+    private val initialPreloadJobs = ConcurrentHashMap<MediaType, Deferred<CoverPreloadProgress>>()
+    private val manualDownloadJobs = ConcurrentHashMap<String, ManualCoverJob>()
     private var settingsVisible = false
 
     fun download(anime: Anime) {
@@ -43,10 +48,11 @@ internal class CoverOperationsCoordinator(
                     CoverDownloadResult.AlreadyInProgress -> Unit
                 }
             } finally {
-                manualDownloadJobs.remove(anime.id, job)
+                manualDownloadJobs.remove(anime.id, ManualCoverJob(anime.mediaType, job))
             }
         }
-        val previous = manualDownloadJobs.putIfAbsent(anime.id, job)
+        val operation = ManualCoverJob(anime.mediaType, job)
+        val previous = manualDownloadJobs.putIfAbsent(anime.id, operation)
         if (previous == null) job.start() else job.cancel()
     }
 
@@ -64,13 +70,52 @@ internal class CoverOperationsCoordinator(
         preloadJob?.cancel()
     }
 
+    fun cancelInitialPreload(mediaType: MediaType) {
+        initialPreloadJobs[mediaType]?.cancel()
+    }
+
+    suspend fun preloadInitialTop(
+        mediaType: MediaType,
+        limit: Int,
+        oneCoverPerGroup: Boolean,
+        onProgress: (CoverPreloadProgress) -> Unit
+    ): CoverPreloadProgress = supervisorScope {
+        val task = async {
+            preloadManager.preloadTop(mediaType, limit, oneCoverPerGroup, onProgress)
+        }
+        val previous = initialPreloadJobs.putIfAbsent(mediaType, task)
+        if (previous != null) {
+            task.cancel()
+            return@supervisorScope previous.await()
+        }
+        try {
+            task.await()
+        } catch (cancelled: CancellationException) {
+            if (!currentCoroutineContext().isActive) throw cancelled
+            preloadManager.progress.value
+                .takeIf { it.mediaType == mediaType }
+                ?.copy(status = CoverPreloadStatus.CANCELLED)
+                ?: CoverPreloadProgress(
+                    mediaType = mediaType,
+                    status = CoverPreloadStatus.CANCELLED,
+                    target = limit
+                )
+        } finally {
+            initialPreloadJobs.remove(mediaType, task)
+        }
+    }
+
     suspend fun cancelPreloadAndJoin() {
         preloadJob?.cancelAndJoin()
     }
 
     suspend fun cancelAllAndJoin() {
         cancelPreloadAndJoin()
-        val jobs = manualDownloadJobs.values.toList()
+        val initialJobs = initialPreloadJobs.values.toList()
+        initialJobs.forEach { it.cancel() }
+        initialJobs.forEach { runCatching { it.await() } }
+        initialPreloadJobs.clear()
+        val jobs = manualDownloadJobs.values.map(ManualCoverJob::job)
         jobs.forEach(Job::cancel)
         jobs.forEach { it.join() }
         manualDownloadJobs.clear()
@@ -99,36 +144,20 @@ internal class CoverOperationsCoordinator(
     fun clearDownloaded() {
         scope.launch {
             val mediaType = settings.value.activeMediaType
-            cancelAllAndJoin()
+            if (progress.value.mediaType == mediaType) cancelPreloadAndJoin()
+            val manualJobs = manualDownloadJobs.values
+                .filter { it.mediaType == mediaType }
+                .map(ManualCoverJob::job)
+            manualJobs.forEach(Job::cancel)
+            manualJobs.forEach { it.join() }
             val removed = genericCoverRepository.clearDownloadedCovers(mediaType) +
                 genericGroupCoverRepository.clearDownloadedCovers(mediaType)
+            genericCoverRepository.clearDownloadedCoverFiles(mediaType)
             preloadManager.resetProgress()
             sendMessage(
                 if (removed == 1) UserMessage.Text(R.string.message_cover_deleted)
                 else UserMessage.Plural(R.plurals.message_covers_deleted, removed, listOf(removed))
             )
-        }
-    }
-
-    fun startTopWarmup(mediaTypes: List<MediaType>) {
-        val previous = preloadJob
-        preloadJob = scope.launch {
-            previous?.cancelAndJoin()
-            mediaTypes.distinct().forEach { mediaType ->
-                if (catalogAvailability.value[mediaType] == CatalogAvailability.AVAILABLE &&
-                    mediaType !in settings.value.completedTopCoverWarmups
-                ) {
-                    val result = preloadManager.preloadTop(
-                        mediaType,
-                        limit = 100,
-                        oneCoverPerGroup = settings.value.mediaSettings[mediaType]?.oneCoverPerGroup == true
-                    )
-                    if (result.status == CoverPreloadStatus.COMPLETED && result.downloaded + result.existing > 0) {
-                        settingsRepository.markTopCoverWarmupCompleted(mediaType)
-                    }
-                }
-            }
-            if (!settingsVisible) clearTerminalProgress()
         }
     }
 
@@ -148,4 +177,6 @@ internal class CoverOperationsCoordinator(
     private fun clearTerminalProgress() {
         if (progress.value.shouldClearAfterLeavingSettings()) preloadManager.resetProgress()
     }
+
+    private data class ManualCoverJob(val mediaType: MediaType, val job: Job)
 }

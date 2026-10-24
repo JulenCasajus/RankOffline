@@ -2,6 +2,9 @@ package org.rankoffline.app
 
 import java.net.URI
 import java.security.MessageDigest
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 
 fun interface MediaCoverProvider {
     fun resolve(item: MediaItem): URI?
@@ -73,6 +76,90 @@ class DefaultMediaCoverProvider : MediaCoverProvider {
         )
     }
 }
+
+/** Resolves pack-declared cover sources without executing provider code from the pack. */
+class DeclarativePackCoverProvider(
+    private val manifestProvider: (MediaType) -> PackManifest?
+) : MediaCoverProvider {
+    fun hasDeclaredSources(mediaType: MediaType): Boolean =
+        manifestProvider(mediaType)?.coverSources?.isNotEmpty() == true
+
+    override fun resolve(item: MediaItem): URI? = resolveCandidates(item).firstOrNull()
+
+    override fun resolveCandidates(item: MediaItem): List<URI> {
+        val manifest = manifestProvider(item.mediaType) ?: return emptyList()
+        val reference = item.remoteCoverRef?.takeIf(String::isNotBlank) ?: return emptyList()
+        if (reference.startsWith("covers/")) return emptyList()
+        val explicit = runCatching {
+            coverReferenceJson.decodeFromString<DeclarativeCoverReference>(reference)
+                .takeIf { it.schemaVersion == 1 }
+        }.getOrNull()
+        if (explicit != null) {
+            val source = manifest.coverSources.firstOrNull {
+                it.id == explicit.sourceId
+            } ?: return emptyList()
+            val identity = explicit.identity?.takeIf(String::isNotBlank) ?: return emptyList()
+            if (identity.length > MAX_COVER_IDENTITY_LENGTH) return emptyList()
+            if (explicit.urls.isEmpty() || explicit.urls.size > MAX_FALLBACK_URLS) return emptyList()
+            return explicit.urls.mapNotNull { value ->
+                value.takeIf { it.length <= MAX_URL_LENGTH }
+                    ?.let { runCatching { URI.create(it) }.getOrNull() }
+                    ?.takeIf { isSafeHttpsUri(it, source.allowedHosts) }
+            }.distinct()
+        }
+        val source = manifest.coverSources.firstOrNull { it.providerId == item.provider }
+            ?: return emptyList()
+        val encodedReference = encodePathSegment(reference.removePrefix("/")) ?: return emptyList()
+        val encodedProvider = encodePathSegment(item.providerId.orEmpty()) ?: return emptyList()
+        return source.urlTemplates.mapNotNull { template ->
+            val value = template
+                .replace("{reference}", encodedReference)
+                .replace("{providerId}", encodedProvider)
+            runCatching { URI.create(value) }.getOrNull()
+                ?.takeIf { isSafeHttpsUri(it, source.allowedHosts) }
+        }.distinct()
+    }
+
+    private fun encodePathSegment(value: String): String? {
+        if (value.isBlank() || value.length > MAX_REFERENCE_LENGTH || '\u0000' in value) return null
+        return URI(null, null, "/$value", null).rawPath.removePrefix("/")
+    }
+
+    private companion object {
+        const val MAX_REFERENCE_LENGTH = 2_048
+        const val MAX_COVER_IDENTITY_LENGTH = 512
+        const val MAX_FALLBACK_URLS = 8
+        const val MAX_URL_LENGTH = 4_096
+    }
+}
+
+@Serializable
+private data class DeclarativeCoverReference(
+    val schemaVersion: Int,
+    val sourceId: String,
+    val identity: String? = null,
+    val urls: List<String> = emptyList()
+)
+
+private val coverReferenceJson = Json { ignoreUnknownKeys = true }
+
+/** Pure syntactic validation. The downloader additionally rejects DNS resolving to private IPs. */
+internal fun isSafeHttpsUri(uri: URI, hosts: Set<String>?): Boolean {
+    val host = uri.host?.lowercase() ?: return false
+    if (!uri.scheme.equals("https", ignoreCase = true) || uri.userInfo != null ||
+        (uri.port != -1 && uri.port != 443) || uri.fragment != null
+    ) return false
+    if (hosts != null && host !in hosts) return false
+    if (!PUBLIC_HOST.matches(host) || host == "localhost" || host.endsWith(".localhost") ||
+        host.endsWith(".local") || IPV4.matches(host) || ':' in host
+    ) return false
+    val normalized = uri.normalize()
+    if (normalized.rawPath != uri.rawPath || uri.path.orEmpty().split('/').any { it == ".." }) return false
+    return true
+}
+
+private val PUBLIC_HOST = Regex("(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}")
+private val IPV4 = Regex("[0-9]{1,3}(?:\\.[0-9]{1,3}){3}")
 
 private const val OPEN_LIBRARY_COVER_REFERENCE_PREFIX = "openlibrary:v1"
 private val OPEN_LIBRARY_COVER_ID = Regex("[0-9]+")

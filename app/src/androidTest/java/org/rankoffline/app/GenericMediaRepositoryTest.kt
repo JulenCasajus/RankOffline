@@ -131,34 +131,6 @@ class GenericMediaRepositoryTest {
     }
 
     @Test
-    fun onlineDiscoveryUpsertPreservesRatingAndDownloadedCover() = runBlocking {
-        val existing = item(MediaType.BOOK, "book:openlibrary:OL45804W", "OL45804W")
-            .copy(localCoverPath = "/covers/book.jpg", coverResolutionState = "AVAILABLE")
-        repository.upsertItem(existing)
-        repository.saveSimpleRating(existing.id, RatingDraft(notes = "mine"), 0.0, 0.0)
-
-        repository.upsertDiscoveredItem(
-            MediaCatalogRecord(
-                id = existing.id,
-                mediaType = "book",
-                provider = "openlibrary",
-                providerId = "OL45804W",
-                title = "Fantastic Mr. Fox",
-                year = 1970,
-                format = "BOOK",
-                remoteCoverRef = "123",
-                genres = listOf("Foxes"),
-                credits = listOf(MediaCatalogCredit("AUTHOR", "Roald Dahl"))
-            )
-        )
-
-        assertEquals(0.0, repository.rating(existing.id)!!.finalScore!!, 0.0)
-        assertEquals("mine", repository.rating(existing.id)!!.notes)
-        assertEquals("/covers/book.jpg", repository.item(existing.id)!!.localCoverPath)
-        assertEquals("Fantastic Mr. Fox", repository.item(existing.id)!!.title)
-    }
-
-    @Test
     fun catalogRemovalPreservesExactPersonalDataAndReinstallReconnectsIt() = runBlocking {
         val movie = item(MediaType.MOVIE, "movie:tmdb:11", "11")
         repository.upsertItem(movie)

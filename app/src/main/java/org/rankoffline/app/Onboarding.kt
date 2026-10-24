@@ -30,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
@@ -83,6 +84,7 @@ fun FirstRunOnboarding(
     onLanguageSelected: (SupportedLanguage) -> Unit,
     onThemeSelected: (AppThemePalette) -> Unit,
     onDownloadCategory: (MediaType) -> Unit,
+    onCancelCategoryCoverDownload: (MediaType) -> Unit = {},
     onRemoveCategory: (MediaType) -> Unit,
     onMediaTypeSelected: (MediaType) -> Unit,
     onOnboardingComplete: () -> Unit
@@ -99,6 +101,7 @@ fun FirstRunOnboarding(
             categoryPacks = categoryPacks,
             downloadProgress = downloadProgress,
             onDownloadCategory = onDownloadCategory,
+            onCancelCategoryCoverDownload = onCancelCategoryCoverDownload,
             onRemoveCategory = onRemoveCategory,
             selectedMediaType = settings.activeMediaType,
             onMediaTypeSelected = onMediaTypeSelected,
@@ -502,6 +505,7 @@ private fun CategoryOnboardingDialog(
     categoryPacks: Map<MediaType, CategoryPackState>,
     downloadProgress: CategoryDownloadProgress?,
     onDownloadCategory: (MediaType) -> Unit,
+    onCancelCategoryCoverDownload: (MediaType) -> Unit,
     onRemoveCategory: (MediaType) -> Unit,
     selectedMediaType: MediaType,
     onMediaTypeSelected: (MediaType) -> Unit,
@@ -528,6 +532,7 @@ private fun CategoryOnboardingDialog(
             categoryPacks = categoryPacks,
             downloadProgress = downloadProgress,
             onDownloadCategory = onDownloadCategory,
+            onCancelCategoryCoverDownload = onCancelCategoryCoverDownload,
             onRemoveCategory = onRemoveCategory,
             selectedMediaType = selectedMediaType,
             onMediaTypeSelected = onMediaTypeSelected
@@ -722,6 +727,7 @@ fun CategoryManagementContent(
     @Suppress("UNUSED_PARAMETER")
     downloadProgress: CategoryDownloadProgress? = null,
     onDownloadCategory: (MediaType) -> Unit = {},
+    onCancelCategoryCoverDownload: (MediaType) -> Unit = {},
     onRemoveCategory: (MediaType) -> Unit = {},
     selectedMediaType: MediaType? = null,
     onMediaTypeSelected: ((MediaType) -> Unit)? = null
@@ -810,6 +816,9 @@ fun CategoryManagementContent(
             onDownload = {
                 onDownloadCategory(state.mediaType)
             },
+            onCancelCoverDownload = {
+                onCancelCategoryCoverDownload(state.mediaType)
+            },
             onRemove = {
                 pendingRemoval =
                     state.mediaType
@@ -856,10 +865,12 @@ private fun CategoryPackRow(
     selected: Boolean,
     onSelect: () -> Unit,
     onDownload: () -> Unit,
+    onCancelCoverDownload: () -> Unit,
     onRemove: () -> Unit
 ) {
     val context = LocalContext.current
     val progress = state.installProgress
+    val coverAcquisition = state.initialCoverAcquisition
 
     Card(
         colors = CardDefaults.cardColors(
@@ -924,10 +935,35 @@ private fun CategoryPackRow(
                                 stringResource(R.string.category_phase_importing_catalog)
                             CategoryPackInstallPhase.IMPORTING_GROUPS ->
                                 stringResource(R.string.category_phase_importing_groups)
+                            CategoryPackInstallPhase.DOWNLOADING_COVERS ->
+                                stringResource(
+                                    R.string.category_phase_downloading_covers,
+                                    progress.coverProcessed,
+                                    progress.coverTarget
+                                )
                             CategoryPackInstallPhase.FINALIZING ->
                                 stringResource(R.string.category_phase_finalizing)
                             null -> if (state.runtimeStatus == CategoryPackRuntimeStatus.ERROR) {
                                 stringResource(R.string.category_pack_runtime_error)
+                            } else if (
+                                coverAcquisition?.status ==
+                                InitialCoverAcquisitionStatus.CANCELLED
+                            ) {
+                                stringResource(
+                                    R.string.category_cover_cancelled,
+                                    coverAcquisition.available,
+                                    coverAcquisition.target
+                                )
+                            } else if (
+                                coverAcquisition?.status ==
+                                InitialCoverAcquisitionStatus.PARTIAL
+                            ) {
+                                stringResource(
+                                    R.string.category_cover_partial,
+                                    coverAcquisition.available,
+                                    coverAcquisition.target,
+                                    coverAcquisition.unavailable + coverAcquisition.errors
+                                )
                             } else when (state.origin) {
                             CategoryPackOrigin.BUNDLED ->
                                 stringResource(
@@ -1023,6 +1059,16 @@ private fun CategoryPackRow(
                             )
                             .padding(8.dp)
                     )
+                } else if (progress.phase == CategoryPackInstallPhase.DOWNLOADING_COVERS) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.action_cancel),
+                        tint = state.mediaType.accentColor,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clickable(role = Role.Button, onClick = onCancelCoverDownload)
+                            .padding(8.dp)
+                    )
                 }
             }
 
@@ -1033,9 +1079,9 @@ private fun CategoryPackRow(
                             R.string.categories_download_progress,
                             Formatter.formatFileSize(
                                 context,
-                                installProgress.displayedInstalledBytes
+                                installProgress.downloadedBytes
                             ),
-                            Formatter.formatFileSize(context, installProgress.totalInstalledBytes)
+                            Formatter.formatFileSize(context, installProgress.totalDownloadBytes)
                         ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
@@ -1046,6 +1092,14 @@ private fun CategoryPackRow(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 5.dp),
+                        color = state.mediaType.accentColor
+                    )
+                } else if (installProgress.phase == CategoryPackInstallPhase.DOWNLOADING_COVERS) {
+                    LinearProgressIndicator(
+                        progress = { installProgress.coverFraction },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
                         color = state.mediaType.accentColor
                     )
                 } else {

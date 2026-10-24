@@ -12,29 +12,35 @@ import org.json.JSONObject
 
 /** Provider adapter used only when the normalized Anime pack has no direct image reference. */
 fun interface AnimeMediaCoverResolver {
-    suspend fun resolve(canonicalId: String): List<URI>
+    suspend fun resolve(item: MediaItem): List<URI>
 }
 
 class DefaultAnimeMediaCoverResolver : AnimeMediaCoverResolver {
-    override suspend fun resolve(canonicalId: String): List<URI> = withContext(Dispatchers.IO) {
-        try {
-            val url = when {
-                canonicalId.startsWith("anilist:") ->
-                    canonicalId.substringAfter(':').toLongOrNull()?.let(::resolveAniList)
-                canonicalId.startsWith("mal:") ->
-                    canonicalId.substringAfter(':').toLongOrNull()?.let(::resolveJikan)
-                else -> null
+    override suspend fun resolve(item: MediaItem): List<URI> = withContext(Dispatchers.IO) {
+        val identifiers = animeCoverIdentifiers(item)
+        var lastFailure: IOException? = null
+        identifiers.forEach { (provider, id) ->
+            try {
+                val url = when (provider) {
+                    "anilist" -> resolveAniList(id)
+                    "mal" -> resolveJikan(id)
+                    else -> null
+                }
+                if (!url.isNullOrBlank()) return@withContext listOf(URI.create(url))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (exception: IOException) {
+                lastFailure = exception
+                Log.w(
+                    TAG,
+                    "operation=resolve-anime-cover provider=$provider id=${item.id} failed=${exception.message}"
+                )
+            } catch (exception: Exception) {
+                lastFailure = IOException("Unable to resolve Anime cover metadata", exception)
             }
-            listOfNotNull(url?.let(URI::create))
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (exception: IOException) {
-            Log.w(TAG, "operation=resolve-anime-cover id=$canonicalId failed=${exception.message}")
-            throw exception
-        } catch (exception: Exception) {
-            Log.w(TAG, "operation=resolve-anime-cover id=$canonicalId failed=${exception.message}")
-            throw IOException("Unable to resolve Anime cover metadata", exception)
         }
+        lastFailure?.let { throw it }
+        emptyList()
     }
 
     private fun resolveAniList(id: Long): String? {
@@ -84,3 +90,18 @@ class DefaultAnimeMediaCoverResolver : AnimeMediaCoverResolver {
 
     private companion object { const val TAG = "RankOfflineCover" }
 }
+
+private fun animeCoverIdentifiers(item: MediaItem): List<Pair<String, Long>> = buildList {
+    if (item.remoteCoverRef?.startsWith("anime:v1|") == true) {
+        item.remoteCoverRef.substringAfter('|').split('|').forEach { encoded ->
+            val provider = encoded.substringBefore('=', "")
+            val id = encoded.substringAfter('=', "").toLongOrNull()
+            if (provider in setOf("anilist", "mal") && id != null && id > 0L) add(provider to id)
+        }
+    }
+    val canonicalProvider = item.id.substringBefore(':')
+    val canonicalId = item.id.substringAfter(':', "").toLongOrNull()
+    if (canonicalProvider in setOf("anilist", "mal") && canonicalId != null && canonicalId > 0L) {
+        add(canonicalProvider to canonicalId)
+    }
+}.distinct()

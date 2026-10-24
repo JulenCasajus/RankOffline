@@ -28,12 +28,12 @@ val MediaType.mergeLabelResource: Int?
         MediaType.ANIME, MediaType.SERIES -> R.string.merge_seasons
         MediaType.MOVIE -> R.string.merge_collections
         MediaType.MANGA -> R.string.merge_variants
-        MediaType.BOOK -> null
+        MediaType.BOOK -> R.string.merge_book_series
     }
 
 @get:StringRes
 val MediaType.genreFilterLabelResource: Int
-    get() = if (this == MediaType.BOOK) R.string.filter_subject else R.string.filter_genre
+    get() = R.string.filter_genre
 
 @get:StringRes
 val MediaType.creditFilterLabelResource: Int?

@@ -96,6 +96,7 @@ class SharedGroupCoverIntegrationTest {
         )
         val individualTop = covers.topPopularCoverItems(MediaType.MOVIE, 250, false)
         val logicalTop = covers.topPopularCoverItems(MediaType.MOVIE, 250, true)
+        val logicalTop100 = covers.topPopularCoverItems(MediaType.MOVIE, 100, true)
 
         assertEquals(250, individualTop.size)
         assertEquals("movie:tmdb:g0-first", individualTop[0].id)
@@ -103,6 +104,8 @@ class SharedGroupCoverIntegrationTest {
         assertEquals(250, logicalTop.size)
         assertEquals(250, logicalTop.map { it.id }.toSet().size)
         assertEquals((0 until 250).map { "movie:tmdb:g$it-first" }, logicalTop.map { it.id })
+        assertEquals(100, logicalTop100.size)
+        assertEquals((0 until 100).map { "movie:tmdb:g$it-first" }, logicalTop100.map { it.id })
 
         val books = (1..260).map { index ->
             MediaItemEntity(
@@ -119,6 +122,24 @@ class SharedGroupCoverIntegrationTest {
             (1..250).map { "book:openlibrary:$it" },
             covers.topPopularCoverItems(MediaType.BOOK, 250, true).map { it.id }
         )
+
+        // Regression for debug.4: only the first 100 Manga rows had a materialized rank, so the
+        // old query returned 100 rows for a Top-250 request instead of using popularity fallback.
+        val manga = (1..300).map { index ->
+            MediaItemEntity(
+                id = "manga:mangadex:$index",
+                mediaType = MediaType.MANGA.persistedValue,
+                provider = "mangadex",
+                providerId = index.toString(),
+                title = "Manga ${index.toString().padStart(3, '0')}",
+                popularityRank = index.takeIf { it <= 100 },
+                popularity = (10_000 - index).toDouble()
+            )
+        }
+        database.mediaDao().upsertItems(manga)
+        val mangaTop = covers.topPopularCoverItems(MediaType.MANGA, 250, false)
+        assertEquals(250, mangaTop.size)
+        assertEquals((1..250).map { "manga:mangadex:$it" }, mangaTop.map { it.id })
     }
 
     @Test
@@ -145,6 +166,55 @@ class SharedGroupCoverIntegrationTest {
         } finally {
             context.delete()
         }
+    }
+
+    @Test
+    fun seriesTop100CountsShowsBeforeSeasonMembers() = runBlocking {
+        val items = mutableListOf<MediaItemEntity>()
+        val groups = mutableListOf<MediaGroupEntity>()
+        val memberships = mutableListOf<MediaGroupMemberEntity>()
+        repeat(120) { show ->
+            val groupId = "series:tmdb:show:$show"
+            val firstId = "series:tmdb:$show:season:1"
+            repeat(3) { seasonIndex ->
+                val season = seasonIndex + 1
+                val id = "series:tmdb:$show:season:$season"
+                items += MediaItemEntity(
+                    id = id,
+                    mediaType = MediaType.SERIES.persistedValue,
+                    provider = "tmdb",
+                    providerId = "$show:season:$season",
+                    title = "Show $show · Season $season",
+                    popularityRank = show * 3 + season,
+                    remoteCoverRef = "/$show-$season.jpg"
+                )
+                memberships += MediaGroupMemberEntity(groupId, id, seasonIndex)
+            }
+            groups += MediaGroupEntity(
+                id = groupId,
+                mediaType = MediaType.SERIES.persistedValue,
+                groupType = "SEASONS",
+                provider = "tmdb",
+                providerGroupId = show.toString(),
+                displayTitle = "Show $show",
+                representativeMediaId = firstId,
+                memberCount = 3,
+                popularityRank = show + 1
+            )
+        }
+        database.mediaDao().upsertItems(items)
+        database.mediaGroupDao().insertNewGroups(groups)
+        database.mediaGroupDao().insertMembers(memberships)
+        val covers = GenericMediaCoverRepository(
+            InstrumentationRegistry.getInstrumentation().targetContext,
+            database
+        )
+
+        val selected = covers.topPopularCoverItems(MediaType.SERIES, 100, true)
+
+        assertEquals(100, selected.size)
+        assertEquals(100, selected.map(MediaItem::id).toSet().size)
+        assertTrue(selected.all { it.providerId?.endsWith(":season:1") == true })
     }
 
     private fun movie(providerId: String, popularityRank: Int) = MediaItemEntity(

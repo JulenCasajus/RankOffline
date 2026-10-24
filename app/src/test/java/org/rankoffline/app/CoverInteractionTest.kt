@@ -174,45 +174,6 @@ class CoverInteractionTest {
         assertEquals(CoverPreloadStatus.COMPLETED, progress.status)
     }
 
-    @Test
-    fun topUpdateStartsInPopularityPhaseWithoutCoverErrors() {
-        val progress = TopUpdateProgress.start(500)
-
-        assertEquals(CoverPreloadStatus.FETCHING_POPULARITY, progress.status)
-        assertEquals(0, progress.processed)
-        assertEquals(0, progress.errors)
-        assertFalse(progress.popularityUpdated)
-    }
-
-    @Test
-    fun topUpdateMovesFromPopularityToCoversAndCompletes() {
-        val fetching = TopUpdateProgress.popularityFetched(TopUpdateProgress.start(500), 250)
-        assertEquals(250, fetching.popularityProcessed)
-        assertEquals(0.5f, fetching.popularityFraction, 0f)
-
-        val applying = TopUpdateProgress.applyingPopularity(fetching)
-        assertEquals(CoverPreloadStatus.APPLYING_POPULARITY, applying.status)
-
-        val covers = TopUpdateProgress.downloadingCovers(applying, processed = 80, existing = 75, errors = 0)
-        assertEquals(CoverPreloadStatus.DOWNLOADING_COVERS, covers.status)
-        assertTrue(covers.popularityUpdated)
-        assertEquals(80, covers.processed)
-
-        val completed = TopUpdateProgress.completed(covers)
-        assertEquals(CoverPreloadStatus.COMPLETED, completed.status)
-        assertEquals(500, completed.processed)
-    }
-
-    @Test
-    fun popularityFailureDoesNotPretendCoversCompleted() {
-        val failed = TopUpdateProgress.start(100).copy(status = CoverPreloadStatus.FAILED)
-
-        assertFalse(failed.popularityUpdated)
-        assertEquals(0, failed.processed)
-        assertEquals(0, failed.errors)
-        assertTrue(failed.shouldClearAfterLeavingSettings())
-    }
-
     private fun cleanupAfterExit(progress: CoverPreloadProgress): CoverPreloadProgress =
         if (progress.shouldClearAfterLeavingSettings()) CoverPreloadProgress() else progress
 }

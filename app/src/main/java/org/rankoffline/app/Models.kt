@@ -178,7 +178,7 @@ fun Anime.coverTarget(oneCoverPerGroup: Boolean = false): Anime = when {
         sharedCoverMediaId = null
     )
     groupId == null -> this
-    mediaType == MediaType.ANIME || mediaType == MediaType.MANGA ->
+    mediaType == MediaType.ANIME || mediaType == MediaType.MANGA || mediaType == MediaType.BOOK ->
         rootAnimeId?.let { copy(id = it, groupId = null, groupType = null) } ?: this
     else -> this
 }
@@ -353,116 +353,31 @@ data class PopularAnimeEntry(
     val coverUrl: String?
 )
 
-data class CoverPreloadCandidate(val anime: Anime, val coverUrl: String?)
-
-data class CoverPreloadPlan(
-    val target: Int,
-    val existing: Int,
-    val pending: List<CoverPreloadCandidate>,
-    val unmatched: Int
-)
-
-object PopularCoverPlanner {
-    fun plan(entries: List<PopularAnimeEntry>, localAnime: List<Anime>, limit: Int): CoverPreloadPlan {
-        val selected = entries.take(limit.coerceAtLeast(0))
-        val byAnilist = localAnime.groupBy { it.anilistId }.filterKeys { it != null }
-        val byMal = localAnime.groupBy { it.malId }.filterKeys { it != null }
-        val incomingMalCounts = selected.mapNotNull { it.malId }.groupingBy { it }.eachCount()
-        val seenAnimeIds = mutableSetOf<String>()
-        var existing = 0
-        var unmatched = 0
-        val pending = buildList {
-            selected.forEach { entry ->
-                val anilistMatches = byAnilist[entry.anilistId].orEmpty()
-                val malId = entry.malId
-                val anime = if (anilistMatches.size == 1) {
-                    anilistMatches.single()
-                } else {
-                    val malMatches = malId?.let { byMal[it] }.orEmpty()
-                    malMatches.singleOrNull()?.takeIf { candidate ->
-                        malId != null && incomingMalCounts[malId] == 1 &&
-                            candidate.anilistId in listOf(null, entry.anilistId)
-                    }
-                }
-                when {
-                    anime == null -> unmatched++
-                    !seenAnimeIds.add(anime.id) -> Unit
-                    !anime.localCoverPath.isNullOrBlank() -> existing++
-                    else -> add(CoverPreloadCandidate(anime, entry.coverUrl))
-                }
-            }
-        }
-        return CoverPreloadPlan(selected.size, existing, pending, unmatched)
-    }
-}
-
 enum class CoverPreloadStatus {
     IDLE,
-    FETCHING_POPULARITY,
-    APPLYING_POPULARITY,
     DOWNLOADING_COVERS,
     COMPLETED,
+    CANCELLED,
     FAILED
 }
 
 val CoverPreloadStatus.isTerminal: Boolean
-    get() = this == CoverPreloadStatus.COMPLETED || this == CoverPreloadStatus.FAILED
+    get() = this == CoverPreloadStatus.COMPLETED || this == CoverPreloadStatus.CANCELLED ||
+        this == CoverPreloadStatus.FAILED
 
 data class CoverPreloadProgress(
+    val mediaType: MediaType? = null,
     val status: CoverPreloadStatus = CoverPreloadStatus.IDLE,
     val target: Int = 0,
-    val popularityProcessed: Int = 0,
     val processed: Int = 0,
     val existing: Int = 0,
     val downloaded: Int = 0,
+    val unavailable: Int = 0,
     val errors: Int = 0,
-    val popularityUpdated: Boolean = false,
     val message: UserMessage? = null
 ) {
-    val isActive: Boolean get() = status in setOf(
-        CoverPreloadStatus.FETCHING_POPULARITY,
-        CoverPreloadStatus.APPLYING_POPULARITY,
-        CoverPreloadStatus.DOWNLOADING_COVERS
-    )
-    val popularityFraction: Float
-        get() = if (target <= 0) 0f else (popularityProcessed.toFloat() / target).coerceIn(0f, 1f)
+    val isActive: Boolean get() = status == CoverPreloadStatus.DOWNLOADING_COVERS
     val fraction: Float get() = if (target <= 0) 0f else (processed.toFloat() / target).coerceIn(0f, 1f)
-}
-
-object TopUpdateProgress {
-    fun start(target: Int) = CoverPreloadProgress(
-        status = CoverPreloadStatus.FETCHING_POPULARITY,
-        target = target
-    )
-
-    fun popularityFetched(progress: CoverPreloadProgress, count: Int) = progress.copy(
-        popularityProcessed = count.coerceIn(0, progress.target)
-    )
-
-    fun applyingPopularity(progress: CoverPreloadProgress) = progress.copy(
-        status = CoverPreloadStatus.APPLYING_POPULARITY,
-        popularityProcessed = progress.target
-    )
-
-    fun downloadingCovers(
-        progress: CoverPreloadProgress,
-        processed: Int,
-        existing: Int,
-        errors: Int
-    ) = progress.copy(
-        status = CoverPreloadStatus.DOWNLOADING_COVERS,
-        popularityProcessed = progress.target,
-        popularityUpdated = true,
-        processed = processed,
-        existing = existing,
-        errors = errors
-    )
-
-    fun completed(progress: CoverPreloadProgress) = progress.copy(
-        status = CoverPreloadStatus.COMPLETED,
-        popularityProcessed = progress.target,
-        processed = progress.target
-    )
 }
 
 fun CoverPreloadProgress.shouldClearAfterLeavingSettings(): Boolean =

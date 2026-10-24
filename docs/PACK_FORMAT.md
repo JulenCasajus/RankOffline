@@ -29,6 +29,14 @@ catalog keys are implemented.
   "version": "tmdb-2026-10-16",
   "minRankOfflineVersion": "0.2.0",
   "provider": {"id": "tmdb", "name": "TMDB"},
+  "coverSources": [{
+    "id": "tmdb_poster",
+    "providerId": "tmdb",
+    "urlTemplates": ["https://image.tmdb.org/t/p/w500/{reference}"],
+    "allowedHosts": ["image.tmdb.org"],
+    "attributionName": "TMDB",
+    "attributionUrl": "https://www.themoviedb.org"
+  }],
   "capabilities": {"search": true, "filters": true, "covers": true, "popularity": true, "merge": true, "ratings": true},
   "filters": [
     {"id": "genre", "field": "genre", "type": "multi_select", "order": 1},
@@ -47,7 +55,17 @@ Supported filter types are `multi_select` and `range`. Supported current merge s
 Packs cannot contain absolute/traversal paths or executable `.dex`, `.jar`, `.class`, `.so`, or
 `.apk` payloads. Downloads are size/hash checked, extracted to a temporary directory, and promoted
 atomically only after validation. `covers/` is optional and `metadata/cover_index.json` maps a
-canonical item/group ID to a declared local cover file.
+canonical item/group ID to a declared local cover file. After verification, extracted images are a
+user-removable per-pack cover cache; the verified `.pack` archive is retained separately and normal
+startup recovery does not restore covers the user deleted.
+
+`coverSources` is optional for backward compatibility. It declaratively maps a catalog provider to
+one or more HTTPS templates using only `{reference}` and `{providerId}`. Hosts and attribution are
+explicit. A catalog `remoteCoverRef` may alternatively be a schema-1 JSON string containing a
+`sourceId`, stable `identity`, and ordered direct/fallback `urls`. The core rejects non-HTTPS URLs,
+IP/local destinations, undeclared hosts, traversal, unsafe redirects, and executable content; a
+pack never supplies executable resolver code or credentials. Older official artifacts continue
+through their restricted built-in compatibility adapters.
 
 Deleting a pack purges its catalog, groups, covers, cache, ratings, notes, ranking state, saved
 filters, and pack settings while leaving global language/theme/onboarding state intact. Future

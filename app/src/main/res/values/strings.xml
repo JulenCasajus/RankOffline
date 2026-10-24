@@ -360,7 +360,10 @@
     <string name="category_phase_installing">Installing…</string>
     <string name="category_phase_importing_catalog">Importing catalog…</string>
     <string name="category_phase_importing_groups">Preparing merge…</string>
+    <string name="category_phase_downloading_covers">Downloading covers: %1$d / %2$d</string>
     <string name="category_phase_finalizing">Finalizing…</string>
+    <string name="category_cover_partial">Pack ready · %1$d/%2$d covers available · %3$d unavailable</string>
+    <string name="category_cover_cancelled">Pack ready · %1$d/%2$d covers available · cover download cancelled</string>
     <string name="category_delete">Delete category</string>
     <string name="category_download">Download category</string>
     <string name="category_included_not_reclaimable">Included catalog; its APK space cannot be reclaimed</string>
@@ -424,4 +427,20 @@
     <string name="packs_empty_invitation">Download packs from Settings to get started.</string>
     <string name="color_picker_saturation_value">Saturation and brightness</string>
     <string name="color_picker_hue">Hue</string>
+    <string name="loading_list">Loading list…</string>
+    <string name="covers_progress_details_explicit">%1$d already available · %2$d downloaded · %3$d unavailable · %4$d failed</string>
+    <string name="merge_book_series">Merge book series</string>
+    <string name="book_genre_fantasy">Fantasy</string>
+    <string name="book_genre_science_fiction">Science Fiction</string>
+    <string name="book_genre_romance">Romance</string>
+    <string name="book_genre_mystery_thriller">Mystery &amp; Thriller</string>
+    <string name="book_genre_horror">Horror</string>
+    <string name="book_genre_adventure">Adventure</string>
+    <string name="book_genre_historical_fiction">Historical Fiction</string>
+    <string name="book_genre_classics">Classics</string>
+    <string name="book_genre_biography">Biography</string>
+    <string name="book_genre_history">History</string>
+    <string name="book_genre_science_technology">Science &amp; Technology</string>
+    <string name="book_genre_philosophy">Philosophy</string>
+    <string name="book_genre_other">Other / Unclassified</string>
 </resources>

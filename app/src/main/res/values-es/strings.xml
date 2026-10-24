@@ -153,7 +153,10 @@
 <string name="category_phase_installing">Instalando…</string>
 <string name="category_phase_importing_catalog">Importando catálogo…</string>
 <string name="category_phase_importing_groups">Preparando fusión…</string>
+<string name="category_phase_downloading_covers">Descargando portadas: %1$d / %2$d</string>
 <string name="category_phase_finalizing">Finalizando…</string>
+<string name="category_cover_partial">Pack listo · %1$d/%2$d portadas disponibles · %3$d no disponibles</string>
+<string name="category_cover_cancelled">Pack listo · %1$d/%2$d portadas disponibles · descarga de portadas cancelada</string>
     <string name="category_pack_runtime_error">No se pudo preparar el catálogo. Toca para reintentar.</string>
     <string name="message_rating_operation_failed">No se pudo guardar la valoración. Inténtalo de nuevo.</string>
     <string name="message_icon_change_failed">No se pudo cambiar el icono de la aplicación.</string>
@@ -170,4 +173,20 @@
     <string name="download_pack">Descargar paquete</string>
     <string name="color_picker_saturation_value">Saturación y brillo</string>
     <string name="color_picker_hue">Tono</string>
+    <string name="loading_list">Cargando lista…</string>
+    <string name="covers_progress_details_explicit">%1$d ya disponibles · %2$d descargadas · %3$d no disponibles · %4$d fallidas</string>
+    <string name="merge_book_series">Fusionar sagas</string>
+    <string name="book_genre_fantasy">Fantasía</string>
+    <string name="book_genre_science_fiction">Ciencia ficción</string>
+    <string name="book_genre_romance">Romance</string>
+    <string name="book_genre_mystery_thriller">Misterio y suspense</string>
+    <string name="book_genre_horror">Terror</string>
+    <string name="book_genre_adventure">Aventura</string>
+    <string name="book_genre_historical_fiction">Ficción histórica</string>
+    <string name="book_genre_classics">Clásicos</string>
+    <string name="book_genre_biography">Biografía</string>
+    <string name="book_genre_history">Historia</string>
+    <string name="book_genre_science_technology">Ciencia y tecnología</string>
+    <string name="book_genre_philosophy">Filosofía</string>
+    <string name="book_genre_other">Otros / Sin clasificar</string>
 </resources>
