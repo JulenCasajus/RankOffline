@@ -1,5 +1,22 @@
 # Production catalog status
 
+> **Current 0.2 preview (2026-10-25):** The detailed "Block 21" measurements below
+> document historical build stages, not the exact current installable pack sizes.
+> Published `v0.2.0-debug.5` distributes five data-only `.pack` archives and
+> a matching index, with **zero bundled cover-image binaries**. The current
+> production Books pack contains 50,000 Work-level items, 13 normalized genre
+> labels, and a conservative initial **2 series groups / 10 members**. The
+> latest Books archive is approximately 7.49 MB; previous Book catalog/gzip
+> measurements below reflect an earlier snapshot without these groups.
+> Installing a pack may perform per-device initial Top-100 cover retrieval
+> only when that pack's Show Images setting is enabled. Defaults are being
+> finalized for debug.6 (Books images OFF; Sticky Score Header ON for all;
+> Series Merge ON when One Cover per Group defaults ON).
+>
+> **No external image rights are inferred** from provider cover URLs.
+> Archive/index hashes and sizes must be regenerated and rechecked together
+> for the eventual stable `v0.2.0` release.
+
 Block 21 targets one provider-ranked snapshot per media type. Counts and byte
 sizes are recorded here only after deterministic assets exist; missing inputs
 are reported rather than replaced with fixtures or estimates.
