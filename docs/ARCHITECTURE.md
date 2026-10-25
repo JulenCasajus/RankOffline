@@ -12,7 +12,8 @@ Compose UI
   -> verified files/packs/<pack_id>/ data
 ```
 
-All five official media types use the shared catalog, alias, filter, search, pagination, group, rating, ranking, and cover infrastructure. Provider-specific code is limited to release-time normalization, remote discovery, and cover URL resolution. The legacy Anime repositories/tables remain only as an upgrade bridge and test surface for published 0.1.3 data; normal 0.2 catalog and rating writes use `media_*`.
+All five official media types use the shared catalog, alias, filter, search, pagination, group, rating, ranking, and cover infrastructure. Provider-specific work is primarily release-time normalization and restricted cover URL
+resolution. Remote title discovery has been removed from the Android application. The legacy Anime repositories/tables remain only as an upgrade bridge and test surface for published 0.1.3 data; normal 0.2 catalog and rating writes use `media_*`.
 
 ## Room and user data
 
@@ -34,7 +35,8 @@ A pack is not READY merely because files exist. Per-pack lifecycle serialization
 
 ```text
 download -> verify -> atomic file install -> import catalog
-         -> import/verify precomputed groups -> finalize runtime -> READY
+         -> import/verify precomputed groups -> catalog READY
+         -> optional initial Top-100 cover acquisition (catalog remains usable)
 ```
 
 On process restart, unchanged catalog and group hashes take the `NoChange` path. Import failures produce ERROR/retry state; partial packs never activate. Operations for different packs may proceed independently, while operations for the same PackId cannot race.
@@ -45,13 +47,21 @@ Pack deletion is an explicitly destructive product action: it purges that pack's
 
 Relationships are computed by release tooling, never by the phone. Packs contain complete group records with provider group identity, representative ID, ordered members, member count, and popularity summary. Runtime Merge only switches between indexed, SQLite-paginated queries over imported memberships. It performs no title inference, provider request, or relationship write.
 
-Offline search uses the same repository for every media type, including Anime aliases and manifest-declared filters/subtitle fields. Books intentionally have no Merge capability.
+Offline search uses the same repository for every media type, including aliases and
+manifest-declared filters/subtitle fields. Books have a conservative precomputed
+Work-level series-group artifact; coverage is intentionally limited rather than
+inferring unverifiable relationships on the phone.
 
 ## Covers
 
 Item and group covers use explicit storage identities and separate Room columns. A common UI contract observes the local path and download state; group covers read `media_group.local_cover_path`. Files are decoded off the main thread and cached in memory.
 
-Provider adapters resolve URLs only for explicit cover operations. Anime can fall back to AniList/Jikan using its stable ID; Open Library candidates are tried in the stored order cover ID, ISBN-13, ISBN-10, edition OLID, and work OLID. Existing local covers remain usable offline and normal browsing/startup never requires a provider call.
+Data-only pack manifests may declare constrained HTTPS cover sources, stable identities,
+and allowed hosts. Official legacy providers remain restricted fallback adapters. Anime
+can fall back to AniList/Jikan using its stable ID; Open Library candidates are tried
+in the stored order cover ID, ISBN-13, ISBN-10, edition OLID, and work OLID. Existing local covers remain usable offline. Normal browsing/startup never requires a provider
+call; optional Top-100 cover retrieval during new pack installation and user-requested Top-N
+operations may contact declared HTTPS hosts. No remote title search is performed.
 
 ## Settings and themes
 
