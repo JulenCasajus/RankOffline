@@ -15,10 +15,29 @@ Installation is staged and atomic:
 3. promote files while retaining the previous valid generation;
 4. import the normalized catalog;
 5. import and verify the precomputed group graph when Merge is supported;
-6. install packaged cover references, refresh registry/runtime state, and publish READY;
-7. commit replacement only after all preceding steps succeed.
+6. install validated cover references and finish importing the local catalog/group state;
+7. publish catalog READY once its Room data is usable; optional Top-100 cover retrieval, if enabled
+   for this pack, is separate from catalog readiness. Cover failures cannot invalidate the catalog.
+
+The production 0.2 goal is one active archive transfer at a time, independently bounded
+import activity and serialized initial cover-download operations. Overlap between independent
+packs is permitted only where it does not compromise storage/Room safety; queued statuses
+and scheduler refinements are being validated in debug.6. No network title search occurs.
 
 Startup uses the same per-pack lifecycle coordinator. An unchanged imported hash/count takes the `NoChange` path. Files without a verified Room import are not selectable. Interrupted replacements recover the last valid pack or expose an ERROR/retry state.
+
+## Cover storage and progress
+
+Cover binaries obtained from a provider are stored under a PackId-specific removable cache,
+separate from the verified archive. The single **Downloaded covers** counter describes locally
+available covers for the selected pack, including any rights-cleared cover images extracted
+from the pack. Deleting cached covers for one pack must never purge another pack's images.
+Optional Top-100 cover acquisition runs only as part of a new installation with that pack's
+Show Images setting enabled; catalog search and ratings continue fully offline.
+
+The five official packs currently include no cover-art binaries because licensing for
+redistribution of third-party artwork has not been established. Do not describe remote
+cover availability as a right to bundle or republish files.
 
 ## Deletion
 
@@ -26,7 +45,9 @@ Startup uses the same per-pack lifecycle coordinator. An unchanged imported hash
 
 ## Generated artifacts
 
-Run `python3 tools/category_packs/build_category_packs.py`. It writes a deterministic matched set below `tools/.cache/category-packs/output/` and copies its trusted index to `app/src/main/assets/category_pack_index.json`.
+Run `python3 tools/category_packs/build_category_packs.py` for the explicitly supported
+data-only build (rights-cleared bundled covers can be prepared separately).
+It writes a deterministic matched set below `tools/.cache/category-packs/output/` and copies its trusted index to `app/src/main/assets/category_pack_index.json`.
 
 The current matched local set contains no redistributed cover binaries because provider metadata/API availability is not redistribution permission. Cover index support remains available for properly licensed assets.
 
