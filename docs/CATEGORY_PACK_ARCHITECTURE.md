@@ -19,10 +19,11 @@ Installation is staged and atomic:
 7. publish catalog READY once its Room data is usable; optional Top-100 cover retrieval, if enabled
    for this pack, is separate from catalog readiness. Cover failures cannot invalidate the catalog.
 
-The production 0.2 goal is one active archive transfer at a time, independently bounded
-import activity and serialized initial cover-download operations. Overlap between independent
-packs is permitted only where it does not compromise storage/Room safety; queued statuses
-and scheduler refinements are being validated in debug.6. No network title search occurs.
+The debug.6 implementation, now merged into `main`, limits archive transfers
+to one at a time; safe unrelated imports may overlap transfers, while Room
+import writes are serialized. Pending/queued pack and cover states are
+represented explicitly. These implementation choices still require stable
+candidate and device-level validation. No network title search occurs.
 
 Startup uses the same per-pack lifecycle coordinator. An unchanged imported hash/count takes the `NoChange` path. Files without a verified Room import are not selectable. Interrupted replacements recover the last valid pack or expose an ERROR/retry state.
 
