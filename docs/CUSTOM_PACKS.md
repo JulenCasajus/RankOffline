@@ -57,3 +57,20 @@ ratings. This is a roadmap proposal, not a 0.2 feature.
 
 See [PACK_FORMAT.md](PACK_FORMAT.md), [MEDIA_ARCHITECTURE.md](MEDIA_ARCHITECTURE.md),
 and [ROADMAP.md](ROADMAP.md).
+
+## Useful local checks
+
+```bash
+# Show archive contents (manifest must be at its root)
+unzip -l MyPersonal.pack
+
+# Read its root manifest
+unzip -p MyPersonal.pack manifest.json | python3 -m json.tool
+
+# Compute the archive hash for your distribution metadata
+shasum -a 256 MyPersonal.pack
+```
+
+These commands **inspect a pack**; they do not install it in RankOffline.
+
+For official-pack generation in the development repository, see `tools/category_packs/build_category_packs.py` and associated source generators. These tools presently target the official pack definitions, not arbitrary new PackIds.

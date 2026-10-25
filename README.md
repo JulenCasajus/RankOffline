@@ -1,5 +1,7 @@
 # RankOffline
 
+**Rate what you love. Rank it your way. Keep it offline.**
+
 RankOffline is a **local-first Android app** for browsing independently installed Anime, Manga, Movies, Series, and Books catalogs, rating entries with either a simple score or a configurable weighted system, and building personal rankings without an account or telemetry.
 
 ## Highlights
@@ -82,6 +84,11 @@ cover downloads do not invalidate an otherwise usable installed catalog.
 
 Real-device screenshots will be added here after final 0.2.0 UI validation.
 
+| Browse | Rate & rank |
+|:---:|:---:|
+| ![Browse placeholder](docs/images/browse-placeholder.svg) | ![Rating placeholder](docs/images/rating-placeholder.svg) |
+| *Screenshots coming soon* | *Screenshots coming soon* |
+
 <!-- Add privacy-reviewed captures to docs/screenshots/ and then uncomment links such as:
 ![Search across an installed pack](docs/screenshots/search.webp)
 ![Personal ranking](docs/screenshots/ranking.webp)
@@ -138,7 +145,7 @@ Local signing files, generated APKs, and credentials are intentionally ignored b
 
 `.github/workflows/android.yml` validates the bundled catalog, runs JVM tests, builds the debug APK, and uploads it as an Actions artifact for pushes to `main` and pull requests.
 
-`.github/workflows/release.yml` builds and verifies the signed release APK using GitHub Actions secrets. A pushed `v*` tag creates the corresponding GitHub Release automatically.
+`.github/workflows/release.yml` builds and verifies the signed APK together with all five pack archives and the trusted index. A manual run on `main` produces a private seven-file candidate artifact; pushing the stable `v0.2.0` tag creates a **draft** GitHub Release that requires manual approval.
 
 See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing setup.
 
@@ -203,3 +210,17 @@ unofficial distributions must use their own name and branding.
 The bundled catalog, Android/Jetpack dependencies, and other third-party
 components remain under their own licenses described above; the RankOffline
 license does not replace those terms.
+
+## ❤️ Support RankOffline
+
+RankOffline is free and open source, built to make personal media ranking simple, customizable, and available offline.
+
+If you enjoy the project and would like to support its continued development, you can make a one-time contribution or become a monthly supporter.
+
+Your support helps cover development time, maintenance, testing, and future improvements.
+
+**[Support via GitHub Sponsors](https://github.com/sponsors/JulenCasajus).**
+
+Donations are completely optional. RankOffline will remain free and open source.
+
+Thank you for supporting the project! ❤️
