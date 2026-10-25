@@ -1,226 +1,132 @@
-# RankOffline
+# 🎯 RankOffline
 
 **Rate what you love. Rank it your way. Keep it offline.**
 
-RankOffline is a **local-first Android app** for browsing independently installed Anime, Manga, Movies, Series, and Books catalogs, rating entries with either a simple score or a configurable weighted system, and building personal rankings without an account or telemetry.
+RankOffline is a **free, open-source Android app** for discovering and ranking **Anime, Manga, Movies, Series, and Books**. Build a personal library with customizable ratings, beautiful rankings, and offline access to your installed catalogs — **no account, no cloud sync, no analytics**.
 
-## Highlights
+**[Download RankOffline v0.2.0](https://github.com/JulenCasajus/RankOffline/releases/tag/v0.2.0)** · [Installation](#installation) · [Rating system](#rate-your-way) · [Privacy](#offline-first-and-private)
 
-- **Five independent data-only packs** (Anime, Manga, Movies, Series and Books), downloadable independently of the Core APK.
-- **Simple rating** from 0 to 10 in 0.5-point steps.
-- **Elaborate rating** with reusable rating profiles, weighted categories, N/A support, and a separate personal-taste bonus.
-- **Custom categories** with editable names, descriptions, colors, and stable IDs.
-- **Custom profiles** with independent category weights; profiles can be created, renamed, edited, and deleted.
-- **Personal ranking** driven by one canonical saved score per item or explicit group.
-- Notes and watch status stored locally.
-- Fully offline catalog search (including imported title aliases), filters, Merge and rankings after installation; no remote title discovery.
-- Per-pack **Show Images**, **Sticky Score Header**, Merge and cover preferences. When enabled for a new pack, optional initial Top-100 covers download after catalog import; the catalog can be used while covers download.
-- Validated user-requested Top-N cover downloads, removable per-pack image cache, and local offline reuse.
-- Nine UI languages: English, Spanish, German, French, Russian, Japanese, Simplified Chinese, Basque, and Italian.
-- Eight selectable launcher icons backed by verified Android launcher aliases.
-- No analytics, telemetry, account system, or cloud rating storage.
+## ✨ Discover. Rate. Rank.
 
-## Rating system
+| Discover your favorites | Rate your way | See your personal podium |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/anime-browse.webp" alt="Search the Anime catalog with cover art and personal scores" width="240"> | <img src="docs/screenshots/elaborate-rating.webp" alt="Elaborate rating with weighted categories and a Narrative rating profile" width="240"> | <img src="docs/screenshots/ranking-podium.webp" alt="Personal Anime ranking with a gold silver and bronze podium" width="240"> |
 
-RankOffline supports two rating modes.
+## 📚 Five independent offline catalogs
 
-### Simple
+Choose only the categories you want. **Anime, Manga, Movies, Series, and Books** are separate downloadable data-only packs; the app itself does not require all five. After a pack is installed, you can browse its catalog, search, filter, rate, and rank **without an internet connection**.
 
-Choose a score from **0.0 to 10.0** in **0.5** steps. Saving writes that value directly to the canonical final score.
+- **Anime:** anime titles, original and alternative title search, and season relationships.
+- **Manga:** searchable works, creators and conservative variant/edition grouping.
+- **Movies:** individual films and verified collection grouping.
+- **Series:** seasons and their parent-series grouping.
+- **Books:** works, authors and conservative series grouping; usable entirely without cover art.
 
-### Elaborate
+| Manga with artwork | Series grouped by show | Books without images |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/manga-browse.webp" alt="Browse the Manga catalog with cover images" width="240"> | <img src="docs/screenshots/series-merged.webp" alt="Series catalog grouped by parent TV show" width="240"> | <img src="docs/screenshots/books-no-covers.webp" alt="Browse Books in a compact text-first interface" width="240"> |
 
-Rate the configured categories and choose a **rating profile** that determines their relative weights. Categories marked **N/A** are excluded and the remaining applicable weights are normalized.
+Cover images are **optional and downloaded separately** when requested or enabled in the settings for a new pack. They are cached locally for offline viewing. Canceling an optional cover download does not remove the installed catalog.
 
-The default categories are:
+## ⭐ Rate your way
 
-- Writing
-- Characters
-- Visuals
-- Worldbuilding
-- Audio
+RankOffline offers two independent ways to evaluate a work:
 
-The default profiles are designed around what primarily carries a work rather than around anime genres:
+**Simple rating:** choose a score from **0 to 10**, in **0.5-point steps**. Add a separate **personal taste bonus** of **+0.0 to +1.0** (in 0.1 steps) when using the scoring editor.
 
-- General
-- Narrative
-- Character-driven
-- Visual / Action
-- World / Adventure
-- Atmospheric
+**Elaborate rating:** evaluate weighted categories using a reusable rating profile. Default categories include **Writing, Characters, Visuals, Worldbuilding, and Audio**. Profiles such as **General, Narrative, Character-driven, Visual / Action, World / Adventure, and Atmospheric** apply different weights. Mark categories **N/A** to exclude them and automatically renormalize the remaining weights. The separate personal-taste bonus is added after quality scoring; the final score is capped at 10.
 
-A separate personal-taste bonus ranges from **+0.0 to +1.0** in 0.1 steps. The final elaborate score is capped at 10.
+Create and edit your own categories, category colors/descriptions, profiles, and weights. Add **personal notes** and keep a local status for each item. Saved scores are not silently recalculated just because you change a profile later.
 
-Changing a profile later does **not** silently recalculate previously saved entries. A final score only changes when an entry is explicitly saved again.
+<p align="center"><img src="docs/screenshots/simple-rating.webp" alt="Simple Manga rating with personal taste bonus and notes" width="300"></p>
 
-See [docs/SCORING.md](docs/SCORING.md) for the complete model.
+Read the [scoring documentation](docs/SCORING.md) for the full formula and behavior.
 
-## Offline catalog
+## 🔎 Powerful search and sorting
 
-RankOffline Core is a small APK. Production catalogs are independently downloaded, verified and
-installed as data-only packs; installed packs then provide browsing, search, ratings and ranking
-fully offline.
+Browse completely offline by title, including supported **alternative titles and aliases**. For example, searching *Attack* and *Shingeki* can find the same series using different names, while preserving the underlying identity and ratings.
 
-Schema-v1 packs are verified and atomically installed below app-private `files/packs/`. Deleting a
-pack is an explicit destructive purge of that pack and its PackId-scoped personal state. See
-[`docs/CATEGORY_PACK_ARCHITECTURE.md`](docs/CATEGORY_PACK_ARCHITECTURE.md).
-
-To rebuild the normalized pack set manually:
-
-```bash
-python3 tools/category_packs/build_category_packs.py
-```
-
-Provider-specific source tools produce normalized catalog/group snapshots, including conservative
-Book-series groups and normalized Book genres. Group membership is derived offline from explicit
-provider relationships; the Android Merge toggle never discovers or rewrites relationships.
-
-Only catalog archives are installed automatically; cover-image binaries are not currently
-redistributed in the five official packs. A new pack may optionally download its Top-100 cover
-images to private storage when its **Show Images** setting is enabled. Failed or cancelled
-cover downloads do not invalidate an otherwise usable installed catalog.
-
-## Screenshots
-
-Real-device screenshots will be added here after final 0.2.0 UI validation.
-
-| Browse | Rate & rank |
+| Search using an alias | Search using the main title |
 |:---:|:---:|
-| ![Browse placeholder](docs/images/browse-placeholder.svg) | ![Rating placeholder](docs/images/rating-placeholder.svg) |
-| *Screenshots coming soon* | *Screenshots coming soon* |
+| <img src="docs/screenshots/anime-alias-search.webp" alt="Attack on Titan results found using the Attack alias" width="280"> | <img src="docs/screenshots/anime-primary-title-search.webp" alt="Shingeki no Kyojin results found by their main title" width="280"> |
 
-<!-- Add privacy-reviewed captures to docs/screenshots/ and then uncomment links such as:
-![Search across an installed pack](docs/screenshots/search.webp)
-![Personal ranking](docs/screenshots/ranking.webp)
-![Per-pack preferences](docs/screenshots/settings.webp)
-![Package management](docs/screenshots/packs.webp)
-Do not commit screenshots containing personal identifiers or confidential ratings/notes.
--->
+Use catalog-specific **genre, format, year, studio and other relevant filters** where supported. Sort by **popularity**, **name**, **final score** or individual rating categories, depending on the screen and available data. My Ranking can show a full scored list or a **Top 3 podium**, and its sort criterion changes who gets the gold, silver and bronze positions.
 
-## Install
+## 🔗 Merge seasons, collections, and variants
 
-### GitHub Releases
+Switch **Merge** on or off without changing the original catalog data. RankOffline uses provider relationships prepared beforehand, not fuzzy matching on your phone. Supported examples include anime seasons, manga variants, movie collections, TV seasons, and conservatively identified book series.
 
-Download the latest `RankOffline-vX.Y.Z.apk` from the repository's **Releases** page and install it on Android.
+| Movies as individual entries | Movies grouped by collection |
+|:---:|:---:|
+| <img src="docs/screenshots/movies-ungrouped.webp" alt="Movie catalog with Merge collections disabled" width="280"> | <img src="docs/screenshots/movies-merged.webp" alt="Movie catalog with Merge collections enabled" width="280"> |
 
-### Obtainium
+## 🎨 Make it yours
 
-Add this GitHub repository to Obtainium to receive published RankOffline updates automatically. Android updates require the same application ID, the same signing key, and a strictly higher `versionCode`.
+- **Theme palettes:** choose a built-in palette, customize supported themes, or save your own.
+- **Eight launcher icons:** switch the app icon from Settings.
+- **Nine interface languages:** English, Spanish, German, French, Russian, Japanese, Simplified Chinese, Basque, and Italian.
+- **Per-pack settings:** choose whether to show images, merge related titles, keep the score header visible, and use one cover per group where supported.
+- **Cover management:** optionally download covers, show larger artwork, and remove downloaded covers.
 
-## Build locally
+<p align="center"><img src="docs/screenshots/themes.webp" alt="RankOffline theme palette choices" width="300"></p>
 
-Requirements:
+<details>
+<summary><strong>More screenshots: filters, category rankings, and cover viewer</strong></summary>
 
-- Android Studio
-- JDK 17
-- Android SDK 35
+| Advanced filters | Rank by Writing | Full-size cover preview |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/filters.webp" alt="Anime genre, format, year, and studio filters" width="220"> | <img src="docs/screenshots/ranking-by-category.webp" alt="Personal ranking sorted by Writing scores" width="220"> | <img src="docs/screenshots/cover-viewer.webp" alt="Full-size Berserk manga cover with a cover removal action" width="220"> |
 
-The application ID and namespace are:
+</details>
 
-```text
-org.rankoffline.app
-```
+## 📥 Installation
 
-Build a debug APK with:
+**Android 8.0 (API 26) or newer.**
+
+1. Get the signed APK from the **[latest stable GitHub Release](https://github.com/JulenCasajus/RankOffline/releases/tag/v0.2.0)** (`RankOffline-v0.2.0.apk`). Install it on Android.
+2. In RankOffline, install the catalog packs you want while connected to the internet.
+3. Optionally enable/download cover images. Your installed catalogs, ratings, notes, and downloaded covers then work offline.
+
+**Obtainium:** add `https://github.com/JulenCasajus/RankOffline` as a GitHub source to track stable updates. Exclude prereleases if you only want signed stable versions. The stable app ID is `org.rankoffline.app`; development APKs use `org.rankoffline.app.debug` and are separate installations.
+
+> **Data safety:** in v0.2.0, deleting a pack **and its data** also removes that pack's local ratings, notes, covers, and per-pack settings. Regular app updates and ordinary catalog refreshes preserve personal data. Android's automatic cloud backup is disabled.
+
+## 🔒 Offline-first and private
+
+- Browse, search, filter, rate, and rank installed catalogs **offline**.
+- Personal ratings, notes, rating profiles, preferences, and cached covers stay in **app-private storage**.
+- **No login, analytics, telemetry, or cloud rating database.**
+- Network access is used for pack downloads and optional cover retrieval, **not remote title search**.
+- The app uses **Jetpack Compose, Room, and DataStore**. Its data-only pack files are integrity-checked before installation.
+
+## 🛠️ For developers
+
+Requirements: **Android Studio, JDK 17, Android SDK 35**.
 
 ```bash
+./gradlew testDebugUnitTest
 ./gradlew assembleDebug
 ```
 
-Output:
+Debug and stable builds use different Android application IDs. For a properly signed production build, see [Releasing](docs/RELEASING.md) and `tools/build_release.sh`; **do not commit signing keys or secrets**.
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
+Useful technical resources: [Architecture](docs/ARCHITECTURE.md) · [Pack format](docs/PACK_FORMAT.md) · [Pack architecture](docs/CATEGORY_PACK_ARCHITECTURE.md) · [Scoring](docs/SCORING.md) · [Custom packs](docs/CUSTOM_PACKS.md) · [Roadmap](docs/ROADMAP.md) · [Release process](docs/RELEASING.md).
 
-For a locally signed release build, configure `keystore.properties` as described in [docs/RELEASING.md](docs/RELEASING.md), then run:
+The current stable release is **v0.2.0**. Proposed features such as **RankOfflineAll**, personal-data import/export and improved background transfers are not claimed as shipped functionality. Follow [the roadmap](docs/ROADMAP.md) for future directions.
 
-```bash
-tools/build_release.sh
-```
+## 📖 Data sources and attribution
 
-Local signing files, generated APKs, and credentials are intentionally ignored by Git.
+- **Anime:** [AnimeAPI](https://github.com/nattadasu/animeApi), [AniList](https://anilist.co), [Jikan](https://jikan.moe), and pinned title aliases from [anime-offline-database](https://github.com/cedya77/anime-offline-database).
+- **Manga:** [MangaDex](https://mangadex.org).
+- **Movies and Series:** [The Movie Database (TMDB)](https://www.themoviedb.org).
+- **Books:** [Open Library](https://openlibrary.org).
 
-## Continuous integration and releases
+Third-party catalogs, artwork, API responses, names and logos have their own licensing and attribution requirements, distinct from the app's license. See [Data sources](docs/DATA_SOURCES.md) and [Third-party notices](THIRD_PARTY_NOTICES.md). This app is not endorsed or certified by its data providers.
 
-`.github/workflows/android.yml` validates the bundled catalog, runs JVM tests, builds the debug APK, and uploads it as an Actions artifact for pushes to `main` and pull requests.
+## ⚖️ License and branding
 
-`.github/workflows/release.yml` builds and verifies the signed APK together with all five pack archives and the trusted index. A manual run on `main` produces a private seven-file candidate artifact; pushing the stable `v0.2.0` tag creates a **draft** GitHub Release that requires manual approval.
-
-See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing setup.
-
-## Documentation
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Pack format](docs/PACK_FORMAT.md)
-- [Custom-pack status](docs/CUSTOM_PACKS.md)
-- [Scoring model](docs/SCORING.md)
-- [Releasing](docs/RELEASING.md)
-- [Roadmap](docs/ROADMAP.md)
-
-## Data attribution
-
-- **Anime:** [AnimeAPI](https://github.com/nattadasu/animeApi) provides the
-  catalog foundation; AniList provides selected metadata, explicit relations,
-  popularity, and primary cover metadata; Jikan is an existing cover fallback.
-  Title aliases come only from pinned release `2026-42` of
-  [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database),
-  continuing the original
-  [manami-project](https://github.com/manami-project/anime-offline-database).
-- **Manga:** [MangaDex](https://mangadex.org) provides metadata, aliases,
-  creator/tag relationships, conservative variant relations, and cover
-  references through offline build-time catalog snapshots.
-  RankOffline does not read or distribute chapters.
-- **Movies / Series:** [TMDB](https://www.themoviedb.org) provides metadata,
-  canonical collection/season grouping, alternative titles, and poster
-  references.
-- **Books:** [Open Library](https://openlibrary.org) bulk dumps provide Work and
-  author metadata. Work-level catalog search in the app is strictly offline.
-  Cover images may be retrieved separately through its Covers service
-  and are not claimed to be CC0 or public domain.
-
-Application code and bundled/remote data have separate licences. See
-[Data sources and provider constraints](docs/DATA_SOURCES.md) and
-[Third-party notices](THIRD_PARTY_NOTICES.md) for licence scopes, attribution,
-policy limitations, and non-endorsement notices.
-
-## Architecture and privacy
-
-RankOffline uses Jetpack Compose, Room, and DataStore. Ratings, notes, profile/category configuration, the database, and downloaded covers remain in app-private storage.
-
-Android Auto Backup and cleartext traffic are disabled. After an archive is installed, browsing,
-search, grouping and rating remain offline. Network access is used for requested pack archive
-transfers and permitted cover retrieval (including optional initial cover acquisition), not
-remote title discovery; personal ratings and notes are not sent to providers.
-
-## License and trademarks
-
-RankOffline is free and open-source software licensed under the
-[GNU General Public License v3.0](LICENSE) (`GPL-3.0-only`). You may use,
-study, modify, and redistribute its original application source code under the
-terms of GPLv3, including for commercial purposes.
-
-Previous releases remain available under the licence under which they were
-originally published.
-
-The official RankOffline name, logo, launcher icons, and distinctive branding
-are governed separately by the [trademark policy](TRADEMARKS.md). Modified or
-unofficial distributions must use their own name and branding.
-
-The bundled catalog, Android/Jetpack dependencies, and other third-party
-components remain under their own licenses described above; the RankOffline
-license does not replace those terms.
+RankOffline's original application source code is free and open-source software licensed under **[GPL-3.0-only](LICENSE)**. The original RankOffline name, logos, launcher icons and distinctive branding are subject to the separate [trademark policy](TRADEMARKS.md); modified or unofficial distributions must use their own branding. Provider content is not relicensed by the app's GPL.
 
 ## ❤️ Support RankOffline
 
-RankOffline is free and open source, built to make personal media ranking simple, customizable, and available offline.
-
-If you enjoy the project and would like to support its continued development, you can make a one-time contribution or become a monthly supporter.
-
-Your support helps cover development time, maintenance, testing, and future improvements.
-
-**[Support via GitHub Sponsors](https://github.com/sponsors/JulenCasajus).**
-
-Donations are completely optional. RankOffline will remain free and open source.
-
-Thank you for supporting the project! ❤️
+RankOffline is free and open source. If it is useful to you, you can support its continued maintenance and development through **[GitHub Sponsors](https://github.com/sponsors/JulenCasajus)**. Donations are optional and the app remains free.
