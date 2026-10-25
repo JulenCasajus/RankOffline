@@ -32,6 +32,15 @@ import kotlinx.coroutines.withContext
 
 enum class MediaCoverTransferResult { DOWNLOADED, NOT_FOUND, NETWORK_ERROR, TEMPORARY_ERROR }
 
+internal fun coverTransferFailureForHttpStatus(status: Int): MediaCoverTransferResult? = when {
+    status in 200..299 -> null
+    status == HttpURLConnection.HTTP_NOT_FOUND || status == HttpURLConnection.HTTP_GONE ->
+        MediaCoverTransferResult.NOT_FOUND
+    status == HttpURLConnection.HTTP_CLIENT_TIMEOUT || status == 425 || status == 429 ||
+        status in 500..599 -> MediaCoverTransferResult.TEMPORARY_ERROR
+    else -> MediaCoverTransferResult.NOT_FOUND
+}
+
 fun interface MediaCoverDownloader {
     suspend fun download(remoteUri: URI, destination: File): MediaCoverTransferResult
 }
@@ -39,7 +48,17 @@ fun interface MediaCoverDownloader {
 class SecureMediaCoverDownloader : MediaCoverDownloader {
     override suspend fun download(remoteUri: URI, destination: File): MediaCoverTransferResult =
         withContext(Dispatchers.IO) {
-            val expectedHost = validatedHost(remoteUri) ?: return@withContext MediaCoverTransferResult.NOT_FOUND
+            val expectedHost = try {
+                validatedHost(remoteUri)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (exception: IOException) {
+                Log.w(TAG, "Cover host lookup failed for ${remoteUri.host}", exception)
+                return@withContext MediaCoverTransferResult.NETWORK_ERROR
+            } catch (exception: SecurityException) {
+                Log.w(TAG, "Cover host rejected for ${remoteUri.host}", exception)
+                return@withContext MediaCoverTransferResult.NOT_FOUND
+            } ?: return@withContext MediaCoverTransferResult.NOT_FOUND
             var lastFailure = MediaCoverTransferResult.TEMPORARY_ERROR
             repeat(MAX_DOWNLOAD_ATTEMPTS) { attempt ->
                 currentCoroutineContext().ensureActive()
@@ -56,6 +75,9 @@ class SecureMediaCoverDownloader : MediaCoverDownloader {
                     }
                 } catch (exception: CancellationException) {
                     throw exception
+                } catch (exception: CoverTooLargeException) {
+                    lastFailure = MediaCoverTransferResult.NOT_FOUND
+                    return@withContext lastFailure
                 } catch (exception: IOException) {
                     lastFailure = if (exception.isNetworkFailure()) {
                         MediaCoverTransferResult.NETWORK_ERROR
@@ -92,30 +114,30 @@ class SecureMediaCoverDownloader : MediaCoverDownloader {
             }
             try {
                 val code = connection.responseCode
-                if (code == HttpURLConnection.HTTP_NOT_FOUND || code == HttpURLConnection.HTTP_GONE) {
-                    return MediaCoverTransferResult.NOT_FOUND
-                }
                 if (code in REDIRECT_CODES) {
-                    if (redirects++ >= MAX_REDIRECTS) return MediaCoverTransferResult.TEMPORARY_ERROR
+                    if (redirects++ >= MAX_REDIRECTS) return MediaCoverTransferResult.NOT_FOUND
                     val location = connection.getHeaderField("Location")
-                        ?: return MediaCoverTransferResult.TEMPORARY_ERROR
+                        ?: return MediaCoverTransferResult.NOT_FOUND
                     val redirected = runCatching { currentUri.resolve(location) }.getOrNull()
-                        ?: return MediaCoverTransferResult.TEMPORARY_ERROR
+                        ?: return MediaCoverTransferResult.NOT_FOUND
                     if (!isAllowedUri(redirected, expectedHost)) return MediaCoverTransferResult.NOT_FOUND
                     currentUri = redirected
                     continue
                 }
-                if (code == 429 || code == HttpURLConnection.HTTP_UNAVAILABLE) {
+                val failure = coverTransferFailureForHttpStatus(code)
+                if (failure == MediaCoverTransferResult.TEMPORARY_ERROR &&
+                    (code == 429 || code == HttpURLConnection.HTTP_UNAVAILABLE)
+                ) {
                     val retrySeconds = connection.getHeaderField("Retry-After")
                         ?.toLongOrNull()
                         ?.coerceIn(0L, MAX_RETRY_AFTER_SECONDS)
                         ?: 0L
                     if (retrySeconds > 0L) delay(retrySeconds * 1_000L)
-                    return MediaCoverTransferResult.TEMPORARY_ERROR
+                    return failure
                 }
-                if (code !in 200..299) return MediaCoverTransferResult.TEMPORARY_ERROR
+                if (failure != null) return failure
                 if (connection.contentLengthLong > MAX_COVER_BYTES) {
-                    return MediaCoverTransferResult.TEMPORARY_ERROR
+                    return MediaCoverTransferResult.NOT_FOUND
                 }
                 connection.inputStream.use { input ->
                     destination.outputStream().use { output ->
@@ -165,7 +187,9 @@ class SecureMediaCoverDownloader : MediaCoverDownloader {
         const val MAX_COVER_BYTES = 15L * 1024L * 1024L
         private const val CONNECT_TIMEOUT_MS = 10_000
         private const val READ_TIMEOUT_MS = 10_000
-        private const val MAX_DOWNLOAD_ATTEMPTS = 2
+        // Top-N orchestration owns the one permitted final retry. A repository invocation must
+        // perform a single network attempt so a logical candidate never exceeds two passes.
+        private const val MAX_DOWNLOAD_ATTEMPTS = 1
         private const val RETRY_DELAY_MS = 500L
         private const val MAX_RETRY_AFTER_SECONDS = 5L
         private const val MAX_REDIRECTS = 3
@@ -323,8 +347,12 @@ class GenericMediaCoverRepository(
                     MediaCoverTransferResult.TEMPORARY_ERROR -> temporaryFailure = true
                 }
             }
-            if (invalidImageReceived || temporaryFailure) return@withContext CoverDownloadResult.TemporaryError
+            if (temporaryFailure) return@withContext CoverDownloadResult.TemporaryError
             if (networkFailure) return@withContext CoverDownloadResult.NetworkError
+            if (invalidImageReceived) {
+                dao.updateMediaCover(mediaId, null, CoverResolutionState.NOT_FOUND.name)
+                return@withContext CoverDownloadResult.NotFound
+            }
             dao.updateMediaCover(mediaId, null, CoverResolutionState.NOT_FOUND.name)
             CoverDownloadResult.NotFound
         } catch (exception: CancellationException) {
@@ -514,8 +542,12 @@ class GenericMediaGroupCoverRepository(
                     MediaCoverTransferResult.TEMPORARY_ERROR -> temporaryFailure = true
                 }
             }
-            if (invalidImageReceived || temporaryFailure) return@withContext CoverDownloadResult.TemporaryError
+            if (temporaryFailure) return@withContext CoverDownloadResult.TemporaryError
             if (networkFailure) return@withContext CoverDownloadResult.NetworkError
+            if (invalidImageReceived) {
+                dao.updateGroupCover(groupId, null, CoverResolutionState.NOT_FOUND.name)
+                return@withContext CoverDownloadResult.NotFound
+            }
             dao.updateGroupCover(groupId, null, CoverResolutionState.NOT_FOUND.name)
             CoverDownloadResult.NotFound
         } catch (exception: CancellationException) {

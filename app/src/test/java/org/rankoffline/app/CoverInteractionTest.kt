@@ -174,6 +174,27 @@ class CoverInteractionTest {
         assertEquals(CoverPreloadStatus.COMPLETED, progress.status)
     }
 
+    @Test
+    fun httpCoverFailuresSeparatePermanentAbsenceFromTemporaryProviderErrors() {
+        assertEquals(
+            MediaCoverTransferResult.NOT_FOUND,
+            coverTransferFailureForHttpStatus(404)
+        )
+        assertEquals(
+            MediaCoverTransferResult.NOT_FOUND,
+            coverTransferFailureForHttpStatus(410)
+        )
+        assertEquals(
+            MediaCoverTransferResult.TEMPORARY_ERROR,
+            coverTransferFailureForHttpStatus(429)
+        )
+        assertEquals(
+            MediaCoverTransferResult.TEMPORARY_ERROR,
+            coverTransferFailureForHttpStatus(503)
+        )
+        assertEquals(null, coverTransferFailureForHttpStatus(200))
+    }
+
     private fun cleanupAfterExit(progress: CoverPreloadProgress): CoverPreloadProgress =
         if (progress.shouldClearAfterLeavingSettings()) CoverPreloadProgress() else progress
 }

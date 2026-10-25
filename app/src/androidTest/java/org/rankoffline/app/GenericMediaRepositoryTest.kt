@@ -82,6 +82,46 @@ class GenericMediaRepositoryTest {
     }
 
     @Test
+    fun presetMigrationDoesNotRewriteHistoricalFinalOrDetailedScores() = runBlocking {
+        val movie = item(MediaType.MOVIE, "movie:tmdb:legacy-preset", "legacy-preset")
+        repository.upsertItem(movie)
+        val previousConfig = requireNotNull(PreviousRatingDefaults.config(MediaType.MOVIE))
+        val draft = RatingDraft(
+            categoryScores = mapOf(
+                "writing" to 8.0,
+                "direction" to 9.0,
+                "editing" to 7.0
+            ),
+            additiveScore = 0.4,
+            notes = "preserve me"
+        )
+        repository.saveElaborateRating(
+            movie.id,
+            draft,
+            previousConfig,
+            profileId = "technical_craft"
+        )
+        val before = requireNotNull(repository.rating(movie.id))
+        val scoresBefore = repository.ratingScores(movie.id).associate { it.categoryId to it.score }
+        val previousSettings = DefaultSettings.mediaSettings(MediaType.MOVIE).copy(
+            ratingConfig = previousConfig,
+            ratingProfiles = requireNotNull(PreviousRatingDefaults.profiles(MediaType.MOVIE))
+        )
+
+        val migrated = migrateUntouchedPreviousRatingDefaults(MediaType.MOVIE, previousSettings)
+        val after = requireNotNull(repository.rating(movie.id))
+        val scoresAfter = repository.ratingScores(movie.id).associate { it.categoryId to it.score }
+
+        assertEquals(DefaultSettings.ratingConfig(MediaType.MOVIE), migrated.ratingConfig)
+        assertEquals(before.finalScore, after.finalScore)
+        assertEquals(before.qualityScore, after.qualityScore)
+        assertEquals("technical_craft", after.profileId)
+        assertEquals("preserve me", after.notes)
+        assertEquals(scoresBefore, scoresAfter)
+        assertEquals(setOf("writing", "direction", "editing"), scoresAfter.keys)
+    }
+
+    @Test
     fun zeroRatingAndDeleteSemantics() = runBlocking {
         val item = item(MediaType.MOVIE, "movie:tmdb:550", "550").copy(localCoverPath = "/covers/550.jpg")
         repository.upsertItem(item)
@@ -214,6 +254,46 @@ class GenericMediaRepositoryTest {
         assertEquals(200, first.size)
         assertEquals(listOf("manga:mangadex:200"), second)
         assertEquals(201, (first + second).distinct().size)
+    }
+
+    @Test
+    fun localSearchDisplaysBestMatchingAliasWithoutChangingIdentityOrPaging() = runBlocking {
+        val first = item(MediaType.ANIME, "mal:1", "1").copy(title = "Canonical One")
+        val second = item(MediaType.ANIME, "mal:2", "2").copy(title = "Canonical Two")
+        repository.upsertItems(listOf(first, second))
+        database.mediaCatalogDao().insertAliases(
+            listOf(
+                MediaAliasEntity(first.id, "The Pocket Monsters Story"),
+                MediaAliasEntity(first.id, "Pocket Monsters"),
+                MediaAliasEntity(second.id, "Pocket Monsters Two")
+            )
+        )
+
+        val exact = repository.search(
+            MediaType.ANIME, "pocket monsters", CatalogSortOrder.TITLE_ASC,
+            GenericMediaFilters(), mergeEnabled = false, limit = 1, offset = 0
+        )
+        assertEquals(first.id, exact.single().id)
+        assertEquals("Pocket Monsters", exact.single().title)
+
+        val next = repository.search(
+            MediaType.ANIME, "pocket monsters", CatalogSortOrder.TITLE_ASC,
+            GenericMediaFilters(), mergeEnabled = false, limit = 1, offset = 1
+        )
+        assertEquals(second.id, next.single().id)
+        assertEquals("Pocket Monsters Two", next.single().title)
+
+        val shortQuery = repository.search(
+            MediaType.ANIME, "po", CatalogSortOrder.TITLE_ASC,
+            GenericMediaFilters(), mergeEnabled = false
+        )
+        assertEquals(listOf("Canonical One", "Canonical Two"), shortQuery.map(MediaListEntry::title))
+
+        val cleared = repository.search(
+            MediaType.ANIME, "", CatalogSortOrder.TITLE_ASC,
+            GenericMediaFilters(), mergeEnabled = false
+        )
+        assertEquals(listOf("Canonical One", "Canonical Two"), cleared.map(MediaListEntry::title))
     }
 
     @Test

@@ -126,13 +126,14 @@ class OnboardingStateTest {
     }
 
     @Test
-    fun packIsUnavailableUntilEntireInstallLifecycleFinishes() {
-        val busy = CategoryPackState(
+    fun catalogReadinessIsIndependentFromOptionalCoverAcquisition() {
+        val importing = CategoryPackState(
             MediaType.MANGA,
             CategoryPackOrigin.DOWNLOADED,
             catalogBytes = 12_000,
             downloadedCoverBytes = 0,
             reclaimableBytes = 12_000,
+            runtimeStatus = CategoryPackRuntimeStatus.INITIALIZING,
             installProgress = CategoryPackInstallProgress(
                 phase = CategoryPackInstallPhase.IMPORTING_GROUPS,
                 downloadedBytes = 3_000,
@@ -141,10 +142,21 @@ class OnboardingStateTest {
             downloadConfigured = true
         )
 
-        assertFalse(busy.available)
-        assertFalse(busy.canDelete)
-        assertFalse(busy.canDownload)
-        assertTrue(busy.copy(installProgress = null).available)
+        assertFalse(importing.available)
+        assertFalse(importing.canDelete)
+        assertFalse(importing.canDownload)
+
+        val downloadingCovers = importing.copy(
+            runtimeStatus = CategoryPackRuntimeStatus.READY,
+            installProgress = importing.installProgress?.copy(
+                phase = CategoryPackInstallPhase.DOWNLOADING_COVERS,
+                coverTarget = 100,
+                coverProcessed = 25
+            )
+        )
+        assertTrue(downloadingCovers.available)
+        assertFalse(downloadingCovers.canDelete)
+        assertTrue(downloadingCovers.copy(installProgress = null).canDelete)
     }
 
     @Test
@@ -161,6 +173,88 @@ class OnboardingStateTest {
         assertFalse(filesOnly.available)
         assertTrue(filesOnly.copy(runtimeStatus = CategoryPackRuntimeStatus.READY).available)
         assertFalse(filesOnly.copy(runtimeStatus = CategoryPackRuntimeStatus.ERROR).available)
+    }
+
+    @Test
+    fun onboardingHasNoSelectionUntilTheActivePackIsReady() {
+        val downloading = CategoryPackState(
+            mediaType = MediaType.ANIME,
+            origin = CategoryPackOrigin.UNAVAILABLE,
+            catalogBytes = 0,
+            downloadedCoverBytes = 0,
+            reclaimableBytes = 0,
+            installProgress = CategoryPackInstallProgress(
+                phase = CategoryPackInstallPhase.DOWNLOADING,
+                downloadedBytes = 50,
+                totalDownloadBytes = 100
+            ),
+            runtimeStatus = CategoryPackRuntimeStatus.INITIALIZING
+        )
+
+        assertEquals(
+            null,
+            onboardingSelectedMediaType(MediaType.ANIME, mapOf(MediaType.ANIME to downloading))
+        )
+
+        val ready = downloading.copy(
+            origin = CategoryPackOrigin.DOWNLOADED,
+            runtimeStatus = CategoryPackRuntimeStatus.READY,
+            installProgress = downloading.installProgress?.copy(
+                phase = CategoryPackInstallPhase.DOWNLOADING_COVERS
+            )
+        )
+        assertEquals(
+            MediaType.ANIME,
+            onboardingSelectedMediaType(MediaType.ANIME, mapOf(MediaType.ANIME to ready))
+        )
+    }
+
+    @Test
+    fun onboardingReturnsToNoSelectionAfterTheLastPackIsRemoved() {
+        val removed = CategoryPackState(
+            mediaType = MediaType.SERIES,
+            origin = CategoryPackOrigin.UNAVAILABLE,
+            catalogBytes = 0,
+            downloadedCoverBytes = 0,
+            reclaimableBytes = 0,
+            runtimeStatus = CategoryPackRuntimeStatus.FILES_MISSING
+        )
+
+        assertEquals(
+            null,
+            onboardingSelectedMediaType(MediaType.SERIES, mapOf(MediaType.SERIES to removed))
+        )
+        assertEquals(
+            null,
+            resolveAvailableMediaType(MediaType.SERIES, mapOf(MediaType.SERIES to removed))
+        )
+    }
+
+    @Test
+    fun firstReadyPackBecomesTheActiveSelection() {
+        val unavailableAnime = CategoryPackState(
+            mediaType = MediaType.ANIME,
+            origin = CategoryPackOrigin.UNAVAILABLE,
+            catalogBytes = 0,
+            downloadedCoverBytes = 0,
+            reclaimableBytes = 0
+        )
+        val readyManga = CategoryPackState(
+            mediaType = MediaType.MANGA,
+            origin = CategoryPackOrigin.DOWNLOADED,
+            catalogBytes = 1,
+            downloadedCoverBytes = 0,
+            reclaimableBytes = 1,
+            runtimeStatus = CategoryPackRuntimeStatus.READY
+        )
+
+        assertEquals(
+            MediaType.MANGA,
+            resolveAvailableMediaType(
+                MediaType.ANIME,
+                mapOf(MediaType.ANIME to unavailableAnime, MediaType.MANGA to readyManga)
+            )
+        )
     }
 
     @Test

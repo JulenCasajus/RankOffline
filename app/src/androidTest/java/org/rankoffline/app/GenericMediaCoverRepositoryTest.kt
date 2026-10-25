@@ -98,6 +98,25 @@ class GenericMediaCoverRepositoryTest {
     }
 
     @Test
+    fun invalidImageResponseIsPermanentUnavailableAndNeverPersisted() = runBlocking {
+        val item = movie("invalid-image")
+        mediaRepository.upsertItem(item)
+        val repository = GenericMediaCoverRepository(
+            context,
+            database,
+            downloader = MediaCoverDownloader { _, destination ->
+                destination.writeText("not an image")
+                MediaCoverTransferResult.DOWNLOADED
+            }
+        )
+
+        assertEquals(CoverDownloadResult.NotFound, repository.downloadCover(item.id))
+        val stored = database.mediaDao().item(item.id)!!
+        assertNull(stored.localCoverPath)
+        assertEquals(CoverResolutionState.NOT_FOUND.name, stored.coverResolutionState)
+    }
+
+    @Test
     fun normalizedAnimeWithoutDirectUrlUsesProviderResolver() = runBlocking {
         val item = MediaItemEntity(
             id = "mal:16498",

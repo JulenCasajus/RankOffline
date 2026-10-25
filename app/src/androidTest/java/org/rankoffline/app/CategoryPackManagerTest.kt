@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.async
@@ -15,6 +16,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -111,6 +113,98 @@ class CategoryPackManagerTest {
     }
 
     @Test
+    fun fiveArchivesStaySequentialButContinueWhileRoomImportIsBusy() = runBlocking {
+        val fixtures = mapOf(
+            MediaType.ANIME to fixture(MediaType.ANIME, "anime_catalog.jsonl.gzip", "anime".toByteArray()),
+            MediaType.MANGA to fixture(MediaType.MANGA, "manga_catalog.jsonl.gzip", "manga".toByteArray()),
+            MediaType.MOVIE to fixture(MediaType.MOVIE, "movie_catalog.jsonl.gzip", "movie".toByteArray()),
+            MediaType.SERIES to fixture(MediaType.SERIES, "series_catalog.jsonl.gzip", "series".toByteArray()),
+            MediaType.BOOK to fixture(MediaType.BOOK, "book_catalog.jsonl.gzip", "book".toByteArray())
+        )
+        val fixtureByPack = fixtures.values.associateBy { it.descriptor.manifest.packId }
+        val firstDownloadStarted = CompletableDeferred<Unit>()
+        val releaseFirstDownload = CompletableDeferred<Unit>()
+        val firstImportStarted = CompletableDeferred<Unit>()
+        val releaseFirstImport = CompletableDeferred<Unit>()
+        val allDownloadsFinished = CompletableDeferred<Unit>()
+        val activeDownloads = AtomicInteger(0)
+        val maxDownloads = AtomicInteger(0)
+        val completedDownloads = AtomicInteger(0)
+        val activeImports = AtomicInteger(0)
+        val maxImports = AtomicInteger(0)
+        val downloader = CategoryPackArchiveDownloader { descriptor, destination, progress ->
+            val nowActive = activeDownloads.incrementAndGet()
+            maxDownloads.updateAndGet { maxOf(it, nowActive) }
+            try {
+                val fixture = fixtureByPack.getValue(descriptor.installManifest.packId)
+                destination.writeBytes(fixture.archive)
+                progress(fixture.archive.size.toLong())
+                if (descriptor.installManifest.packId == OfficialPackIds.Anime) {
+                    firstDownloadStarted.complete(Unit)
+                    releaseFirstDownload.await()
+                }
+                if (completedDownloads.incrementAndGet() == MediaType.entries.size) {
+                    allDownloadsFinished.complete(Unit)
+                }
+                CategoryPackDownloadResult.INSTALLED
+            } finally {
+                activeDownloads.decrementAndGet()
+            }
+        }
+        val manager = CategoryPackManager(
+            context = context,
+            injectedDownloader = downloader,
+            injectedDescriptors = fixtureByPack.mapValues { it.value.descriptor },
+            bundledCatalogsAvailable = false
+        )
+
+        fun install(mediaType: MediaType) = async {
+            manager.downloadAndInstall(
+                mediaType = mediaType,
+                importInstalledPack = { phase ->
+                    phase(CategoryPackInstallPhase.IMPORTING_CATALOG)
+                    val active = activeImports.incrementAndGet()
+                    maxImports.updateAndGet { maxOf(it, active) }
+                    try {
+                        if (mediaType == MediaType.ANIME) {
+                            firstImportStarted.complete(Unit)
+                            releaseFirstImport.await()
+                        } else {
+                            delay(10)
+                        }
+                        true
+                    } finally {
+                        activeImports.decrementAndGet()
+                    }
+                }
+            )
+        }
+
+        val anime = install(MediaType.ANIME)
+        withTimeout(5_000) { firstDownloadStarted.await() }
+        val remaining = MediaType.entries.filterNot { it == MediaType.ANIME }.map(::install)
+        withTimeout(5_000) {
+            manager.states.first {
+                it[MediaType.MANGA]?.installProgress?.phase ==
+                    CategoryPackInstallPhase.WAITING_DOWNLOAD
+            }
+        }
+        releaseFirstDownload.complete(Unit)
+        withTimeout(5_000) { firstImportStarted.await() }
+        withTimeout(5_000) { allDownloadsFinished.await() }
+
+        assertEquals(1, maxDownloads.get())
+        assertEquals(1, activeImports.get())
+        releaseFirstImport.complete(Unit)
+        assertEquals(
+            List(MediaType.entries.size) { CategoryPackDownloadResult.INSTALLED },
+            listOf(anime.await()) + remaining.map { it.await() }
+        )
+        assertEquals(1, maxImports.get())
+        assertTrue(MediaType.entries.all { manager.states.value.getValue(it).available })
+    }
+
+    @Test
     fun corruptDownloadNeverBecomesActive() = runBlocking {
         val root = File(context.filesDir, CategoryPackManager.PACK_ROOT)
         root.deleteRecursively()
@@ -132,10 +226,11 @@ class CategoryPackManagerTest {
     }
 
     @Test
-    fun initialTopCoversRunAfterImportAndReadyIsPublishedOnlyAfterCompletion() = runBlocking {
+    fun catalogIsReadyAndSelectableBeforeInitialCoversFinish() = runBlocking {
         val fixture = fixture(MediaType.MANGA, "manga_catalog.jsonl.gzip", "manga fixture".toByteArray())
         val manager = managerFor(fixture)
         var importFinished = false
+        var catalogReadyCallbackRan = false
         var coverCallbackRan = false
 
         assertEquals(
@@ -147,9 +242,14 @@ class CategoryPackManagerTest {
                     importFinished = true
                     true
                 },
+                onCatalogReady = {
+                    catalogReadyCallbackRan = true
+                    assertTrue(manager.states.value.getValue(MediaType.MANGA).available)
+                },
                 downloadInitialCovers = true,
                 acquireInitialCovers = { report ->
                     assertTrue(importFinished)
+                    assertTrue(catalogReadyCallbackRan)
                     coverCallbackRan = true
                     report(CoverPreloadProgress(
                         mediaType = MediaType.MANGA,
@@ -159,7 +259,8 @@ class CategoryPackManagerTest {
                         existing = 20
                     ))
                     val installing = manager.states.value.getValue(MediaType.MANGA)
-                    assertFalse(installing.available)
+                    assertTrue(installing.available)
+                    assertFalse(installing.canDelete)
                     assertEquals(
                         CategoryPackInstallPhase.DOWNLOADING_COVERS,
                         installing.installProgress?.phase
@@ -176,6 +277,7 @@ class CategoryPackManagerTest {
             )
         )
 
+        assertTrue(catalogReadyCallbackRan)
         assertTrue(coverCallbackRan)
         val ready = manager.states.value.getValue(MediaType.MANGA)
         assertTrue(ready.available)
@@ -276,6 +378,55 @@ class CategoryPackManagerTest {
     }
 
     @Test
+    fun purgeWaitsForActiveOptionalCoverPhaseWithoutHidingReadyCatalog() = runBlocking {
+        val fixture = fixture(MediaType.SERIES, "series_catalog.jsonl.gzip", "series fixture".toByteArray())
+        val manager = managerFor(fixture)
+        val coversStarted = CompletableDeferred<Unit>()
+        val releaseCovers = CompletableDeferred<Unit>()
+        var purgeStarted = false
+        val install = async {
+            manager.downloadAndInstall(
+                mediaType = MediaType.SERIES,
+                downloadInitialCovers = true,
+                acquireInitialCovers = { report ->
+                    report(CoverPreloadProgress(
+                        mediaType = MediaType.SERIES,
+                        status = CoverPreloadStatus.DOWNLOADING_COVERS,
+                        target = 100,
+                        processed = 1,
+                        downloaded = 1
+                    ))
+                    coversStarted.complete(Unit)
+                    releaseCovers.await()
+                    CoverPreloadProgress(
+                        mediaType = MediaType.SERIES,
+                        status = CoverPreloadStatus.COMPLETED,
+                        target = 100,
+                        processed = 100,
+                        downloaded = 100
+                    )
+                }
+            )
+        }
+        coversStarted.await()
+        assertTrue(manager.states.value.getValue(MediaType.SERIES).available)
+
+        val purge = async {
+            manager.purgePack(
+                MediaType.SERIES,
+                purgeRuntimeData = { purgeStarted = true },
+                finalizeRuntime = {}
+            )
+        }
+        delay(50)
+        assertFalse(purgeStarted)
+        releaseCovers.complete(Unit)
+        assertEquals(CategoryPackDownloadResult.INSTALLED, install.await())
+        assertTrue(purge.await())
+        assertTrue(purgeStarted)
+    }
+
+    @Test
     fun filesystemAloneIsNotReadyAndStartupRecoveryPublishesReadyAfterImport() = runBlocking {
         File(context.filesDir, CategoryPackManager.PACK_ROOT).deleteRecursively()
         val fixture = fixture(MediaType.BOOK, "book_catalog.jsonl.gzip", "book fixture".toByteArray())
@@ -321,6 +472,8 @@ class CategoryPackManagerTest {
         val fixture = fixture(MediaType.BOOK, "book_catalog.jsonl.gzip", "book fixture".toByteArray())
         val downloadEntered = CompletableDeferred<Unit>()
         val releaseDownload = CompletableDeferred<Unit>()
+        val purgeEntered = CompletableDeferred<Unit>()
+        val releasePurge = CompletableDeferred<Unit>()
         var purgeRuntimeStarted = false
         val manager = CategoryPackManager(
             context,
@@ -340,7 +493,11 @@ class CategoryPackManagerTest {
         val purge = async {
             manager.purgePack(
                 MediaType.BOOK,
-                purgeRuntimeData = { purgeRuntimeStarted = true },
+                purgeRuntimeData = {
+                    purgeRuntimeStarted = true
+                    purgeEntered.complete(Unit)
+                    releasePurge.await()
+                },
                 finalizeRuntime = {}
             )
         }
@@ -348,6 +505,12 @@ class CategoryPackManagerTest {
         assertFalse(purgeRuntimeStarted)
         releaseDownload.complete(Unit)
         assertEquals(CategoryPackDownloadResult.INSTALLED, install.await())
+        purgeEntered.await()
+        val deleting = manager.states.value.getValue(MediaType.BOOK)
+        assertEquals(CategoryPackRuntimeStatus.PURGING, deleting.runtimeStatus)
+        assertFalse(deleting.available)
+        assertFalse(deleting.canDelete)
+        releasePurge.complete(Unit)
         assertTrue(purge.await())
         assertTrue(purgeRuntimeStarted)
         assertFalse(manager.states.value.getValue(MediaType.BOOK).available)

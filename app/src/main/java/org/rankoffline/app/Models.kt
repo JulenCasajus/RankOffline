@@ -47,7 +47,9 @@ data class Anime(
     val sharedCoverMediaId: String? = null,
     val memberCount: Int = 0,
     val ratedCount: Int = 0,
-    val derived: Boolean = false
+    val derived: Boolean = false,
+    /** Canonical title retained while Search temporarily presents a matching alias. */
+    val canonicalTitle: String? = null
 )
 
 enum class CatalogSortOrder { POPULARITY, POPULARITY_REVERSE, TITLE_ASC, TITLE_DESC }
@@ -355,7 +357,10 @@ data class PopularAnimeEntry(
 
 enum class CoverPreloadStatus {
     IDLE,
+    WAITING_FOR_COVERS,
+    PREPARING_COVER_LIST,
     DOWNLOADING_COVERS,
+    RETRYING_COVERS,
     COMPLETED,
     CANCELLED,
     FAILED
@@ -376,7 +381,13 @@ data class CoverPreloadProgress(
     val errors: Int = 0,
     val message: UserMessage? = null
 ) {
-    val isActive: Boolean get() = status == CoverPreloadStatus.DOWNLOADING_COVERS
+    val isActive: Boolean get() = status in setOf(
+        CoverPreloadStatus.WAITING_FOR_COVERS,
+        CoverPreloadStatus.PREPARING_COVER_LIST,
+        CoverPreloadStatus.DOWNLOADING_COVERS,
+        CoverPreloadStatus.RETRYING_COVERS
+    )
+    val available: Int get() = existing + downloaded
     val fraction: Float get() = if (target <= 0) 0f else (processed.toFloat() / target).coerceIn(0f, 1f)
 }
 

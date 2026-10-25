@@ -1,5 +1,8 @@
 package org.rankoffline.app
 
+import java.text.Normalizer
+import java.util.Locale
+
 data class MediaItem(
     val id: String,
     val mediaType: MediaType,
@@ -25,7 +28,9 @@ data class MediaItem(
     val remoteCoverRef: String? = null,
     val localCoverPath: String? = null,
     val coverResolutionState: CoverResolutionState = CoverResolutionState.UNKNOWN,
-    val sharedCoverMediaId: String? = null
+    val sharedCoverMediaId: String? = null,
+    /** Search-only presentation value. The canonical Room title is never changed. */
+    val searchDisplayTitle: String? = null
 )
 
 data class MediaGroup(
@@ -60,7 +65,7 @@ sealed interface MediaListEntry {
     data class Item(val value: MediaItem) : MediaListEntry {
         override val id get() = value.id
         override val mediaType get() = value.mediaType
-        override val title get() = value.title
+        override val title get() = value.searchDisplayTitle ?: value.title
         override val finalScore get() = value.finalScore
         override val qualityScore get() = value.qualityScore
         override val additiveScore get() = value.additiveScore
@@ -86,6 +91,41 @@ sealed interface MediaListEntry {
         override val title get() = value.displayTitle
     }
 }
+
+internal fun bestMatchingAliasTitle(
+    canonicalTitle: String,
+    aliases: List<String>,
+    rawQuery: String
+): String? {
+    val query = rawQuery.trim()
+    if (query.codePointCount(0, query.length) < 3) return null
+    val normalizedQuery = query.normalizedForAliasMatch()
+    if (canonicalTitle.normalizedForAliasMatch().contains(normalizedQuery)) return null
+
+    return aliases.asSequence()
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .map { alias -> alias to alias.normalizedForAliasMatch() }
+        .filter { (_, normalized) -> normalized.contains(normalizedQuery) }
+        .sortedWith(
+            compareBy<Pair<String, String>>(
+                { (_, normalized) ->
+                    when {
+                        normalized == normalizedQuery -> 0
+                        normalized.startsWith(normalizedQuery) -> 1
+                        else -> 2
+                    }
+                },
+                { it.second },
+                { it.first }
+            )
+        )
+        .firstOrNull()
+        ?.first
+}
+
+private fun String.normalizedForAliasMatch(): String =
+    Normalizer.normalize(this, Normalizer.Form.NFKC).lowercase(Locale.ROOT)
 
 fun MediaItemEntity.toDomain(
     rating: MediaRatingEntity? = null,

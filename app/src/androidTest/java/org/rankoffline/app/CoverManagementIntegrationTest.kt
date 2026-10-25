@@ -7,9 +7,11 @@ import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.net.URI
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.ConcurrentHashMap
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -117,6 +119,121 @@ class CoverManagementIntegrationTest {
         assertEquals(6, manager.progress.value.unavailable)
         assertNotNull(database.mediaDao().item(unrated.id)!!.localCoverPath)
         assertNotNull(database.mediaDao().item(ratedZero.id)!!.localCoverPath)
+    }
+
+    @Test
+    fun retryableFailuresRunOneFinalPassWithoutInflatingProgress() = runBlocking {
+        val succeedsOnRetry = item(MediaType.MOVIE, "retry-success", "tmdb", "/retry-success.jpg")
+            .copy(popularityRank = 1)
+        val permanentlyMissing = item(MediaType.MOVIE, "missing", "tmdb", "/missing.jpg")
+            .copy(popularityRank = 2)
+        val stillOffline = item(MediaType.MOVIE, "offline", "tmdb", "/offline.jpg")
+            .copy(popularityRank = 3)
+        mediaRepository.upsertItems(listOf(succeedsOnRetry, permanentlyMissing, stillOffline))
+        val downloader = ScriptedDownloader(
+            mapOf(
+                "retry-success" to listOf(
+                    MediaCoverTransferResult.TEMPORARY_ERROR,
+                    MediaCoverTransferResult.DOWNLOADED
+                ),
+                "missing" to listOf(MediaCoverTransferResult.NOT_FOUND),
+                "offline" to listOf(
+                    MediaCoverTransferResult.NETWORK_ERROR,
+                    MediaCoverTransferResult.NETWORK_ERROR
+                )
+            )
+        )
+        val manager = CoverPreloadManager(
+            GenericMediaCoverRepository(context, database, downloader = downloader)
+        )
+        val snapshots = mutableListOf<CoverPreloadProgress>()
+
+        val result = manager.preloadTop(MediaType.MOVIE, 3, false, snapshots::add)
+
+        assertEquals(CoverPreloadStatus.COMPLETED, result.status)
+        assertEquals(3, result.processed)
+        assertEquals(1, result.downloaded)
+        assertEquals(1, result.unavailable)
+        assertEquals(1, result.errors)
+        assertEquals(2, downloader.attempts("retry-success"))
+        assertEquals(1, downloader.attempts("missing"))
+        assertEquals(2, downloader.attempts("offline"))
+        assertTrue(snapshots.any { it.status == CoverPreloadStatus.RETRYING_COVERS })
+        assertTrue(snapshots.all { it.processed <= it.target })
+    }
+
+    @Test
+    fun preparingProgressIsImmediateAndPackScoped() {
+        val manager = CoverPreloadManager(
+            GenericMediaCoverRepository(context, database, downloader = FakeDownloader())
+        )
+
+        manager.markPreparing(MediaType.SERIES, 250)
+
+        assertEquals(
+            CoverPreloadStatus.PREPARING_COVER_LIST,
+            manager.progressByMedia.value.getValue(MediaType.SERIES).status
+        )
+        assertEquals(250, manager.progressByMedia.value.getValue(MediaType.SERIES).target)
+        assertEquals(
+            CoverPreloadStatus.IDLE,
+            manager.progressByMedia.value.getValue(MediaType.MANGA).status
+        )
+    }
+
+    @Test
+    fun coverOperationsQueuePerPackAndPauseOnlyForActiveArchiveNetwork() = runBlocking {
+        val firstRequestStarted = CompletableDeferred<Unit>()
+        val releaseFirstRequest = CompletableDeferred<Unit>()
+        val calls = AtomicInteger()
+        val downloader = MediaCoverDownloader { _, destination ->
+            if (calls.incrementAndGet() == 1) {
+                firstRequestStarted.complete(Unit)
+                releaseFirstRequest.await()
+            }
+            val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+            destination.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            bitmap.recycle()
+            MediaCoverTransferResult.DOWNLOADED
+        }
+        mediaRepository.upsertItems(
+            listOf(
+                item(MediaType.MOVIE, "queued-movie", "tmdb", "/movie.jpg").copy(popularityRank = 1),
+                item(MediaType.MANGA, "queued-manga", "mangadex", "manga.jpg").copy(popularityRank = 1)
+            )
+        )
+        val scheduler = PackOperationScheduler()
+        val manager = CoverPreloadManager(
+            GenericMediaCoverRepository(context, database, downloader = downloader),
+            scheduler
+        )
+
+        scheduler.archiveTransferStarted()
+        val movie = launch { manager.preloadTop(MediaType.MOVIE, 1, false) }
+        withTimeout(2_000) {
+            manager.progressByMedia.first {
+                it.getValue(MediaType.MOVIE).status == CoverPreloadStatus.DOWNLOADING_COVERS
+            }
+        }
+        assertEquals(0, calls.get())
+        scheduler.archiveTransferFinished()
+        withTimeout(2_000) { firstRequestStarted.await() }
+
+        val manga = launch { manager.preloadTop(MediaType.MANGA, 1, false) }
+        withTimeout(2_000) {
+            manager.progressByMedia.first {
+                it.getValue(MediaType.MANGA).status == CoverPreloadStatus.WAITING_FOR_COVERS
+            }
+        }
+        releaseFirstRequest.complete(Unit)
+        withTimeout(5_000) {
+            movie.join()
+            manga.join()
+        }
+
+        assertEquals(CoverPreloadStatus.COMPLETED, manager.progressByMedia.value.getValue(MediaType.MOVIE).status)
+        assertEquals(CoverPreloadStatus.COMPLETED, manager.progressByMedia.value.getValue(MediaType.MANGA).status)
+        assertEquals(2, calls.get())
     }
 
     @Test
@@ -395,6 +512,26 @@ class CoverManagementIntegrationTest {
             destination.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             bitmap.recycle()
             return MediaCoverTransferResult.DOWNLOADED
+        }
+    }
+
+    private class ScriptedDownloader(
+        private val results: Map<String, List<MediaCoverTransferResult>>
+    ) : MediaCoverDownloader {
+        private val invocationCounts = ConcurrentHashMap<String, AtomicInteger>()
+
+        fun attempts(key: String): Int = invocationCounts[key]?.get() ?: 0
+
+        override suspend fun download(remoteUri: URI, destination: File): MediaCoverTransferResult {
+            val key = results.keys.first { remoteUri.path.contains(it) }
+            val attempt = invocationCounts.getOrPut(key) { AtomicInteger() }.getAndIncrement()
+            val result = results.getValue(key).getOrElse(attempt) { results.getValue(key).last() }
+            if (result == MediaCoverTransferResult.DOWNLOADED) {
+                val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                destination.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                bitmap.recycle()
+            }
+            return result
         }
     }
 

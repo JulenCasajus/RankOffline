@@ -103,7 +103,10 @@ fun FirstRunOnboarding(
             onDownloadCategory = onDownloadCategory,
             onCancelCategoryCoverDownload = onCancelCategoryCoverDownload,
             onRemoveCategory = onRemoveCategory,
-            selectedMediaType = settings.activeMediaType,
+            selectedMediaType = onboardingSelectedMediaType(
+                activeMediaType = settings.activeMediaType,
+                categoryPacks = categoryPacks
+            ),
             onMediaTypeSelected = onMediaTypeSelected,
             onComplete = onOnboardingComplete
         )
@@ -283,7 +286,7 @@ internal fun WelcomeStyleDialog(
  * height instead of growing forever; very short screens keep minimum
  * readable sizes and retain scrolling as a fallback.
  */
-private data class WelcomeLayoutMetrics(
+internal data class WelcomeLayoutMetrics(
     val outerPadding: Dp,
     val optionHeight: Dp,
     val selectorMinHeight: Dp,
@@ -314,7 +317,7 @@ private data class WelcomeLayoutMetrics(
     val buttonTopPadding: Dp
 )
 
-private fun welcomeLayoutMetrics(maxHeight: Dp): WelcomeLayoutMetrics {
+internal fun welcomeLayoutMetrics(maxHeight: Dp): WelcomeLayoutMetrics {
     /*
      * 600 dp: compact-phone baseline.
      * 820 dp: tall-phone reference.
@@ -335,27 +338,24 @@ private fun welcomeLayoutMetrics(maxHeight: Dp): WelcomeLayoutMetrics {
      * Non-card content also becomes slightly more compact on short screens.
      * This leaves the remaining height to the two card rows.
      *
-     * At the tall reference:
-     * (820 - 348) / 2 = 236 dp
-     *
-     * Card height is capped at the 236 dp size calibrated on the Pixel Pro
-     * layout, while small screens can shrink smoothly to 132 dp.
+     * The cards use 90% of the previous calibrated height. This trims the real-device
+     * layout without shrinking text or interactive controls below accessible sizes.
      */
     val reservedNonCardHeight = scaledDp(
         compact = 300f,
         tall = 348f
     )
 
-    val optionHeight = ((maxHeight - reservedNonCardHeight) / 2f)
-        .coerceIn(132.dp, 236.dp)
+    val optionHeight = (((maxHeight - reservedNonCardHeight) / 2f) * 0.9f)
+        .coerceIn(120.dp, 212.4.dp)
 
     return WelcomeLayoutMetrics(
-        outerPadding = scaledDp(12f, 16f),
+        outerPadding = scaledDp(11f, 14f),
         optionHeight = optionHeight,
 
-        selectorMinHeight = scaledDp(50f, 60f),
+        selectorMinHeight = scaledDp(48f, 54f),
         selectorHorizontalPadding = scaledDp(12f, 14f),
-        selectorVerticalPadding = scaledDp(8f, 10f),
+        selectorVerticalPadding = scaledDp(7f, 9f),
         selectorIconSize = scaledDp(22f, 24f),
         selectorTitleFontSize = scaledSp(12f, 14f),
         selectorValueFontSize = scaledSp(14f, 16f),
@@ -373,17 +373,17 @@ private fun welcomeLayoutMetrics(maxHeight: Dp): WelcomeLayoutMetrics {
         optionTitleFontSize = scaledSp(13f, 14f),
         optionTitleLineHeight = scaledSp(16f, 17f),
 
-        optionCardPadding = scaledDp(7f, 10f),
-        optionImageTextSpacing = scaledDp(5f, 8f),
+        optionCardPadding = scaledDp(6f, 9f),
+        optionImageTextSpacing = scaledDp(4f, 7f),
         selectedCheckSize = scaledDp(20f, 22f),
 
         subtitleTopPadding = scaledDp(2f, 4f),
-        selectorTopPadding = scaledDp(6f, 10f),
-        sectionTopPadding = scaledDp(10f, 14f),
-        optionRowSpacing = scaledDp(6f, 10f),
-        themeTopPadding = scaledDp(8f, 12f),
-        themeBottomPadding = scaledDp(3f, 6f),
-        buttonTopPadding = scaledDp(6f, 10f)
+        selectorTopPadding = scaledDp(5f, 9f),
+        sectionTopPadding = scaledDp(9f, 12f),
+        optionRowSpacing = scaledDp(5f, 9f),
+        themeTopPadding = scaledDp(7f, 10f),
+        themeBottomPadding = scaledDp(3f, 5f),
+        buttonTopPadding = scaledDp(5f, 9f)
     )
 }
 
@@ -507,7 +507,7 @@ private fun CategoryOnboardingDialog(
     onDownloadCategory: (MediaType) -> Unit,
     onCancelCategoryCoverDownload: (MediaType) -> Unit,
     onRemoveCategory: (MediaType) -> Unit,
-    selectedMediaType: MediaType,
+    selectedMediaType: MediaType?,
     onMediaTypeSelected: (MediaType) -> Unit,
     onComplete: () -> Unit
 ) {
@@ -540,10 +540,10 @@ private fun CategoryOnboardingDialog(
 
         Button(
             onClick = onComplete,
-            enabled = categoryPacks.values.any(CategoryPackState::available),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 18.dp)
+                .testTag("onboarding_done")
         ) {
             Text(
                 text = stringResource(R.string.onboarding_done),
@@ -552,6 +552,12 @@ private fun CategoryOnboardingDialog(
         }
     }
 }
+
+/** The persisted active pack is only a valid onboarding selection once its catalog is READY. */
+internal fun onboardingSelectedMediaType(
+    activeMediaType: MediaType,
+    categoryPacks: Map<MediaType, CategoryPackState>
+): MediaType? = activeMediaType.takeIf { categoryPacks[it]?.available == true }
 
 
 @Composable
@@ -870,7 +876,6 @@ private fun CategoryPackRow(
 ) {
     val context = LocalContext.current
     val progress = state.installProgress
-    val coverAcquisition = state.initialCoverAcquisition
 
     Card(
         colors = CardDefaults.cardColors(
@@ -925,45 +930,38 @@ private fun CategoryPackRow(
 
                     Text(
                         text = when (progress?.phase) {
+                            CategoryPackInstallPhase.WAITING_DOWNLOAD ->
+                                stringResource(R.string.category_phase_waiting_download)
                             CategoryPackInstallPhase.DOWNLOADING ->
                                 stringResource(R.string.category_phase_downloading)
                             CategoryPackInstallPhase.VERIFYING ->
                                 stringResource(R.string.category_phase_verifying)
                             CategoryPackInstallPhase.INSTALLING ->
                                 stringResource(R.string.category_phase_installing)
+                            CategoryPackInstallPhase.WAITING_IMPORT ->
+                                stringResource(R.string.category_phase_waiting_import)
                             CategoryPackInstallPhase.IMPORTING_CATALOG ->
                                 stringResource(R.string.category_phase_importing_catalog)
                             CategoryPackInstallPhase.IMPORTING_GROUPS ->
                                 stringResource(R.string.category_phase_importing_groups)
+                            CategoryPackInstallPhase.WAITING_COVERS ->
+                                stringResource(R.string.category_phase_waiting_covers)
                             CategoryPackInstallPhase.DOWNLOADING_COVERS ->
                                 stringResource(
-                                    R.string.category_phase_downloading_covers,
+                                    if (progress.coverRetrying) {
+                                        R.string.category_phase_retrying_covers
+                                    } else {
+                                        R.string.category_phase_downloading_covers
+                                    },
                                     progress.coverProcessed,
                                     progress.coverTarget
                                 )
                             CategoryPackInstallPhase.FINALIZING ->
                                 stringResource(R.string.category_phase_finalizing)
-                            null -> if (state.runtimeStatus == CategoryPackRuntimeStatus.ERROR) {
+                            null -> if (state.runtimeStatus == CategoryPackRuntimeStatus.PURGING) {
+                                stringResource(R.string.category_deleting)
+                            } else if (state.runtimeStatus == CategoryPackRuntimeStatus.ERROR) {
                                 stringResource(R.string.category_pack_runtime_error)
-                            } else if (
-                                coverAcquisition?.status ==
-                                InitialCoverAcquisitionStatus.CANCELLED
-                            ) {
-                                stringResource(
-                                    R.string.category_cover_cancelled,
-                                    coverAcquisition.available,
-                                    coverAcquisition.target
-                                )
-                            } else if (
-                                coverAcquisition?.status ==
-                                InitialCoverAcquisitionStatus.PARTIAL
-                            ) {
-                                stringResource(
-                                    R.string.category_cover_partial,
-                                    coverAcquisition.available,
-                                    coverAcquisition.target,
-                                    coverAcquisition.unavailable + coverAcquisition.errors
-                                )
                             } else when (state.origin) {
                             CategoryPackOrigin.BUNDLED ->
                                 stringResource(
@@ -1013,6 +1011,7 @@ private fun CategoryPackRow(
                         modifier = Modifier
                             .padding(start = 8.dp)
                             .size(22.dp)
+                            .testTag("category_pack_selected_${state.mediaType.toPackId().value}")
                     )
                 }
 
@@ -1059,7 +1058,10 @@ private fun CategoryPackRow(
                             )
                             .padding(8.dp)
                     )
-                } else if (progress.phase == CategoryPackInstallPhase.DOWNLOADING_COVERS) {
+                } else if (
+                    progress.phase == CategoryPackInstallPhase.WAITING_COVERS ||
+                    progress.phase == CategoryPackInstallPhase.DOWNLOADING_COVERS
+                ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = stringResource(R.string.action_cancel),
@@ -1110,6 +1112,14 @@ private fun CategoryPackRow(
                         color = state.mediaType.accentColor
                     )
                 }
+            }
+            if (progress == null && state.runtimeStatus == CategoryPackRuntimeStatus.PURGING) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    color = state.mediaType.accentColor
+                )
             }
 
             if (

@@ -49,7 +49,8 @@ data class SearchPageState(
     val loadingInitial: Boolean = true,
     val loadingMore: Boolean = false,
     val hasMore: Boolean = true,
-    val failed: Boolean = false
+    val failed: Boolean = false,
+    val query: String = ""
 )
 
 data class RankingResultState(
@@ -61,15 +62,50 @@ data class RankingResultState(
 
 internal fun SearchPageState.visibleItemsFor(
     activeMediaType: MediaType,
-    overrides: Map<String, RatingDisplayOverride> = emptyMap()
+    overrides: Map<String, RatingDisplayOverride> = emptyMap(),
+    activeQuery: String? = null
 ): List<Anime> = if (mediaType == activeMediaType && !loadingInitial) {
-    applyRatingOverrides(items, overrides)
+    val querySafeItems = if (activeQuery != null && query != activeQuery) {
+        items.map { item ->
+            item.canonicalTitle?.let { item.copy(title = it, canonicalTitle = null) } ?: item
+        }
+    } else items
+    applyRatingOverrides(querySafeItems, overrides)
 } else {
     emptyList()
 }
 
 internal fun RankingResultState.visibleItemsFor(activeMediaType: MediaType): List<Anime> =
     if (mediaType == activeMediaType && !loading) items else emptyList()
+
+internal fun retainedSearchPageState(
+    previous: SearchPageState,
+    mediaType: MediaType,
+    query: String
+): SearchPageState {
+    if (previous.mediaType != mediaType || previous.loadingInitial || previous.failed) {
+        return SearchPageState(mediaType = mediaType, query = query, loadingInitial = true, hasMore = false)
+    }
+    val retainedItems = if (previous.query == query) previous.items else previous.items.map { item ->
+        item.canonicalTitle?.let { item.copy(title = it, canonicalTitle = null) } ?: item
+    }
+    return previous.copy(
+        query = query,
+        items = retainedItems,
+        loadingInitial = false,
+        loadingMore = false,
+        failed = false
+    )
+}
+
+internal fun retainedRankingResultState(
+    previous: RankingResultState,
+    mediaType: MediaType
+): RankingResultState = if (previous.mediaType == mediaType && !previous.loading && !previous.failed) {
+    previous.copy(failed = false)
+} else {
+    RankingResultState(mediaType = mediaType, loading = true)
+}
 
 internal const val INITIAL_SEARCH_PAGE_SIZE = 200
 internal const val NEXT_SEARCH_PAGE_SIZE = 50

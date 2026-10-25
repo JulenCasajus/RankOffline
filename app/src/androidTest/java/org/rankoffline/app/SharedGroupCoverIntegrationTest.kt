@@ -169,6 +169,57 @@ class SharedGroupCoverIntegrationTest {
     }
 
     @Test
+    fun welcomeOverrideAndPurgedPackManifestDefaultsHaveCorrectPrecedence() = runBlocking {
+        val context = IsolatedTestContext(
+            InstrumentationRegistry.getInstrumentation().targetContext,
+            "pack-default-settings"
+        )
+        val icons = object : AppIconAliasController {
+            override fun activate(icon: AppIcon, previousIcon: AppIcon) = Unit
+            override fun activeIconOrNull(): AppIcon = AppIcon.DARK
+        }
+        val locale = AppLocaleController { }
+        val seriesDefaults = PackDefaults(
+            showImages = true,
+            stickyScoreHeader = false,
+            mergeEnabled = false,
+            ratingMode = "simple",
+            oneCoverPerGroup = true
+        )
+        try {
+            val settings = SettingsRepository(context, icons, locale)
+            settings.loadInitialState()
+
+            settings.completeWelcome(showImages = false, elaborateRating = false)
+            assertFalse(settings.initializePackSettings(MediaType.SERIES, seriesDefaults).showImages)
+
+            settings.purgePackSettings(MediaType.SERIES)
+            val reinstalled = settings.initializePackSettings(MediaType.SERIES, seriesDefaults)
+            assertTrue(reinstalled.showImages)
+            assertTrue(reinstalled.oneCoverPerGroup)
+            assertFalse(reinstalled.stickyScore)
+
+            settings.updateActiveMediaType(MediaType.MANGA)
+            settings.updateShowImages(true)
+            settings.updateActiveMediaType(MediaType.SERIES)
+            settings.updateShowImages(false)
+            assertFalse(settings.initializePackSettings(MediaType.SERIES, seriesDefaults).showImages)
+            assertTrue(settings.state.value.mediaSettings.getValue(MediaType.MANGA).showImages)
+            settings.completeWelcome(showImages = false, elaborateRating = true)
+            assertTrue(settings.state.value.mediaSettings.getValue(MediaType.MANGA).showImages)
+            assertFalse(settings.state.value.mediaSettings.getValue(MediaType.SERIES).showImages)
+
+            val recreated = SettingsRepository(context, icons, locale)
+            recreated.loadInitialState()
+            assertFalse(recreated.state.value.mediaSettings.getValue(MediaType.SERIES).showImages)
+            assertTrue(recreated.state.value.mediaSettings.getValue(MediaType.SERIES).oneCoverPerGroup)
+            assertTrue(recreated.state.value.mediaSettings.getValue(MediaType.MANGA).showImages)
+        } finally {
+            context.delete()
+        }
+    }
+
+    @Test
     fun seriesTop100CountsShowsBeforeSeasonMembers() = runBlocking {
         val items = mutableListOf<MediaItemEntity>()
         val groups = mutableListOf<MediaGroupEntity>()

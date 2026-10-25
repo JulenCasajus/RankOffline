@@ -7,6 +7,19 @@ import build_category_packs as packs
 
 
 class CategoryPackBuildTest(unittest.TestCase):
+    def test_official_pack_defaults_match_runtime_policy(self):
+        manifests = {
+            pack_id: packs.pack_manifest(pack_id, [])
+            for pack_id in packs.FILES
+        }
+
+        for pack_id, manifest in manifests.items():
+            defaults = manifest["defaults"]
+            self.assertTrue(defaults["stickyScoreHeader"])
+            self.assertEqual(pack_id != "books", defaults["showImages"])
+            self.assertEqual(pack_id == "series", defaults["mergeEnabled"])
+        self.assertTrue(manifests["series"]["defaults"]["oneCoverPerGroup"])
+
     def test_build_is_deterministic_and_index_matches_archives(self):
         first = packs.build()
         first_hashes = {

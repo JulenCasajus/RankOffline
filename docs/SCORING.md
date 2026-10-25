@@ -1,125 +1,106 @@
 # RankOffline scoring model
 
-RankOffline has one canonical saved score per anime: `RatingEntity.finalScore`.
+RankOffline stores one canonical personal rating for each item or explicit group, scoped by its pack identity. Anime, Manga, Movies, Series, and Books use the same rating engine. Simple and elaborate rating are two ways to update that rating; switching modes does not create a parallel ranking or recalculate previously saved results.
 
-Simple and elaborate rating are two ways to write that same score. Switching modes does not create parallel rankings or silently recalculate saved anime.
+## Simple and elaborate ratings
 
-## Simple rating
+Simple mode writes a value from `0.0` to `10.0` in 0.5-point steps directly as the final score. Existing detailed category scores and the last elaborate profile remain stored.
 
-Simple mode uses a discrete slider:
-
-- range: `0.0 ... 10.0`
-- step: `0.5`
-- 21 possible values
-
-Saving in simple mode writes the chosen value directly to `finalScore`.
-
-Detailed category scores and the last elaborate profile selection are preserved, so switching to simple mode does not destroy elaborate-rating data.
-
-## Elaborate rating
-
-Elaborate mode separates:
-
-1. **Category scores** — how well the work executes each applicable aspect.
-2. **Rating profile** — how important each category is for this particular work.
-3. **Personal-taste bonus** — a small subjective adjustment kept separate from the weighted quality score.
-
-This avoids forcing every anime to be judged with identical category importance.
-
-### Default categories
-
-| Category | General weight |
-| --- | ---: |
-| Writing | 35% |
-| Characters | 20% |
-| Visuals | 20% |
-| Worldbuilding | 15% |
-| Audio | 10% |
-
-Category scores use a `0.0 ... 10.0` range in 0.5-point steps.
-
-Category IDs are stable. Names, descriptions, and colors may be edited without breaking profiles.
-
-## Rating profiles
-
-A profile maps stable category IDs to weights. Users may edit the built-in profiles or create their own.
-
-Default profiles:
-
-| Profile | Writing | Characters | Visuals | Worldbuilding | Audio |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| General | 35% | 20% | 20% | 15% | 10% |
-| Narrative | 45% | 25% | 10% | 10% | 10% |
-| Character-driven | 25% | 40% | 15% | 10% | 10% |
-| Visual / Action | 20% | 15% | 40% | 15% | 10% |
-| World / Adventure | 20% | 20% | 15% | 35% | 10% |
-| Atmospheric | 25% | 20% | 20% | 15% | 20% |
-
-Profile weights are edited from 0% to 100% in 5-point steps. They do not have to sum to exactly 100%; applicable weights are normalized during calculation.
-
-New custom categories start at 0% in existing profiles. Deleting a category removes its profile-weight references as well.
-
-## N/A categories
-
-A category may be marked N/A when it is not meaningfully applicable to a work.
-
-N/A is not the same as a score of 0:
-
-- `0.0` = applicable and intentionally rated at the minimum.
-- `N/A` / null = excluded from the weighted calculation.
+Elaborate mode combines category scores, a rating profile containing weights keyed by stable category ID, and an optional personal-taste bonus from `+0.0` to `+1.0`.
 
 For the applicable category set `C`:
 
 ```text
 quality = sum(score[c] * weight[c]) / sum(weight[c])
-```
-
-Only categories with a valid score and a positive applicable weight participate. The calculator guards empty/all-zero configurations so it never produces NaN or Infinity.
-
-## Personal-taste bonus
-
-The personal-taste bonus is:
-
-```text
-+0.0 ... +1.0
-```
-
-in 0.1-point steps.
-
-For elaborate ratings:
-
-```text
 final = min(10, quality + personal_taste)
 ```
 
-The bonus is intentionally separate from profile weights.
+`0.0` is a valid score. N/A is stored separately and excludes that category from the weighted calculation. Empty and all-zero applicable configurations never produce NaN or Infinity.
 
-## Persistence and recalculation
+## Built-in categories and General weights
 
-When an elaborate rating is saved:
+Users can edit or replace these defaults. IDs are the stable keys used by profiles and detailed scores.
 
-- category scores are stored in `rating_score`;
-- the selected profile ID is associated with that anime;
-- the calculated result is written to the canonical `finalScore`;
-- notes remain shared between simple and elaborate modes.
+| Pack | Categories in order (ID: General weight) |
+| --- | --- |
+| Anime | Writing (`writing`: 35%), Characters (`characters`: 20%), Visuals (`visuals`: 20%), Worldbuilding (`worldbuilding`: 15%), Audio (`audio`: 10%) |
+| Manga | Writing (`writing`: 35%), Characters (`characters`: 25%), Art (`art`: 25%), Worldbuilding (`worldbuilding`: 15%) |
+| Movies | Writing (`writing`: 35%), Characters (`characters`: 25%), Visuals (`visuals`: 20%), Staging / Immersion (`staging_immersion`: 10%), Audio (`audio`: 10%) |
+| Series | Writing (`writing`: 35%), Characters (`characters`: 25%), Visuals (`visuals`: 10%), Worldbuilding (`worldbuilding`: 20%), Audio (`audio`: 10%) |
+| Books | Writing (`writing`: 35%), Characters (`characters`: 25%), Prose / Style (`prose`: 15%), Worldbuilding (`worldbuilding`: 15%), Pacing / Structure (`structure`: 10%) |
 
-Editing a profile later does **not** recalculate every anime that previously used it. The stored final score changes only when that anime is explicitly saved again.
+Manga Art includes drawing, design, backgrounds, panel composition, flow, clarity, and visual storytelling. Movies Staging / Immersion covers casting, performances, staging, direction, emotional impact, and engagement.
 
-If a saved profile is later deleted, the editor falls back safely to General when available, otherwise to the first available profile. The previously saved `finalScore` remains unchanged until the user saves again.
+## Built-in profiles
+
+Every built-in profile totals 100%. Resetting profiles recreates these weights for the current category set; a custom category not present in a preset starts at 0%.
+
+### Anime
+
+| Profile (ID) | Writing | Characters | Visuals | Worldbuilding | Audio |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| General (`general`) | 35 | 20 | 20 | 15 | 10 |
+| Narrative (`narrative`) | 45 | 25 | 10 | 10 | 10 |
+| Character-driven (`character_driven`) | 25 | 40 | 15 | 10 | 10 |
+| Visual / Action (`visual_action`) | 20 | 15 | 40 | 15 | 10 |
+| World / Adventure (`world_adventure`) | 20 | 20 | 15 | 35 | 10 |
+| Atmospheric (`atmospheric`) | 25 | 20 | 20 | 15 | 20 |
+
+### Manga
+
+| Profile (ID) | Writing | Characters | Art | Worldbuilding |
+| --- | ---: | ---: | ---: | ---: |
+| General (`general`) | 35 | 25 | 25 | 15 |
+| Narrative (`narrative`) | 50 | 25 | 15 | 10 |
+| Character-driven (`character_driven`) | 25 | 50 | 15 | 10 |
+| Art-focused (`art_focused`) | 20 | 20 | 50 | 10 |
+| World / Adventure (`world_adventure`) | 25 | 20 | 15 | 40 |
+
+### Movies
+
+| Profile (ID) | Writing | Characters | Visuals | Staging / Immersion | Audio |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| General (`general`) | 35 | 25 | 20 | 10 | 10 |
+| Narrative (`narrative`) | 40 | 20 | 10 | 20 | 10 |
+| Character-driven (`character_driven`) | 25 | 40 | 10 | 15 | 10 |
+| Visual (`visual_direction`) | 15 | 15 | 40 | 15 | 15 |
+| Atmospheric (`atmospheric`) | 15 | 15 | 25 | 20 | 25 |
+
+### Series
+
+| Profile (ID) | Writing | Characters | Visuals | Worldbuilding | Audio |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| General (`general`) | 35 | 25 | 10 | 20 | 10 |
+| Narrative (`narrative`) | 50 | 15 | 10 | 15 | 10 |
+| Character-driven (`character_driven`) | 20 | 50 | 10 | 10 | 10 |
+| Visual (`visual_direction`) | 20 | 15 | 40 | 10 | 15 |
+| World / Adventure (`world_adventure`) | 20 | 20 | 10 | 40 | 10 |
+| Atmospheric (`atmospheric`) | 20 | 20 | 25 | 10 | 25 |
+
+### Books
+
+| Profile (ID) | Writing | Characters | Prose / Style | Worldbuilding | Pacing / Structure |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| General (`general`) | 35 | 25 | 15 | 15 | 10 |
+| Narrative (`narrative`) | 45 | 20 | 15 | 10 | 10 |
+| Character-driven (`character_driven`) | 25 | 40 | 15 | 10 | 10 |
+| Prose / Style (`prose_style`) | 20 | 10 | 45 | 10 | 15 |
+| World / Adventure (`world_adventure`) | 20 | 15 | 15 | 40 | 10 |
+| Atmospheric (`atmospheric`) | 20 | 20 | 20 | 20 | 20 |
+
+## Persistence, migration, and resets
+
+Detailed scores, final score, selected profile ID, notes, status, and bonus are durable user data. Editing a profile does not retroactively change saved ratings; a stored final score changes only when the user explicitly saves that rating again. If a referenced profile no longer exists, the editor falls back to General, then to the first available profile, without rewriting the saved score or historical category rows.
+
+The debug.6 preset update migrates a pack only when its complete category and profile blocks exactly match the previous factory defaults. Any customized name, description, color, category, profile, or weight preserves the existing configuration. Removed factory category IDs can therefore remain in historical detailed-score rows without being shown in a fresh editor, and no score is inferred for a newly introduced category.
+
+Category and profile resets are independent:
+
+- **Reset categories** restores official category IDs, descriptions, colors, order, and General weights while reconciling the current profiles.
+- **Reset profiles** restores official profile IDs and weights for the current categories.
+
+Neither operation deletes final ratings, notes, status, or rating history.
 
 ## Group ratings
 
-Merge seasons can represent related entries as a format-specific group. An
-explicit group rating is stored independently in `group_rating` and never
-rewrites member ratings. If no explicit group rating exists, ranking may show
-an in-memory average of rated members; that derived value is never persisted
-as an official score.
-
-## Reset behavior
-
-Category and profile resets are intentionally independent:
-
-- **Reset categories** restores the official categories, descriptions, colors, and order.
-- **Reset profiles** restores the official profiles and weights without replacing the current category set.
-
-Custom categories that exist when profiles are reset receive 0% in the restored profiles. Reset operations do not erase anime final scores or notes.
+An explicit precomputed media group can have its own rating, stored independently from member ratings. If no explicit group rating exists, ranking may present an in-memory aggregate of rated members. That derived aggregate is not persisted as the group's official score and never rewrites member ratings.

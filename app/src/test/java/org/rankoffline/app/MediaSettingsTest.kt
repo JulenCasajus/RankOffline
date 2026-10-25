@@ -8,6 +8,26 @@ import org.junit.Test
 
 class MediaSettingsTest {
     @Test
+    fun newOfficialDefaultsEnableStickyScoresAndSeriesMergeOnly() {
+        MediaType.entries.forEach { mediaType ->
+            assertTrue(DefaultSettings.mediaSettings(mediaType).stickyScore)
+        }
+        assertTrue(DefaultSettings.mediaSettings(MediaType.SERIES).oneCoverPerGroup)
+        assertTrue(DefaultSettings.mediaSettings(MediaType.SERIES).mergeEnabled)
+        MediaType.entries.filterNot { it == MediaType.SERIES }.forEach { mediaType ->
+            assertFalse(DefaultSettings.mediaSettings(mediaType).mergeEnabled)
+        }
+    }
+
+    @Test
+    fun welcomeImageChoiceKeepsBooksConservativeDefault() {
+        assertFalse(onboardingShowImagesDefault(MediaType.BOOK, requested = true))
+        MediaType.entries.filterNot { it == MediaType.BOOK }.forEach { mediaType ->
+            assertTrue(onboardingShowImagesDefault(mediaType, requested = true))
+        }
+        assertTrue(MediaType.entries.none { onboardingShowImagesDefault(it, requested = false) })
+    }
+    @Test
     fun destructiveCategoryResetChangesOnlyTheSelectedMediaSettings() {
         val original = DefaultSettings.allMediaSettings().mapValues { (mediaType, settings) ->
             settings.copy(elaborateRatingEnabled = true, mergeEnabled = mediaType.supportsMerge())
@@ -283,13 +303,20 @@ class MediaSettingsTest {
 
     @Test
     fun allDefaultsHaveValidIndependentCategoriesAndProfiles() {
+        val expectedProfileCounts = mapOf(
+            MediaType.ANIME to 6,
+            MediaType.MANGA to 5,
+            MediaType.MOVIE to 5,
+            MediaType.SERIES to 6,
+            MediaType.BOOK to 6
+        )
         MediaType.entries.forEach { mediaType ->
             val first = DefaultSettings.mediaSettings(mediaType)
             val second = DefaultSettings.mediaSettings(mediaType)
             val categoryIds = first.ratingConfig.categories.map { it.id }
 
             assertEquals(categoryIds.size, categoryIds.toSet().size)
-            assertEquals(6, first.ratingProfiles.profiles.size)
+            assertEquals(expectedProfileCounts.getValue(mediaType), first.ratingProfiles.profiles.size)
             first.ratingProfiles.profiles.forEach { profile ->
                 assertEquals(categoryIds.toSet(), profile.weights.keys)
                 assertTrue(profile.weights.values.all { it.isFinite() && it in 0.0..100.0 })
@@ -324,19 +351,19 @@ class MediaSettingsTest {
                 "worldbuilding" to 15.0, "audio" to 10.0
             ),
             MediaType.MANGA to linkedMapOf(
-                "writing" to 30.0, "characters" to 20.0, "art" to 25.0,
-                "paneling" to 10.0, "worldbuilding" to 15.0
+                "writing" to 35.0, "characters" to 25.0, "art" to 25.0,
+                "worldbuilding" to 15.0
             ),
             MediaType.SERIES to linkedMapOf(
-                "writing" to 25.0, "characters" to 20.0, "direction" to 15.0,
-                "visuals" to 15.0, "worldbuilding" to 15.0, "audio" to 10.0
+                "writing" to 35.0, "characters" to 25.0, "visuals" to 10.0,
+                "worldbuilding" to 20.0, "audio" to 10.0
             ),
             MediaType.MOVIE to linkedMapOf(
-                "writing" to 20.0, "characters" to 15.0, "direction" to 20.0,
-                "visuals" to 20.0, "editing" to 15.0, "audio" to 10.0
+                "writing" to 35.0, "characters" to 25.0, "visuals" to 20.0,
+                "staging_immersion" to 10.0, "audio" to 10.0
             ),
             MediaType.BOOK to linkedMapOf(
-                "writing" to 30.0, "characters" to 20.0, "prose" to 25.0,
+                "writing" to 35.0, "characters" to 25.0, "prose" to 15.0,
                 "worldbuilding" to 15.0, "structure" to 10.0
             )
         )
@@ -353,36 +380,34 @@ class MediaSettingsTest {
     fun everyPredefinedProfileHasTheRequestedExactWeights() {
         val expected = mapOf(
             MediaType.MANGA to listOf(
-                profile("general", 30, 20, 25, 10, 15),
-                profile("narrative", 45, 25, 10, 10, 10),
-                profile("character_driven", 25, 40, 15, 10, 10),
-                profile("art_focused", 15, 15, 40, 20, 10),
-                profile("world_adventure", 20, 20, 15, 10, 35),
-                profile("atmospheric", 25, 15, 30, 15, 15)
+                profile("general", 35, 25, 25, 15),
+                profile("narrative", 50, 25, 15, 10),
+                profile("character_driven", 25, 50, 15, 10),
+                profile("art_focused", 20, 20, 50, 10),
+                profile("world_adventure", 25, 20, 15, 40)
             ),
             MediaType.BOOK to listOf(
-                profile("general", 30, 20, 25, 15, 10),
+                profile("general", 35, 25, 15, 15, 10),
                 profile("narrative", 45, 20, 15, 10, 10),
                 profile("character_driven", 25, 40, 15, 10, 10),
                 profile("prose_style", 20, 10, 45, 10, 15),
                 profile("world_adventure", 20, 15, 15, 40, 10),
-                profile("atmospheric", 20, 15, 35, 20, 10)
+                profile("atmospheric", 20, 20, 20, 20, 20)
             ),
             MediaType.SERIES to listOf(
-                profile("general", 25, 20, 15, 15, 15, 10),
-                profile("narrative", 40, 25, 10, 5, 10, 10),
-                profile("character_driven", 20, 40, 10, 10, 10, 10),
-                profile("visual_direction", 10, 10, 30, 30, 10, 10),
-                profile("world_adventure", 20, 15, 10, 10, 35, 10),
-                profile("atmospheric", 15, 15, 20, 20, 10, 20)
+                profile("general", 35, 25, 10, 20, 10),
+                profile("narrative", 50, 15, 10, 15, 10),
+                profile("character_driven", 20, 50, 10, 10, 10),
+                profile("visual_direction", 20, 15, 40, 10, 15),
+                profile("world_adventure", 20, 20, 10, 40, 10),
+                profile("atmospheric", 20, 20, 25, 10, 25)
             ),
             MediaType.MOVIE to listOf(
-                profile("general", 20, 15, 20, 20, 15, 10),
-                profile("narrative", 40, 25, 15, 5, 10, 5),
-                profile("character_driven", 25, 40, 15, 5, 10, 5),
-                profile("visual_direction", 10, 10, 30, 30, 10, 10),
-                profile("technical_craft", 10, 10, 20, 20, 25, 15),
-                profile("atmospheric", 15, 10, 20, 20, 10, 25)
+                profile("general", 35, 25, 20, 10, 10),
+                profile("narrative", 40, 20, 10, 20, 10),
+                profile("character_driven", 25, 40, 10, 15, 10),
+                profile("visual_direction", 15, 15, 40, 15, 15),
+                profile("atmospheric", 15, 15, 25, 20, 25)
             )
         )
 
@@ -393,6 +418,140 @@ class MediaSettingsTest {
                 assertEquals(expectedProfile.second, actualProfile.weights.values.toList())
             }
         }
+    }
+
+    @Test
+    fun categoryColorsDescriptionsAndProfileNamesMatchTheNewPresets() {
+        fun category(mediaType: MediaType, id: String) =
+            DefaultSettings.ratingConfig(mediaType).categories.first { it.id == id }
+
+        assertEquals("#E04BCF", category(MediaType.MANGA, "art").color)
+        assertEquals(
+            "Drawing quality, art style, character design, backgrounds, panel composition, flow, visual clarity and storytelling.",
+            category(MediaType.MANGA, "art").description
+        )
+        assertEquals("#E04BCF", category(MediaType.BOOK, "prose").color)
+        assertEquals("#EF5350", category(MediaType.BOOK, "structure").color)
+        assertEquals("#81C784", category(MediaType.MOVIE, "staging_immersion").color)
+        assertEquals(
+            "Casting choices, performances, staging, direction, emotional impact and the film's ability to immerse and engage the viewer.",
+            category(MediaType.MOVIE, "staging_immersion").description
+        )
+        assertEquals(
+            "Character writing, development, dynamics and charm.",
+            category(MediaType.MOVIE, "characters").description
+        )
+        assertEquals(
+            "Soundtrack, sound effects and audiovisual integration.",
+            category(MediaType.MOVIE, "audio").description
+        )
+        assertEquals(
+            listOf("General", "Narrative", "Character-driven", "Visual", "Atmospheric"),
+            DefaultSettings.profiles(MediaType.MOVIE).profiles.map { it.name }
+        )
+        assertEquals(
+            listOf("General", "Narrative", "Character-driven", "Visual", "World / Adventure", "Atmospheric"),
+            DefaultSettings.profiles(MediaType.SERIES).profiles.map { it.name }
+        )
+    }
+
+    @Test
+    fun everyGeneralProfileMatchesItsCategoryDefaultWeights() {
+        MediaType.entries.forEach { mediaType ->
+            val settings = DefaultSettings.mediaSettings(mediaType)
+            val categoryWeights = settings.ratingConfig.categories.associate { it.id to it.weight }
+            val general = settings.ratingProfiles.resolveProfile(DefaultSettings.GENERAL_PROFILE_ID)
+
+            assertEquals(categoryWeights, general.weights)
+        }
+    }
+
+    @Test
+    fun untouchedPreviousFactoryPresetsMigrateExactlyOnceWithoutChangingOtherSettings() {
+        MediaType.entries.filterNot { it == MediaType.ANIME }.forEach { mediaType ->
+            val previous = DefaultSettings.mediaSettings(mediaType).copy(
+                elaborateRatingEnabled = true,
+                ratingConfig = requireNotNull(PreviousRatingDefaults.config(mediaType)),
+                ratingProfiles = requireNotNull(PreviousRatingDefaults.profiles(mediaType)),
+                showImages = true,
+                stickyScore = false
+            )
+
+            val migrated = migrateUntouchedPreviousRatingDefaults(mediaType, previous)
+
+            assertEquals(DefaultSettings.ratingConfig(mediaType), migrated.ratingConfig)
+            assertEquals(DefaultSettings.profiles(mediaType), migrated.ratingProfiles)
+            assertTrue(migrated.elaborateRatingEnabled)
+            assertTrue(migrated.showImages)
+            assertFalse(migrated.stickyScore)
+            assertEquals(migrated, migrateUntouchedPreviousRatingDefaults(mediaType, migrated))
+        }
+    }
+
+    @Test
+    fun persistedPreviousFactorySnapshotMigratesPerPackThroughTheRealDecoder() {
+        val previous = MediaType.entries.associateWith { mediaType ->
+            if (mediaType == MediaType.ANIME) {
+                DefaultSettings.mediaSettings(mediaType)
+            } else {
+                DefaultSettings.mediaSettings(mediaType).copy(
+                    ratingConfig = requireNotNull(PreviousRatingDefaults.config(mediaType)),
+                    ratingProfiles = requireNotNull(PreviousRatingDefaults.profiles(mediaType))
+                )
+            }
+        }
+
+        val restored = normalizeMediaSettingsSnapshot(
+            decodeMediaSettingsSnapshot(encodeMediaSettingsSnapshot(previous)),
+            previous.getValue(MediaType.ANIME)
+        )
+
+        assertEquals(DefaultSettings.allMediaSettings(), restored)
+    }
+
+    @Test
+    fun anyCategoryOrProfileCustomizationPreventsAutomaticPresetMigration() {
+        val mediaType = MediaType.MOVIE
+        val previous = DefaultSettings.mediaSettings(mediaType).copy(
+            ratingConfig = requireNotNull(PreviousRatingDefaults.config(mediaType)),
+            ratingProfiles = requireNotNull(PreviousRatingDefaults.profiles(mediaType))
+        )
+        val customCategory = previous.copy(
+            ratingConfig = previous.ratingConfig.copy(
+                categories = previous.ratingConfig.categories.map {
+                    if (it.id == "visuals") it.copy(color = "#123456") else it
+                }
+            )
+        )
+        val customProfile = previous.copy(
+            ratingProfiles = previous.ratingProfiles.copy(
+                profiles = previous.ratingProfiles.profiles.map {
+                    if (it.id == "general") it.copy(weights = it.weights + ("writing" to 21.0)) else it
+                }
+            )
+        )
+
+        assertEquals(customCategory, migrateUntouchedPreviousRatingDefaults(mediaType, customCategory))
+        assertEquals(customProfile, migrateUntouchedPreviousRatingDefaults(mediaType, customProfile))
+    }
+
+    @Test
+    fun removedFactoryProfileIdsFallBackWithoutChangingAnime() {
+        assertEquals(
+            DefaultSettings.mediaSettings(MediaType.ANIME),
+            migrateUntouchedPreviousRatingDefaults(
+                MediaType.ANIME,
+                DefaultSettings.mediaSettings(MediaType.ANIME)
+            )
+        )
+        assertEquals(
+            DefaultSettings.GENERAL_PROFILE_ID,
+            DefaultSettings.profiles(MediaType.MOVIE).resolveProfile("technical_craft").id
+        )
+        assertEquals(
+            DefaultSettings.GENERAL_PROFILE_ID,
+            DefaultSettings.profiles(MediaType.MANGA).resolveProfile("atmospheric").id
+        )
     }
 
     @Test

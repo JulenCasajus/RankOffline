@@ -1164,6 +1164,12 @@ private fun CoverPreloadProgressView(preloadProgress: CoverPreloadProgress) {
     Spacer(Modifier.height(12.dp))
     Text(
         when (preloadProgress.status) {
+            CoverPreloadStatus.WAITING_FOR_COVERS ->
+                stringResource(R.string.category_phase_waiting_covers)
+            CoverPreloadStatus.PREPARING_COVER_LIST ->
+                stringResource(R.string.covers_preparing_list)
+            CoverPreloadStatus.RETRYING_COVERS ->
+                stringResource(R.string.covers_retrying_failed)
             CoverPreloadStatus.COMPLETED -> stringResource(R.string.covers_completed)
             CoverPreloadStatus.CANCELLED -> stringResource(R.string.covers_download_interrupted)
             CoverPreloadStatus.FAILED -> stringResource(R.string.covers_download_interrupted)
@@ -1171,20 +1177,25 @@ private fun CoverPreloadProgressView(preloadProgress: CoverPreloadProgress) {
         },
         fontWeight = FontWeight.SemiBold
     )
-    Text(
-        stringResource(R.string.covers_progress, preloadProgress.processed, preloadProgress.target),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 10.dp)
-    )
-    LinearProgressIndicator(
-        progress = { preloadProgress.fraction },
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-    )
+    if (preloadProgress.status == CoverPreloadStatus.PREPARING_COVER_LIST ||
+        preloadProgress.status == CoverPreloadStatus.WAITING_FOR_COVERS
+    ) {
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+    } else {
+        Text(
+            stringResource(R.string.covers_progress, preloadProgress.processed, preloadProgress.target),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 10.dp)
+        )
+        LinearProgressIndicator(
+            progress = { preloadProgress.fraction },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+        )
+    }
     Text(
         stringResource(
             R.string.covers_progress_details_explicit,
-            preloadProgress.existing,
-            preloadProgress.downloaded,
+            preloadProgress.available,
             preloadProgress.unavailable,
             preloadProgress.errors
         ),
@@ -2058,6 +2069,7 @@ private fun categoryNameResource(mediaType: MediaType, id: String): Int? = when 
     "structure" -> R.string.category_structure
     "direction" -> R.string.category_direction
     "editing" -> R.string.category_editing
+    "staging_immersion" -> R.string.category_staging_immersion
     else -> null
 }
 
@@ -2101,6 +2113,7 @@ private fun categoryDescriptionResource(mediaType: MediaType, id: String): Int? 
         "characters" -> R.string.category_movie_characters_description
         "direction" -> R.string.category_movie_direction_description
         "visuals" -> R.string.category_movie_visuals_description
+        "staging_immersion" -> R.string.category_staging_immersion_description
         "editing" -> R.string.category_editing_description
         "audio" -> R.string.category_movie_audio_description
         else -> null

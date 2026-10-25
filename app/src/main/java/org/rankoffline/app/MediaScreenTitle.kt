@@ -172,7 +172,7 @@ fun MediaScreenTitle(
                         ) {
                             Text(
                                 text = stringResource(R.string.download_pack),
-                                color = MaterialTheme.colorScheme.secondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 18.sp
                             )
@@ -180,7 +180,7 @@ fun MediaScreenTitle(
                             Icon(
                                 Icons.Default.CloudDownload,
                                 contentDescription = stringResource(R.string.download_pack),
-                                tint = MaterialTheme.colorScheme.secondary
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }

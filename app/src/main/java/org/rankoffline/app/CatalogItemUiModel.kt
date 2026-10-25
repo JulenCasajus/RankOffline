@@ -5,6 +5,7 @@ data class CatalogItemUiModel(
     val stableId: String,
     val mediaType: MediaType,
     val title: String,
+    val canonicalTitle: String? = null,
     val genre: String? = null,
     val format: String? = null,
     val year: Int? = null,
@@ -32,7 +33,8 @@ fun MediaListEntry.toCatalogItemUiModel(): CatalogItemUiModel = when (this) {
     is MediaListEntry.Item -> CatalogItemUiModel(
         stableId = value.id,
         mediaType = value.mediaType,
-        title = value.title,
+        title = title,
+        canonicalTitle = value.title.takeIf { it != title },
         genre = value.genre,
         format = value.format,
         year = value.year,
@@ -75,6 +77,7 @@ fun Anime.toCatalogItemUiModel(): CatalogItemUiModel = CatalogItemUiModel(
     stableId = id,
     mediaType = mediaType,
     title = title,
+    canonicalTitle = canonicalTitle,
     genre = genre,
     format = format,
     year = metadataYear(),
@@ -123,5 +126,6 @@ fun CatalogItemUiModel.toLegacyAnimeDisplay(): Anime = Anime(
     sharedCoverMediaId = sharedCoverMediaId,
     memberCount = memberCount,
     ratedCount = ratedCount,
-    derived = derived
+    derived = derived,
+    canonicalTitle = canonicalTitle
 )

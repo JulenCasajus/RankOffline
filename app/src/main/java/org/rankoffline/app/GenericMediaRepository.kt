@@ -139,7 +139,31 @@ class GenericMediaRepository(
                 else itemsById[visible.id]?.let { MediaListEntry.Item(it.toDomain()) }
             }
         }
-        attachSharedCoverIdentities(entries, mediaType, configuredGroupType)
+        attachSharedCoverIdentities(
+            entries.withMatchingAliasTitles(query),
+            mediaType,
+            configuredGroupType
+        )
+    }
+
+    private suspend fun List<MediaListEntry>.withMatchingAliasTitles(
+        query: String
+    ): List<MediaListEntry> {
+        if (query.trim().codePointCount(0, query.trim().length) < 3) return this
+        val itemIds = mapNotNull { (it as? MediaListEntry.Item)?.value?.id }
+        if (itemIds.isEmpty()) return this
+        val aliasesByItem = catalogDao.aliasesForMediaIds(itemIds)
+            .groupBy(MediaAliasEntity::mediaId, MediaAliasEntity::title)
+        return map { entry ->
+            if (entry !is MediaListEntry.Item) return@map entry
+            val displayTitle = bestMatchingAliasTitle(
+                canonicalTitle = entry.value.title,
+                aliases = aliasesByItem[entry.value.id].orEmpty(),
+                rawQuery = query
+            )
+            if (displayTitle == null) entry
+            else entry.copy(value = entry.value.copy(searchDisplayTitle = displayTitle))
+        }
     }
 
     suspend fun ranking(

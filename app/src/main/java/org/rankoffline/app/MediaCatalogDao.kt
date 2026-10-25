@@ -56,6 +56,10 @@ interface MediaCatalogDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAliases(aliases: List<MediaAliasEntity>)
 
+    /** Page-batched alias lookup used only for presentation of local search matches. */
+    @Query("SELECT * FROM media_alias WHERE media_id IN (:mediaIds)")
+    suspend fun aliasesForMediaIds(mediaIds: List<String>): List<MediaAliasEntity>
+
     @Query(
         "SELECT metadata_value FROM media_catalog_metadata " +
             "WHERE media_type = :mediaType AND metadata_key = :key"

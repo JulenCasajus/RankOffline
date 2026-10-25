@@ -580,9 +580,9 @@ def pack_manifest(pack_id: str, file_specs: list[dict]) -> dict:
         "subtitle": [item["field"] for item in filters],
         "merge": {"enabled": merge_enabled, "strategy": merge_strategy, "groupType": group_type},
         "defaults": {
-            "showImages": True,
-            "stickyScoreHeader": False,
-            "mergeEnabled": False,
+            "showImages": pack_id != "books",
+            "stickyScoreHeader": True,
+            "mergeEnabled": pack_id == "series",
             "ratingMode": "simple",
             **({"oneCoverPerGroup": True} if pack_id == "series" else {}),
         },

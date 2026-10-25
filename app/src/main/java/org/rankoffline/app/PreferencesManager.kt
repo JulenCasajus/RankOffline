@@ -87,37 +87,34 @@ object DefaultSettings {
     )
 
     private val mangaCategories = listOf(
-        RatingCategory("writing", "Writing", "Plot, themes, pacing, structure, dialogue, beginning and ending.", 30.0, "#FFAA55", 0),
-        RatingCategory("characters", "Characters", "Main and supporting characters, development, depth, charisma and dynamics.", 20.0, "#4FC3F7", 1),
-        RatingCategory("art", "Art", "Drawing quality, art style, character design, backgrounds and visual identity.", 25.0, "#FFAA55", 2),
-        RatingCategory("paneling", "Paneling", "Page composition, panel flow, visual clarity and storytelling through layout.", 10.0, "#7EC7FF", 3),
-        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, internal rules, systems and sense of place.", 15.0, "#81C784", 4)
+        RatingCategory("writing", "Writing", "Plot, themes, pacing, structure, dialogue, beginning and ending.", 35.0, "#FFAA55", 0),
+        RatingCategory("characters", "Characters", "Main and supporting characters, development, depth, charisma and dynamics.", 25.0, "#4FC3F7", 1),
+        RatingCategory("art", "Art", "Drawing quality, art style, character design, backgrounds, panel composition, flow, visual clarity and storytelling.", 25.0, "#E04BCF", 2),
+        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, internal rules, systems and sense of place.", 15.0, "#81C784", 3)
     )
 
     private val bookCategories = listOf(
-        RatingCategory("writing", "Writing", "Plot, themes, ideas, dialogue, narrative construction and ending.", 30.0, "#FFAA55", 0),
-        RatingCategory("characters", "Characters", "Main and supporting characters, development, depth and relationships.", 20.0, "#4FC3F7", 1),
-        RatingCategory("prose", "Prose / Style", "Language, voice, readability, imagery and stylistic execution.", 25.0, "#FFAA55", 2),
+        RatingCategory("writing", "Writing", "Plot, themes, ideas, dialogue, narrative construction and ending.", 35.0, "#FFAA55", 0),
+        RatingCategory("characters", "Characters", "Main and supporting characters, development, depth and relationships.", 25.0, "#4FC3F7", 1),
+        RatingCategory("prose", "Prose / Style", "Language, voice, readability, imagery and stylistic execution.", 15.0, "#E04BCF", 2),
         RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, internal coherence and sense of place where applicable.", 15.0, "#81C784", 3),
-        RatingCategory("structure", "Pacing / Structure", "Narrative rhythm, chapter/section structure, progression and organization.", 10.0, "#7EC7FF", 4)
+        RatingCategory("structure", "Pacing / Structure", "Narrative rhythm, chapter/section structure, progression and organization.", 10.0, "#EF5350", 4)
     )
 
     private val seriesCategories = listOf(
-        RatingCategory("writing", "Writing", "Plot, themes, dialogue, pacing, season structure and narrative payoff.", 25.0, "#FFAA55", 0),
-        RatingCategory("characters", "Characters", "Main and supporting characters, development, depth, charisma and dynamics.", 20.0, "#4FC3F7", 1),
-        RatingCategory("direction", "Direction", "Staging, shot choices, performances, tone and overall audiovisual direction.", 15.0, "#FFAA55", 2),
-        RatingCategory("visuals", "Visuals", "Cinematography, production design, effects, lighting and visual execution.", 15.0, "#E04BCF", 3),
-        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, internal rules and continuity where applicable.", 15.0, "#81C784", 4),
-        RatingCategory("audio", "Audio", "Music, sound design, mixing and use of audio.", 10.0, "#EF5350", 5)
+        RatingCategory("writing", "Writing", "Plot, themes, dialogue, pacing, season structure and narrative payoff.", 35.0, "#FFAA55", 0),
+        RatingCategory("characters", "Characters", "Main and supporting characters, development, depth, charisma and dynamics.", 25.0, "#4FC3F7", 1),
+        RatingCategory("visuals", "Visuals", "Cinematography, production design, effects, lighting and visual execution.", 10.0, "#E04BCF", 2),
+        RatingCategory("worldbuilding", "Worldbuilding", "Setting, lore, internal rules and continuity where applicable.", 20.0, "#81C784", 3),
+        RatingCategory("audio", "Audio", "Music, sound design, mixing and use of audio.", 10.0, "#EF5350", 4)
     )
 
     private val movieCategories = listOf(
-        RatingCategory("writing", "Writing", "Plot, themes, dialogue, narrative construction and payoff.", 20.0, "#FFAA55", 0),
-        RatingCategory("characters", "Characters", "Character writing, performances as characters, development and dynamics.", 15.0, "#4FC3F7", 1),
-        RatingCategory("direction", "Direction", "Staging, performances, tone, shot choices and overall directorial execution.", 20.0, "#FFAA55", 2),
-        RatingCategory("visuals", "Visuals", "Cinematography, production design, effects, lighting and visual identity.", 20.0, "#E04BCF", 3),
-        RatingCategory("editing", "Editing / Pacing", "Cutting, rhythm, scene transitions, structure and use of runtime.", 15.0, "#62D6C8", 4),
-        RatingCategory("audio", "Audio", "Score, music, sound design, mixing and audiovisual integration.", 10.0, "#EF5350", 5)
+        RatingCategory("writing", "Writing", "Plot, themes, dialogue, narrative construction and payoff.", 35.0, "#FFAA55", 0),
+        RatingCategory("characters", "Characters", "Character writing, development, dynamics and charm.", 25.0, "#4FC3F7", 1),
+        RatingCategory("visuals", "Visuals", "Cinematography, production design, effects, lighting and visual identity.", 20.0, "#E04BCF", 2),
+        RatingCategory("staging_immersion", "Staging / Immersion", "Casting choices, performances, staging, direction, emotional impact and the film's ability to immerse and engage the viewer.", 10.0, "#81C784", 3),
+        RatingCategory("audio", "Audio", "Soundtrack, sound effects and audiovisual integration.", 10.0, "#EF5350", 4)
     )
 
     val defaultAdditiveBonus = AdditiveBonus("Personal taste", "How much you liked it personally, independent of technical quality", 1.0, "#E04BCF")
@@ -137,36 +134,34 @@ object DefaultSettings {
             preset("atmospheric", "Atmospheric", "writing" to 25.0, "characters" to 20.0, "visuals" to 20.0, "worldbuilding" to 15.0, "audio" to 20.0)
         ),
         MediaType.MANGA to listOf(
-            preset("general", "General", "writing" to 30.0, "characters" to 20.0, "art" to 25.0, "paneling" to 10.0, "worldbuilding" to 15.0),
-            preset("narrative", "Narrative", "writing" to 45.0, "characters" to 25.0, "art" to 10.0, "paneling" to 10.0, "worldbuilding" to 10.0),
-            preset("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "art" to 15.0, "paneling" to 10.0, "worldbuilding" to 10.0),
-            preset("art_focused", "Art-focused", "writing" to 15.0, "characters" to 15.0, "art" to 40.0, "paneling" to 20.0, "worldbuilding" to 10.0),
-            preset("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 20.0, "art" to 15.0, "paneling" to 10.0, "worldbuilding" to 35.0),
-            preset("atmospheric", "Atmospheric", "writing" to 25.0, "characters" to 15.0, "art" to 30.0, "paneling" to 15.0, "worldbuilding" to 15.0)
+            preset("general", "General", "writing" to 35.0, "characters" to 25.0, "art" to 25.0, "worldbuilding" to 15.0),
+            preset("narrative", "Narrative", "writing" to 50.0, "characters" to 25.0, "art" to 15.0, "worldbuilding" to 10.0),
+            preset("character_driven", "Character-driven", "writing" to 25.0, "characters" to 50.0, "art" to 15.0, "worldbuilding" to 10.0),
+            preset("art_focused", "Art-focused", "writing" to 20.0, "characters" to 20.0, "art" to 50.0, "worldbuilding" to 10.0),
+            preset("world_adventure", "World / Adventure", "writing" to 25.0, "characters" to 20.0, "art" to 15.0, "worldbuilding" to 40.0)
         ),
         MediaType.BOOK to listOf(
-            preset("general", "General", "writing" to 30.0, "characters" to 20.0, "prose" to 25.0, "worldbuilding" to 15.0, "structure" to 10.0),
+            preset("general", "General", "writing" to 35.0, "characters" to 25.0, "prose" to 15.0, "worldbuilding" to 15.0, "structure" to 10.0),
             preset("narrative", "Narrative", "writing" to 45.0, "characters" to 20.0, "prose" to 15.0, "worldbuilding" to 10.0, "structure" to 10.0),
             preset("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "prose" to 15.0, "worldbuilding" to 10.0, "structure" to 10.0),
             preset("prose_style", "Prose / Style", "writing" to 20.0, "characters" to 10.0, "prose" to 45.0, "worldbuilding" to 10.0, "structure" to 15.0),
             preset("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 15.0, "prose" to 15.0, "worldbuilding" to 40.0, "structure" to 10.0),
-            preset("atmospheric", "Atmospheric", "writing" to 20.0, "characters" to 15.0, "prose" to 35.0, "worldbuilding" to 20.0, "structure" to 10.0)
+            preset("atmospheric", "Atmospheric", "writing" to 20.0, "characters" to 20.0, "prose" to 20.0, "worldbuilding" to 20.0, "structure" to 20.0)
         ),
         MediaType.SERIES to listOf(
-            preset("general", "General", "writing" to 25.0, "characters" to 20.0, "direction" to 15.0, "visuals" to 15.0, "worldbuilding" to 15.0, "audio" to 10.0),
-            preset("narrative", "Narrative", "writing" to 40.0, "characters" to 25.0, "direction" to 10.0, "visuals" to 5.0, "worldbuilding" to 10.0, "audio" to 10.0),
-            preset("character_driven", "Character-driven", "writing" to 20.0, "characters" to 40.0, "direction" to 10.0, "visuals" to 10.0, "worldbuilding" to 10.0, "audio" to 10.0),
-            preset("visual_direction", "Visual / Direction", "writing" to 10.0, "characters" to 10.0, "direction" to 30.0, "visuals" to 30.0, "worldbuilding" to 10.0, "audio" to 10.0),
-            preset("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 15.0, "direction" to 10.0, "visuals" to 10.0, "worldbuilding" to 35.0, "audio" to 10.0),
-            preset("atmospheric", "Atmospheric", "writing" to 15.0, "characters" to 15.0, "direction" to 20.0, "visuals" to 20.0, "worldbuilding" to 10.0, "audio" to 20.0)
+            preset("general", "General", "writing" to 35.0, "characters" to 25.0, "visuals" to 10.0, "worldbuilding" to 20.0, "audio" to 10.0),
+            preset("narrative", "Narrative", "writing" to 50.0, "characters" to 15.0, "visuals" to 10.0, "worldbuilding" to 15.0, "audio" to 10.0),
+            preset("character_driven", "Character-driven", "writing" to 20.0, "characters" to 50.0, "visuals" to 10.0, "worldbuilding" to 10.0, "audio" to 10.0),
+            preset("visual_direction", "Visual", "writing" to 20.0, "characters" to 15.0, "visuals" to 40.0, "worldbuilding" to 10.0, "audio" to 15.0),
+            preset("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 20.0, "visuals" to 10.0, "worldbuilding" to 40.0, "audio" to 10.0),
+            preset("atmospheric", "Atmospheric", "writing" to 20.0, "characters" to 20.0, "visuals" to 25.0, "worldbuilding" to 10.0, "audio" to 25.0)
         ),
         MediaType.MOVIE to listOf(
-            preset("general", "General", "writing" to 20.0, "characters" to 15.0, "direction" to 20.0, "visuals" to 20.0, "editing" to 15.0, "audio" to 10.0),
-            preset("narrative", "Narrative", "writing" to 40.0, "characters" to 25.0, "direction" to 15.0, "visuals" to 5.0, "editing" to 10.0, "audio" to 5.0),
-            preset("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "direction" to 15.0, "visuals" to 5.0, "editing" to 10.0, "audio" to 5.0),
-            preset("visual_direction", "Visual / Direction", "writing" to 10.0, "characters" to 10.0, "direction" to 30.0, "visuals" to 30.0, "editing" to 10.0, "audio" to 10.0),
-            preset("technical_craft", "Technical Craft", "writing" to 10.0, "characters" to 10.0, "direction" to 20.0, "visuals" to 20.0, "editing" to 25.0, "audio" to 15.0),
-            preset("atmospheric", "Atmospheric", "writing" to 15.0, "characters" to 10.0, "direction" to 20.0, "visuals" to 20.0, "editing" to 10.0, "audio" to 25.0)
+            preset("general", "General", "writing" to 35.0, "characters" to 25.0, "visuals" to 20.0, "staging_immersion" to 10.0, "audio" to 10.0),
+            preset("narrative", "Narrative", "writing" to 40.0, "characters" to 20.0, "visuals" to 10.0, "staging_immersion" to 20.0, "audio" to 10.0),
+            preset("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "visuals" to 10.0, "staging_immersion" to 15.0, "audio" to 10.0),
+            preset("visual_direction", "Visual", "writing" to 15.0, "characters" to 15.0, "visuals" to 40.0, "staging_immersion" to 15.0, "audio" to 15.0),
+            preset("atmospheric", "Atmospheric", "writing" to 15.0, "characters" to 15.0, "visuals" to 25.0, "staging_immersion" to 20.0, "audio" to 25.0)
         )
     )
 
@@ -205,7 +200,7 @@ object DefaultSettings {
             elaborateRatingEnabled = false,
             ratingConfig = config,
             ratingProfiles = profiles(mediaType, config.categories),
-            mergeEnabled = false,
+            mergeEnabled = mediaType == MediaType.SERIES,
             oneCoverPerGroup = mediaType == MediaType.SERIES,
             showImages = false,
             stickyScore = true
@@ -240,6 +235,100 @@ object DefaultSettings {
                 }
             }
         )
+    }
+}
+
+/**
+ * Exact debug.5 factory values used only to recognize untouched persisted presets.
+ * A single user edit makes either equality check fail, so customized settings are never rewritten.
+ */
+internal object PreviousRatingDefaults {
+    private fun category(
+        id: String,
+        name: String,
+        description: String,
+        weight: Double,
+        color: String,
+        order: Int
+    ) = RatingCategory(id, name, description, weight, color, order)
+
+    private fun profile(id: String, name: String, vararg weights: Pair<String, Double>) =
+        RatingProfile(id, name, linkedMapOf(*weights))
+
+    fun config(mediaType: MediaType): RatingSystemConfig? {
+        val categories = when (mediaType) {
+            MediaType.ANIME -> return null
+            MediaType.MANGA -> listOf(
+                category("writing", "Writing", "Plot, themes, pacing, structure, dialogue, beginning and ending.", 30.0, "#FFAA55", 0),
+                category("characters", "Characters", "Main and supporting characters, development, depth, charisma and dynamics.", 20.0, "#4FC3F7", 1),
+                category("art", "Art", "Drawing quality, art style, character design, backgrounds and visual identity.", 25.0, "#FFAA55", 2),
+                category("paneling", "Paneling", "Page composition, panel flow, visual clarity and storytelling through layout.", 10.0, "#7EC7FF", 3),
+                category("worldbuilding", "Worldbuilding", "Setting, lore, internal rules, systems and sense of place.", 15.0, "#81C784", 4)
+            )
+            MediaType.BOOK -> listOf(
+                category("writing", "Writing", "Plot, themes, ideas, dialogue, narrative construction and ending.", 30.0, "#FFAA55", 0),
+                category("characters", "Characters", "Main and supporting characters, development, depth and relationships.", 20.0, "#4FC3F7", 1),
+                category("prose", "Prose / Style", "Language, voice, readability, imagery and stylistic execution.", 25.0, "#FFAA55", 2),
+                category("worldbuilding", "Worldbuilding", "Setting, lore, internal coherence and sense of place where applicable.", 15.0, "#81C784", 3),
+                category("structure", "Pacing / Structure", "Narrative rhythm, chapter/section structure, progression and organization.", 10.0, "#7EC7FF", 4)
+            )
+            MediaType.SERIES -> listOf(
+                category("writing", "Writing", "Plot, themes, dialogue, pacing, season structure and narrative payoff.", 25.0, "#FFAA55", 0),
+                category("characters", "Characters", "Main and supporting characters, development, depth, charisma and dynamics.", 20.0, "#4FC3F7", 1),
+                category("direction", "Direction", "Staging, shot choices, performances, tone and overall audiovisual direction.", 15.0, "#FFAA55", 2),
+                category("visuals", "Visuals", "Cinematography, production design, effects, lighting and visual execution.", 15.0, "#E04BCF", 3),
+                category("worldbuilding", "Worldbuilding", "Setting, lore, internal rules and continuity where applicable.", 15.0, "#81C784", 4),
+                category("audio", "Audio", "Music, sound design, mixing and use of audio.", 10.0, "#EF5350", 5)
+            )
+            MediaType.MOVIE -> listOf(
+                category("writing", "Writing", "Plot, themes, dialogue, narrative construction and payoff.", 20.0, "#FFAA55", 0),
+                category("characters", "Characters", "Character writing, performances as characters, development and dynamics.", 15.0, "#4FC3F7", 1),
+                category("direction", "Direction", "Staging, performances, tone, shot choices and overall directorial execution.", 20.0, "#FFAA55", 2),
+                category("visuals", "Visuals", "Cinematography, production design, effects, lighting and visual identity.", 20.0, "#E04BCF", 3),
+                category("editing", "Editing / Pacing", "Cutting, rhythm, scene transitions, structure and use of runtime.", 15.0, "#62D6C8", 4),
+                category("audio", "Audio", "Score, music, sound design, mixing and audiovisual integration.", 10.0, "#EF5350", 5)
+            )
+        }
+        return RatingSystemConfig(categories, DefaultSettings.defaultAdditiveBonus.copy())
+    }
+
+    fun profiles(mediaType: MediaType): RatingProfilesConfig? {
+        val profiles = when (mediaType) {
+            MediaType.ANIME -> return null
+            MediaType.MANGA -> listOf(
+                profile("general", "General", "writing" to 30.0, "characters" to 20.0, "art" to 25.0, "paneling" to 10.0, "worldbuilding" to 15.0),
+                profile("narrative", "Narrative", "writing" to 45.0, "characters" to 25.0, "art" to 10.0, "paneling" to 10.0, "worldbuilding" to 10.0),
+                profile("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "art" to 15.0, "paneling" to 10.0, "worldbuilding" to 10.0),
+                profile("art_focused", "Art-focused", "writing" to 15.0, "characters" to 15.0, "art" to 40.0, "paneling" to 20.0, "worldbuilding" to 10.0),
+                profile("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 20.0, "art" to 15.0, "paneling" to 10.0, "worldbuilding" to 35.0),
+                profile("atmospheric", "Atmospheric", "writing" to 25.0, "characters" to 15.0, "art" to 30.0, "paneling" to 15.0, "worldbuilding" to 15.0)
+            )
+            MediaType.BOOK -> listOf(
+                profile("general", "General", "writing" to 30.0, "characters" to 20.0, "prose" to 25.0, "worldbuilding" to 15.0, "structure" to 10.0),
+                profile("narrative", "Narrative", "writing" to 45.0, "characters" to 20.0, "prose" to 15.0, "worldbuilding" to 10.0, "structure" to 10.0),
+                profile("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "prose" to 15.0, "worldbuilding" to 10.0, "structure" to 10.0),
+                profile("prose_style", "Prose / Style", "writing" to 20.0, "characters" to 10.0, "prose" to 45.0, "worldbuilding" to 10.0, "structure" to 15.0),
+                profile("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 15.0, "prose" to 15.0, "worldbuilding" to 40.0, "structure" to 10.0),
+                profile("atmospheric", "Atmospheric", "writing" to 20.0, "characters" to 15.0, "prose" to 35.0, "worldbuilding" to 20.0, "structure" to 10.0)
+            )
+            MediaType.SERIES -> listOf(
+                profile("general", "General", "writing" to 25.0, "characters" to 20.0, "direction" to 15.0, "visuals" to 15.0, "worldbuilding" to 15.0, "audio" to 10.0),
+                profile("narrative", "Narrative", "writing" to 40.0, "characters" to 25.0, "direction" to 10.0, "visuals" to 5.0, "worldbuilding" to 10.0, "audio" to 10.0),
+                profile("character_driven", "Character-driven", "writing" to 20.0, "characters" to 40.0, "direction" to 10.0, "visuals" to 10.0, "worldbuilding" to 10.0, "audio" to 10.0),
+                profile("visual_direction", "Visual / Direction", "writing" to 10.0, "characters" to 10.0, "direction" to 30.0, "visuals" to 30.0, "worldbuilding" to 10.0, "audio" to 10.0),
+                profile("world_adventure", "World / Adventure", "writing" to 20.0, "characters" to 15.0, "direction" to 10.0, "visuals" to 10.0, "worldbuilding" to 35.0, "audio" to 10.0),
+                profile("atmospheric", "Atmospheric", "writing" to 15.0, "characters" to 15.0, "direction" to 20.0, "visuals" to 20.0, "worldbuilding" to 10.0, "audio" to 20.0)
+            )
+            MediaType.MOVIE -> listOf(
+                profile("general", "General", "writing" to 20.0, "characters" to 15.0, "direction" to 20.0, "visuals" to 20.0, "editing" to 15.0, "audio" to 10.0),
+                profile("narrative", "Narrative", "writing" to 40.0, "characters" to 25.0, "direction" to 15.0, "visuals" to 5.0, "editing" to 10.0, "audio" to 5.0),
+                profile("character_driven", "Character-driven", "writing" to 25.0, "characters" to 40.0, "direction" to 15.0, "visuals" to 5.0, "editing" to 10.0, "audio" to 5.0),
+                profile("visual_direction", "Visual / Direction", "writing" to 10.0, "characters" to 10.0, "direction" to 30.0, "visuals" to 30.0, "editing" to 10.0, "audio" to 10.0),
+                profile("technical_craft", "Technical Craft", "writing" to 10.0, "characters" to 10.0, "direction" to 20.0, "visuals" to 20.0, "editing" to 25.0, "audio" to 15.0),
+                profile("atmospheric", "Atmospheric", "writing" to 15.0, "characters" to 10.0, "direction" to 20.0, "visuals" to 20.0, "editing" to 10.0, "audio" to 25.0)
+            )
+        }
+        return RatingProfilesConfig(profiles)
     }
 }
 
@@ -293,6 +382,7 @@ class SettingsRepository internal constructor(
     private val ratingConfigKey = stringPreferencesKey("rating_config")
     private val ratingProfilesKey = stringPreferencesKey("rating_profiles")
     private val mediaSettingsKey = stringPreferencesKey("media_settings_v1")
+    private val initializedPackSettingsKey = stringSetPreferencesKey("initialized_pack_settings_v1")
     private val appIconKey = stringPreferencesKey("app_icon")
     private val themePaletteKey = stringPreferencesKey("theme_palette")
     private val customPalettesKey = stringPreferencesKey("custom_app_palettes_v1")
@@ -305,6 +395,7 @@ class SettingsRepository internal constructor(
     private val _state = MutableStateFlow(AppSettingsState(settingsLoaded = false))
     val state: StateFlow<AppSettingsState> = _state.asStateFlow()
     private var removedLegacyCategoryIds: List<String> = emptyList()
+    private var initializedPackSettings: Set<MediaType> = emptySet()
 
     suspend fun loadInitialState() {
         val prefs = context.dataStore.data.first()
@@ -331,6 +422,9 @@ class SettingsRepository internal constructor(
             legacyShowImages,
             legacyStickyScore
         )
+        initializedPackSettings = prefs[initializedPackSettingsKey]
+            ?.mapNotNullTo(mutableSetOf()) { PackId(it).toOfficialMediaTypeOrNull() }
+            ?: if (prefs[mediaSettingsKey] != null) MediaType.entries.toSet() else emptySet()
         removedLegacyCategoryIds = if (
             persistedSnapshot?.media?.containsKey(MediaType.ANIME.persistedValue) != true
         ) {
@@ -378,6 +472,8 @@ class SettingsRepository internal constructor(
         val animeMirror = mediaSettings.getValue(MediaType.ANIME).toLegacyAnimeSettings()
         context.dataStore.edit { mutablePrefs ->
             mutablePrefs[mediaSettingsKey] = normalizedSnapshot
+            mutablePrefs[initializedPackSettingsKey] = initializedPackSettings
+                .mapTo(mutableSetOf()) { it.toPackId().value }
             mutablePrefs[themePaletteKey] = themeSelection.persistedValue
             mirrorLegacyAnimeSettings(mutablePrefs, animeMirror)
         }
@@ -396,7 +492,7 @@ class SettingsRepository internal constructor(
             hiddenBuiltInPalettes = themeWorkspace.hiddenBuiltIns,
             language = language,
             hasCompletedWelcome = if (BuildConfig.DEBUG) false else onboarding.hasCompletedWelcome,
-            hasCompletedOnboarding = if (BuildConfig.DEBUG) true else onboarding.hasCompletedOnboarding,
+            hasCompletedOnboarding = if (BuildConfig.DEBUG) false else onboarding.hasCompletedOnboarding,
             settingsLoaded = true
         )
         localeController.apply(language)
@@ -534,16 +630,27 @@ class SettingsRepository internal constructor(
         persistActiveMediaSettings { it.copy(oneCoverPerGroup = value) }
     }
 
-    /** Apply manifest defaults only on the pack's first successful installation. */
-    suspend fun applyNewPackDefaults(mediaType: MediaType, defaults: PackDefaults) = updateMutex.withLock {
+    /** Atomically resolves the settings used by a genuinely new/purged pack installation. */
+    suspend fun initializePackSettings(mediaType: MediaType, defaults: PackDefaults): MediaSettings =
+        updateMutex.withLock {
+        if (mediaType in initializedPackSettings) {
+            return@withLock _state.value.mediaSettings.getValue(mediaType)
+        }
         val updated = updateMediaSettings(_state.value.mediaSettings, mediaType) {
             it.copy(
+                showImages = defaults.showImages,
                 oneCoverPerGroup = defaults.oneCoverPerGroup,
-                stickyScore = defaults.stickyScoreHeader
+                stickyScore = defaults.stickyScoreHeader,
+                mergeEnabled = defaults.mergeEnabled ||
+                    (defaults.oneCoverPerGroup && mediaType.supportsMerge()),
+                elaborateRatingEnabled = defaults.ratingMode.equals("elaborate", ignoreCase = true)
             )
         }
+        initializedPackSettings = initializedPackSettings + mediaType
         context.dataStore.edit { prefs ->
             prefs[mediaSettingsKey] = encodeMediaSettingsSnapshot(updated)
+            prefs[initializedPackSettingsKey] = initializedPackSettings
+                .mapTo(mutableSetOf()) { it.toPackId().value }
         }
         val selected = updated.getValue(_state.value.activeMediaType)
         _state.value = _state.value.copy(
@@ -552,16 +659,23 @@ class SettingsRepository internal constructor(
             stickyScore = selected.stickyScore,
             settingsLoaded = true
         )
+        updated.getValue(mediaType)
     }
 
     suspend fun completeWelcome(showImages: Boolean, elaborateRating: Boolean) = updateMutex.withLock {
-        val updatedMediaSettings = applyOnboardingRatingStyle(
-            _state.value.mediaSettings,
-            elaborateRating
-        ).mapValues { (_, mediaSettings) -> mediaSettings.copy(showImages = showImages) }
+        val pendingDefaults = MediaType.entries.toSet() - initializedPackSettings
+        val updatedMediaSettings = _state.value.mediaSettings.mapValues { (mediaType, mediaSettings) ->
+            if (mediaType !in pendingDefaults) mediaSettings else mediaSettings.copy(
+                elaborateRatingEnabled = elaborateRating,
+                showImages = onboardingShowImagesDefault(mediaType, showImages)
+            )
+        }
+        initializedPackSettings = initializedPackSettings + pendingDefaults
         context.dataStore.edit { prefs ->
             prefs[showImagesKey] = showImages
             prefs[mediaSettingsKey] = encodeMediaSettingsSnapshot(updatedMediaSettings)
+            prefs[initializedPackSettingsKey] = initializedPackSettings
+                .mapTo(mutableSetOf()) { it.toPackId().value }
             mirrorLegacyAnimeSettings(
                 prefs,
                 updatedMediaSettings.getValue(MediaType.ANIME).toLegacyAnimeSettings()
@@ -569,7 +683,7 @@ class SettingsRepository internal constructor(
             prefs[hasCompletedWelcomeKey] = true
         }
         _state.value = _state.value.copy(
-            showImages = showImages,
+            showImages = updatedMediaSettings.getValue(_state.value.activeMediaType).showImages,
             mediaSettings = updatedMediaSettings,
             hasCompletedWelcome = true,
             settingsLoaded = true
@@ -627,8 +741,11 @@ class SettingsRepository internal constructor(
     suspend fun purgePackSettings(mediaType: MediaType) = updateMutex.withLock {
         val updatedSettings = resetMediaSettingsForCategory(_state.value.mediaSettings, mediaType)
         val updatedSortOrders = _state.value.catalogSortOrders + (mediaType to CatalogSortOrder.POPULARITY)
+        initializedPackSettings = initializedPackSettings - mediaType
         context.dataStore.edit { prefs ->
             prefs[mediaSettingsKey] = encodeMediaSettingsSnapshot(updatedSettings)
+            prefs[initializedPackSettingsKey] = initializedPackSettings
+                .mapTo(mutableSetOf()) { it.toPackId().value }
             prefs[catalogSortOrdersKey] = encodeCatalogSortOrders(updatedSortOrders)
             if (mediaType == MediaType.ANIME) {
                 mirrorLegacyAnimeSettings(prefs, updatedSettings.getValue(MediaType.ANIME).toLegacyAnimeSettings())
@@ -1023,13 +1140,30 @@ internal fun normalizeMediaSettingsSnapshot(
 }
 
 private fun normalizeMediaSettings(mediaType: MediaType, settings: MediaSettings): MediaSettings {
-    val categories = settings.ratingConfig.categories
+    val migrated = migrateUntouchedPreviousRatingDefaults(mediaType, settings)
+    val categories = migrated.ratingConfig.categories
         .filter { it.id.isNotBlank() }
         .distinctBy { it.id }
-    val config = settings.ratingConfig.copy(categories = categories)
+    val config = migrated.ratingConfig.copy(categories = categories)
+    return migrated.copy(
+        ratingConfig = config,
+        ratingProfiles = reconcileProfiles(migrated.ratingProfiles, categories, mediaType)
+    )
+}
+
+internal fun migrateUntouchedPreviousRatingDefaults(
+    mediaType: MediaType,
+    settings: MediaSettings
+): MediaSettings {
+    val previousConfig = PreviousRatingDefaults.config(mediaType) ?: return settings
+    val previousProfiles = PreviousRatingDefaults.profiles(mediaType) ?: return settings
+    if (settings.ratingConfig != previousConfig || settings.ratingProfiles != previousProfiles) {
+        return settings
+    }
+    val config = DefaultSettings.ratingConfig(mediaType)
     return settings.copy(
         ratingConfig = config,
-        ratingProfiles = reconcileProfiles(settings.ratingProfiles, categories, mediaType)
+        ratingProfiles = DefaultSettings.profiles(mediaType, config.categories)
     )
 }
 
@@ -1041,6 +1175,10 @@ internal fun updateMediaSettings(
     val current = settings[mediaType] ?: DefaultSettings.mediaSettings(mediaType)
     return settings + (mediaType to normalizeMediaSettings(mediaType, transform(current)))
 }
+
+/** Welcome's generic image choice intentionally cannot override Books' conservative default. */
+internal fun onboardingShowImagesDefault(mediaType: MediaType, requested: Boolean): Boolean =
+    requested && mediaType != MediaType.BOOK
 
 internal fun MediaSettings.withDefaultCategories(mediaType: MediaType): MediaSettings {
     val config = ratingConfig.copy(categories = DefaultSettings.ratingConfig(mediaType).categories)
