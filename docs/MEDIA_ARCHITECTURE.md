@@ -8,7 +8,7 @@ RankOffline's five official packs share one Android runtime model. This document
 | `mangas` | `manga` | `manga:mangadex:<uuid>` | explicit variant component |
 | `movies` | `movie` | `movie:tmdb:<id>` | TMDB collection ID |
 | `series` | `series` | `series:tmdb:<show>:season:<n>` | TMDB parent show ID |
-| `books` | `book` | `book:openlibrary:<WorkOLID>` | none |
+| `books` | `book` | `book:openlibrary:<WorkOLID>` | conservative explicitly verified Book-series groups |
 
 ## Shared runtime
 
@@ -28,4 +28,10 @@ Normal catalog replacement updates reference fields while preserving ratings, de
 
 ## Offline behavior
 
-Installed and imported packs are fully browsable, searchable, filterable, mergeable, rateable, and rankable without network access. Only an explicit cover download or remote discovery action may contact a provider. Switching Merge is a read-only local SQL operation.
+Installed and imported packs are fully browsable, searchable, filterable, mergeable, rateable, and rankable without network access. Only explicit/user-enabled cover retrieval (including installation-time Top-100) and archive
+installation may contact a provider; online title discovery has been removed. Switching Merge
+is a read-only local SQL operation. Series groups share the first ordered member's cover where
+One Cover per Group is enabled.
+
+A proposed 0.2.1 `RankOfflineAll` would be a virtual combined viewing scope, not an installable
+sixth pack or a separate rating namespace. It is not part of 0.2.
