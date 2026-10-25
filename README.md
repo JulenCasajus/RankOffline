@@ -160,7 +160,7 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing
   [manami-project](https://github.com/manami-project/anime-offline-database).
 - **Manga:** [MangaDex](https://mangadex.org) provides metadata, aliases,
   creator/tag relationships, conservative variant relations, and cover
-  references through bundled snapshots and explicit user-triggered discovery.
+  references through offline build-time catalog snapshots.
   RankOffline does not read or distribute chapters.
 - **Movies / Series:** [TMDB](https://www.themoviedb.org) provides metadata,
   canonical collection/season grouping, alternative titles, and poster
