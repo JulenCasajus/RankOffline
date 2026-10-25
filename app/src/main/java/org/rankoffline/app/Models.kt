@@ -3,6 +3,8 @@ package org.rankoffline.app
 import android.content.Context
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import java.math.BigDecimal
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -20,6 +22,7 @@ sealed interface UserMessage {
 data class Anime(
     val id: String,
     val title: String,
+    val mediaType: MediaType = MediaType.ANIME,
     val malId: Long? = null,
     val anilistId: Long? = null,
     val popularity: Int? = null,
@@ -36,12 +39,17 @@ data class Anime(
     val seasonYear: Int? = null,
     val startDate: String? = null,
     val studio: String? = null,
+    val genre: String? = null,
+    val filterCredit: String? = null,
     val groupId: String? = null,
     val groupType: String? = null,
     val rootAnimeId: String? = null,
+    val sharedCoverMediaId: String? = null,
     val memberCount: Int = 0,
     val ratedCount: Int = 0,
-    val derived: Boolean = false
+    val derived: Boolean = false,
+    /** Canonical title retained while Search temporarily presents a matching alias. */
+    val canonicalTitle: String? = null
 )
 
 enum class CatalogSortOrder { POPULARITY, POPULARITY_REVERSE, TITLE_ASC, TITLE_DESC }
@@ -92,6 +100,22 @@ internal fun metadataSubtitleSegments(format: String?, year: Int?, studio: Strin
 
 internal fun joinMetadataSubtitle(segments: List<String>): String = segments.joinToString(" · ")
 
+internal fun filterMetadataSubtitleSegments(
+    mediaType: MediaType,
+    genre: String?,
+    format: String?,
+    year: Int?,
+    credit: String?
+): List<String> = mediaType.officialSubtitleFields().mapNotNull { field ->
+    when (field) {
+        "genre", "subject" -> genre
+        "format" -> format
+        "year" -> year?.toString()
+        "studio", "author", "production_company", "network" -> credit
+        else -> null
+    }?.takeIf(String::isNotBlank)
+}
+
 data class GroupDetail(
     val group: AnimeGroupEntity,
     val members: List<Anime>,
@@ -99,12 +123,86 @@ data class GroupDetail(
     val derivedRating: DerivedGroupRating
 )
 
+data class GroupDetailUi(
+    val id: String,
+    val mediaType: MediaType,
+    val type: String,
+    val displayTitle: String,
+    val representativeMediaId: String?,
+    val members: List<Anime>,
+    val explicitFinalScore: Double?,
+    val derivedRating: DerivedGroupRating
+)
+
+fun GroupDetail.toUi(): GroupDetailUi = GroupDetailUi(
+    id = group.id,
+    mediaType = MediaType.ANIME,
+    type = group.type,
+    displayTitle = group.displayTitle,
+    representativeMediaId = group.rootAnimeId,
+    members = members,
+    explicitFinalScore = explicitRating?.finalScore,
+    derivedRating = derivedRating
+)
+
+fun MediaGroupDetail.toUi(): GroupDetailUi = GroupDetailUi(
+    id = group.id,
+    mediaType = group.mediaType,
+    type = group.groupType,
+    displayTitle = group.displayTitle,
+    representativeMediaId = group.representativeMediaId ?: members.firstOrNull()?.id,
+    members = members.map { MediaListEntry.Item(it).toAnimeDisplay() },
+    explicitFinalScore = explicitRating?.finalScore,
+    derivedRating = derivedRating
+)
+
 enum class AnimeListRowAction { RATE, GROUP_DETAILS }
 
 internal fun animeListRowAction(anime: Anime, memberCountClicked: Boolean): AnimeListRowAction =
     if (anime.groupId != null && memberCountClicked) AnimeListRowAction.GROUP_DETAILS else AnimeListRowAction.RATE
 
-fun Anime.coverTarget(): Anime = rootAnimeId?.let { copy(id = it, groupId = null, groupType = null) } ?: this
+internal fun usesGroupScoreLabel(isGroup: Boolean, memberCount: Int): Boolean =
+    isGroup && memberCount > 1
+
+internal fun Anime.usesGroupEntriesCoverSubtitle(): Boolean =
+    groupId != null && memberCount > 1
+
+fun Anime.coverTarget(oneCoverPerGroup: Boolean = false): Anime = when {
+    oneCoverPerGroup && sharedCoverMediaId != null -> copy(
+        id = sharedCoverMediaId,
+        remoteCoverUrl = null,
+        localCoverPath = localCoverPath.takeIf { id == sharedCoverMediaId },
+        coverResolutionState = if (id == sharedCoverMediaId) coverResolutionState
+            else CoverResolutionState.UNKNOWN,
+        groupId = null,
+        groupType = null,
+        rootAnimeId = null,
+        sharedCoverMediaId = null
+    )
+    groupId == null -> this
+    mediaType == MediaType.ANIME || mediaType == MediaType.MANGA || mediaType == MediaType.BOOK ->
+        rootAnimeId?.let { copy(id = it, groupId = null, groupType = null) } ?: this
+    else -> this
+}
+
+/** Physical owner of a cover path. Group rows for Movies/Series are not media_item rows. */
+enum class CoverStorageKind { GENERIC_ITEM, GENERIC_GROUP }
+
+data class CoverStorageIdentity(
+    val id: String,
+    val kind: CoverStorageKind
+)
+
+fun Anime.coverStorageIdentity(): CoverStorageIdentity = CoverStorageIdentity(
+    id = id,
+    kind = when {
+        supportsRemoteGroupCover() -> CoverStorageKind.GENERIC_GROUP
+        else -> CoverStorageKind.GENERIC_ITEM
+    }
+)
+
+internal fun Anime.supportsRemoteGroupCover(): Boolean =
+    groupId != null && mediaType in setOf(MediaType.MOVIE, MediaType.SERIES)
 
 data class DerivedGroupRating(
     val finalScore: Double?,
@@ -121,18 +219,32 @@ data class DerivedGroupRating(
     )
 }
 
-fun deriveGroupRating(
-    ratings: List<RatingEntity>,
-    scores: List<RatingScoreEntity>
+internal data class GroupRatingInput(
+    val id: String,
+    val finalScore: Double?,
+    val qualityScore: Double?,
+    val additiveScore: Double?
+)
+
+internal data class GroupRatingScoreInput(
+    val memberId: String,
+    val categoryId: String,
+    val score: Double?,
+    val applicable: Boolean
+)
+
+internal fun deriveGroupRatingFromInputs(
+    ratings: List<GroupRatingInput>,
+    scores: List<GroupRatingScoreInput>
 ): DerivedGroupRating {
     val rated = ratings.filter { it.finalScore?.isFinite() == true }
-    val ratedIds = rated.mapTo(mutableSetOf()) { it.animeId }
+    val ratedIds = rated.mapTo(mutableSetOf()) { it.id }
     fun Iterable<Double?>.averageOrNull(): Double? {
         val values = filterNotNull().filter(Double::isFinite)
         return values.takeIf { it.isNotEmpty() }?.average()
     }
     val categories = scores.asSequence()
-        .filter { it.animeId in ratedIds && it.applicable && it.score?.isFinite() == true }
+        .filter { it.memberId in ratedIds && it.applicable && it.score?.isFinite() == true }
         .groupBy { it.categoryId }
         .mapValues { (_, values) -> values.mapNotNull { it.score }.average() }
     return DerivedGroupRating(
@@ -143,6 +255,22 @@ fun deriveGroupRating(
         ratedCount = rated.size
     )
 }
+
+fun deriveGroupRating(
+    ratings: List<RatingEntity>,
+    scores: List<RatingScoreEntity>
+): DerivedGroupRating = deriveGroupRatingFromInputs(
+    ratings = ratings.map { GroupRatingInput(it.animeId, it.finalScore, it.qualityScore, it.additiveScore) },
+    scores = scores.map { GroupRatingScoreInput(it.animeId, it.categoryId, it.score, it.applicable) }
+)
+
+fun deriveMediaGroupRating(
+    ratings: List<MediaRatingEntity>,
+    scores: List<MediaRatingScoreEntity>
+): DerivedGroupRating = deriveGroupRatingFromInputs(
+    ratings = ratings.map { GroupRatingInput(it.mediaId, it.finalScore, it.qualityScore, it.additiveScore) },
+    scores = scores.map { GroupRatingScoreInput(it.mediaId, it.categoryId, it.score, it.applicable) }
+)
 
 fun Anime.rankingDisplayScore(sortOrder: RankingSortOrder): Double? = when (sortOrder) {
     RankingSortOrder.FINAL_SCORE -> finalScore
@@ -227,116 +355,41 @@ data class PopularAnimeEntry(
     val coverUrl: String?
 )
 
-data class CoverPreloadCandidate(val anime: Anime, val coverUrl: String?)
-
-data class CoverPreloadPlan(
-    val target: Int,
-    val existing: Int,
-    val pending: List<CoverPreloadCandidate>,
-    val unmatched: Int
-)
-
-object PopularCoverPlanner {
-    fun plan(entries: List<PopularAnimeEntry>, localAnime: List<Anime>, limit: Int): CoverPreloadPlan {
-        val selected = entries.take(limit.coerceAtLeast(0))
-        val byAnilist = localAnime.groupBy { it.anilistId }.filterKeys { it != null }
-        val byMal = localAnime.groupBy { it.malId }.filterKeys { it != null }
-        val incomingMalCounts = selected.mapNotNull { it.malId }.groupingBy { it }.eachCount()
-        val seenAnimeIds = mutableSetOf<String>()
-        var existing = 0
-        var unmatched = 0
-        val pending = buildList {
-            selected.forEach { entry ->
-                val anilistMatches = byAnilist[entry.anilistId].orEmpty()
-                val malId = entry.malId
-                val anime = if (anilistMatches.size == 1) {
-                    anilistMatches.single()
-                } else {
-                    val malMatches = malId?.let { byMal[it] }.orEmpty()
-                    malMatches.singleOrNull()?.takeIf { candidate ->
-                        malId != null && incomingMalCounts[malId] == 1 &&
-                            candidate.anilistId in listOf(null, entry.anilistId)
-                    }
-                }
-                when {
-                    anime == null -> unmatched++
-                    !seenAnimeIds.add(anime.id) -> Unit
-                    !anime.localCoverPath.isNullOrBlank() -> existing++
-                    else -> add(CoverPreloadCandidate(anime, entry.coverUrl))
-                }
-            }
-        }
-        return CoverPreloadPlan(selected.size, existing, pending, unmatched)
-    }
-}
-
 enum class CoverPreloadStatus {
     IDLE,
-    FETCHING_POPULARITY,
-    APPLYING_POPULARITY,
+    WAITING_FOR_COVERS,
+    PREPARING_COVER_LIST,
     DOWNLOADING_COVERS,
+    RETRYING_COVERS,
     COMPLETED,
+    CANCELLED,
     FAILED
 }
 
 val CoverPreloadStatus.isTerminal: Boolean
-    get() = this == CoverPreloadStatus.COMPLETED || this == CoverPreloadStatus.FAILED
+    get() = this == CoverPreloadStatus.COMPLETED || this == CoverPreloadStatus.CANCELLED ||
+        this == CoverPreloadStatus.FAILED
 
 data class CoverPreloadProgress(
+    val mediaType: MediaType? = null,
     val status: CoverPreloadStatus = CoverPreloadStatus.IDLE,
     val target: Int = 0,
-    val popularityProcessed: Int = 0,
     val processed: Int = 0,
     val existing: Int = 0,
     val downloaded: Int = 0,
+    val unavailable: Int = 0,
     val errors: Int = 0,
-    val popularityUpdated: Boolean = false,
     val message: UserMessage? = null
 ) {
     val isActive: Boolean get() = status in setOf(
-        CoverPreloadStatus.FETCHING_POPULARITY,
-        CoverPreloadStatus.APPLYING_POPULARITY,
-        CoverPreloadStatus.DOWNLOADING_COVERS
+        CoverPreloadStatus.WAITING_FOR_COVERS,
+        CoverPreloadStatus.PREPARING_COVER_LIST,
+        CoverPreloadStatus.DOWNLOADING_COVERS,
+        CoverPreloadStatus.RETRYING_COVERS
     )
-    val popularityFraction: Float
-        get() = if (target <= 0) 0f else (popularityProcessed.toFloat() / target).coerceIn(0f, 1f)
-    val fraction: Float get() = if (target <= 0) 0f else (processed.toFloat() / target).coerceIn(0f, 1f)
-}
-
-object TopUpdateProgress {
-    fun start(target: Int) = CoverPreloadProgress(
-        status = CoverPreloadStatus.FETCHING_POPULARITY,
-        target = target
-    )
-
-    fun popularityFetched(progress: CoverPreloadProgress, count: Int) = progress.copy(
-        popularityProcessed = count.coerceIn(0, progress.target)
-    )
-
-    fun applyingPopularity(progress: CoverPreloadProgress) = progress.copy(
-        status = CoverPreloadStatus.APPLYING_POPULARITY,
-        popularityProcessed = progress.target
-    )
-
-    fun downloadingCovers(
-        progress: CoverPreloadProgress,
-        processed: Int,
-        existing: Int,
-        errors: Int
-    ) = progress.copy(
-        status = CoverPreloadStatus.DOWNLOADING_COVERS,
-        popularityProcessed = progress.target,
-        popularityUpdated = true,
-        processed = processed,
-        existing = existing,
-        errors = errors
-    )
-
-    fun completed(progress: CoverPreloadProgress) = progress.copy(
-        status = CoverPreloadStatus.COMPLETED,
-        popularityProcessed = progress.target,
-        processed = progress.target
-    )
+    /** Verified local images. Attempts, failures and unavailable candidates never enter this count. */
+    val available: Int get() = (existing + downloaded).coerceAtMost(target.coerceAtLeast(0))
+    val fraction: Float get() = if (target <= 0) 0f else (available.toFloat() / target).coerceIn(0f, 1f)
 }
 
 fun CoverPreloadProgress.shouldClearAfterLeavingSettings(): Boolean =
@@ -426,6 +479,11 @@ fun normalizeHexColor(value: String): String? = value.trim().takeIf(HEX_COLOR_PA
 
 fun RatingCategory.withHexColor(value: String): RatingCategory? =
     normalizeHexColor(value)?.let { copy(color = it) }
+
+internal fun Color.toHexRgb(): String = "#%06X".format(toArgb() and 0x00FF_FFFF)
+
+internal fun RatingCategory.withThemeColor(value: Color): RatingCategory =
+    copy(color = value.toHexRgb())
 
 object ScoreCalculator {
     fun calculate(categoryScores: Map<String, Double?>, additiveScore: Double, config: RatingSystemConfig): ScoreResult {

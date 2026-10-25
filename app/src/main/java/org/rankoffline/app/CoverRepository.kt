@@ -29,7 +29,10 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
-class CoverRepository(context: Context, private val animeRepository: AnimeRepository) {
+class CoverRepository(
+    context: Context,
+    private val animeRepository: AnimeRepository
+) : CoverObservationSource {
     private val appContext = context.applicationContext
     private val resolvingAnime = ConcurrentHashMap.newKeySet<String>()
     private val downloadStates = ConcurrentHashMap<String, MutableStateFlow<CoverDownloadState>>()
@@ -42,16 +45,29 @@ class CoverRepository(context: Context, private val animeRepository: AnimeReposi
 
     suspend fun initialize() = withContext(Dispatchers.IO) { migrateLegacyCoverMetadata() }
 
-    fun observeLocalCoverPath(animeId: String): Flow<String?> =
-        animeRepository.observeLocalCoverPath(animeId).distinctUntilChanged()
+    override fun observeLocalCoverPath(mediaId: String): Flow<String?> =
+        animeRepository.observeLocalCoverPath(mediaId).distinctUntilChanged()
 
     fun immediateLocalCoverPath(animeId: String, databaseValue: String?): String? {
         val existing = localPathSnapshots.putIfAbsent(animeId, LocalPathSnapshot(databaseValue))
         return existing?.path ?: databaseValue
     }
 
-    fun observeDownloadState(animeId: String): StateFlow<CoverDownloadState> =
-        downloadStates.getOrPut(animeId) { MutableStateFlow(CoverDownloadState.IDLE) }.asStateFlow()
+    override fun observeDownloadState(mediaId: String): StateFlow<CoverDownloadState> =
+        downloadStates.getOrPut(mediaId) { MutableStateFlow(CoverDownloadState.IDLE) }.asStateFlow()
+
+    /**
+     * Drops process-local cover state after the Anime pack changes underneath this repository.
+     * Database flows will repopulate the current paths. Keeping a cached null here would otherwise
+     * hide a newly installed pack cover until the process is restarted.
+     */
+    fun invalidatePackRuntimeState() {
+        resolvingAnime.clear()
+        downloadStates.values.forEach { it.value = CoverDownloadState.IDLE }
+        downloadStates.clear()
+        localPathSnapshots.clear()
+        synchronized(memoryCache) { memoryCache.evictAll() }
+    }
 
     fun cachedBitmap(animeId: String, path: String): Bitmap? =
         synchronized(memoryCache) { memoryCache.get(cacheKey(animeId, path)) }

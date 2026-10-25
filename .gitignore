@@ -35,3 +35,29 @@ keystore.properties
 dist/
 *.apk
 *.aab
+
+# Provider tooling caches and local generated output
+tools/.cache/
+tools/tmdb/output/
+tools/mangadex/output/
+
+# RankOffline local temporary files
+/app/src/main/Archive.zip
+/app/src/main/res/icon_prompt.txt
+
+# Generated pack archives and local cache
+/tools/category_packs/.cache/
+/tools/category_packs/output/
+*.pack
+
+# Local AI assistant state
+.codex/
+.codex-tmp/
+
+# Additional private configuration
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.pem
+*.key

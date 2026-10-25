@@ -66,7 +66,35 @@ class GroupRatingTest {
         assertEquals("Series · Madhouse", joinMetadataSubtitle(metadataSubtitleSegments("Series", null, "Madhouse")))
         assertEquals("2023 · Madhouse", joinMetadataSubtitle(metadataSubtitleSegments(null, 2023, "Madhouse")))
         assertEquals("Series", joinMetadataSubtitle(metadataSubtitleSegments("Series", null, null)))
+        assertEquals("2023", joinMetadataSubtitle(metadataSubtitleSegments(null, 2023, null)))
         assertEquals("", joinMetadataSubtitle(metadataSubtitleSegments(null, null, null)))
+    }
+
+    @Test fun metadataSubtitleMatchesFilterOrderForEveryMediaType() {
+        assertEquals(
+            listOf("Action", "Series", "2023", "Madhouse"),
+            filterMetadataSubtitleSegments(MediaType.ANIME, "Action", "Series", 2023, "Madhouse")
+        )
+        for (mediaType in listOf(MediaType.MANGA, MediaType.SERIES, MediaType.MOVIE, MediaType.BOOK)) {
+            assertEquals(
+                listOf("Drama", "2024", "Credit"),
+                filterMetadataSubtitleSegments(mediaType, "Drama", "ignored", 2024, "Credit")
+            )
+        }
+    }
+
+    @Test fun groupScoreLabelRequiresAnActualMultiMemberGroup() {
+        assertEquals(true, usesGroupScoreLabel(isGroup = true, memberCount = 2))
+        assertEquals(false, usesGroupScoreLabel(isGroup = true, memberCount = 1))
+        assertEquals(false, usesGroupScoreLabel(isGroup = false, memberCount = 2))
+    }
+
+    @Test fun coverViewerUsesEntryLinkOnlyForActualMultiMemberGroups() {
+        val group = Anime(id = "group:1", title = "Group", groupId = "group:1", memberCount = 2)
+
+        assertEquals(true, group.usesGroupEntriesCoverSubtitle())
+        assertEquals(false, group.copy(memberCount = 1).usesGroupEntriesCoverSubtitle())
+        assertEquals(false, group.copy(groupId = null).usesGroupEntriesCoverSubtitle())
     }
 
     @Test fun groupRowRoutesMainAreaToRatingAndMemberCountToDetails() {

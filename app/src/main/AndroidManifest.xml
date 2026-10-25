@@ -1,26 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
-        android:icon="@mipmap/rankoffline_dark"
+        android:icon="@mipmap/rankoffline_default_blue"
+        android:roundIcon="@mipmap/rankoffline_default_blue"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
-        android:roundIcon="@mipmap/rankoffline_dark"
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.RankOffline">
         <activity
             android:name=".MainActivity"
-            android:exported="true" />
+            android:exported="true">
+        </activity>
         <activity-alias
-            android:name=".MainActivityDark"
+            android:name=".MainActivityDefaultBlack"
             android:enabled="true"
             android:exported="true"
-            android:icon="@mipmap/rankoffline_dark"
+            android:icon="@mipmap/rankoffline_default_blue"
             android:label="@string/app_name"
-            android:roundIcon="@mipmap/rankoffline_dark"
+            android:roundIcon="@mipmap/rankoffline_default_blue"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -28,12 +30,12 @@
             </intent-filter>
         </activity-alias>
         <activity-alias
-            android:name=".MainActivityBlue"
+            android:name=".MainActivityDefaultGlowBlue"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/rankoffline_blue"
+            android:icon="@mipmap/rankoffline_default_glow_blue"
             android:label="@string/app_name"
-            android:roundIcon="@mipmap/rankoffline_blue"
+            android:roundIcon="@mipmap/rankoffline_default_glow_blue"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -41,12 +43,12 @@
             </intent-filter>
         </activity-alias>
         <activity-alias
-            android:name=".MainActivityRed"
+            android:name=".MainActivityHimmelBlue"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/rankoffline_red"
+            android:icon="@mipmap/rankoffline_himmel_blue"
             android:label="@string/app_name"
-            android:roundIcon="@mipmap/rankoffline_red"
+            android:roundIcon="@mipmap/rankoffline_himmel_blue"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -54,12 +56,12 @@
             </intent-filter>
         </activity-alias>
         <activity-alias
-            android:name=".MainActivityGreen"
+            android:name=".MainActivityMaomaoGreen"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/rankoffline_green"
+            android:icon="@mipmap/rankoffline_maomao_green"
             android:label="@string/app_name"
-            android:roundIcon="@mipmap/rankoffline_green"
+            android:roundIcon="@mipmap/rankoffline_maomao_green"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -67,12 +69,51 @@
             </intent-filter>
         </activity-alias>
         <activity-alias
-            android:name=".MainActivityYellow"
+            android:name=".MainActivityMakiseRed"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/rankoffline_yellow"
+            android:icon="@mipmap/rankoffline_makise_red"
             android:label="@string/app_name"
-            android:roundIcon="@mipmap/rankoffline_yellow"
+            android:roundIcon="@mipmap/rankoffline_makise_red"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityZenitsuYellow"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/rankoffline_zenitsu_yellow"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/rankoffline_zenitsu_yellow"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityGutsBlack"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/rankoffline_guts_black"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/rankoffline_guts_black"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityKilluaWhite"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/rankoffline_killua_white"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/rankoffline_killua_white"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

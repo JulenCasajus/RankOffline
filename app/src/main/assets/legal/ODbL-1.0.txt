@@ -1,0 +1,9 @@
+Open Data Commons Open Database License (ODbL) 1.0
+
+Canonical licence text:
+https://opendatacommons.org/licenses/odbl/1-0/
+
+This notice applies to the AnimeAPI compiled database and to the separately
+bundled anime_aliases database derived from anime-offline-database. It does not
+apply to RankOffline application source code or automatically license provider
+images and other third-party content.

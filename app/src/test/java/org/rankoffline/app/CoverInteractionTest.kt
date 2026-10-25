@@ -44,6 +44,45 @@ class CoverInteractionTest {
     }
 
     @Test
+    fun tmdbGroupsKeepTheirOwnCoverTarget() {
+        val group = Anime(
+            id = "movie:tmdb:collection:10",
+            title = "Collection",
+            mediaType = MediaType.MOVIE,
+            groupId = "movie:tmdb:collection:10",
+            groupType = "COLLECTION",
+            rootAnimeId = "movie:tmdb:11"
+        )
+
+        assertEquals(group.id, group.coverTarget().id)
+        assertTrue(group.supportsRemoteGroupCover())
+        assertEquals(CoverStorageKind.GENERIC_GROUP, group.coverStorageIdentity().kind)
+        assertFalse(group.copy(mediaType = MediaType.MANGA).supportsRemoteGroupCover())
+        assertEquals(
+            CoverStorageKind.GENERIC_ITEM,
+            group.copy(mediaType = MediaType.MANGA).coverTarget().coverStorageIdentity().kind
+        )
+    }
+
+    @Test
+    fun sharedGroupCoverCanBeEnabledAndDisabledWithoutChangingStoredCover() {
+        val member = Anime(
+            id = "movie:tmdb:2",
+            title = "Second",
+            mediaType = MediaType.MOVIE,
+            localCoverPath = "/covers/second.webp",
+            sharedCoverMediaId = "movie:tmdb:1"
+        )
+
+        assertEquals(member.id, member.coverTarget(oneCoverPerGroup = false).id)
+        assertEquals("/covers/second.webp", member.coverTarget(false).localCoverPath)
+        val shared = member.coverTarget(oneCoverPerGroup = true)
+        assertEquals("movie:tmdb:1", shared.id)
+        assertEquals(null, shared.localCoverPath)
+        assertEquals("/covers/second.webp", member.localCoverPath)
+    }
+
+    @Test
     fun temporaryNetworkErrorsDoNotBecomeNotFound() {
         assertEquals(
             CoverResolutionState.UNKNOWN,
@@ -136,42 +175,53 @@ class CoverInteractionTest {
     }
 
     @Test
-    fun topUpdateStartsInPopularityPhaseWithoutCoverErrors() {
-        val progress = TopUpdateProgress.start(500)
-
-        assertEquals(CoverPreloadStatus.FETCHING_POPULARITY, progress.status)
-        assertEquals(0, progress.processed)
-        assertEquals(0, progress.errors)
-        assertFalse(progress.popularityUpdated)
+    fun httpCoverFailuresSeparatePermanentAbsenceFromTemporaryProviderErrors() {
+        assertEquals(
+            MediaCoverTransferResult.NOT_FOUND,
+            coverTransferFailureForHttpStatus(404)
+        )
+        assertEquals(
+            MediaCoverTransferResult.NOT_FOUND,
+            coverTransferFailureForHttpStatus(410)
+        )
+        assertEquals(
+            MediaCoverTransferResult.TEMPORARY_ERROR,
+            coverTransferFailureForHttpStatus(429)
+        )
+        assertEquals(
+            MediaCoverTransferResult.TEMPORARY_ERROR,
+            coverTransferFailureForHttpStatus(503)
+        )
+        assertEquals(null, coverTransferFailureForHttpStatus(200))
     }
 
     @Test
-    fun topUpdateMovesFromPopularityToCoversAndCompletes() {
-        val fetching = TopUpdateProgress.popularityFetched(TopUpdateProgress.start(500), 250)
-        assertEquals(250, fetching.popularityProcessed)
-        assertEquals(0.5f, fetching.popularityFraction, 0f)
+    fun visibleCoverProgressCountsOnlyVerifiedAvailableImages() {
+        val afterFailedAttempts = CoverPreloadProgress(
+            status = CoverPreloadStatus.RETRYING_COVERS,
+            target = 100,
+            processed = 100,
+            existing = 20,
+            downloaded = 70,
+            unavailable = 4,
+            errors = 6
+        )
 
-        val applying = TopUpdateProgress.applyingPopularity(fetching)
-        assertEquals(CoverPreloadStatus.APPLYING_POPULARITY, applying.status)
+        assertEquals(90, afterFailedAttempts.available)
+        assertEquals(0.9f, afterFailedAttempts.fraction, 0.0f)
 
-        val covers = TopUpdateProgress.downloadingCovers(applying, processed = 80, existing = 75, errors = 0)
-        assertEquals(CoverPreloadStatus.DOWNLOADING_COVERS, covers.status)
-        assertTrue(covers.popularityUpdated)
-        assertEquals(80, covers.processed)
-
-        val completed = TopUpdateProgress.completed(covers)
-        assertEquals(CoverPreloadStatus.COMPLETED, completed.status)
-        assertEquals(500, completed.processed)
+        val afterOneSuccessfulRetry = afterFailedAttempts.copy(downloaded = 71, errors = 5)
+        assertEquals(91, afterOneSuccessfulRetry.available)
+        assertEquals(0.91f, afterOneSuccessfulRetry.fraction, 0.0f)
     }
 
     @Test
-    fun popularityFailureDoesNotPretendCoversCompleted() {
-        val failed = TopUpdateProgress.start(100).copy(status = CoverPreloadStatus.FAILED)
-
-        assertFalse(failed.popularityUpdated)
-        assertEquals(0, failed.processed)
-        assertEquals(0, failed.errors)
-        assertTrue(failed.shouldClearAfterLeavingSettings())
+    fun animeMetadataHttpFailuresKeepTemporaryErrorsRetryable() {
+        assertEquals(AnimeMetadataHttpFailure.PERMANENT, animeMetadataHttpFailure(404))
+        assertEquals(AnimeMetadataHttpFailure.PERMANENT, animeMetadataHttpFailure(410))
+        assertEquals(AnimeMetadataHttpFailure.RETRYABLE, animeMetadataHttpFailure(429))
+        assertEquals(AnimeMetadataHttpFailure.RETRYABLE, animeMetadataHttpFailure(500))
+        assertEquals(AnimeMetadataHttpFailure.RETRYABLE, animeMetadataHttpFailure(503))
     }
 
     private fun cleanupAfterExit(progress: CoverPreloadProgress): CoverPreloadProgress =

@@ -1,5 +1,8 @@
 package org.rankoffline.app
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -16,15 +19,17 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -37,17 +42,21 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.ImeAction
@@ -58,90 +67,106 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
 
-private val Bg = Color(0xFF0A0B12)
-private val Panel = Color(0xFF121522)
-private val Cyan = Color(0xFF19D5E5)
-private val Magenta = Color(0xFFE04BCF)
-private val Coral = Color(0xFFFF675D)
-private val Orange = Color(0xFFFFAA55)
-private val Mint = Color(0xFF62D6C8)
-private val CategoryColorPalette = listOf(
-    "#EF5350", "#FF675D", "#FF8A65", "#FFAA55", "#FFD54F",
-    "#D4E157", "#81C784", "#4DB6AC", "#62D6C8", "#19D5E5",
-    "#4FC3F7", "#7EC7FF", "#5C6BC0", "#7986CB", "#9575CD",
-    "#BA68C8", "#E04BCF", "#F06292", "#EC407A", "#B0BEC5"
-)
-
+internal val Bg: Color
+    @Composable get() = MaterialTheme.colorScheme.background
+internal val Panel: Color
+    @Composable get() = MaterialTheme.colorScheme.surface
+internal val Cyan = Color(0xFF19D5E5)
+internal val Magenta = Color(0xFFE04BCF)
+internal val Coral = Color(0xFFFF675D)
+internal val Orange = Color(0xFFFFAA55)
+internal val Mint = Color(0xFF62D6C8)
 class MainActivity : AppCompatActivity() {
     private val appViewModel: RankOfflineViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme(
-                colorScheme = darkColorScheme(
-                    primary = Cyan,
-                    secondary = Magenta,
-                    background = Bg,
-                    surface = Panel
-                )
-            ) {
+            val settings by appViewModel.settings.collectAsState()
+            RankOfflineTheme(settings.activePalette) {
                 RankOfflineApp(appViewModel)
             }
         }
     }
 }
+private data class CoverViewerState(
+    val displayAnime: Anime,
+    val coverAnime: Anime
+)
 
 @Composable
 fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     var tab by remember { mutableIntStateOf(0) }
-    var coverViewerAnime by remember { mutableStateOf<Anime?>(null) }
+    var coverViewer by remember { mutableStateOf<CoverViewerState?>(null) }
     val settings by viewModel.settings.collectAsState()
     val ready by viewModel.ready.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val ratingEditor by viewModel.ratingEditor.collectAsState()
     val groupDetail by viewModel.groupDetail.collectAsState()
     val list by viewModel.searchResults.collectAsState()
+    val searchPageState by viewModel.searchPageState.collectAsState()
     val ranked by viewModel.ranking.collectAsState()
-    val query by viewModel.searchQuery.collectAsState()
-    val catalogSortOrder by viewModel.catalogSortOrder.collectAsState()
-    val catalogFilters by viewModel.catalogFilters.collectAsState()
-    val rankingFilters by viewModel.rankingFilters.collectAsState()
-    val rankingSortOrder by viewModel.rankingSortOrder.collectAsState()
-    val rankingSortDescending by viewModel.rankingSortDescending.collectAsState()
-    val rankingCategoryId by viewModel.rankingCategoryId.collectAsState()
+    val rankingResultState by viewModel.rankingResultState.collectAsState()
+    val searchState by viewModel.activeSearchState.collectAsState()
+    val rankingState by viewModel.activeRankingState.collectAsState()
+    val query = searchState.query
+    val catalogSortOrder = searchState.sortOrder
+    val catalogFilters = searchState.filters
+    val rankingFilters = rankingState.filters
+    val rankingSortOrder = rankingState.sortOrder
+    val rankingSortDescending = rankingState.descending
+    val rankingCategoryId = rankingState.categoryId
     val filterOptions by viewModel.filterOptions.collectAsState()
+    val genericFilterOptionsByMedia by viewModel.genericFilterOptions.collectAsState()
+    val catalogAvailabilityByMedia by viewModel.catalogAvailability.collectAsState()
+    val categoryPackStates by viewModel.categoryPackStates.collectAsState()
+    val categoryDownloadProgress by viewModel.categoryDownloadProgress.collectAsState()
+    val availableMediaTypes = categoryPackStates.values
+        .filter(CategoryPackState::available)
+        .mapTo(mutableSetOf(), CategoryPackState::mediaType)
+    val noInstalledPacks = availableMediaTypes.isEmpty()
+    val genericFilterOptions = genericFilterOptionsByMedia[settings.activeMediaType]
+        ?: GenericMediaFilterOptions()
+    val catalogAvailability = catalogAvailabilityByMedia[settings.activeMediaType]
+        ?: CatalogAvailability.UNAVAILABLE
     val catalogCount by viewModel.catalogCount.collectAsState()
-    val catalogListState = rememberLazyListState()
-    val rankingListState = rememberLazyListState()
-    var previousCatalogQuery by remember { mutableStateOf(query) }
-    var previousCatalogSort by remember { mutableStateOf(catalogSortOrder) }
-    var previousCatalogFilters by remember { mutableStateOf(catalogFilters) }
-    var pendingCatalogTopReset by remember { mutableStateOf(false) }
+    val catalogListStates = remember { MediaType.entries.associateWith { LazyListState() } }
+    val rankingListStates = remember { MediaType.entries.associateWith { LazyListState() } }
+    val catalogListState = catalogListStates.getValue(settings.activeMediaType)
+    val rankingListState = rankingListStates.getValue(settings.activeMediaType)
+    val previousCatalogStates = remember { mutableStateMapOf<MediaType, SearchUiState>() }
+    var pendingCatalogTopReset by remember { mutableStateOf<MediaType?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val appScope = rememberCoroutineScope()
+    var openCategorySettings by remember { mutableStateOf(false) }
+    var settingsRootRequest by remember { mutableStateOf(0) }
+    val routeUnavailableCategory: (MediaType) -> Unit = {
+        openCategorySettings = true
+        tab = 2
+    }
 
-    LaunchedEffect(query, catalogSortOrder, catalogFilters) {
-        val shouldReset = query != previousCatalogQuery ||
-            catalogSortOrder != previousCatalogSort ||
-            catalogFilters != previousCatalogFilters
-        previousCatalogQuery = query
-        previousCatalogSort = catalogSortOrder
-        previousCatalogFilters = catalogFilters
-        if (shouldReset) {
-            pendingCatalogTopReset = true
+    LaunchedEffect(settings.activeMediaType, searchState) {
+        val mediaType = settings.activeMediaType
+        val previous = previousCatalogStates.put(mediaType, searchState)
+        if (previous != null && previous != searchState) {
+            pendingCatalogTopReset = mediaType
             catalogListState.scrollToItem(0)
         }
     }
-    LaunchedEffect(list) {
-        if (pendingCatalogTopReset) {
+    LaunchedEffect(list, settings.activeMediaType) {
+        if (pendingCatalogTopReset == settings.activeMediaType) {
             catalogListState.scrollToItem(0)
-            pendingCatalogTopReset = false
+            pendingCatalogTopReset = null
         }
     }
 
@@ -151,19 +176,44 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
 
     if (!ready || !settings.settingsLoaded) {
         Box(Modifier.fillMaxSize().background(Bg), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Cyan)
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
         return
     }
 
-    coverViewerAnime?.let { anime ->
+    FirstRunOnboarding(
+        settings = settings,
+        categoryPacks = categoryPackStates,
+        downloadProgress = categoryDownloadProgress,
+        onWelcomeComplete = viewModel::completeWelcome,
+        onLanguageSelected = viewModel::updateLanguage,
+        onThemeSelected = viewModel::updateThemePalette,
+        onDownloadCategory = viewModel::downloadCategory,
+        onCancelCategoryCoverDownload = viewModel::cancelInitialCoverDownload,
+        onRemoveCategory = viewModel::removeCategoryCatalog,
+        onMediaTypeSelected = viewModel::updateActiveMediaType,
+        onOnboardingComplete = viewModel::completeOnboarding
+    )
+
+    coverViewer?.let { viewer ->
         CoverViewerDialog(
-            anime = anime,
+            coverAnime = viewer.coverAnime,
+            displayAnime = viewer.displayAnime,
             coverRepository = viewModel.coverRepository,
-            onDismiss = { coverViewerAnime = null },
+            genericCoverRepository = viewModel.genericCoverRepository,
+            genericGroupCoverRepository = viewModel.genericGroupCoverRepository,
+            onDismiss = { coverViewer = null },
+            onGroupDetails = if (viewer.displayAnime.usesGroupEntriesCoverSubtitle()) {
+                {
+                    coverViewer = null
+                    viewModel.openGroupDetails(viewer.displayAnime)
+                }
+            } else {
+                null
+            },
             onDeleteConfirmed = { onResult ->
-                viewModel.deleteDownloadedCover(anime) { deleted ->
-                    if (deleted) coverViewerAnime = null
+                viewModel.deleteDownloadedCover(viewer.coverAnime) { deleted ->
+                    if (deleted) coverViewer = null
                     onResult(deleted)
                 }
             }
@@ -173,11 +223,12 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     ratingEditor?.let { editor ->
         if (editor.draft == null) {
             Box(Modifier.fillMaxSize().background(Bg), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Cyan)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
             RatingScreen(
                 anime = editor.anime,
+                groupScore = usesGroupScoreLabel(editor.isGroup, editor.anime.memberCount),
                 initial = editor.draft,
                 settings = settings,
                 onBack = viewModel::closeRating,
@@ -197,12 +248,17 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         GroupDetailScreen(
             detail = detail,
             imagesEnabled = settings.showImages,
+            oneCoverPerGroup = settings.oneCoverPerGroup,
             coverRepository = viewModel.coverRepository,
+            genericCoverRepository = viewModel.genericCoverRepository,
+            genericGroupCoverRepository = viewModel.genericGroupCoverRepository,
             onBack = viewModel::closeGroup,
             onRate = viewModel::rateGroup,
             onMember = viewModel::openRating,
-            onCoverDownload = viewModel::downloadCover,
-            onCoverOpen = { coverViewerAnime = it }
+            onCoverDownload = { viewModel.downloadCover(it.coverTarget(settings.oneCoverPerGroup)) },
+            onCoverOpen = {
+                coverViewer = CoverViewerState(it, it.coverTarget(settings.oneCoverPerGroup))
+            }
         )
         return
     }
@@ -212,59 +268,175 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             NavigationBar(containerColor = Panel) {
-                NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text(stringResource(R.string.nav_anime)) })
-                NavigationBarItem(selected = tab == 1, onClick = { tab = 1 }, icon = { Icon(Icons.Default.EmojiEvents, null) }, label = { Text(stringResource(R.string.nav_ranking)) })
-                NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text(stringResource(R.string.nav_settings)) })
+                val navigationItemColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = MaterialTheme.colorScheme.primary
+                )
+                NavigationBarItem(selected = tab == 0, onClick = {
+                    if (bottomNavigationAction(tab, 0) == BottomNavigationAction.RESELECT) {
+                        appScope.launch { catalogListState.animateScrollToItem(0) }
+                    } else tab = 0
+                }, icon = { Icon(Icons.Default.Search, null) }, label = {
+                    Text(
+                        stringResource(
+                            searchNavigationLabelResource(
+                                noInstalledPacks,
+                                settings.activeMediaType
+                            )
+                        )
+                    )
+                }, colors = navigationItemColors)
+                NavigationBarItem(selected = tab == 1, onClick = {
+                    if (bottomNavigationAction(tab, 1) == BottomNavigationAction.RESELECT) {
+                        appScope.launch { rankingListState.animateScrollToItem(0) }
+                    } else tab = 1
+                }, icon = { Icon(Icons.Default.EmojiEvents, null) }, label = { Text(stringResource(R.string.nav_ranking)) }, colors = navigationItemColors)
+                NavigationBarItem(selected = tab == 2, onClick = {
+                    if (bottomNavigationAction(tab, 2) == BottomNavigationAction.RESELECT) {
+                        settingsRootRequest++
+                    } else {
+                        tab = 2
+                    }
+                }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text(stringResource(R.string.nav_settings)) }, colors = navigationItemColors)
             }
         }
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                0 -> AnimeListScreen(
+                0 -> if (noInstalledPacks) NoInstalledPacksScreen(
+                    title = stringResource(R.string.app_name),
+                    activeMediaType = settings.activeMediaType,
+                    onMediaTypeSelected = viewModel::updateActiveMediaType,
+                    onUnavailableMediaType = routeUnavailableCategory
+                ) else AnimeListScreen(
                     list = list,
                     listState = catalogListState,
+                    activeMediaType = settings.activeMediaType,
+                    availableMediaTypes = availableMediaTypes,
+                    onMediaTypeSelected = viewModel::updateActiveMediaType,
+                    onUnavailableMediaType = routeUnavailableCategory,
                     query = query,
                     imagesEnabled = settings.showImages,
+                    oneCoverPerGroup = settings.oneCoverPerGroup,
                     coverRepository = viewModel.coverRepository,
+                    genericCoverRepository = viewModel.genericCoverRepository,
+                    genericGroupCoverRepository = viewModel.genericGroupCoverRepository,
                     onQueryChange = viewModel::setSearchQuery,
                     sortOrder = catalogSortOrder,
                     onSortOrderChange = viewModel::setCatalogSortCriterion,
                     onSortDirectionToggle = viewModel::toggleCatalogSortDirection,
                     filters = catalogFilters,
+                    genericFilters = searchState.genericFilters,
                     mergeSeasonsEnabled = settings.mergeSeasonsEnabled,
                     onMergeSeasonsChange = viewModel::updateMergeSeasonsEnabled,
                     filterOptions = filterOptions,
+                    genericFilterOptions = genericFilterOptions,
                     onFiltersChange = viewModel::setCatalogFilters,
+                    onGenericFiltersChange = viewModel::setGenericCatalogFilters,
                     onAnime = viewModel::openAnime,
                     onGroupDetails = viewModel::openGroupDetails,
-                    onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
-                    onCoverOpen = { coverViewerAnime = it.coverTarget() },
-                    errorMessage = errorMessage
+                    onCoverDownload = { viewModel.downloadCover(it.coverTarget(settings.oneCoverPerGroup)) },
+                    onCoverOpen = {
+                        coverViewer = CoverViewerState(it, it.coverTarget(settings.oneCoverPerGroup))
+                    },
+                    errorMessage = errorMessage,
+                    catalogAvailability = catalogAvailability,
+                    listLoading = searchPageState.mediaType != settings.activeMediaType ||
+                        searchPageState.loadingInitial,
+                    listFailed = searchPageState.mediaType == settings.activeMediaType &&
+                        searchPageState.failed,
+                    loadingMore = searchPageState.loadingMore,
+                    hasMore = searchPageState.hasMore,
+                    onLoadMore = viewModel::requestNextSearchPage
                 )
-                1 -> RankingScreen(
+                1 -> if (noInstalledPacks) NoInstalledPacksScreen(
+                    title = stringResource(R.string.ranking_title),
+                    activeMediaType = settings.activeMediaType,
+                    onMediaTypeSelected = viewModel::updateActiveMediaType,
+                    onUnavailableMediaType = routeUnavailableCategory
+                ) else RankingScreen(
                     ranked = ranked,
                     listState = rankingListState,
+                    activeMediaType = settings.activeMediaType,
+                    availableMediaTypes = availableMediaTypes,
+                    onMediaTypeSelected = viewModel::updateActiveMediaType,
+                    onUnavailableMediaType = routeUnavailableCategory,
                     imagesEnabled = settings.showImages,
+                    oneCoverPerGroup = settings.oneCoverPerGroup,
                     coverRepository = viewModel.coverRepository,
+                    genericCoverRepository = viewModel.genericCoverRepository,
+                    genericGroupCoverRepository = viewModel.genericGroupCoverRepository,
                     filters = rankingFilters,
+                    genericFilters = rankingState.genericFilters,
                     mergeSeasonsEnabled = settings.mergeSeasonsEnabled,
                     onMergeSeasonsChange = viewModel::updateMergeSeasonsEnabled,
                     filterOptions = filterOptions,
+                    genericFilterOptions = genericFilterOptions,
                     sortOrder = rankingSortOrder,
                     sortDescending = rankingSortDescending,
                     categoryId = rankingCategoryId,
                     categories = settings.ratingConfig.categories,
                     onFiltersChange = viewModel::setRankingFilters,
+                    onGenericFiltersChange = viewModel::setGenericRankingFilters,
                     onSortOrderChange = viewModel::setRankingSortOrder,
                     onSortDirectionToggle = viewModel::toggleRankingSortDirection,
                     onCategorySort = viewModel::setRankingCategory,
                     onAnime = viewModel::openAnime,
                     onGroupDetails = viewModel::openGroupDetails,
-                    onCoverDownload = { viewModel.downloadCover(it.coverTarget()) },
-                    onCoverOpen = { coverViewerAnime = it.coverTarget() }
+                    onCoverDownload = { viewModel.downloadCover(it.coverTarget(settings.oneCoverPerGroup)) },
+                    onCoverOpen = {
+                        coverViewer = CoverViewerState(it, it.coverTarget(settings.oneCoverPerGroup))
+                    },
+                    catalogAvailability = catalogAvailability,
+                    listLoading = rankingResultState.mediaType != settings.activeMediaType ||
+                        rankingResultState.loading,
+                    listFailed = rankingResultState.mediaType == settings.activeMediaType &&
+                        rankingResultState.failed
                 )
-                else -> SettingsScreen(settings, catalogCount, viewModel)
+                else -> SettingsScreen(
+                    settings,
+                    catalogCount,
+                    categoryPackStates,
+                    availableMediaTypes,
+                    categoryDownloadProgress,
+                    openCategorySettings,
+                    onCategorySettingsOpened = { openCategorySettings = false },
+                    rootRequest = settingsRootRequest,
+                    viewModel = viewModel
+                )
             }
+        }
+    }
+}
+
+internal fun searchNavigationLabelResource(
+    noInstalledPacks: Boolean,
+    activeMediaType: MediaType
+): Int = if (noInstalledPacks) R.string.nav_search else activeMediaType.labelResource
+@Composable
+private fun NoInstalledPacksScreen(
+    title: String,
+    activeMediaType: MediaType,
+    onMediaTypeSelected: (MediaType) -> Unit,
+    onUnavailableMediaType: (MediaType) -> Unit
+) {
+    Column(Modifier.fillMaxSize().background(Bg).padding(16.dp)) {
+        MediaScreenTitle(
+            title = title,
+            activeMediaType = activeMediaType,
+            onMediaTypeSelected = onMediaTypeSelected,
+            availableMediaTypes = emptySet(),
+            onDownloadPack = { onUnavailableMediaType(activeMediaType) },
+            noPacksInstalled = true
+        )
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                text = stringResource(R.string.packs_empty_invitation),
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(24.dp)
+            )
         }
     }
 }
@@ -273,34 +445,76 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
 private fun AnimeListScreen(
     list: List<Anime>,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    activeMediaType: MediaType,
+    availableMediaTypes: Set<MediaType>,
+    onMediaTypeSelected: (MediaType) -> Unit,
+    onUnavailableMediaType: (MediaType) -> Unit,
     query: String,
     imagesEnabled: Boolean,
-    coverRepository: CoverRepository,
+    oneCoverPerGroup: Boolean,
+    coverRepository: CoverBitmapCache,
+    genericCoverRepository: GenericMediaCoverRepository? = null,
+    genericGroupCoverRepository: GenericMediaGroupCoverRepository? = null,
     onQueryChange: (String) -> Unit,
     sortOrder: CatalogSortOrder,
     onSortOrderChange: (CatalogSortOrder) -> Unit,
     onSortDirectionToggle: () -> Unit,
     filters: AnimeFilters,
+    genericFilters: GenericMediaFilters,
     mergeSeasonsEnabled: Boolean,
     onMergeSeasonsChange: (Boolean) -> Unit,
     filterOptions: AnimeFilterOptions,
+    genericFilterOptions: GenericMediaFilterOptions,
     onFiltersChange: (AnimeFilters) -> Unit,
+    onGenericFiltersChange: (GenericMediaFilters) -> Unit,
     onAnime: (Anime) -> Unit,
     onGroupDetails: (Anime) -> Unit,
     onCoverDownload: (Anime) -> Unit,
     onCoverOpen: (Anime) -> Unit,
-    errorMessage: UserMessage?
+    errorMessage: UserMessage?,
+    catalogAvailability: CatalogAvailability,
+    listLoading: Boolean,
+    listFailed: Boolean,
+    loadingMore: Boolean,
+    hasMore: Boolean,
+    onLoadMore: () -> Unit
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val visibleLocalItems = list
 
-    Column(Modifier.fillMaxSize().background(Bg).padding(16.dp)) {
-        Text("RankOffline", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+    LaunchedEffect(listState, visibleLocalItems.size, hasMore, loadingMore) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+            .map { lastVisible ->
+                visibleLocalItems.isNotEmpty() && lastVisible >= visibleLocalItems.lastIndex - 5
+            }
+            .distinctUntilChanged()
+            .collect { nearEnd ->
+                if (nearEnd && hasMore && !loadingMore) onLoadMore()
+            }
+    }
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Bg)
+            .dismissFocusOnUnconsumedTap(focusManager)
+            .padding(16.dp)
+    ) {
+        MediaScreenTitle(
+            title = stringResource(R.string.app_name),
+            activeMediaType = activeMediaType,
+            onMediaTypeSelected = onMediaTypeSelected,
+            availableMediaTypes = availableMediaTypes,
+            onDownloadPack = { onUnavailableMediaType(activeMediaType) }
+        )
         Spacer(Modifier.height(10.dp))
         ListActionRow(
+            mergeLabel = activeMediaType.mergeLabelResource?.let { stringResource(it) },
             mergeSeasonsEnabled = mergeSeasonsEnabled,
             onMergeSeasonsChange = onMergeSeasonsChange,
-            activeFilterCount = filters.activeCount,
+            activeFilterCount = if (activeMediaType == MediaType.ANIME) filters.activeCount
+            else genericFilters.activeCount,
             sortLabel = sortOrder.criterionLabel(),
             sortReversed = sortOrder.isReversed,
             onFilters = { showFilters = true },
@@ -311,7 +525,7 @@ private fun AnimeListScreen(
                     expanded = sortMenuExpanded,
                     onDismissRequest = { sortMenuExpanded = false }
                 ) {
-                    listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC).forEach { option ->
+                    activeMediaType.catalogSortCriteria().forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option.criterionLabel()) },
                             onClick = {
@@ -322,7 +536,9 @@ private fun AnimeListScreen(
                     }
                 }
         }
-        errorMessage?.let { Text(it.resolve(LocalContext.current), color = Coral, fontSize = 13.sp) }
+        errorMessage?.let {
+            Text(it.resolve(LocalContext.current), color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+        }
         Spacer(Modifier.height(14.dp))
         OutlinedTextField(
             value = query,
@@ -330,31 +546,73 @@ private fun AnimeListScreen(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             leadingIcon = { Icon(Icons.Default.Search, null) },
-            placeholder = { Text(stringResource(R.string.search_anime_hint)) }
+            trailingIcon = if (query.isNotEmpty()) {
+                {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(
+                            Icons.Default.Clear,
+                            contentDescription = stringResource(R.string.search_clear)
+                        )
+                    }
+                }
+            } else {
+                null
+            },
+            placeholder = { Text(stringResource(R.string.search_catalog_hint)) }
         )
         Spacer(Modifier.height(12.dp))
         LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(list, key = { it.id }) { anime ->
+            items(visibleLocalItems, key = { it.id }) { anime ->
                 AnimeListRow(
                     anime,
                     imagesEnabled,
+                    oneCoverPerGroup,
                     coverRepository,
+                    genericCoverRepository,
+                    genericGroupCoverRepository,
                     onCoverDownload = { onCoverDownload(anime) },
                     onCoverOpen = { onCoverOpen(anime) },
                     onClick = { onAnime(anime) },
                     onGroupDetails = { onGroupDetails(anime) }
                 )
             }
-            if (list.isEmpty()) item { Text(stringResource(R.string.no_search_results), color = Color.Gray, modifier = Modifier.padding(20.dp)) }
+            if (visibleLocalItems.isEmpty()) item {
+                val emptyText = if (listLoading) {
+                    R.string.loading_list
+                } else if (listFailed) {
+                    R.string.catalog_unavailable_error
+                } else when (catalogAvailability) {
+                    CatalogAvailability.LOADING -> R.string.catalog_loading
+                    CatalogAvailability.UNAVAILABLE -> R.string.catalog_not_available_yet
+                    CatalogAvailability.ERROR -> R.string.catalog_unavailable_error
+                    CatalogAvailability.AVAILABLE -> R.string.no_search_results
+                }
+                Text(stringResource(emptyText), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(20.dp))
+            }
+            if (loadingMore) item(key = "search-loading-more") {
+                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                }
+            }
         }
     }
     if (showFilters) {
-        AnimeFiltersDialog(
-            current = filters,
-            options = filterOptions,
-            onDismiss = { showFilters = false },
-            onApply = { onFiltersChange(it); showFilters = false }
-        )
+        if (activeMediaType != MediaType.ANIME) {
+            GenericMediaFiltersDialog(
+                mediaType = activeMediaType,
+                current = genericFilters,
+                options = genericFilterOptions,
+                onDismiss = { showFilters = false },
+                onApply = { onGenericFiltersChange(it); showFilters = false }
+            )
+        } else {
+            AnimeFiltersDialog(
+                current = filters,
+                options = filterOptions,
+                onDismiss = { showFilters = false },
+                onApply = { onFiltersChange(it); showFilters = false }
+            )
+        }
     }
 }
 
@@ -362,24 +620,37 @@ private fun AnimeListScreen(
 private fun RankingScreen(
     ranked: List<Anime>,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    activeMediaType: MediaType,
+    availableMediaTypes: Set<MediaType>,
+    onMediaTypeSelected: (MediaType) -> Unit,
+    onUnavailableMediaType: (MediaType) -> Unit,
     imagesEnabled: Boolean,
-    coverRepository: CoverRepository,
+    oneCoverPerGroup: Boolean,
+    coverRepository: CoverBitmapCache,
+    genericCoverRepository: GenericMediaCoverRepository? = null,
+    genericGroupCoverRepository: GenericMediaGroupCoverRepository? = null,
     filters: AnimeFilters,
+    genericFilters: GenericMediaFilters,
     mergeSeasonsEnabled: Boolean,
     onMergeSeasonsChange: (Boolean) -> Unit,
     filterOptions: AnimeFilterOptions,
+    genericFilterOptions: GenericMediaFilterOptions,
     sortOrder: RankingSortOrder,
     sortDescending: Boolean,
     categoryId: String?,
     categories: List<RatingCategory>,
     onFiltersChange: (AnimeFilters) -> Unit,
+    onGenericFiltersChange: (GenericMediaFilters) -> Unit,
     onSortOrderChange: (RankingSortOrder) -> Unit,
     onSortDirectionToggle: () -> Unit,
     onCategorySort: (String) -> Unit,
     onAnime: (Anime) -> Unit,
     onGroupDetails: (Anime) -> Unit,
     onCoverDownload: (Anime) -> Unit,
-    onCoverOpen: (Anime) -> Unit
+    onCoverOpen: (Anime) -> Unit,
+    catalogAvailability: CatalogAvailability,
+    listLoading: Boolean,
+    listFailed: Boolean
 ) {
     var showFilters by remember { mutableStateOf(false) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -390,12 +661,20 @@ private fun RankingScreen(
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         item {
-            Text(stringResource(R.string.ranking_title), fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            MediaScreenTitle(
+                title = stringResource(R.string.ranking_title),
+                activeMediaType = activeMediaType,
+                onMediaTypeSelected = onMediaTypeSelected,
+                availableMediaTypes = availableMediaTypes,
+                onDownloadPack = { onUnavailableMediaType(activeMediaType) }
+            )
             Spacer(Modifier.height(10.dp))
             ListActionRow(
+                mergeLabel = activeMediaType.mergeLabelResource?.let { stringResource(it) },
                 mergeSeasonsEnabled = mergeSeasonsEnabled,
                 onMergeSeasonsChange = onMergeSeasonsChange,
-                activeFilterCount = filters.activeCount,
+                activeFilterCount = if (activeMediaType == MediaType.ANIME) filters.activeCount
+                else genericFilters.activeCount,
                 sortLabel = rankingSortLabel(sortOrder, categoryId, categories),
                 sortReversed = !sortDescending,
                 onFilters = { showFilters = true },
@@ -412,7 +691,7 @@ private fun RankingScreen(
                         HorizontalDivider()
                         Text(
                             stringResource(R.string.sort_category_score),
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
@@ -429,13 +708,28 @@ private fun RankingScreen(
             val top3 = ranked.take(3)
             val rest = ranked.drop(3)
             if (top3.isNotEmpty()) {
-                item { Top3Podium(top3, sortOrder, coverRepository, onCoverDownload, onCoverOpen, onAnime) }
+                item {
+                    Top3Podium(
+                        top3,
+                        sortOrder,
+                        oneCoverPerGroup,
+                        coverRepository,
+                        genericCoverRepository,
+                        genericGroupCoverRepository,
+                        onCoverDownload,
+                        onCoverOpen,
+                        onAnime
+                    )
+                }
             }
             itemsIndexed(rest, key = { _, anime -> anime.id }) { index, anime ->
                 AnimeListRow(
                     anime,
                     true,
+                    oneCoverPerGroup,
                     coverRepository,
+                    genericCoverRepository,
+                    genericGroupCoverRepository,
                     rank = index + 4,
                     rankingSortOrder = sortOrder,
                     onCoverDownload = { onCoverDownload(anime) },
@@ -445,14 +739,17 @@ private fun RankingScreen(
                 )
             }
             if (rest.isEmpty() && top3.isEmpty()) {
-                item { Text(stringResource(R.string.no_saved_ratings), color = Color.Gray, modifier = Modifier.padding(20.dp)) }
+                item { EmptyRankingMessage(catalogAvailability, listLoading, listFailed) }
             }
         } else {
             itemsIndexed(ranked, key = { _, anime -> anime.id }) { index, anime ->
                 AnimeListRow(
                     anime,
                     false,
+                    oneCoverPerGroup,
                     coverRepository,
+                    genericCoverRepository,
+                    genericGroupCoverRepository,
                     rank = index + 1,
                     rankingSortOrder = sortOrder,
                     onCoverDownload = { onCoverDownload(anime) },
@@ -462,22 +759,33 @@ private fun RankingScreen(
                 )
             }
             if (ranked.isEmpty()) {
-                item { Text(stringResource(R.string.no_saved_ratings), color = Color.Gray, modifier = Modifier.padding(20.dp)) }
+                item { EmptyRankingMessage(catalogAvailability, listLoading, listFailed) }
             }
         }
     }
     if (showFilters) {
-        AnimeFiltersDialog(
-            current = filters,
-            options = filterOptions,
-            onDismiss = { showFilters = false },
-            onApply = { onFiltersChange(it); showFilters = false }
-        )
+        if (activeMediaType != MediaType.ANIME) {
+            GenericMediaFiltersDialog(
+                mediaType = activeMediaType,
+                current = genericFilters,
+                options = genericFilterOptions,
+                onDismiss = { showFilters = false },
+                onApply = { onGenericFiltersChange(it); showFilters = false }
+            )
+        } else {
+            AnimeFiltersDialog(
+                current = filters,
+                options = filterOptions,
+                onDismiss = { showFilters = false },
+                onApply = { onFiltersChange(it); showFilters = false }
+            )
+        }
     }
 }
 
 @Composable
 private fun ListActionRow(
+    mergeLabel: String?,
     mergeSeasonsEnabled: Boolean,
     onMergeSeasonsChange: (Boolean) -> Unit,
     activeFilterCount: Int,
@@ -488,7 +796,6 @@ private fun ListActionRow(
     onSortDirectionToggle: () -> Unit,
     sortMenu: @Composable () -> Unit
 ) {
-    val mergeLabel = stringResource(R.string.merge_seasons)
     val filterLabel = if (activeFilterCount > 0) stringResource(R.string.filters_active, activeFilterCount)
     else stringResource(R.string.filters_title)
     val sortDirectionDescription = stringResource(R.string.sort_action)
@@ -499,9 +806,9 @@ private fun ListActionRow(
         val extraWidth = with(density) { 8.dp.toPx() }
         val minimumWidth = with(density) { 40.dp.toPx() }
         val directionWidth = with(density) { 49.dp.toPx() }
-        listOf(mergeLabel, filterLabel, sortLabel).mapIndexed { index, label ->
+        listOfNotNull(mergeLabel, filterLabel, sortLabel).mapIndexed { index, label ->
             maxOf(textMeasurer.measure(label, style = textStyle, maxLines = 1).size.width + extraWidth, minimumWidth)
-                .let { if (index == 2) it + directionWidth else it }
+                .let { if (index == listOfNotNull(mergeLabel, filterLabel, sortLabel).lastIndex) it + directionWidth else it }
         }
     }
     Row(
@@ -509,20 +816,23 @@ private fun ListActionRow(
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CompactActionButton(
-            label = mergeLabel,
-            selected = mergeSeasonsEnabled,
-            onClick = { onMergeSeasonsChange(!mergeSeasonsEnabled) },
-            modifier = Modifier.weight(buttonWeights[0])
-        )
+        var weightIndex = 0
+        if (mergeLabel != null) {
+            CompactActionButton(
+                label = mergeLabel,
+                selected = mergeSeasonsEnabled,
+                onClick = { onMergeSeasonsChange(!mergeSeasonsEnabled) },
+                modifier = Modifier.weight(buttonWeights[weightIndex++])
+            )
+        }
         CompactActionButton(
             label = filterLabel,
             selected = activeFilterCount > 0,
             onClick = onFilters,
-            modifier = Modifier.weight(buttonWeights[1])
+            modifier = Modifier.weight(buttonWeights[weightIndex++])
         )
         Surface(
-            modifier = Modifier.weight(buttonWeights[2]).height(48.dp),
+            modifier = Modifier.weight(buttonWeights[weightIndex]).height(48.dp),
             shape = RoundedCornerShape(12.dp),
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -557,14 +867,14 @@ private fun ListActionRow(
                     modifier = Modifier
                         .width(48.dp)
                         .fillMaxHeight()
-                        .background(Cyan.copy(alpha = 0.08f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
                         .clickable(onClick = onSortDirectionToggle)
                         .semantics { contentDescription = sortDirectionDescription },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         if (sortReversed) "↑" else "↓",
-                        color = Cyan,
+                        color = MaterialTheme.colorScheme.primary,
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -585,10 +895,10 @@ private fun CompactActionButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp),
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, if (selected) Cyan else MaterialTheme.colorScheme.outline),
+        border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = if (selected) Cyan.copy(alpha = 0.18f) else Color.Transparent,
-            contentColor = if (selected) Cyan else MaterialTheme.colorScheme.onSurface
+            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent,
+            contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         ),
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
     ) {
@@ -611,11 +921,11 @@ private fun groupFormatLabel(format: String): String = when (format) {
     else -> formatDisplayName(format)
 }
 
-private fun Anime.localizedDisplayTitle(): String = title
+internal fun Anime.localizedDisplayTitle(): String = title
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AnimeTopAppBar(
+internal fun AnimeTopAppBar(
     title: String,
     onBack: () -> Unit,
     actions: @Composable RowScope.() -> Unit = {}
@@ -638,9 +948,12 @@ private fun AnimeTopAppBar(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun GroupDetailScreen(
-    detail: GroupDetail,
+    detail: GroupDetailUi,
     imagesEnabled: Boolean,
-    coverRepository: CoverRepository,
+    oneCoverPerGroup: Boolean,
+    coverRepository: CoverBitmapCache,
+    genericCoverRepository: GenericMediaCoverRepository? = null,
+    genericGroupCoverRepository: GenericMediaGroupCoverRepository? = null,
     onBack: () -> Unit,
     onRate: (Boolean) -> Unit,
     onMember: (Anime) -> Unit,
@@ -648,9 +961,9 @@ private fun GroupDetailScreen(
     onCoverOpen: (Anime) -> Unit
 ) {
     BackHandler(onBack = onBack)
-    var showDraftChoice by remember(detail.group.id) { mutableStateOf(false) }
-    val explicit = detail.explicitRating
-    val shown = explicit?.finalScore ?: detail.derivedRating.finalScore
+    var showDraftChoice by remember(detail.id) { mutableStateOf(false) }
+    val explicit = detail.explicitFinalScore
+    val shown = explicit ?: detail.derivedRating.finalScore
     val requestRating = {
         if (explicit == null && detail.derivedRating.ratedCount > 0) showDraftChoice = true
         else onRate(false)
@@ -658,7 +971,7 @@ private fun GroupDetailScreen(
     Scaffold(
         containerColor = Bg,
         topBar = {
-            AnimeTopAppBar(detail.group.displayTitle, onBack)
+            AnimeTopAppBar(detail.displayTitle, onBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().padding(horizontal = 16.dp)) {
@@ -683,10 +996,10 @@ private fun GroupDetailScreen(
                             Text(
                                 stringResource(
                                     R.string.group_format_summary,
-                                    groupFormatLabel(detail.group.type),
+                                    groupFormatLabel(detail.type),
                                     detail.members.size
                                 ),
-                                color = Color.LightGray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 stringResource(
@@ -694,11 +1007,11 @@ private fun GroupDetailScreen(
                                     detail.derivedRating.ratedCount,
                                     detail.members.size
                                 ),
-                                color = Color.LightGray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Spacer(Modifier.width(12.dp))
-                        ScoreValueBadge(explicit.finalScore, requestRating)
+                        ScoreValueBadge(explicit, requestRating)
                     }
                 }
             } else {
@@ -724,10 +1037,10 @@ private fun GroupDetailScreen(
                             Text(
                                 stringResource(
                                     R.string.group_format_summary,
-                                    groupFormatLabel(detail.group.type),
+                                    groupFormatLabel(detail.type),
                                     detail.members.size
                                 ),
-                                color = Color.LightGray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 stringResource(
@@ -735,7 +1048,7 @@ private fun GroupDetailScreen(
                                     detail.derivedRating.ratedCount,
                                     detail.members.size
                                 ),
-                                color = if (shown == null) Color.LightGray else Mint
+                                color = if (shown == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.secondary
                             )
                         }
                         Spacer(Modifier.width(12.dp))
@@ -748,10 +1061,10 @@ private fun GroupDetailScreen(
                                 onClick = requestRating,
                                 modifier = Modifier.heightIn(min = 40.dp),
                                 shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Cyan),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Cyan.copy(alpha = 0.12f),
-                                    contentColor = Cyan
+                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    contentColor = MaterialTheme.colorScheme.primary
                                 ),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                             ) {
@@ -779,7 +1092,10 @@ private fun GroupDetailScreen(
                     AnimeListRow(
                         anime = member,
                         showImages = imagesEnabled,
+                        oneCoverPerGroup = oneCoverPerGroup,
                         coverRepository = coverRepository,
+                        genericCoverRepository = genericCoverRepository,
+                        genericGroupCoverRepository = genericGroupCoverRepository,
                         onCoverDownload = { onCoverDownload(member) },
                         onCoverOpen = { onCoverOpen(member) },
                         onClick = { onMember(member) },
@@ -797,6 +1113,99 @@ private fun GroupDetailScreen(
         dismissButton = { TextButton(onClick = { showDraftChoice = false; onRate(false) }) { Text(stringResource(R.string.group_start_fresh)) } }
     )
 }
+
+@Composable
+private fun EmptyRankingMessage(
+    availability: CatalogAvailability,
+    listLoading: Boolean,
+    listFailed: Boolean
+) {
+    val resource = if (listLoading) R.string.loading_list else if (listFailed) {
+        R.string.catalog_unavailable_error
+    } else when (availability) {
+        CatalogAvailability.LOADING -> R.string.catalog_loading
+        CatalogAvailability.UNAVAILABLE -> R.string.catalog_not_available_yet
+        CatalogAvailability.ERROR -> R.string.catalog_unavailable_error
+        CatalogAvailability.AVAILABLE -> R.string.no_saved_ratings
+    }
+    Text(stringResource(resource), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(20.dp))
+}
+
+@Composable
+private fun GenericMediaFiltersDialog(
+    mediaType: MediaType,
+    current: GenericMediaFilters,
+    options: GenericMediaFilterOptions,
+    onDismiss: () -> Unit,
+    onApply: (GenericMediaFilters) -> Unit
+) {
+    var draft by remember(current) { mutableStateOf(current) }
+    val genreLabels = if (mediaType == MediaType.BOOK) bookGenreLabels() else emptyMap()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.filters_title)) },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChoice(
+                        mediaType.genreFilterLabelResource,
+                        draft.genre,
+                        options.genres,
+                        { genreLabels[it] ?: it }
+                    ) {
+                        draft = draft.copy(genre = it)
+                    }
+                }
+                item {
+                    FilterChoice(
+                        R.string.filter_year,
+                        draft.year?.toString(),
+                        options.years.map(Int::toString)
+                    ) { draft = draft.copy(year = it?.toIntOrNull()) }
+                }
+                mediaType.creditFilterLabelResource?.let { label ->
+                    item {
+                        FilterChoice(label, draft.creditName, options.creditNames) {
+                            draft = draft.copy(creditName = it)
+                        }
+                    }
+                }
+                item {
+                    TextButton(
+                        onClick = { draft = GenericMediaFilters() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(stringResource(R.string.filters_clear)) }
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+        confirmButton = {
+            TextButton(onClick = { onApply(draft) }) { Text(stringResource(R.string.action_apply)) }
+        }
+    )
+}
+
+@Composable
+private fun bookGenreLabels(): Map<String, String> = mapOf(
+    "Fantasy" to stringResource(R.string.book_genre_fantasy),
+    "Science Fiction" to stringResource(R.string.book_genre_science_fiction),
+    "Romance" to stringResource(R.string.book_genre_romance),
+    "Mystery & Thriller" to stringResource(R.string.book_genre_mystery_thriller),
+    "Horror" to stringResource(R.string.book_genre_horror),
+    "Adventure" to stringResource(R.string.book_genre_adventure),
+    "Historical Fiction" to stringResource(R.string.book_genre_historical_fiction),
+    "Classics" to stringResource(R.string.book_genre_classics),
+    "Biography" to stringResource(R.string.book_genre_biography),
+    "History" to stringResource(R.string.book_genre_history),
+    "Science & Technology" to stringResource(R.string.book_genre_science_technology),
+    "Philosophy" to stringResource(R.string.book_genre_philosophy),
+    "Other / Unclassified" to stringResource(R.string.book_genre_other)
+)
 
 @Composable
 private fun AnimeFiltersDialog(
@@ -852,7 +1261,7 @@ private fun FilterChoice(
     var choosing by remember { mutableStateOf(false) }
     OutlinedButton(onClick = { choosing = true }, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-            Text(stringResource(labelResource), color = Color.Gray, fontSize = 11.sp)
+            Text(stringResource(labelResource), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             Text(selected?.let(displayValue) ?: stringResource(R.string.filters_all), maxLines = 1)
         }
         Icon(Icons.Default.ArrowDropDown, contentDescription = null)
@@ -879,6 +1288,7 @@ private fun FilterValueDialog(
     onDismiss: () -> Unit,
     onSelected: (String?) -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
     var query by remember(title) { mutableStateOf("") }
     val visibleOptions = remember(query, options) {
         if (query.isBlank()) options else options.filter {
@@ -887,6 +1297,7 @@ private fun FilterValueDialog(
         }
     }
     AlertDialog(
+        modifier = Modifier.dismissFocusOnUnconsumedTap(focusManager),
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -926,16 +1337,28 @@ internal fun formatDisplayName(raw: String): String = raw.split('_').joinToStrin
 }
 
 @Composable
-private fun Anime.metadataSubtitle(): String {
-    val normalizedFormat = normalizedAnimeFormat(format)?.let { groupFormatLabel(it) }
-    return joinMetadataSubtitle(metadataSubtitleSegments(normalizedFormat, metadataYear(), studio))
+internal fun Anime.metadataSubtitle(): String {
+    val item = toCatalogItemUiModel()
+    val normalizedFormat = normalizedAnimeFormat(item.format)?.let { groupFormatLabel(it) }
+    return joinMetadataSubtitle(
+        filterMetadataSubtitleSegments(
+            mediaType = item.mediaType,
+            genre = item.genre,
+            format = normalizedFormat,
+            year = item.year,
+            credit = item.filterCredit
+        )
+    )
 }
 
 @Composable
 private fun AnimeListRow(
     anime: Anime,
     showImages: Boolean,
-    coverRepository: CoverRepository,
+    oneCoverPerGroup: Boolean,
+    coverRepository: CoverBitmapCache,
+    genericCoverRepository: GenericMediaCoverRepository? = null,
+    genericGroupCoverRepository: GenericMediaGroupCoverRepository? = null,
     rank: Int? = null,
     rankingSortOrder: RankingSortOrder? = null,
     onCoverDownload: () -> Unit,
@@ -956,16 +1379,20 @@ private fun AnimeListRow(
                     modifier = Modifier.width(36.dp).heightIn(min = 52.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Text("${rank}.", color = Color.LightGray, fontWeight = FontWeight.Bold)
+                    Text("${rank}.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 }
             }
             if (showImages) {
+                val coverAnime = anime.coverTarget(oneCoverPerGroup)
                 AnimeCover(
-                    anime.coverTarget(),
-                    coverRepository,
-                    onCoverDownload,
-                    onCoverOpen,
-                    Modifier.size(52.dp).clip(RoundedCornerShape(10.dp))
+                    anime = coverAnime,
+                    coverRepository = coverRepository,
+                    genericCoverRepository = genericCoverRepository,
+                    genericGroupCoverRepository = genericGroupCoverRepository,
+                    onDownloadRequested = onCoverDownload,
+                    onCoverClick = onCoverOpen,
+                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)),
+                    allowDownload = coverAnime.groupId == null || coverAnime.supportsRemoteGroupCover()
                 )
                 Spacer(Modifier.width(12.dp))
             }
@@ -983,7 +1410,7 @@ private fun AnimeListRow(
                     if (subtitle.isNotEmpty()) {
                         Text(
                             subtitle,
-                            color = if (anime.groupId != null) Cyan else Color.LightGray,
+                            color = if (anime.groupId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             maxLines = 1,
                             softWrap = false,
@@ -1001,189 +1428,19 @@ private fun AnimeListRow(
                 }
                 val shownScore = if (rankingSortOrder == null) anime.finalScore else anime.rankingDisplayScore(rankingSortOrder)
                 if (shownScore != null || rankingSortOrder != null) {
-                    Surface(color = shownScore?.let(::scoreColor) ?: Color.Gray, shape = RoundedCornerShape(12.dp)) {
-                        Text(shownScore?.let { "%.2f".format(it) } ?: "—", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontWeight = FontWeight.Bold, color = Color.Black)
+                    val scoreBackground = shownScore?.let(::scoreColor)
+                        ?: MaterialTheme.colorScheme.surfaceVariant
+                    Surface(color = scoreBackground, shape = RoundedCornerShape(12.dp)) {
+                        Text(
+                            shownScore?.let { "%.2f".format(it) } ?: "—",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            fontWeight = FontWeight.Bold,
+                            color = bestContentColor(scoreBackground)
+                        )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun AnimeCover(
-    anime: Anime,
-    coverRepository: CoverRepository,
-    onDownloadRequested: () -> Unit,
-    onCoverClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val pathFlow = remember(anime.id) { coverRepository.observeLocalCoverPath(anime.id) }
-    val immediatePath = remember(anime.id, anime.localCoverPath) {
-        coverRepository.immediateLocalCoverPath(anime.id, anime.localCoverPath)
-    }
-    val localPath by pathFlow.collectAsState(initial = immediatePath)
-    val downloadStateFlow = remember(anime.id) { coverRepository.observeDownloadState(anime.id) }
-    val downloadState by downloadStateFlow.collectAsState()
-    var bitmap by remember(anime.id, localPath) {
-        mutableStateOf(localPath?.let { coverRepository.cachedBitmap(anime.id, it) })
-    }
-
-    LaunchedEffect(anime.id, localPath) {
-        val currentLocalPath = localPath
-        if (currentLocalPath != null && bitmap == null) {
-            val loaded = coverRepository.loadBitmap(anime.id, currentLocalPath)
-            if (loaded == null) {
-                coverRepository.invalidateLocalCover(anime, currentLocalPath)
-            } else {
-                bitmap = loaded
-            }
-        } else if (currentLocalPath == null) {
-            bitmap = null
-        }
-    }
-
-    val image = bitmap
-    when {
-        image != null -> Image(
-            bitmap = image.asImageBitmap(),
-            contentDescription = anime.title,
-            contentScale = ContentScale.Crop,
-            modifier = modifier
-                .clip(RoundedCornerShape(10.dp))
-                .clickable {
-                    dispatchCoverTap(localPath, onDownloadRequested, onCoverClick)
-                }
-        )
-        localPath == null -> DefaultCover(
-            modifier = modifier,
-            downloading = downloadState == CoverDownloadState.DOWNLOADING,
-            onClick = { dispatchCoverTap(null, onDownloadRequested, onCoverClick) }
-        )
-        else -> Box(modifier.background(Color(0xFF1A1F2E)).clip(RoundedCornerShape(10.dp)))
-    }
-}
-
-@Composable
-private fun DefaultCover(modifier: Modifier = Modifier, downloading: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = modifier
-            .background(color = Color(0xFF1A1F2E))
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(enabled = !downloading, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(Icons.Default.Image, contentDescription = stringResource(R.string.cover_download), tint = Color.Gray, modifier = Modifier.size(22.dp))
-        if (downloading) {
-            CircularProgressIndicator(modifier = Modifier.size(26.dp), strokeWidth = 2.dp, color = Cyan)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CoverViewerDialog(
-    anime: Anime,
-    coverRepository: CoverRepository,
-    onDismiss: () -> Unit,
-    onDeleteConfirmed: ((Boolean) -> Unit) -> Unit
-) {
-    val pathFlow = remember(anime.id) { coverRepository.observeLocalCoverPath(anime.id) }
-    val initialPath = remember(anime.id, anime.localCoverPath) {
-        coverRepository.immediateLocalCoverPath(anime.id, anime.localCoverPath)
-    }
-    val localPath by pathFlow.collectAsState(initial = initialPath)
-    var bitmap by remember(anime.id, localPath) {
-        mutableStateOf(localPath?.let { coverRepository.cachedBitmap(anime.id, it) })
-    }
-    var confirmDelete by remember { mutableStateOf(false) }
-    var deleting by remember { mutableStateOf(false) }
-    val imageAspectRatio = bitmap?.let { image ->
-        image.width.toFloat().div(image.height.toFloat()).takeIf { it.isFinite() && it > 0f }
-    } ?: (2f / 3f)
-
-    LaunchedEffect(anime.id, localPath) {
-        val currentPath = localPath
-        if (currentPath == null) {
-            onDismiss()
-        } else if (bitmap == null) {
-            val loaded = coverRepository.loadBitmap(anime.id, currentPath)
-            if (loaded == null) {
-                coverRepository.invalidateLocalCover(anime, currentPath)
-            } else {
-                bitmap = loaded
-            }
-        }
-    }
-
-    Dialog(
-        onDismissRequest = { if (!deleting) onDismiss() },
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            val viewerWidth = minOf(maxWidth, 560.dp)
-            val maxImageHeight = (maxHeight - 152.dp).coerceAtLeast(120.dp)
-            val imageHeight = minOf(viewerWidth / imageAspectRatio, maxImageHeight)
-            Surface(
-                modifier = Modifier.width(viewerWidth).wrapContentHeight(),
-                color = Color(0xFF08090E),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    AnimeTopAppBar(anime.localizedDisplayTitle(), onDismiss)
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(imageHeight).background(Color.Black),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        bitmap?.let { image ->
-                            Image(
-                                bitmap = image.asImageBitmap(),
-                                contentDescription = anime.title,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } ?: CircularProgressIndicator(color = Cyan)
-                    }
-                    OutlinedButton(
-                        onClick = { confirmDelete = true },
-                        enabled = !deleting,
-                        modifier = Modifier.fillMaxWidth().padding(12.dp)
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.cover_delete))
-                    }
-                }
-            }
-        }
-    }
-    if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { if (!deleting) confirmDelete = false },
-            title = { Text(stringResource(R.string.cover_delete_title)) },
-            text = { Text(stringResource(R.string.cover_delete_explanation)) },
-            dismissButton = {
-                TextButton(
-                    enabled = !deleting,
-                    onClick = { confirmDelete = false }
-                ) { Text(stringResource(R.string.action_cancel)) }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !deleting,
-                    onClick = {
-                        deleting = true
-                        onDeleteConfirmed { deleted ->
-                            deleting = false
-                            if (!deleted) confirmDelete = false
-                        }
-                    }
-                ) { Text(stringResource(R.string.action_delete), color = Coral) }
-            }
-        )
     }
 }
 
@@ -1191,6 +1448,7 @@ private fun CoverViewerDialog(
 @Composable
 private fun RatingScreen(
     anime: Anime,
+    groupScore: Boolean,
     initial: RatingDraft,
     settings: AppSettingsState,
     onBack: () -> Unit,
@@ -1198,6 +1456,7 @@ private fun RatingScreen(
     onSaveSimple: (RatingDraft, Double, Double) -> Unit,
     onDelete: () -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
     val config = settings.ratingConfig
     val elaborate = settings.elaborateRatingEnabled
     val profiles = settings.ratingProfiles.profiles
@@ -1240,25 +1499,29 @@ private fun RatingScreen(
     val stickyScore = settings.stickyScore
 
     Scaffold(
+        modifier = Modifier.dismissFocusOnUnconsumedTap(focusManager),
         containerColor = Bg,
         topBar = {
             AnimeTopAppBar(anime.localizedDisplayTitle(), onBack)
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.padding(padding).fillMaxSize().padding(horizontal = 16.dp),
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 36.dp)
         ) {
             if (stickyScore) {
                 stickyHeader {
-                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config) {
+                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config, groupScore) {
                         showDirectScoreDialog = true
                     }
                 }
             } else {
                 item {
-                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config) {
+                    ScoreHeader(base, draft.additiveScore, calculatedFinal, config, groupScore) {
                         showDirectScoreDialog = true
                     }
                 }
@@ -1289,7 +1552,7 @@ private fun RatingScreen(
                             Text(stringResource(R.string.rating_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
                             Text(
                                 stringResource(R.string.rating_simple_instructions),
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 13.sp,
                                 modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
                             )
@@ -1297,7 +1560,7 @@ private fun RatingScreen(
                                 stringResource(R.string.score_out_of_ten, simpleQuality),
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Cyan
+                                color = MaterialTheme.colorScheme.primary
                             )
                             RatingSlider(
                                 value = simpleQuality,
@@ -1385,8 +1648,8 @@ private fun RatingProfileSelector(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.rating_profile), color = Color.Gray, fontSize = 13.sp)
-                    Text(localizedProfileName(selected), fontWeight = FontWeight.Bold, color = Cyan)
+                    Text(stringResource(R.string.rating_profile), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    Text(localizedProfileName(selected), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
                 Icon(Icons.Default.ArrowDropDown, contentDescription = null)
             }
@@ -1414,17 +1677,22 @@ private fun ScoreHeader(
     additive: Double,
     final: Double?,
     config: RatingSystemConfig,
+    groupScore: Boolean = false,
     onFinalScoreClick: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(18.dp)) {
-            Text(stringResource(R.string.score_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(if (groupScore) R.string.score_group_title else R.string.score_title),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text(
                         stringResource(R.string.score_quality, base?.let { "%.2f".format(it) } ?: "—"),
-                        color = Color.LightGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (config.additiveBonus != null) {
                         Text(
@@ -1433,7 +1701,7 @@ private fun ScoreHeader(
                                 localizedBonusName(config.additiveBonus),
                                 additive
                             ),
-                            color = Magenta
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
@@ -1445,15 +1713,16 @@ private fun ScoreHeader(
 
 @Composable
 private fun ScoreValueBadge(score: Double?, onClick: (() -> Unit)? = null) {
+    val badgeColor = scoreColor(score ?: 0.0)
     Surface(
         modifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick),
-        color = scoreColor(score ?: 0.0),
+        color = badgeColor,
         shape = RoundedCornerShape(16.dp)
     ) {
         Text(
             score?.let { "%.2f".format(it) } ?: "—",
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-            color = Color.Black,
+            color = bestContentColor(badgeColor),
             fontWeight = FontWeight.Black,
             fontSize = 24.sp
         )
@@ -1471,9 +1740,9 @@ private fun BonusEditor(
             Text(
                 stringResource(R.string.bonus_range, localizedBonusName(bonus), bonus.maxValue),
                 fontWeight = FontWeight.Bold,
-                color = Magenta
+                color = MaterialTheme.colorScheme.secondary
             )
-            Text(stringResource(R.string.bonus_explanation), color = Color.Gray, fontSize = 13.sp)
+            Text(stringResource(R.string.bonus_explanation), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             DiscreteSlider(
                 value = value,
                 onValueChange = onValueChange,
@@ -1494,6 +1763,7 @@ private fun DirectScoreDialog(
     onDismiss: () -> Unit,
     onApply: (Double) -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
     var input by remember(initialValue) {
         mutableStateOf(initialValue?.let { BigDecimal.valueOf(it).stripTrailingZeros().toPlainString() }.orEmpty())
     }
@@ -1501,11 +1771,14 @@ private fun DirectScoreDialog(
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
     AlertDialog(
+        modifier = Modifier.dismissFocusOnUnconsumedTap(focusManager),
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.score_direct_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.score_direct_explanation), color = Color.Gray)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(stringResource(R.string.score_direct_explanation), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it },
@@ -1542,7 +1815,7 @@ private fun CategoryEditor(category: RatingCategory, score: Double?, onChange: (
     val accent = try {
         Color(android.graphics.Color.parseColor(category.color))
     } catch (e: Exception) {
-        Cyan
+        MaterialTheme.colorScheme.primary
     }
     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(16.dp)) {
@@ -1557,7 +1830,7 @@ private fun CategoryEditor(category: RatingCategory, score: Double?, onChange: (
                     Text(stringResource(if (score == null) R.string.score_activate_category else R.string.score_not_applicable))
                 }
             }
-            Text(localizedCategoryDescription(category), color = Color.Gray, fontSize = 13.sp)
+            Text(localizedCategoryDescription(category), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             if (score != null) {
                 RatingSlider(
                     value = score,
@@ -1568,13 +1841,13 @@ private fun CategoryEditor(category: RatingCategory, score: Double?, onChange: (
                     )
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(scoreLabel(score), color = Color.LightGray, fontSize = 13.sp)
+                    Text(scoreLabel(score), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                     Text(stringResource(R.string.score_out_of_ten, score), fontWeight = FontWeight.Bold)
                 }
             } else {
                 Text(
                     stringResource(R.string.score_not_applicable_explanation),
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 10.dp)
                 )
@@ -1606,7 +1879,7 @@ private fun RatingSlider(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DiscreteSlider(
+internal fun DiscreteSlider(
     value: Double,
     onValueChange: (Double) -> Unit,
     min: Double,
@@ -1623,7 +1896,12 @@ private fun DiscreteSlider(
     }
     val activeFraction = ((normalizedValue - min) / (max - min)).toFloat().coerceIn(0f, 1f)
     val activeColor = MaterialTheme.colorScheme.primary
-    val inactiveColor = Color(0xFF4B5268)
+    val trackCutoutColor = MaterialTheme.colorScheme.surface
+    val inactiveColor = sliderInactiveTrackColor(
+        background = MaterialTheme.colorScheme.background,
+        surface = MaterialTheme.colorScheme.surface,
+        onSurface = MaterialTheme.colorScheme.onSurface
+    )
     Slider(
         value = normalizedValue.toFloat(),
         onValueChange = { rawValue ->
@@ -1651,7 +1929,7 @@ private fun DiscreteSlider(
                 )
                 val thumbCenterX = size.width * activeFraction
                 drawLine(
-                    color = Bg,
+                    color = trackCutoutColor,
                     start = Offset(thumbCenterX - 8.dp.toPx(), centerY),
                     end = Offset(thumbCenterX + 8.dp.toPx(), centerY),
                     strokeWidth = strokeWidth,
@@ -1659,7 +1937,7 @@ private fun DiscreteSlider(
                 )
                 tickFractions.forEach { fraction ->
                     drawCircle(
-                        color = if (fraction <= activeFraction) Bg else activeColor,
+                        color = if (fraction <= activeFraction) trackCutoutColor else activeColor,
                         radius = 2.dp.toPx(),
                         center = Offset(size.width * fraction, centerY)
                     )
@@ -1673,11 +1951,24 @@ private fun DiscreteSlider(
     )
 }
 
+internal fun sliderInactiveTrackColor(
+    background: Color,
+    surface: Color,
+    onSurface: Color
+): Color = lerp(
+    start = surface,
+    stop = onSurface,
+    fraction = if (background.luminance() >= 0.5f) 0.12f else 0.24f
+)
+
 @Composable
 private fun Top3Podium(
     top3: List<Anime>,
     sortOrder: RankingSortOrder,
-    coverRepository: CoverRepository,
+    oneCoverPerGroup: Boolean,
+    coverRepository: CoverBitmapCache,
+    genericCoverRepository: GenericMediaCoverRepository? = null,
+    genericGroupCoverRepository: GenericMediaGroupCoverRepository? = null,
     onCoverDownload: (Anime) -> Unit,
     onCoverOpen: (Anime) -> Unit,
     onAnime: (Anime) -> Unit
@@ -1706,7 +1997,10 @@ private fun Top3Podium(
                     artwork = podiumArtwork(position),
                     globalScale = globalScale,
                     sortOrder = sortOrder,
+                    oneCoverPerGroup = oneCoverPerGroup,
                     coverRepository = coverRepository,
+                    genericCoverRepository = genericCoverRepository,
+                    genericGroupCoverRepository = genericGroupCoverRepository,
                     onCoverDownload = { onCoverDownload(anime) },
                     onCoverOpen = { onCoverOpen(anime) },
                     onOpenRating = { onAnime(anime) }
@@ -1734,7 +2028,10 @@ private fun PodiumItem(
     artwork: PodiumArtwork,
     globalScale: Float,
     sortOrder: RankingSortOrder,
-    coverRepository: CoverRepository,
+    oneCoverPerGroup: Boolean,
+    coverRepository: CoverBitmapCache,
+    genericCoverRepository: GenericMediaCoverRepository? = null,
+    genericGroupCoverRepository: GenericMediaGroupCoverRepository? = null,
     onCoverDownload: () -> Unit,
     onCoverOpen: () -> Unit,
     onOpenRating: () -> Unit
@@ -1744,7 +2041,8 @@ private fun PodiumItem(
     val podiumHeight = (artwork.sourceHeight * globalScale).dp
     val coverSize = minOf(if (isFirst) 120.dp else 96.dp, podiumWidth)
     val shownScore = anime.rankingDisplayScore(sortOrder)
-    val scoreColorValue = shownScore?.let(::scoreColor) ?: Color.Gray
+    val scoreColorValue = shownScore?.let(::scoreColor)
+        ?: MaterialTheme.colorScheme.surfaceVariant
 
     Column(
         modifier = Modifier.width(podiumWidth),
@@ -1758,7 +2056,7 @@ private fun PodiumItem(
             Text(
                 shownScore?.let { "%.2f".format(it) } ?: "—",
                 Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                color = Color.Black,
+                color = bestContentColor(scoreColorValue),
                 fontWeight = FontWeight.Bold,
                 fontSize = if (isFirst) 18.sp else 16.sp
             )
@@ -1770,11 +2068,13 @@ private fun PodiumItem(
                 .height(coverSize + podiumHeight - PODIUM_COVER_OVERLAP)
         ) {
             AnimeCover(
-                anime.coverTarget(),
-                coverRepository,
-                onCoverDownload,
-                onCoverOpen,
-                Modifier
+                anime = anime.coverTarget(oneCoverPerGroup),
+                coverRepository = coverRepository,
+                genericCoverRepository = genericCoverRepository,
+                genericGroupCoverRepository = genericGroupCoverRepository,
+                onDownloadRequested = onCoverDownload,
+                onCoverClick = onCoverOpen,
+                modifier = Modifier
                     .size(coverSize)
                     .align(Alignment.TopCenter)
                     .clip(RoundedCornerShape(12.dp))
@@ -1790,1174 +2090,4 @@ private fun PodiumItem(
             )
         }
     }
-}
-
-@Composable
-private fun SettingsScreen(settings: AppSettingsState, catalogCount: Int, viewModel: RankOfflineViewModel) {
-    var destination by remember { mutableStateOf(SettingsDestination.HOME) }
-    val preloadProgress by viewModel.coverPreloadProgress.collectAsState()
-    val downloadedCoverCount by viewModel.downloadedCoverCount.collectAsState()
-    val goBack = {
-        destination = when (destination) {
-            SettingsDestination.GENERAL_DOWNLOADS -> SettingsDestination.GENERAL
-            SettingsDestination.RATING_PROFILES,
-            SettingsDestination.RATING_CATEGORIES -> SettingsDestination.RATING
-            else -> SettingsDestination.HOME
-        }
-    }
-
-    BackHandler(enabled = destination != SettingsDestination.HOME, onBack = goBack)
-
-    when (destination) {
-        SettingsDestination.HOME -> SettingsHomeScreen(
-            onGeneral = { destination = SettingsDestination.GENERAL },
-            onRating = { destination = SettingsDestination.RATING },
-            onIcon = { destination = SettingsDestination.ICON },
-            onAbout = { destination = SettingsDestination.ABOUT }
-        )
-        SettingsDestination.GENERAL -> GeneralSettingsScreen(
-            settings = settings,
-            onStickyScoreChange = viewModel::updateStickyScore,
-            onShowImagesChange = viewModel::updateShowImages,
-            onLanguage = { destination = SettingsDestination.LANGUAGE },
-            onPopularityAndCovers = { destination = SettingsDestination.GENERAL_DOWNLOADS },
-            onBack = goBack
-        )
-        SettingsDestination.GENERAL_DOWNLOADS -> PopularityAndCoversScreen(
-            preloadProgress = preloadProgress,
-            downloadedCoverCount = downloadedCoverCount,
-            onDownloadPopular = viewModel::downloadPopularCovers,
-            onClearCovers = viewModel::clearDownloadedCovers,
-            onVisibilityChanged = viewModel::setGeneralSettingsVisible,
-            onBack = goBack
-        )
-        SettingsDestination.LANGUAGE -> LanguageSettingsScreen(
-            selectedLanguage = settings.language,
-            onLanguageSelected = viewModel::updateLanguage,
-            onBack = { destination = SettingsDestination.GENERAL }
-        )
-        SettingsDestination.RATING -> RatingSettingsScreen(
-            elaborateRatingEnabled = settings.elaborateRatingEnabled,
-            onElaborateRatingEnabledChange = viewModel::updateElaborateRatingEnabled,
-            onProfiles = { destination = SettingsDestination.RATING_PROFILES },
-            onCategories = { destination = SettingsDestination.RATING_CATEGORIES },
-            onBack = goBack
-        )
-        SettingsDestination.RATING_CATEGORIES -> RatingCategoriesScreen(
-            ratingConfig = settings.ratingConfig,
-            onUpdate = viewModel::updateRatingCategory,
-            onCreate = viewModel::createRatingCategory,
-            onDeleteCategory = viewModel::deleteRatingCategory,
-            onReset = viewModel::resetRatingCategories,
-            onBack = goBack
-        )
-        SettingsDestination.RATING_PROFILES -> RatingProfilesScreen(
-            profilesConfig = settings.ratingProfiles,
-            categories = settings.ratingConfig.categories,
-            onUpdate = viewModel::updateRatingProfiles,
-            onDelete = viewModel::deleteRatingProfile,
-            onReset = viewModel::resetRatingProfiles,
-            onBack = goBack
-        )
-        SettingsDestination.ICON -> IconSettingsScreen(
-            selectedIcon = settings.appIcon,
-            onIconSelected = viewModel::updateAppIcon,
-            onBack = goBack
-        )
-        SettingsDestination.ABOUT -> LicenceAboutScreen(catalogCount = catalogCount, onBack = goBack)
-    }
-}
-
-private enum class SettingsDestination {
-    HOME,
-    GENERAL,
-    GENERAL_DOWNLOADS,
-    LANGUAGE,
-    RATING,
-    RATING_PROFILES,
-    RATING_CATEGORIES,
-    ICON,
-    ABOUT
-}
-
-@Composable
-private fun SettingsHomeScreen(
-    onGeneral: () -> Unit,
-    onRating: () -> Unit,
-    onIcon: () -> Unit,
-    onAbout: () -> Unit
-) {
-    Column(
-        Modifier.fillMaxSize().background(Bg).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(stringResource(R.string.settings_title), fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        SettingsMenuItem(
-            icon = Icons.Default.Settings,
-            title = stringResource(R.string.settings_general_title),
-            description = stringResource(R.string.settings_general_description),
-            onClick = onGeneral
-        )
-        SettingsMenuItem(
-            icon = Icons.Default.Star,
-            title = stringResource(R.string.settings_rating_title),
-            description = stringResource(R.string.settings_rating_description),
-            onClick = onRating
-        )
-        SettingsMenuItem(
-            icon = Icons.Default.Image,
-            title = stringResource(R.string.settings_icon_title),
-            description = stringResource(R.string.settings_icon_description),
-            onClick = onIcon
-        )
-        SettingsMenuItem(
-            icon = Icons.Default.Info,
-            title = stringResource(R.string.settings_about_title),
-            description = stringResource(R.string.settings_about_description),
-            onClick = onAbout
-        )
-    }
-}
-
-@Composable
-private fun IconSettingsScreen(
-    selectedIcon: AppIcon,
-    onIconSelected: (AppIcon) -> Unit,
-    onBack: () -> Unit
-) {
-    SettingsSubscreen(stringResource(R.string.settings_icon_title), onBack) {
-        LazyColumn(
-            Modifier.fillMaxSize().background(Bg).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            item {
-                Text(
-                    stringResource(R.string.icon_instructions),
-                    color = Color.Gray,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-            items(AppIcon.entries) { icon ->
-                val selected = icon == selectedIcon
-                val displayName = stringResource(icon.displayNameResource)
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        if (!selected) onIconSelected(icon)
-                    },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (selected) Cyan.copy(alpha = 0.16f) else Panel
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            painter = painterResource(icon.previewResource),
-                            contentDescription = stringResource(R.string.icon_content_description, displayName),
-                            modifier = Modifier.size(72.dp).clip(RoundedCornerShape(14.dp))
-                        )
-                        Spacer(Modifier.width(16.dp))
-                        Text(
-                            text = if (selected) stringResource(R.string.icon_selected, displayName) else displayName,
-                            modifier = Modifier.weight(1f),
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (selected) Cyan else Color.White
-                        )
-                        RadioButton(
-                            selected = selected,
-                            onClick = { if (!selected) onIconSelected(icon) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsMenuItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    description: String,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = Panel),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, contentDescription = null, tint = Cyan)
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.SemiBold)
-                Text(description, fontSize = 13.sp, color = Color.Gray)
-            }
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = stringResource(R.string.settings_open_item, title),
-                tint = Color.LightGray
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SettingsSubscreen(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Bg,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
-            )
-        }
-    ) { padding ->
-        Box(Modifier.padding(padding)) {
-            content()
-        }
-    }
-}
-
-@Composable
-private fun LanguageSettingsScreen(
-    selectedLanguage: SupportedLanguage,
-    onLanguageSelected: (SupportedLanguage) -> Unit,
-    onBack: () -> Unit
-) {
-    SettingsSubscreen(stringResource(R.string.language_title), onBack) {
-        LazyColumn(
-            Modifier.fillMaxSize().background(Bg).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            item {
-                Text(
-                    stringResource(R.string.language_description),
-                    color = Color.Gray,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-            items(SupportedLanguage.entries) { language ->
-                val selected = language == selectedLanguage
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        if (!selected) onLanguageSelected(language)
-                    },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (selected) Cyan.copy(alpha = 0.16f) else Panel
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            stringResource(language.displayNameResource),
-                            modifier = Modifier.weight(1f),
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (selected) Cyan else Color.White
-                        )
-                        RadioButton(
-                            selected = selected,
-                            onClick = { if (!selected) onLanguageSelected(language) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GeneralSettingsScreen(
-    settings: AppSettingsState,
-    onStickyScoreChange: (Boolean) -> Unit,
-    onShowImagesChange: (Boolean) -> Unit,
-    onLanguage: () -> Unit,
-    onPopularityAndCovers: () -> Unit,
-    onBack: () -> Unit
-) {
-    SettingsSubscreen(stringResource(R.string.settings_general_title), onBack) {
-        LazyColumn(
-            Modifier.fillMaxSize().background(Bg).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.general_display_section), fontWeight = FontWeight.Bold, color = Cyan)
-                        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(stringResource(R.string.general_sticky_score), fontWeight = FontWeight.SemiBold)
-                                Text(stringResource(R.string.general_sticky_score_description), fontSize = 13.sp, color = Color.Gray)
-                            }
-                            Switch(
-                                checked = settings.stickyScore,
-                                onCheckedChange = onStickyScoreChange
-                            )
-                        }
-                        Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(stringResource(R.string.general_show_images), fontWeight = FontWeight.SemiBold)
-                                Text(stringResource(R.string.general_show_images_description), fontSize = 13.sp, color = Color.Gray)
-                            }
-                            Switch(
-                                checked = settings.showImages,
-                                onCheckedChange = onShowImagesChange
-                            )
-                        }
-                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                        Row(
-                            Modifier.fillMaxWidth().clickable(onClick = onLanguage).padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(stringResource(R.string.language_title), fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    stringResource(settings.language.displayNameResource),
-                                    fontSize = 13.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                            Icon(
-                                Icons.Default.ChevronRight,
-                                contentDescription = stringResource(R.string.settings_open_item, stringResource(R.string.language_title)),
-                                tint = Color.LightGray
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                SettingsMenuItem(
-                    icon = Icons.Default.CloudDownload,
-                    title = stringResource(R.string.covers_settings_title),
-                    description = stringResource(R.string.covers_settings_description),
-                    onClick = onPopularityAndCovers
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PopularityAndCoversScreen(
-    preloadProgress: CoverPreloadProgress,
-    downloadedCoverCount: Int,
-    onDownloadPopular: (PopularCoverBatch) -> Unit,
-    onClearCovers: () -> Unit,
-    onVisibilityChanged: (Boolean) -> Unit,
-    onBack: () -> Unit
-) {
-    var showClearConfirmation by remember { mutableStateOf(false) }
-    var showTop5000Confirmation by remember { mutableStateOf(false) }
-    DisposableEffect(Unit) {
-        onVisibilityChanged(true)
-        onDispose { onVisibilityChanged(false) }
-    }
-    SettingsSubscreen(stringResource(R.string.covers_settings_title), onBack) {
-        LazyColumn(
-            Modifier.fillMaxSize().background(Bg).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            stringResource(R.string.covers_settings_explanation),
-                            color = Color.Gray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        )
-                        Text(
-                            stringResource(R.string.covers_downloaded_count, downloadedCoverCount),
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.LightGray,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        PopularCoverBatch.entries.forEach { batch ->
-                            Button(
-                                onClick = {
-                                    if (batch == PopularCoverBatch.TOP_5000) showTop5000Confirmation = true
-                                    else onDownloadPopular(batch)
-                                },
-                                enabled = !preloadProgress.isActive,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                            ) {
-                                Icon(Icons.Default.Download, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.covers_download_top, batch.count))
-                            }
-                        }
-                        PopularityAndCoverProgress(preloadProgress)
-                        OutlinedButton(
-                            onClick = { showClearConfirmation = true },
-                            enabled = !preloadProgress.isActive,
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.covers_clear))
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if (showClearConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showClearConfirmation = false },
-            title = { Text(stringResource(R.string.covers_clear_title)) },
-            text = { Text(stringResource(R.string.covers_clear_explanation)) },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirmation = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showClearConfirmation = false
-                    onClearCovers()
-                }) { Text(stringResource(R.string.action_delete), color = Coral) }
-            }
-        )
-    }
-    if (showTop5000Confirmation) {
-        AlertDialog(
-            onDismissRequest = { showTop5000Confirmation = false },
-            title = { Text(stringResource(R.string.covers_update_top_5000_title)) },
-            text = { Text(stringResource(R.string.covers_update_top_5000_warning)) },
-            dismissButton = {
-                TextButton(onClick = { showTop5000Confirmation = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showTop5000Confirmation = false
-                    onDownloadPopular(PopularCoverBatch.TOP_5000)
-                }) { Text(stringResource(R.string.action_continue)) }
-            }
-        )
-    }
-}
-
-@Composable
-private fun PopularityAndCoverProgress(preloadProgress: CoverPreloadProgress) {
-    if (preloadProgress.status == CoverPreloadStatus.IDLE) return
-    Spacer(Modifier.height(12.dp))
-    Text(
-        when (preloadProgress.status) {
-            CoverPreloadStatus.COMPLETED -> stringResource(R.string.covers_update_completed, preloadProgress.target)
-            CoverPreloadStatus.FAILED -> stringResource(R.string.covers_update_interrupted, preloadProgress.target)
-            else -> stringResource(R.string.covers_updating, preloadProgress.target)
-        },
-        fontWeight = FontWeight.SemiBold
-    )
-    Text(
-        stringResource(R.string.popularity_title),
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(top = 10.dp)
-    )
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        when {
-            preloadProgress.status == CoverPreloadStatus.FETCHING_POPULARITY -> {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(
-                        R.string.popularity_updating_progress,
-                        preloadProgress.popularityProcessed,
-                        preloadProgress.target
-                    ),
-                    color = Color.LightGray
-                )
-            }
-            preloadProgress.status == CoverPreloadStatus.APPLYING_POPULARITY -> {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.popularity_applying), color = Color.LightGray)
-            }
-            preloadProgress.popularityUpdated -> {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Mint)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.popularity_updated), color = Color.LightGray)
-            }
-            preloadProgress.status == CoverPreloadStatus.FAILED -> {
-                Icon(Icons.Default.Error, contentDescription = null, tint = Coral)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.popularity_update_failed), color = Coral)
-            }
-        }
-    }
-    if (preloadProgress.status == CoverPreloadStatus.FETCHING_POPULARITY) {
-        LinearProgressIndicator(
-            progress = { preloadProgress.popularityFraction },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-        )
-    }
-    Text(
-        stringResource(R.string.covers_progress, preloadProgress.processed, preloadProgress.target),
-        color = Color.LightGray,
-        modifier = Modifier.padding(top = 10.dp)
-    )
-    LinearProgressIndicator(
-        progress = { preloadProgress.fraction },
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-    )
-    Text(
-        stringResource(
-            R.string.covers_progress_details,
-            preloadProgress.existing,
-            preloadProgress.downloaded,
-            preloadProgress.errors
-        ),
-        color = Color.Gray,
-        fontSize = 12.sp,
-        modifier = Modifier.padding(top = 6.dp)
-    )
-    when {
-        preloadProgress.status == CoverPreloadStatus.COMPLETED -> Text(
-            stringResource(R.string.covers_completed),
-            color = Mint,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(top = 6.dp)
-        )
-        preloadProgress.status == CoverPreloadStatus.FAILED && preloadProgress.popularityUpdated -> Text(
-            stringResource(R.string.covers_download_interrupted),
-            color = Coral,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(top = 6.dp)
-        )
-    }
-}
-
-@Composable
-private fun RatingSettingsScreen(
-    elaborateRatingEnabled: Boolean,
-    onElaborateRatingEnabledChange: (Boolean) -> Unit,
-    onProfiles: () -> Unit,
-    onCategories: () -> Unit,
-    onBack: () -> Unit
-) {
-    SettingsSubscreen(stringResource(R.string.settings_rating_title), onBack) {
-        LazyColumn(
-            Modifier.fillMaxSize().background(Bg).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                        Text(stringResource(R.string.rating_mode), fontWeight = FontWeight.Bold, color = Magenta)
-                        listOf(
-                            false to stringResource(R.string.rating_simple),
-                            true to stringResource(R.string.rating_elaborate)
-                        ).forEach { (isElaborate, label) ->
-                            Row(
-                                Modifier.fillMaxWidth().clickable {
-                                    onElaborateRatingEnabledChange(isElaborate)
-                                },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = elaborateRatingEnabled == isElaborate,
-                                    onClick = { onElaborateRatingEnabledChange(isElaborate) }
-                                )
-                                Text(label)
-                            }
-                        }
-                        Text(
-                            stringResource(R.string.rating_elaborate_description),
-                            color = Color.Gray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
-            item {
-                SettingsMenuItem(
-                    icon = Icons.Default.Tune,
-                    title = stringResource(R.string.rating_profiles),
-                    description = stringResource(R.string.rating_profiles_description),
-                    onClick = onProfiles
-                )
-            }
-            item {
-                SettingsMenuItem(
-                    icon = Icons.AutoMirrored.Filled.List,
-                    title = stringResource(R.string.rating_categories),
-                    description = stringResource(R.string.rating_categories_description),
-                    onClick = onCategories
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RatingCategoriesScreen(
-    ratingConfig: RatingSystemConfig,
-    onUpdate: (RatingCategory) -> Unit,
-    onCreate: (RatingCategory) -> Unit,
-    onDeleteCategory: (RatingCategory) -> Unit,
-    onReset: () -> Unit,
-    onBack: () -> Unit
-) {
-    var confirmReset by remember { mutableStateOf(false) }
-    val newCategoryName = stringResource(R.string.rating_new_category_name)
-    val newCategoryDescription = stringResource(R.string.rating_new_category_description)
-    SettingsSubscreen(stringResource(R.string.rating_categories), onBack) {
-        LazyColumn(
-            Modifier.fillMaxSize().background(Bg).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            items(ratingConfig.categories.sortedBy { it.order }, key = { it.id }) { category ->
-                RatingCategoryEditor(category, onUpdate, onDelete = { onDeleteCategory(category) })
-            }
-            item {
-                Button(
-                    onClick = {
-                        onCreate(
-                            RatingCategory(
-                                id = "custom_${UUID.randomUUID()}",
-                                name = newCategoryName,
-                                description = newCategoryDescription,
-                                weight = 0.0,
-                                color = "#7EC7FF",
-                                order = (ratingConfig.categories.maxOfOrNull { it.order } ?: -1) + 1
-                            )
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(stringResource(R.string.rating_add_category)) }
-            }
-            item {
-                OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.rating_reset_categories))
-                }
-            }
-        }
-    }
-    if (confirmReset) {
-        ConfirmationDialog(
-            title = stringResource(R.string.rating_reset_categories),
-            text = stringResource(R.string.rating_reset_categories_confirmation),
-            onDismiss = { confirmReset = false },
-            onConfirm = { confirmReset = false; onReset() }
-        )
-    }
-}
-
-@Composable
-private fun RatingProfilesScreen(
-    profilesConfig: RatingProfilesConfig,
-    categories: List<RatingCategory>,
-    onUpdate: (RatingProfilesConfig) -> Unit,
-    onDelete: (String) -> Unit,
-    onReset: () -> Unit,
-    onBack: () -> Unit
-) {
-    var confirmReset by remember { mutableStateOf(false) }
-    val newProfileName = stringResource(R.string.rating_new_profile_name)
-    SettingsSubscreen(stringResource(R.string.rating_profiles), onBack) {
-        LazyColumn(
-            Modifier.fillMaxSize().background(Bg).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            items(profilesConfig.profiles, key = { it.id }) { profile ->
-                RatingProfileEditor(
-                    profile = profile,
-                    categories = categories.sortedBy { it.order },
-                    canDelete = profilesConfig.profiles.size > 1,
-                    onUpdate = { changed ->
-                        onUpdate(profilesConfig.copy(profiles = profilesConfig.profiles.map {
-                            if (it.id == changed.id) changed else it
-                        }))
-                    },
-                    onDelete = { onDelete(profile.id) }
-                )
-            }
-            item {
-                Button(
-                    onClick = {
-                        val profile = RatingProfile(
-                            id = "custom_${UUID.randomUUID()}",
-                            name = newProfileName,
-                            weights = categories.associate { it.id to 5.0 }
-                        )
-                        onUpdate(profilesConfig.copy(profiles = profilesConfig.profiles + profile))
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(stringResource(R.string.rating_create_profile)) }
-            }
-            item {
-                OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.rating_reset_profiles))
-                }
-            }
-        }
-    }
-    if (confirmReset) {
-        ConfirmationDialog(
-            title = stringResource(R.string.rating_reset_profiles),
-            text = stringResource(R.string.rating_reset_profiles_confirmation),
-            onDismiss = { confirmReset = false },
-            onConfirm = { confirmReset = false; onReset() }
-        )
-    }
-}
-
-@Composable
-private fun RatingProfileEditor(
-    profile: RatingProfile,
-    categories: List<RatingCategory>,
-    canDelete: Boolean,
-    onUpdate: (RatingProfile) -> Unit,
-    onDelete: () -> Unit
-) {
-    var showDeleteConfirmation by remember(profile.id) { mutableStateOf(false) }
-    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = localizedProfileName(profile),
-                    onValueChange = { onUpdate(profile.copy(name = it)) },
-                    label = { Text(stringResource(R.string.rating_profile_name)) },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
-                IconButton(enabled = canDelete, onClick = { showDeleteConfirmation = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.rating_delete_profile), tint = if (canDelete) Coral else Color.Gray)
-                }
-            }
-            categories.forEach { category ->
-                val weight = profile.weights[category.id] ?: 0.0
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(localizedCategoryName(category), modifier = Modifier.width(100.dp), maxLines = 1)
-                    DiscreteSlider(
-                        value = weight,
-                        onValueChange = { value ->
-                            snapWeight(value)?.let { onUpdate(profile.copy(weights = profile.weights + (category.id to it))) }
-                        },
-                        min = WEIGHT_MIN,
-                        max = WEIGHT_MAX,
-                        step = WEIGHT_STEP,
-                        accessibilityLabel = stringResource(R.string.category_weight_slider_accessibility),
-                        valueDescription = stringResource(R.string.category_weight_percent, weight.toInt()),
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(stringResource(R.string.category_weight_percent, weight.toInt()), modifier = Modifier.width(52.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                }
-            }
-            if (!canDelete) {
-                Text(stringResource(R.string.rating_last_profile_required), color = Color.Gray, fontSize = 12.sp)
-            }
-        }
-    }
-    if (showDeleteConfirmation) {
-        ConfirmationDialog(
-            title = stringResource(R.string.rating_delete_profile),
-            text = stringResource(R.string.rating_delete_profile_confirmation, localizedProfileName(profile)),
-            onDismiss = { showDeleteConfirmation = false },
-            onConfirm = { showDeleteConfirmation = false; onDelete() }
-        )
-    }
-}
-
-@Composable
-private fun ConfirmationDialog(title: String, text: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(text) },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_apply)) } }
-    )
-}
-
-@Composable
-private fun LicenceAboutScreen(catalogCount: Int, onBack: () -> Unit) {
-    val context = LocalContext.current
-    val currentLocale = Locale.getDefault()
-    val versionName = remember(context.packageName) {
-        context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
-    }
-    val formattedCatalogCount = remember(catalogCount, currentLocale) {
-        NumberFormat.getIntegerInstance(currentLocale).format(catalogCount)
-    }
-    SettingsSubscreen(stringResource(R.string.settings_about_title), onBack) {
-        LazyColumn(
-            Modifier.fillMaxSize().background(Bg).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("RankOffline", fontWeight = FontWeight.Bold, color = Mint)
-                        Text(
-                            stringResource(R.string.about_version, versionName),
-                            color = Color.Gray,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                        Text(
-                            stringResource(R.string.catalog_local_count, formattedCatalogCount),
-                            color = Color.Gray,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                        Text(
-                            stringResource(R.string.about_summary),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                }
-            }
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.about_licences), fontWeight = FontWeight.Bold, color = Cyan)
-                        Text(stringResource(R.string.about_rankoffline_licence), color = Color.LightGray, modifier = Modifier.padding(top = 8.dp))
-                        Text(
-                            stringResource(R.string.about_rankoffline_trademarks),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                        Text(
-                            stringResource(R.string.about_catalog_licence),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                        Text(
-                            stringResource(R.string.about_android_licence),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                    }
-                }
-            }
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.about_acknowledgements), fontWeight = FontWeight.Bold, color = Magenta)
-                        Text(
-                            stringResource(R.string.about_acknowledgements_text),
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RatingCategoryEditor(category: RatingCategory, onUpdate: (RatingCategory) -> Unit, onDelete: () -> Unit) {
-    val swatch = try {
-        Color(android.graphics.Color.parseColor(category.color))
-    } catch (_: Exception) {
-        Color.White
-    }
-    var showColorPicker by remember(category.id) { mutableStateOf(false) }
-    var showDeleteConfirmation by remember(category.id) { mutableStateOf(false) }
-    val colorContentDescription = stringResource(R.string.category_color_content_description)
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Panel.copy(alpha = 0.92f)),
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = localizedCategoryName(category),
-                    onValueChange = { onUpdate(category.copy(name = it)) },
-                    label = { Text(stringResource(R.string.category_name)) },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
-                IconButton(onClick = { showDeleteConfirmation = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                }
-            }
-            OutlinedTextField(
-                value = localizedCategoryDescription(category),
-                onValueChange = { onUpdate(category.copy(description = it)) },
-                label = { Text(stringResource(R.string.category_description)) },
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.category_color), color = Color.LightGray, modifier = Modifier.width(52.dp))
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(swatch)
-                        .border(1.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
-                        .clickable { showColorPicker = true }
-                        .semantics {
-                            contentDescription = colorContentDescription
-                        }
-                )
-            }
-        }
-    }
-    if (showColorPicker) {
-        CategoryColorPickerDialog(
-            initialColor = category.color,
-            onDismiss = { showColorPicker = false },
-            onApply = { color ->
-                category.withHexColor(color)?.let(onUpdate)
-                showColorPicker = false
-            }
-        )
-    }
-    if (showDeleteConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text(stringResource(R.string.category_delete_title)) },
-            text = {
-                Text(stringResource(R.string.category_delete_explanation, localizedCategoryName(category)))
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteConfirmation = false
-                    onDelete()
-                }) {
-                    Text(stringResource(R.string.action_delete), color = Coral)
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun CategoryColorPickerDialog(
-    initialColor: String,
-    onDismiss: () -> Unit,
-    onApply: (String) -> Unit
-) {
-    var hexInput by remember(initialColor) {
-        mutableStateOf(normalizeHexColor(initialColor) ?: "#19D5E5")
-    }
-    val validColor = normalizeHexColor(hexInput)
-    val previewColor = validColor?.let { Color(android.graphics.Color.parseColor(it)) } ?: Color.Transparent
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.color_picker_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .background(previewColor, RoundedCornerShape(10.dp))
-                        .border(1.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
-                )
-                Text(stringResource(R.string.color_palette), fontWeight = FontWeight.SemiBold)
-                CategoryColorPalette.chunked(5).forEach { rowColors ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        rowColors.forEach { hex ->
-                            val selected = validColor == hex
-                            val swatchColor = Color(android.graphics.Color.parseColor(hex))
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(swatchColor)
-                                    .border(
-                                        width = if (selected) 3.dp else 1.dp,
-                                        color = if (selected) Color.White else Color.White.copy(alpha = 0.45f),
-                                        shape = RoundedCornerShape(10.dp)
-                                    )
-                                    .clickable { hexInput = hex },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (selected) {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = if (swatchColor.luminance() > 0.45f) Color.Black else Color.White
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                Text(stringResource(R.string.color_custom), fontWeight = FontWeight.SemiBold)
-                OutlinedTextField(
-                    value = hexInput,
-                    onValueChange = { hexInput = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.color_hex_label)) },
-                    supportingText = {
-                        if (hexInput.isNotBlank() && validColor == null) {
-                            Text(stringResource(R.string.color_invalid))
-                        }
-                    },
-                    isError = hexInput.isNotBlank() && validColor == null,
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Characters,
-                        keyboardType = KeyboardType.Ascii
-                    )
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = validColor != null,
-                onClick = { validColor?.let(onApply) }
-            ) { Text(stringResource(R.string.action_apply)) }
-        }
-    )
-}
-
-@Composable
-private fun CatalogSortOrder.criterionLabel(): String = when (this) {
-    CatalogSortOrder.POPULARITY,
-    CatalogSortOrder.POPULARITY_REVERSE -> stringResource(R.string.sort_popularity)
-    CatalogSortOrder.TITLE_ASC,
-    CatalogSortOrder.TITLE_DESC -> stringResource(R.string.sort_title_ascending)
-}
-
-@Composable
-private fun RankingSortOrder.localizedLabel(): String = stringResource(
-    when (this) {
-        RankingSortOrder.FINAL_SCORE -> R.string.sort_final_score
-        RankingSortOrder.QUALITY_SCORE -> R.string.sort_quality_score
-        RankingSortOrder.PERSONAL_TASTE -> R.string.sort_personal_taste
-        RankingSortOrder.CATEGORY_SCORE -> R.string.sort_category_score
-    }
-)
-
-@Composable
-private fun rankingSortLabel(
-    sortOrder: RankingSortOrder,
-    categoryId: String?,
-    categories: List<RatingCategory>
-): String {
-    if (sortOrder != RankingSortOrder.CATEGORY_SCORE) return sortOrder.localizedLabel()
-    val category = categories.firstOrNull { it.id == categoryId }
-    return category?.let { localizedCategoryName(it) } ?: stringResource(R.string.sort_category_score)
-}
-
-@Composable
-private fun scoreLabel(v: Double): String = stringResource(when {
-    v >= 9.75 -> R.string.score_flawless
-    v >= 8.75 -> R.string.score_amazing
-    v >= 7.75 -> R.string.score_great
-    v >= 6.75 -> R.string.score_good
-    v >= 5.75 -> R.string.score_decent
-    v >= 4.75 -> R.string.score_average
-    v >= 3.75 -> R.string.score_subpar
-    v >= 2.75 -> R.string.score_poor
-    v >= 1.75 -> R.string.score_bad
-    else -> R.string.score_unwatchable
-})
-
-@Composable
-private fun localizedCategoryName(category: RatingCategory): String {
-    val canonical = DefaultSettings.defaultRatingCategories.firstOrNull { it.id == category.id }
-    val resource = if (canonical?.name == category.name) categoryNameResource(category.id) else null
-    return resource?.let { stringResource(it) } ?: category.name
-}
-
-@Composable
-private fun localizedCategoryDescription(category: RatingCategory): String {
-    val canonical = DefaultSettings.defaultRatingCategories.firstOrNull { it.id == category.id }
-    val resource = if (canonical?.description == category.description) categoryDescriptionResource(category.id) else null
-    return resource?.let { stringResource(it) } ?: category.description
-}
-
-@Composable
-private fun localizedProfileName(profile: RatingProfile): String {
-    val canonical = DefaultSettings.defaultProfiles().profiles.firstOrNull { it.id == profile.id }
-    val resource = if (canonical?.name == profile.name) profileNameResource(profile.id) else null
-    return resource?.let { stringResource(it) } ?: profile.name
-}
-
-private fun profileNameResource(id: String): Int? = when (id) {
-    DefaultSettings.GENERAL_PROFILE_ID -> R.string.profile_general
-    "narrative" -> R.string.profile_narrative
-    "character_driven" -> R.string.profile_character_driven
-    "visual_action" -> R.string.profile_visual_action
-    "world_adventure" -> R.string.profile_world_adventure
-    "atmospheric" -> R.string.profile_atmospheric
-    else -> null
-}
-
-@Composable
-private fun localizedBonusName(bonus: AdditiveBonus): String =
-    if (bonus.name == DefaultSettings.defaultAdditiveBonus.name) {
-        stringResource(R.string.bonus_personal_taste)
-    } else {
-        bonus.name
-    }
-
-private fun categoryNameResource(id: String): Int? = when (id) {
-    "writing" -> R.string.category_writing
-    "characters" -> R.string.category_characters
-    "engagement" -> R.string.category_engagement
-    "visuals" -> R.string.category_visuals
-    "worldbuilding" -> R.string.category_worldbuilding
-    "audio" -> R.string.category_audio
-    else -> null
-}
-
-private fun categoryDescriptionResource(id: String): Int? = when (id) {
-    "writing" -> R.string.category_writing_description
-    "characters" -> R.string.category_characters_description
-    "engagement" -> R.string.category_engagement_description
-    "visuals" -> R.string.category_visuals_description
-    "worldbuilding" -> R.string.category_worldbuilding_description
-    "audio" -> R.string.category_audio_description
-    else -> null
-}
-
-private fun scoreColor(v: Double): Color = when {
-    v >= 9 -> Cyan
-    v >= 8 -> Mint
-    v >= 7 -> Color(0xFFA4CD78)
-    v >= 5 -> Orange
-    v >= 3 -> Coral
-    else -> Color(0xFFF32B60)
 }

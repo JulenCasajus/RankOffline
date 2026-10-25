@@ -1,0 +1,9 @@
+Open Data Commons Database Contents License (DbCL) 1.0
+
+Canonical licence text:
+https://opendatacommons.org/licenses/dbcl/1-0/
+
+This notice applies to individual database contents where identified by the
+AnimeAPI and anime-offline-database provenance notices. It does not apply to
+RankOffline application source code or automatically license provider images
+and other third-party content.

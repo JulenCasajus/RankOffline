@@ -1,5 +1,6 @@
 package org.rankoffline.app
 
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -44,6 +45,14 @@ class RatingConfigurationTest {
             assertNull(original.withHexColor(it))
         }
         assertEquals("#19D5E5", original.color)
+    }
+
+    @Test
+    fun themeColorShortcutStoresTheCurrentConcreteColor() {
+        val original = RatingCategory("id", "Name", "Description", 10.0, "#19D5E5", 0)
+
+        assertEquals("#123456", original.withThemeColor(Color(0xFF123456)).color)
+        assertEquals("#FEDCBA", original.withThemeColor(Color(0xFFFEDCBA)).color)
     }
 
     private fun assertStops(

@@ -39,13 +39,29 @@ class SettingsDefaultsTest {
         assertEquals(listOf(35.0, 20.0, 20.0, 15.0, 10.0), categories.map { it.weight })
         assertEquals(100.0, categories.sumOf { it.weight }, 0.0)
         assertEquals((0..4).toList(), categories.map { it.order })
-        assertEquals(listOf("#19D5E5", "#E04BCF", "#FFAA55", "#62D6C8", "#7EC7FF"), categories.map { it.color })
+        assertEquals(listOf("#FFAA55", "#4FC3F7", "#E04BCF", "#81C784", "#EF5350"), categories.map { it.color })
         assertTrue(categories.all { it.active })
         assertEquals("Plot, themes, pacing, highlights, beginning, ending", categories[0].description)
         assertEquals("Main characters, supporting characters, antagonist, development, depth, charisma, dynamics", categories[1].description)
         assertEquals("Animation, art style, cinematography, backgrounds, effects, character design", categories[2].description)
         assertEquals("Setting, lore, power system", categories[3].description)
         assertEquals("OST, openings/endings, sound effects", categories[4].description)
+    }
+
+    @Test
+    fun sharedDefaultCategoryNamesUseTheRequestedPaletteAcrossMedia() {
+        val expected = mapOf(
+            "writing" to "#FFAA55",
+            "characters" to "#4FC3F7",
+            "visuals" to "#E04BCF",
+            "worldbuilding" to "#81C784",
+            "audio" to "#EF5350"
+        )
+        MediaType.entries.forEach { mediaType ->
+            DefaultSettings.mediaSettings(mediaType).ratingConfig.categories.forEach { category ->
+                expected[category.id]?.let { color -> assertEquals(color, category.color) }
+            }
+        }
     }
 
     @Test

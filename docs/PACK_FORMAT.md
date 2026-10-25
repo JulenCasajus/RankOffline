@@ -1,121 +1,106 @@
-# RankOffline data pack format (v0.2.0 development)
+# RankOffline data-pack format (schema 1)
 
-> **Draft specification**, based on the v0.2.0 pack parser and importers. The stable v0.1.3 app does not support these packs. The v0.2.0 app currently distributes **official** pack IDs; third-party installation from the app UI is not yet implemented.
-
-A `.pack` is a **ZIP archive containing data only**, never executable Kotlin/Java/native code. It has one root `manifest.json` and declared payload files.
-
-## Archive layout
+RankOffline Core contains no production catalog. Each data-only pack is identified by a stable,
+lowercase `PackId`; the official IDs are `animes`, `mangas`, `movies`, `series`, and `books`.
+Installed packs live at `files/packs/<pack_id>/`:
 
 ```text
-my-pack.pack
-├── manifest.json
-├── catalog/
-│   ├── book_catalog.manifest.json
-│   └── book_catalog.jsonl.gzip
-├── groups/                     # only if merge is supported
-│   ├── movie_groups.manifest.json
-│   └── movie_groups.jsonl.gzip
-├── metadata/                   # optional, e.g. cover_index.json
-└── covers/                     # optional licensed assets
+manifest.json
+catalog/
+groups/
+covers/
+metadata/
+.complete
 ```
 
-The exact catalog/group basenames are currently determined by the official media-type adapter. **A custom pack ID alone does not register a new catalog adapter.**
-
-## Required root manifest
-
-`PackManifestParser` requires these fields:
-
-| Field | Type / rule |
-|---|---|
-| `schemaVersion` | integer `1` |
-| `packId` | `[a-z][a-z0-9-]{1,63}`, stable, e.g. `my-books` |
-| `displayName`, `version`, `minRankOfflineVersion` | nonempty strings |
-| `provider` | `{ "id": "...", "name": "..." }` (`id` uses lowercase letters, digits, underscore) |
-| `catalog` | nonempty array of declared `catalog/` paths |
-| `groups`, `covers` | arrays, may be empty |
-| `capabilities` | six booleans: `search`, `filters`, `covers`, `popularity`, `merge`, `ratings` |
-| `filters` | array of `{ "id", "field", "type", "order" }`; type `multi_select` or `range` |
-| `subtitle` | array of fields declared in `filters` |
-| `merge` | `{ "enabled": bool, "strategy": "NONE|GROUP_ID|COLLECTION_ID|RELATION_GRAPH", "groupType": string? }` |
-| `defaults` | `showImages`, `stickyScoreHeader`, `mergeEnabled` booleans and `ratingMode` = `simple` / `elaborated` |
-| `integrity` | `installedBytes` and `files` array, each `{ "path", "bytes", "sha256" }` |
-
-Example *shape* (fill real lengths and hashes before packaging; for a compatible generic Books catalog):
+`manifest.json` declares provider/provenance, minimum compatible RankOffline version, capabilities,
+ordered filters, subtitle fields, a core-owned merge strategy, defaults, and the byte length and
+SHA-256 of every payload. Defaults seed new settings only; user overrides are namespaced by PackId.
+Personal item identity is `(pack_id, canonical_item_id)`. In schema 1 the Android catalog tables
+still require canonical item and group IDs to be globally unique across simultaneously installed
+packs; external pack installation is therefore deferred until collision rejection or composite
+catalog keys are implemented.
 
 ```json
 {
   "schemaVersion": 1,
-  "packId": "my-books",
-  "displayName": "My Books",
-  "version": "1.0.0",
+  "packId": "series",
+  "displayName": "Series",
+  "version": "tmdb-2026-10-16",
   "minRankOfflineVersion": "0.2.0",
-  "provider": {"id": "personal", "name": "My Collection"},
-  "catalog": [
-    "catalog/book_catalog.manifest.json",
-    "catalog/book_catalog.jsonl.gzip"
+  "provider": {"id": "tmdb", "name": "TMDB"},
+  "coverSources": [{
+    "id": "tmdb_poster",
+    "providerId": "tmdb",
+    "urlTemplates": ["https://image.tmdb.org/t/p/w500/{reference}"],
+    "allowedHosts": ["image.tmdb.org"],
+    "attributionName": "TMDB",
+    "attributionUrl": "https://www.themoviedb.org"
+  }],
+  "capabilities": {"search": true, "filters": true, "covers": true, "popularity": true, "merge": true, "ratings": true},
+  "filters": [
+    {"id": "genre", "field": "genre", "type": "multi_select", "order": 1},
+    {"id": "year", "field": "year", "type": "range", "order": 2},
+    {"id": "network", "field": "network", "type": "multi_select", "order": 3}
   ],
-  "groups": [],
-  "covers": [],
-  "capabilities": {
-    "search": true, "filters": false, "covers": false,
-    "popularity": false, "merge": false, "ratings": true
-  },
-  "filters": [],
-  "subtitle": [],
-  "merge": {"enabled": false, "strategy": "NONE", "groupType": ""},
-  "defaults": {
-    "showImages": false, "stickyScoreHeader": false,
-    "mergeEnabled": false, "ratingMode": "simple"
-  },
-  "integrity": {
-    "installedBytes": 12345,
-    "files": [
-      {"path": "catalog/book_catalog.manifest.json", "bytes": 345, "sha256": "REPLACE_WITH_REAL_64_CHAR_HEX_SHA256"},
-      {"path": "catalog/book_catalog.jsonl.gzip", "bytes": 12000, "sha256": "REPLACE_WITH_REAL_64_CHAR_HEX_SHA256"}
-    ]
-  }
+  "subtitle": ["genre", "year", "network"],
+  "merge": {"enabled": true, "strategy": "GROUP_ID", "groupType": "SEASONS"},
+  "defaults": {"showImages": true, "stickyScoreHeader": false, "mergeEnabled": false, "oneCoverPerGroup": true, "ratingMode": "simple"},
+  "integrity": {"installedBytes": 123, "files": [{"path": "catalog/series.jsonl.gzip", "bytes": 123, "sha256": "<64 lowercase hex>"}]}
 }
 ```
 
-**This is a schema illustration, not an installable archive.** The dummy values must be replaced. End-user import of `my-books` is not supported in current builds.
+The example is illustrative, not a declaration of the current or forthcoming shipped defaults.
+New/changed official defaults (Books images OFF, Sticky Score ON for all, and Merge ON when
+One Cover per Group defaults ON) are planned for the debug.6 validation cycle; regenerated
+packs and their trusted index must be published together with the matching APK.
 
-`integrity.installedBytes` must equal the sum of declared file bytes; all referenced paths must be in `integrity.files`. Paths must be relative, inside `catalog/`, `groups/`, `metadata/`, or `covers/`, with no empty, `.`, `..`, or backslash segments. `.dex`, `.jar`, `.class`, `.so`, and `.apk` are prohibited.
+Supported filter types are `multi_select` and `range`. Supported current merge strategies are
+`NONE`, `GROUP_ID`, `COLLECTION_ID`, and `RELATION_GRAPH`; unknown values reject the pack safely.
+Packs cannot contain absolute/traversal paths or executable `.dex`, `.jar`, `.class`, `.so`, or
+`.apk` payloads. Downloads are size/hash checked, extracted to a temporary directory, and promoted
+atomically only after validation. `covers/` is optional and `metadata/cover_index.json` maps a
+canonical item/group ID to a declared local cover file. After verification, extracted images are a
+user-removable per-pack cover cache; the verified `.pack` archive is retained separately and normal
+startup recovery does not restore covers the user deleted.
 
-The official *distribution index* `category_pack_index.json` (embedded in the debug APK) also declares archive name/bytes/SHA-256, installed bytes, supported format and minimum DB version. Merely hosting an archive does **not** cause an already built APK to discover it.
+`coverSources` is optional for backward compatibility. It declaratively maps a catalog provider to
+one or more HTTPS templates using only `{reference}` and `{providerId}`. Hosts and attribution are
+explicit. A catalog `remoteCoverRef` may alternatively be a schema-1 JSON string containing a
+`sourceId`, stable `identity`, and ordered direct/fallback `urls`. The core rejects non-HTTPS URLs,
+IP/local destinations, undeclared hosts, traversal, unsafe redirects, and executable content; a
+pack never supplies executable resolver code or credentials. Older official artifacts continue
+through their restricted built-in compatibility adapters.
 
-## Generic catalog data
+After a pack's catalog and groups are verified/imported, it can be browsed and rated without
+waiting for optional initial Top-100 cover acquisition. `Show Images` controls this
+installation-time, user-private HTTP cover fetch; it never enables online title search.
+The cover cache is counted and deleted per pack, including any properly licensed files
+bundled inside the pack. Manual Top-N cover retrieval remains available.
 
-For Manga/Movie/Series/Books the v0.2.0 generic catalog format is **v1**:
+Deleting a pack purges its catalog, groups, covers, cache, ratings, notes, ranking state, saved
+filters, and pack settings while leaving global language/theme/onboarding state intact. Future
+third-party installation needs only an obtain/validate/install/register UI; it must remain data-only.
 
-- `<type>_catalog.jsonl.gzip`: one JSON record per line.
-- `<type>_catalog.manifest.json`: `formatVersion`, singular `mediaType`, `provider`, `catalogVersion`, `sha256`, `itemCount` (optional `generatedAt`).
-- Records require stable `id`, `mediaType`, `provider`, `providerId`, `title`; optional date, format, language, popularity, cover ref, `genres`, `credits`, `aliases`.
+Release tooling creates `RankOffline-<Name>-v0.2.0.pack` ZIP-compatible artifacts plus the trusted
+`category_pack_index.json`. Upload those files beside the APK in the GitHub `v0.2.0` release.
 
-IDs must start with the singular media-type prefix, e.g. `book:`, `movie:`. The record's `provider` and `mediaType` must match the catalog manifest.
+The trusted index has a separate `minimumDatabaseVersion`. It means the oldest Room schema that
+contains the catalog/group tables required by that artifact; it is not the current Room version and
+does not replace `schemaVersion`, catalog `formatVersion`, group `formatVersion`, or
+`minRankOfflineVersion`. The normalized schema-1 official packs require database 13; Room 14 adds
+PackId-scoped personal ratings without changing the catalog/group contract.
 
-`sha256` in a catalog/group manifest is the checksum required by its importer; use the current generators for its exact compressed-vs-uncompressed convention. File SHA in the root manifest is for the **extracted payload file bytes**.
+## Precomputed groups
 
-### Explicit precomputed Merge (generic format v2)
+Group discovery is a release-time concern. A group JSONL record contains the stable provider group
+identity, explicit members, `representativeMediaId`, `memberCount`, `popularity`, and
+`popularityRank`. Series use the TMDB parent-show ID, Movies use the explicit TMDB collection ID,
+and Manga use the deterministic connected component of allowed MangaDex variant relations.
+Books use a conservative Work-level series-group artifact built from explicit/verified
+relationships rather than treating editions as independent catalog entries.
+Android imports these values verbatim and performs indexed, paginated group queries; it does not
+infer relationships from titles, contact a provider, or rebuild membership after installation.
 
-`<type>_groups.manifest.json` includes `formatVersion: 2`, `mediaType`, `provider`, `catalogVersion`, `sha256`, `groupCount`, and `membershipCount`.
-
-Each JSONL record supplies `id`, `mediaType`, `groupType`, `provider`, `providerGroupId`, `displayTitle`, `representativeMediaId`, `memberCount`, optional popularity fields/cover reference, and an ordered `members` array of `{ "mediaId", "position" }`. Require at least two unique members, and the representative must be one of them.
-
-The official mappings are `SEASONS` (Series), `COLLECTION` (Movies), and `VARIANTS` (Manga). Do not invent fuzzy title relationships in the Android runtime.
-
-### Anime compatibility exception
-
-Anime uses an existing JSON catalog and an **Anime group graph v1**: group records use `id`, `type`, `rootAnimeId`, `displayTitle`, and ordered `members` of `{ "animeId", "position" }`. `AnimeGroupCatalogImporter` preserves legacy Anime ID/rating semantics. It is an adapter under the common pack lifecycle, not a second pack system.
-
-## Pack verification and installation
-
-1. Download archive using official index expectations (archive byte length/SHA-256).
-2. Validate manifest and allowlisted ZIP entries.
-3. Extract to private staging, checking every payload's size/SHA-256.
-4. Atomically promote with previous version retained for rollback.
-5. Import catalog and precomputed groups to Room; verify count/membership consistency.
-6. Finalize and mark runtime READY; on failure, roll back safely.
-
-There is no execution of pack-supplied scripts, and no runtime group discovery.
-
-See [CUSTOM_PACKS.md](CUSTOM_PACKS.md) for the actual external-pack support status.
+Current normalized payload formats are catalog format 1 and group format 2. A pack reaches READY
+only after payload hashes/counts and imported group counts have been verified.

@@ -1,0 +1,232 @@
+package org.rankoffline.app
+
+import java.net.URI
+import java.security.MessageDigest
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+
+fun interface MediaCoverProvider {
+    fun resolve(item: MediaItem): URI?
+
+    /** Ordered alternatives for providers that expose more than one stable cover identifier. */
+    fun resolveCandidates(item: MediaItem): List<URI> = listOfNotNull(resolve(item))
+}
+
+class DefaultMediaCoverProvider : MediaCoverProvider {
+    override fun resolve(item: MediaItem): URI? = resolveCandidates(item).firstOrNull()
+
+    override fun resolveCandidates(item: MediaItem): List<URI> = when (item.provider) {
+        OPEN_LIBRARY_PROVIDER -> resolveOpenLibrary(item.remoteCoverRef, item.providerId)
+        else -> listOfNotNull(resolveSingle(item))
+    }
+
+    private fun resolveSingle(item: MediaItem): URI? = when (item.provider) {
+        TMDB_PROVIDER -> resolveTmdb(item.remoteCoverRef)
+        MANGADEX_PROVIDER -> resolveMangaDex(item.providerId, item.remoteCoverRef)
+        else -> null
+    }
+
+    private fun resolveTmdb(reference: String?): URI? {
+        val filename = safeFilename(reference?.removePrefix("/")) ?: return null
+        return httpsUri(TMDB_IMAGE_HOST, "/t/p/w500/$filename")
+    }
+
+    private fun resolveMangaDex(providerId: String?, reference: String?): URI? {
+        val mangaId = providerId?.takeIf { MANGADEX_UUID.matches(it) } ?: return null
+        val filename = safeFilename(reference) ?: return null
+        return httpsUri(MANGADEX_IMAGE_HOST, "/covers/$mangaId/$filename.512.jpg")
+    }
+
+    private fun resolveOpenLibrary(reference: String?, providerId: String?): List<URI> =
+        decodeOpenLibraryCoverReference(reference, providerId).map { candidate ->
+            URI(
+                "https",
+                OPEN_LIBRARY_IMAGE_HOST,
+                "/b/${candidate.pathType}/${candidate.value}-L.jpg",
+                "default=false",
+                null
+            )
+        }
+
+    private fun safeFilename(value: String?): String? = value
+        ?.takeIf { it.isNotBlank() && SAFE_FILENAME.matches(it) && it != "." && it != ".." }
+
+    private fun httpsUri(host: String, path: String) = URI("https", host, path, null)
+
+    companion object {
+        const val TMDB_PROVIDER = "tmdb"
+        const val MANGADEX_PROVIDER = "mangadex"
+        const val OPEN_LIBRARY_PROVIDER = "openlibrary"
+        const val TMDB_IMAGE_HOST = "image.tmdb.org"
+        const val MANGADEX_IMAGE_HOST = "uploads.mangadex.org"
+        const val OPEN_LIBRARY_IMAGE_HOST = "covers.openlibrary.org"
+
+        val ALLOWED_IMAGE_HOSTS = setOf(
+            TMDB_IMAGE_HOST,
+            MANGADEX_IMAGE_HOST,
+            OPEN_LIBRARY_IMAGE_HOST,
+            "s4.anilist.co",
+            "cdn.myanimelist.net"
+        )
+
+        private val SAFE_FILENAME = Regex("[A-Za-z0-9._-]+")
+        private val MANGADEX_UUID = Regex(
+            "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+        )
+    }
+}
+
+/** Resolves pack-declared cover sources without executing provider code from the pack. */
+class DeclarativePackCoverProvider(
+    private val manifestProvider: (MediaType) -> PackManifest?
+) : MediaCoverProvider {
+    fun hasDeclaredSources(mediaType: MediaType): Boolean =
+        manifestProvider(mediaType)?.coverSources?.isNotEmpty() == true
+
+    override fun resolve(item: MediaItem): URI? = resolveCandidates(item).firstOrNull()
+
+    override fun resolveCandidates(item: MediaItem): List<URI> {
+        val manifest = manifestProvider(item.mediaType) ?: return emptyList()
+        val reference = item.remoteCoverRef?.takeIf(String::isNotBlank) ?: return emptyList()
+        if (reference.startsWith("covers/")) return emptyList()
+        val explicit = runCatching {
+            coverReferenceJson.decodeFromString<DeclarativeCoverReference>(reference)
+                .takeIf { it.schemaVersion == 1 }
+        }.getOrNull()
+        if (explicit != null) {
+            val source = manifest.coverSources.firstOrNull {
+                it.id == explicit.sourceId
+            } ?: return emptyList()
+            val identity = explicit.identity?.takeIf(String::isNotBlank) ?: return emptyList()
+            if (identity.length > MAX_COVER_IDENTITY_LENGTH) return emptyList()
+            if (explicit.urls.isEmpty() || explicit.urls.size > MAX_FALLBACK_URLS) return emptyList()
+            return explicit.urls.mapNotNull { value ->
+                value.takeIf { it.length <= MAX_URL_LENGTH }
+                    ?.let { runCatching { URI.create(it) }.getOrNull() }
+                    ?.takeIf { isSafeHttpsUri(it, source.allowedHosts) }
+            }.distinct()
+        }
+        val source = manifest.coverSources.firstOrNull { it.providerId == item.provider }
+            ?: return emptyList()
+        val encodedReference = encodePathSegment(reference.removePrefix("/")) ?: return emptyList()
+        val encodedProvider = encodePathSegment(item.providerId.orEmpty()) ?: return emptyList()
+        return source.urlTemplates.mapNotNull { template ->
+            val value = template
+                .replace("{reference}", encodedReference)
+                .replace("{providerId}", encodedProvider)
+            runCatching { URI.create(value) }.getOrNull()
+                ?.takeIf { isSafeHttpsUri(it, source.allowedHosts) }
+        }.distinct()
+    }
+
+    private fun encodePathSegment(value: String): String? {
+        if (value.isBlank() || value.length > MAX_REFERENCE_LENGTH || '\u0000' in value) return null
+        return URI(null, null, "/$value", null).rawPath.removePrefix("/")
+    }
+
+    private companion object {
+        const val MAX_REFERENCE_LENGTH = 2_048
+        const val MAX_COVER_IDENTITY_LENGTH = 512
+        const val MAX_FALLBACK_URLS = 8
+        const val MAX_URL_LENGTH = 4_096
+    }
+}
+
+@Serializable
+private data class DeclarativeCoverReference(
+    val schemaVersion: Int,
+    val sourceId: String,
+    val identity: String? = null,
+    val urls: List<String> = emptyList()
+)
+
+private val coverReferenceJson = Json { ignoreUnknownKeys = true }
+
+/** Pure syntactic validation. The downloader additionally rejects DNS resolving to private IPs. */
+internal fun isSafeHttpsUri(uri: URI, hosts: Set<String>?): Boolean {
+    val host = uri.host?.lowercase() ?: return false
+    if (!uri.scheme.equals("https", ignoreCase = true) || uri.userInfo != null ||
+        (uri.port != -1 && uri.port != 443) || uri.fragment != null
+    ) return false
+    if (hosts != null && host !in hosts) return false
+    if (!PUBLIC_HOST.matches(host) || host == "localhost" || host.endsWith(".localhost") ||
+        host.endsWith(".local") || IPV4.matches(host) || ':' in host
+    ) return false
+    val normalized = uri.normalize()
+    if (normalized.rawPath != uri.rawPath || uri.path.orEmpty().split('/').any { it == ".." }) return false
+    return true
+}
+
+private val PUBLIC_HOST = Regex("(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}")
+private val IPV4 = Regex("[0-9]{1,3}(?:\\.[0-9]{1,3}){3}")
+
+private const val OPEN_LIBRARY_COVER_REFERENCE_PREFIX = "openlibrary:v1"
+private val OPEN_LIBRARY_COVER_ID = Regex("[0-9]+")
+private val OPEN_LIBRARY_ISBN_13 = Regex("97[89][0-9]{10}")
+private val OPEN_LIBRARY_ISBN_10 = Regex("[0-9]{9}[0-9X]")
+private val OPEN_LIBRARY_EDITION_OLID = Regex("OL[0-9]+M")
+private val OPEN_LIBRARY_WORK_OLID = Regex("OL[0-9]+W")
+
+private data class OpenLibraryCoverCandidate(val pathType: String, val value: String)
+
+/**
+ * Compact catalog representation. Identifiers are resolved by tooling/search, never by a cover tap.
+ * A plain numeric value remains supported as the legacy cover_i representation.
+ */
+internal fun encodeOpenLibraryCoverReference(
+    coverId: String?,
+    isbn13: String?,
+    isbn10: String?,
+    editionOlid: String?,
+    workOlid: String?
+): String? {
+    val entries = listOfNotNull(
+        coverId?.takeIf(OPEN_LIBRARY_COVER_ID::matches)?.let { "id=$it" },
+        isbn13?.normalizeIsbn()?.takeIf(OPEN_LIBRARY_ISBN_13::matches)?.let { "isbn13=$it" },
+        isbn10?.normalizeIsbn()?.takeIf(OPEN_LIBRARY_ISBN_10::matches)?.let { "isbn10=$it" },
+        editionOlid?.uppercase()?.takeIf(OPEN_LIBRARY_EDITION_OLID::matches)?.let { "edition=$it" },
+        workOlid?.uppercase()?.takeIf(OPEN_LIBRARY_WORK_OLID::matches)?.let { "work=$it" }
+    )
+    return entries.takeIf { it.isNotEmpty() }
+        ?.joinToString(separator = "|", prefix = "$OPEN_LIBRARY_COVER_REFERENCE_PREFIX|")
+}
+
+private fun decodeOpenLibraryCoverReference(
+    reference: String?,
+    fallbackWorkOlid: String?
+): List<OpenLibraryCoverCandidate> {
+    val candidates = buildList {
+        if (reference?.matches(OPEN_LIBRARY_COVER_ID) == true) {
+            add(OpenLibraryCoverCandidate("id", reference))
+        } else if (reference?.startsWith("$OPEN_LIBRARY_COVER_REFERENCE_PREFIX|") == true) {
+            reference.substringAfter('|').split('|').forEach { encoded ->
+                val key = encoded.substringBefore('=', missingDelimiterValue = "")
+                val rawValue = encoded.substringAfter('=', missingDelimiterValue = "")
+                when (key) {
+                    "id" -> rawValue.takeIf(OPEN_LIBRARY_COVER_ID::matches)
+                        ?.let { add(OpenLibraryCoverCandidate("id", it)) }
+                    "isbn13" -> rawValue.normalizeIsbn().takeIf(OPEN_LIBRARY_ISBN_13::matches)
+                        ?.let { add(OpenLibraryCoverCandidate("isbn", it)) }
+                    "isbn10" -> rawValue.normalizeIsbn().takeIf(OPEN_LIBRARY_ISBN_10::matches)
+                        ?.let { add(OpenLibraryCoverCandidate("isbn", it)) }
+                    "edition" -> rawValue.uppercase().takeIf(OPEN_LIBRARY_EDITION_OLID::matches)
+                        ?.let { add(OpenLibraryCoverCandidate("olid", it)) }
+                    "work" -> rawValue.uppercase().takeIf(OPEN_LIBRARY_WORK_OLID::matches)
+                        ?.let { add(OpenLibraryCoverCandidate("olid", it)) }
+                }
+            }
+        }
+        fallbackWorkOlid?.uppercase()?.takeIf(OPEN_LIBRARY_WORK_OLID::matches)
+            ?.let { add(OpenLibraryCoverCandidate("olid", it)) }
+    }
+    return candidates.distinct()
+}
+
+private fun String.normalizeIsbn(): String =
+    uppercase().filterNot { it == '-' || it.isWhitespace() }
+
+internal fun mediaCoverFileName(mediaId: String): String =
+    MessageDigest.getInstance("SHA-256")
+        .digest(mediaId.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) } + ".cover"

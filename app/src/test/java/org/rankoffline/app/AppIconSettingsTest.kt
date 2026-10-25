@@ -11,7 +11,7 @@ class AppIconSettingsTest {
     fun defaultIsDark() {
         assertSame(AppIcon.DARK, AppSettingsState().appIcon)
         assertSame(AppIcon.DARK, AppIcon.fromPersistedValue(null))
-        assertEquals(R.string.icon_default, AppIcon.DARK.displayNameResource)
+        assertEquals(R.string.icon_default_blue, AppIcon.DARK.displayNameResource)
         assertEquals("DARK", AppIcon.DARK.persistedValue)
     }
 
@@ -29,8 +29,8 @@ class AppIconSettingsTest {
     }
 
     @Test
-    fun selectingEveryAlternativePersistsThenActivatesThatIcon() = runBlocking {
-        listOf(AppIcon.BLUE, AppIcon.RED, AppIcon.GREEN, AppIcon.YELLOW).forEach { selected ->
+    fun selectingEveryAlternativeActivatesBeforePersistingThatIcon() = runBlocking {
+        AppIcon.entries.filterNot { it == AppIcon.DARK }.forEach { selected ->
             val events = mutableListOf<String>()
 
             persistAndActivateAppIcon(
@@ -43,7 +43,7 @@ class AppIconSettingsTest {
             )
 
             assertEquals(
-                listOf("persist:${selected.persistedValue}", "activate:${selected.persistedValue}:after:DARK"),
+                listOf("activate:${selected.persistedValue}:after:DARK", "persist:${selected.persistedValue}"),
                 events
             )
         }
@@ -55,11 +55,14 @@ class AppIconSettingsTest {
 
         assertEquals(
             listOf(
-                "org.rankoffline.app.MainActivityDark",
-                "org.rankoffline.app.MainActivityBlue",
-                "org.rankoffline.app.MainActivityRed",
-                "org.rankoffline.app.MainActivityGreen",
-                "org.rankoffline.app.MainActivityYellow"
+                "org.rankoffline.app.MainActivityDefaultBlack",
+                "org.rankoffline.app.MainActivityDefaultGlowBlue",
+                "org.rankoffline.app.MainActivityHimmelBlue",
+                "org.rankoffline.app.MainActivityMaomaoGreen",
+                "org.rankoffline.app.MainActivityMakiseRed",
+                "org.rankoffline.app.MainActivityZenitsuYellow",
+                "org.rankoffline.app.MainActivityGutsBlack",
+                "org.rankoffline.app.MainActivityKilluaWhite"
             ),
             aliases
         )

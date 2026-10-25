@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-<string name="nav_anime">アニメ</string><string name="nav_ranking">マイランキング</string><string name="nav_settings">設定</string><string name="catalog_local_count">ローカルカタログ：%1$s件</string><string name="search_anime_hint">アニメを検索…</string><string name="no_search_results">該当する結果はありません。</string><string name="ranking_title">マイランキング</string><string name="no_saved_ratings">保存された評価はまだありません。</string><string name="sort_popularity">人気</string><string name="sort_popularity_descending">↓ 人気</string><string name="sort_popularity_ascending">↑ 人気</string>
+<string name="nav_anime">アニメ</string><string name="nav_ranking">マイランキング</string><string name="nav_settings">設定</string><string name="media_anime">アニメ</string><string name="media_manga">マンガ</string><string name="media_series">シリーズ</string><string name="media_movies">映画</string><string name="media_books">本</string><string name="catalog_local_count">ローカルカタログ：%1$s件</string><string name="search_anime_hint">アニメを検索…</string><string name="no_search_results">該当する結果はありません。</string><string name="ranking_title">マイランキング</string><string name="no_saved_ratings">保存された評価はまだありません。</string><string name="sort_popularity">人気</string><string name="sort_popularity_descending">↓ 人気</string><string name="sort_popularity_ascending">↑ 人気</string>
 <string name="cover_download">カバーをダウンロード</string><string name="cover_close">閉じる</string><string name="cover_delete">カバーを削除</string><string name="cover_delete_title">このカバーを削除しますか？</string><string name="cover_delete_explanation">必要なときに再度ダウンロードできます。</string><string name="action_cancel">キャンセル</string><string name="action_delete">削除</string><string name="action_continue">続行</string><string name="action_save">保存</string><string name="action_apply">適用</string><string name="action_back">戻る</string>
 <string name="rating_title">評価</string><string name="rating_simple_instructions">0～10の範囲から0.5刻みで評価を選択してください。</string><string name="rating_slider_accessibility">評価スライダー</string><string name="rating_category_slider_accessibility">%1$sの評価スライダー</string><string name="rating_notes">メモ</string><string name="rating_notes_hint">良かった点、気になった点、印象的な場面など…</string><string name="score_title">スコア</string><string name="score_quality">完成度：%1$s</string><string name="score_bonus_value">%1$s：+%2$.1f</string><string name="score_category_heading">%1$s · %2$d%%</string><string name="score_activate_category">有効にする</string><string name="score_out_of_ten">%1$.1f / 10</string><string name="score_not_applicable_explanation">対象外：この配点は他のカテゴリーに再配分されます。</string><string name="bonus_range">%1$s · +0～+%2$.1f</string><string name="bonus_explanation">完成度の計算後に加算され、スコアが下がることはありません。</string><string name="bonus_current">+%1$.1f</string>
 <string name="score_flawless">完璧</string><string name="score_amazing">圧巻</string><string name="score_great">素晴らしい</string><string name="score_good">良い</string><string name="score_decent">まずまず</string><string name="score_average">普通</string><string name="score_subpar">今ひとつ</string><string name="score_poor">物足りない</string><string name="score_bad">悪い</string><string name="score_unwatchable">視聴困難</string>
-<string name="settings_title">設定</string><string name="settings_general_title">一般設定</string><string name="settings_general_description">表示と動作</string><string name="settings_rating_title">評価設定</string><string name="settings_rating_description">カテゴリーと採点方式</string><string name="settings_icon_title">アプリアイコン</string><string name="settings_icon_description">ランチャーアイコンを選択</string><string name="settings_about_title">ライセンス / アプリ情報</string><string name="settings_about_description">アプリ情報、クレジット、ライセンス</string><string name="settings_open_item">%1$sを開く</string>
-<string name="icon_instructions">Androidランチャーに表示するアイコンを選択します。ランチャーによっては反映に数秒かかる場合があります。</string><string name="icon_content_description">%1$sのランチャーアイコン</string><string name="icon_selected">✓ %1$s</string><string name="icon_default">デフォルト</string><string name="icon_blue">ブルー</string><string name="icon_red">レッド</string><string name="icon_green">グリーン</string><string name="icon_yellow">イエロー</string>
+<string name="settings_title">設定</string><string name="settings_general_title">一般設定</string><string name="settings_general_description">アプリ全体の設定</string><string name="settings_rating_title">評価設定</string><string name="settings_rating_description">カテゴリーと採点方式</string><string name="settings_icon_title">アイコン</string><string name="settings_icon_description">ランチャーアイコンを選択</string><string name="settings_about_title">ライセンス / アプリ情報</string><string name="settings_about_description">アプリ情報、クレジット、ライセンス</string><string name="settings_active_pack_title">パッケージ設定</string><string name="settings_active_pack_description">%1$sパッケージ固有の設定</string><string name="settings_active_pack_screen_title">%1$sの設定</string><string name="settings_merge_description">パック内で明示的に関連付けられた項目をまとめます。</string><string name="settings_donation_title">寄付</string><string name="settings_donation_description">RankOfflineの開発を支援</string><string name="settings_donation_body">RankOfflineは無料のオープンソースです。公式の寄付先が用意されたら、ここに表示します。</string><string name="settings_open_item">%1$sを開く</string><string name="icon_content_description">%1$sのランチャーアイコン</string><string name="icon_selected">✓ %1$s</string><string name="icon_default">デフォルト</string><string name="icon_blue">ブルー</string><string name="icon_red">レッド</string><string name="icon_green">グリーン</string><string name="icon_yellow">イエロー</string><string name="icon_star">スター</string><string name="icon_star_no_background">スター・透明</string><string name="icon_star_pastel">スター・パステル</string><string name="icon_star_white">スター・ホワイト</string><string name="icon_dark_glow">ダークグロー</string>
+    <string name="icon_black">ブラック</string>
+    <string name="icon_white">ホワイト</string>
+    <string name="icon_star_blue">青い星</string>
 <string name="general_display_section">表示</string><string name="general_sticky_score">スコアを固定表示</string><string name="general_sticky_score_description">スクロール中もスコアを表示します</string><string name="general_show_images">画像を表示</string><string name="general_show_images_description">アニメのカバー画像を表示します</string><string name="language_title">言語</string><string name="language_description">アプリの表示言語</string><string name="language_english">English</string><string name="language_spanish">Español</string><string name="language_german">Deutsch</string><string name="language_french">Français</string><string name="language_russian">Русский</string><string name="language_japanese">日本語</string><string name="language_simplified_chinese">简体中文</string><string name="language_basque">Euskara</string><string name="language_italian">Italiano</string>
-<string name="covers_popularity_section">人気度とカバー</string><string name="covers_popularity_description">人気のアニメを更新し、オフライン用のカバーをダウンロードします。</string><string name="covers_update_explanation">更新するたびに人気度を更新し、不足しているカバーをダウンロードします。プレースホルダーをタップすると個別にも取得できます。</string><string name="covers_downloaded_count">ダウンロード済みカバー：%1$d</string><string name="covers_update_top">トップ%1$dを更新</string><string name="covers_update_top_5000_title">トップ5000を更新</string><string name="covers_update_top_5000_warning">多数のカバーをダウンロードするため、通信量と保存容量を多く使用する場合があります。</string><string name="covers_update_completed">トップ%1$dを更新しました</string><string name="covers_update_interrupted">トップ%1$dの更新が中断されました</string><string name="covers_updating">トップ%1$dを更新中</string><string name="popularity_title">人気度</string><string name="popularity_updating_progress">ランキングを更新中… %1$d / %2$d</string><string name="popularity_applying">ランキングを適用中…</string><string name="popularity_updated">人気度を更新しました</string><string name="popularity_update_failed">更新できませんでした</string><string name="covers_progress">カバー：%1$d / %2$d</string><string name="covers_progress_details">既存 %1$d · ダウンロード %2$d · エラー %3$d</string><string name="covers_completed">✓ カバーの処理が完了しました</string><string name="covers_download_interrupted">カバーのダウンロードが中断されました</string><string name="covers_clear">ダウンロード済みカバーを削除</string><string name="covers_clear_title">ダウンロード済みカバーを削除しますか？</string><string name="covers_clear_explanation">必要になったときに再度ダウンロードできます。</string>
-<string name="rating_elaborate">詳細評価</string><string name="rating_elaborate_description">カテゴリー、配点、N/A、ボーナスを使用します</string><string name="rating_system">評価システム</string><string name="rating_add_category">カテゴリーを追加</string><string name="rating_reset_defaults">デフォルトに戻す</string><string name="rating_new_category_name">新しいカテゴリー</string><string name="rating_new_category_description">独自の評価基準です。</string><string name="category_name">名前</string><string name="category_description">説明</string><string name="category_weight">配点</string><string name="category_weight_percent">%1$d%%</string><string name="category_weight_slider_accessibility">カテゴリー配点スライダー</string><string name="category_color">色</string><string name="category_color_content_description">カテゴリーの色を選択</string><string name="color_picker_title">色を選択</string><string name="color_palette">カラーパレット</string><string name="color_custom">カスタム色</string><string name="color_hex_label">HEXカラー（#RRGGBB）</string><string name="color_invalid">#19D5E5 のような有効な色を入力してください。</string><string name="category_delete_title">カテゴリーを削除しますか？</string><string name="category_delete_explanation">%1$sと保存済みの詳細評価を削除します。既存の最終スコアとメモは変更されません。</string>
+<string name="covers_popularity_section">人気度とカバー</string><string name="covers_popularity_description">人気のアニメを更新し、オフライン用のカバーをダウンロードします。</string><string name="covers_update_explanation">更新するたびに人気度を更新し、不足しているカバーをダウンロードします。プレースホルダーをタップすると個別にも取得できます。</string><string name="covers_downloaded_count">ダウンロード済みカバー：%1$d</string><string name="covers_update_top">トップ%1$dを更新</string><string name="covers_update_top_5000_title">トップ5000を更新</string><string name="covers_update_top_5000_warning">多数のカバーをダウンロードするため、通信量と保存容量を多く使用する場合があります。</string><string name="covers_update_completed">トップ%1$dを更新しました</string><string name="covers_update_interrupted">トップ%1$dの更新が中断されました</string><string name="covers_updating">トップ%1$dを更新中</string><string name="popularity_title">人気度</string><string name="popularity_updating_progress">ランキングを更新中… %1$d / %2$d</string><string name="popularity_applying">ランキングを適用中…</string><string name="popularity_updated">人気度を更新しました</string><string name="popularity_update_failed">更新できませんでした</string><string name="covers_progress">カバー：%1$d / %2$d</string><string name="covers_completed">✓ カバーの処理が完了しました</string><string name="covers_download_interrupted">カバーのダウンロードが中断されました</string><string name="covers_clear">ダウンロード済みカバーを削除</string><string name="covers_clear_title">ダウンロード済みカバーを削除しますか？</string><string name="covers_clear_explanation">必要になったときに再度ダウンロードできます。</string>
+<string name="rating_elaborate">詳細評価</string><string name="rating_system">評価システム</string><string name="rating_add_category">カテゴリーを作成</string><string name="rating_reset_defaults">デフォルトに戻す</string><string name="rating_new_category_name">新しいカテゴリー</string><string name="rating_new_category_description">独自の評価基準です。</string><string name="category_name">名前</string><string name="category_description">説明</string><string name="category_weight">配点</string><string name="category_weight_percent">%1$d%%</string><string name="category_weight_slider_accessibility">カテゴリー配点スライダー</string><string name="category_color">色</string><string name="category_color_primary">プライマリ</string><string name="category_color_secondary">セカンダリ</string><string name="category_color_content_description">カテゴリーの色を選択</string><string name="color_picker_title">色を選択</string><string name="color_palette">カラーパレット</string><string name="color_custom">カスタム色</string><string name="color_hex_label">HEXカラー（#RRGGBB）</string><string name="color_invalid">#19D5E5 のような有効な色を入力してください。</string><string name="category_delete_title">カテゴリーを削除しますか？</string><string name="category_delete_explanation">%1$sと保存済みの詳細評価を削除します。既存の最終スコアとメモは変更されません。</string>
 <string name="category_writing">脚本</string><string name="category_writing_description">プロット、テーマ、テンポ、盛り上がり、始まり、結末</string><string name="category_characters">キャラクター</string><string name="category_characters_description">主人公、脇役、敵役、成長、奥行き、魅力、関係性</string><string name="category_engagement">没入感</string><string name="category_engagement_description">感情への訴求、娯楽性、関心、緊張感、雰囲気、印象度</string><string name="category_visuals">映像</string><string name="category_visuals_description">アニメーション、画風、撮影、背景、効果、キャラクターデザイン</string><string name="category_worldbuilding">世界観</string><string name="category_worldbuilding_description">舞台、設定、能力体系</string><string name="category_audio">音響</string><string name="category_audio_description">劇伴、オープニング／エンディング、効果音</string><string name="bonus_personal_taste">個人の好み</string><string name="bonus_personal_taste_description">技術的な完成度とは別に、個人的にどれだけ気に入ったか</string>
 <string name="about_version">バージョン %1$s</string><string name="about_summary">オフラインのアニメカタログ兼評価アプリです。評価と設定は端末内に保存されます。</string><string name="about_licences">ライセンス</string><string name="about_catalog_licence">アニメカタログ：AnimeAPIのコンパイル済みデータベースはODbL 1.0、内容はDbCL 1.0、一部の未加工ソースデータはCC0 1.0です。</string><string name="about_android_licence">AndroidX、Jetpack Compose、DataStore、Kotlinx Serialization：Apache License 2.0。</string><string name="about_acknowledgements">謝辞</string><string name="about_acknowledgements_text">AnimeAPIとその貢献者がカタログの対応情報を提供しています。ローカルにカバーがない場合はAniListとJikanのメタデータを利用します。</string>
 <string name="error_initialize_local_data">ローカルデータを初期化できませんでした。</string><string name="message_no_internet">インターネットに接続されていません</string><string name="message_cover_not_found">このアニメのカバーが見つかりませんでした</string><string name="message_cover_download_failed">カバーをダウンロードできませんでした。もう一度お試しください。</string><string name="message_cover_deleted">カバーを削除しました</string><string name="message_cover_delete_failed">カバーを削除できませんでした</string><plurals name="message_covers_deleted"><item quantity="other">%1$d件のカバーを削除しました</item></plurals><string name="message_top_updated">トップ%1$dを更新しました</string><string name="message_top_update_failed">トップ%1$dを更新できませんでした。もう一度お試しください。</string>
@@ -26,9 +28,9 @@
     <string name="rating_delete_profile">プロファイルを削除</string>
     <string name="rating_delete_profile_confirmation">プロファイル「%1$s」を削除しますか？</string>
     <string name="rating_last_profile_required">少なくとも1つのプロファイルが必要です。</string>
-    <string name="rating_reset_profiles">プロファイルをリセット</string>
+    <string name="rating_reset_profiles">標準プロファイルをリセット</string>
     <string name="rating_reset_profiles_confirmation">すべてのプロファイルを公式の初期設定に戻しますか？カテゴリーと評価は変更されません。</string>
-    <string name="rating_reset_categories">カテゴリーをリセット</string>
+    <string name="rating_reset_categories">標準カテゴリーをリセット</string>
     <string name="rating_reset_categories_confirmation">すべてのカテゴリーを公式の初期設定に戻しますか？互換性のあるプロファイルの重みは保持されます。</string>
     <string name="profile_general">標準</string>
     <string name="profile_narrative">物語重視</string>
@@ -36,15 +38,30 @@
     <string name="profile_visual_action">映像 / アクション重視</string>
     <string name="profile_world_adventure">世界観 / 冒険重視</string>
     <string name="profile_atmospheric">雰囲気重視</string>
-    <string name="covers_settings_title">人気ランキングとカバー</string>
-    <string name="covers_settings_description">人気ランキングを更新し、オフライン用カバーを管理します。</string>
-    <string name="covers_settings_explanation">更新する上位件数を選択してください。RankOffline は人気ランキングを更新し、不足しているカバーのみをダウンロードします。</string>
+    <string name="covers_settings_title">カバー</string>
+    <string name="covers_settings_description">選択中のメディアのオフラインカバーを管理します。</string>
+    <string name="covers_settings_explanation">カバー操作は選択中のメディアだけに適用されます。事前ダウンロードは評価済み項目の不足しているカバーのみを取得します。</string>
+    <string name="covers_download_rated">評価済み項目のカバーをダウンロード</string>
+    <string name="covers_downloading_rated">カバーをダウンロード中…</string>
     <string name="covers_download_top">トップ%1$dをダウンロード</string>
+    <string name="covers_one_per_group">グループごとに1つのカバー</string>
+    <string name="covers_one_per_group_description">グループの最初の項目のカバーを、そのグループ内のすべての項目に使用します。</string>
     <string name="filters_title">フィルター</string><string name="filters_active">フィルター（%1$d）</string><string name="filters_clear">フィルターをクリア</string><string name="filters_all">すべて / フィルターなし</string>
     <string name="filter_genre">ジャンル</string><string name="filter_format">形式</string><string name="filter_year">年</string><string name="filter_studio">スタジオ</string>
     <string name="filter_search_values">値を検索</string>
     <string name="sort_final_score">最終スコア</string><string name="sort_quality_score">完成度</string><string name="sort_personal_taste">個人の好み</string><string name="sort_category_score">カテゴリー別スコア</string>
     <string name="merge_seasons">シーズンを統合</string>
+    <string name="merge_collections">コレクションを統合</string>
+    <string name="merge_variants">バリエーションを統合</string>
+    <string name="search_catalog_hint">タイトルを検索…</string>
+    <string name="catalog_loading">カタログを読み込み中…</string>
+    <string name="catalog_not_available_yet">カタログはまだ利用できません</string>
+    <string name="catalog_unavailable_error">カタログを読み込めませんでした</string>
+    <string name="filter_production_company">制作会社</string>
+    <string name="filter_network">ネットワーク</string>
+    <string name="filter_demographic">対象層</string>
+    <string name="filter_subject">主題</string>
+    <string name="filter_author">著者</string>
     <string name="group_format_series">シリーズ</string>
     <string name="group_format_movies">映画</string>
     <string name="group_format_specials">スペシャル</string>
@@ -63,4 +80,108 @@
     <string name="group_use_member_ratings">個別評価を使用</string>
     <string name="group_explicit_rating">グループの評価</string>
     <string name="about_rankoffline_trademarks">RankOfflineの公式名称、ロゴ、ランチャーアイコン、ブランドデザインはGPLv3の対象外です。TRADEMARKS.mdを参照してください。</string>
+<string name="category_manga_writing">物語構成</string><string name="category_book_writing">物語構成</string><string name="category_series_writing">脚本</string><string name="category_movie_writing">脚本</string>
+<string name="category_art">作画</string><string name="category_paneling">コマ割り</string><string name="category_prose">文章 / 文体</string><string name="category_structure">テンポ / 構成</string><string name="category_direction">演出</string><string name="category_editing">編集 / テンポ</string><string name="category_staging_immersion">演出 / 没入感</string>
+<string name="category_manga_writing_description">プロット、テーマ、テンポ、構成、台詞、導入と結末。</string><string name="category_manga_characters_description">主要・脇役キャラクター、成長、深み、魅力、関係性。</string><string name="category_art_description">描画品質、画風、キャラクターデザイン、背景、コマ構成、流れ、視認性、視覚的な物語表現。</string><string name="category_paneling_description">ページ構成、コマの流れ、視認性、レイアウトによる物語表現。</string><string name="category_manga_worldbuilding_description">舞台、設定、内部ルール、システム、場所の実在感。</string>
+<string name="category_book_writing_description">プロット、テーマ、着想、台詞、物語構成、結末。</string><string name="category_book_characters_description">主要・脇役キャラクター、成長、深み、関係性。</string><string name="category_prose_description">言葉遣い、語り口、読みやすさ、表現力、文体の完成度。</string><string name="category_book_worldbuilding_description">必要に応じた舞台、設定、内部整合性、場所の実在感。</string><string name="category_structure_description">物語のリズム、章・節の構成、進行、全体の組み立て。</string>
+<string name="category_series_writing_description">プロット、テーマ、台詞、テンポ、シーズン構成、物語の決着。</string><string name="category_series_characters_description">主要・脇役キャラクター、成長、深み、魅力、関係性。</string><string name="category_series_direction_description">演出、ショット選択、演技、トーン、総合的な映像・音響演出。</string><string name="category_series_visuals_description">撮影、美術、特殊効果、照明、映像表現。</string><string name="category_series_worldbuilding_description">必要に応じた舞台、設定、内部ルール、連続性。</string><string name="category_series_audio_description">音楽、サウンドデザイン、ミキシング、音の活用。</string>
+<string name="category_movie_writing_description">プロット、テーマ、台詞、物語構成、決着。</string><string name="category_movie_characters_description">キャラクター造形、成長、関係性、魅力。</string><string name="category_movie_direction_description">演出、演技、トーン、ショット選択、監督としての完成度。</string><string name="category_movie_visuals_description">撮影、美術、特殊効果、照明、視覚的な個性。</string><string name="category_editing_description">カッティング、リズム、場面転換、構成、上映時間の活用。</string><string name="category_staging_immersion_description">キャスティング、演技、演出、監督、感情への訴求力、観客を物語へ引き込み没入させる力。</string><string name="category_movie_audio_description">サウンドトラック、効果音、映像との統合。</string>
+<string name="profile_art_focused">作画重視</string><string name="profile_prose_style">文章 / 文体</string><string name="profile_visual_direction">映像</string><string name="profile_technical_craft">技術力</string>
+<string name="about_summary_multimedia">オフラインのメディアカタログ兼評価アプリです。評価、メモ、設定は端末内に保存されます。</string>
+<string name="about_source_code">ソースコード</string><string name="about_data_sources">データ提供元</string><string name="about_data_licences">データライセンス</string><string name="about_open_source_software">オープンソースソフトウェア</string><string name="about_legal_trademarks">法的情報 / 商標</string><string name="about_movies_series">映画・シリーズ</string>
+<string name="about_anime_sources_description">AnimeAPIはカタログの基盤、AniListは一部のメタデータと関連情報を提供します。Jikanはカバー用の非公式MyAnimeList APIです。cedya77によるanime-offline-databaseの継続版は別名を提供し、元のmanami-projectを明記します。</string>
+<string name="about_manga_source_description">MangaDexはマンガのメタデータとカバー参照を提供します。RankOfflineにチャプター閲覧機能はありません。</string>
+<string name="about_tmdb_source_description">TMDBは映画・シリーズのメタデータとポスター参照を提供します。</string>
+<string name="about_open_library_source_description">書籍メタデータはOpen Libraryから取得します。表紙はOpen Library Coversサービスから別途取得されます。</string>
+<string name="about_tmdb_logo_description">TMDB公式ロゴ</string>
+<string name="about_anime_database_licences">AnimeAPIのコンパイル済みデータベースはODbL 1.0、個々の内容はDbCL 1.0です。</string>
+<string name="about_alias_database_licences">anime-offline-databaseから派生した別名データベースはODbL 1.0 / DbCL 1.0です。</string>
+<string name="about_cc0_scope">CC0 1.0は、来歴で明示されたAnimeAPIの未加工ソース要素にのみ適用されます。</string>
+<string name="about_open_library_licence_caveat">Open Libraryへの投稿は、適用可能な場合は一般にCC0で提供されます。すべての書籍表紙がCC0またはパブリックドメインという意味ではありません。</string>
+<string name="about_software_licences">RankOfflineのソースコードはGPL-3.0-onlyです。該当するAndroidX、Jetpack、Kotlin、Kotlinxのランタイム部品はApache-2.0です。</string>
+<string name="about_packaged_notices">完全なソフトウェアライセンス本文とデータ通知はアプリに同梱されています。</string>
+<string name="about_non_affiliation">提供元の名称と商標はデータ源を示すもので、提携、認証、推奨を意味しません。</string><string name="about_trademark_policy">商標ポリシー</string>
+<string name="score_group_title">グループスコア</string>
+<string name="search_clear">検索をクリア</string>
+<string name="popularity_settings_description">人気度スナップショットと更新の可否</string><string name="popularity_runtime_unavailable">人気度は同梱カタログから提供されます。このビルドでは、このメディア種別の実行時更新は利用できません。</string><string name="search_more_online">オンラインでさらに検索</string><string name="search_online_results">オンラインの結果</string><string name="search_online_loading">オンラインで検索中…</string><string name="search_online_empty">これ以上オンラインの結果はありません。</string><string name="search_online_error">オンライン検索に失敗しました。ローカルの結果は引き続き利用できます。</string><string name="action_retry">再試行</string><string name="category_selector_title">カテゴリーを選択</string><string name="category_not_installed">未ダウンロード</string><string name="onboarding_welcome_title">RankOfflineへようこそ!</string><string name="onboarding_welcome_body">アニメ、マンガ、シリーズ、映画、本を自分らしく評価・整理できます。</string><string name="onboarding_privacy">評価はあなたのものです。RankOfflineはローカルでプライバシーを守って動作します。</string><string name="onboarding_choose_style">スタイルを選択</string><string name="onboarding_change_later">設定からいつでも変更できます。</string><string name="onboarding_minimal">ミニマル</string><string name="onboarding_minimal_description">表紙なしの軽量表示です。</string><string name="onboarding_with_images">画像あり</string><string name="onboarding_with_images_description">表紙のダウンロードが必要です。</string><string name="onboarding_rating_style">評価スタイル</string><string name="onboarding_rating_simple">シンプル評価</string><string name="onboarding_rating_simple_description">すばやく直接採点します。</string><string name="onboarding_rating_elaborated">詳細評価</string><string name="onboarding_rating_elaborated_description">設定可能なカテゴリーを詳しく評価します。</string><string name="onboarding_start">始める</string><string name="onboarding_categories_title">どこから始めますか？</string><string name="onboarding_categories_subtitle">使用するオフラインカタログを選択してください。後で設定から管理できます。</string><string name="onboarding_done">完了</string><string name="categories_title">パッケージ</string><string name="categories_settings_description">パッケージをダウンロードして管理します。</string><string name="categories_storage_title">パッケージデータ</string><string name="categories_installed_size">インストール済み %1$s</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">このビルドに同梱</string><string name="category_downloaded">ダウンロード済み</string><string name="category_delete">カテゴリーを削除</string><string name="category_download">カテゴリーをダウンロード</string><string name="category_included_not_reclaimable">同梱カタログのAPK容量は解放できません</string><string name="category_remove_catalog">カタログを削除</string><string name="category_remove_title">%1$s カタログを削除</string><string name="category_remove_confirmation">カタログとローカル表紙を削除し、約 %1$s を解放します。評価と個人データは保持されます。</string><string name="category_delete_my_data">自分のデータを削除</string><string name="category_delete_personal_title">%1$s の個人データを削除</string><string name="category_delete_personal_confirmation">%1$s の評価と個人設定を完全に削除します。元に戻せません。カタログは残ります。</string><string name="category_delete_personal_action">完全に削除</string><string name="category_download_not_configured">このビルドではパック配信先が設定されていません。</string><string name="category_download_complete">カテゴリーをダウンロードし、オフラインで利用できます。</string><string name="category_pack_invalid">カテゴリーパックが無効または不完全です。</string><string name="category_download_unavailable">このビルドではカテゴリーをダウンロードできません。</string><string name="category_catalog_removed">カタログを削除しました。評価は保持されています。</string><string name="category_personal_data_deleted">カテゴリーの個人データを削除しました。</string>
+    <string name="settings_display_description">外観と画像表示</string>
+    <string name="settings_theme_title">テーマ</string>
+    <string name="settings_theme_description">アプリのカラーパレットを選択</string>
+    <string name="theme_midnight_neon">ミッドナイトネオン</string>
+    <string name="theme_cherry_blossom">桜</string>
+    <string name="theme_deep_ocean">深海</string>
+    <string name="theme_emerald_forest">エメラルドの森</string>
+    <string name="theme_golden_sunset">黄金の夕暮れ</string>
+    <string name="theme_lavender_dream">ラベンダーの夢</string>
+    <string name="theme_pink_explosion">ピンクの爆発</string>
+    <string name="theme_create">テーマを作成</string>
+    <string name="theme_edit">テーマを編集</string>
+    <string name="theme_name">テーマ名</string>
+    <string name="theme_color_background">背景</string>
+    <string name="theme_color_surface">サーフェス</string>
+    <string name="theme_color_primary">プライマリ</string>
+    <string name="theme_color_secondary">セカンダリ</string>
+    <string name="theme_preview">テーマのプレビュー</string>
+    <string name="theme_preview_card">カードの例</string>
+    <string name="theme_delete">テーマを削除</string>
+    <string name="theme_delete_confirmation_title">「%1$s」を削除しますか？</string>
+    <string name="theme_delete_confirmation_body">このテーマは完全に削除されます。</string>
+    <string name="theme_reset_builtins">標準テーマをリセット</string>
+    <string name="onboarding_welcome_subtitle">メディアも評価も、自分らしく。プライバシーに配慮して端末内に保存します。</string>
+    <string name="onboarding_minimal_compact_description">表紙なし</string>
+    <string name="onboarding_with_images_compact_description">ダウンロードした表紙を使用</string>
+    <string name="onboarding_rating_simple_compact_description">すばやく直接採点</string>
+    <string name="onboarding_rating_elaborated_compact_description">カテゴリー別に詳しく採点</string>
+    <string name="category_purge_title">%1$sを削除</string>
+    <string name="category_purge_confirmation">%1$sパック、カタログ、表紙、評価、メモ、設定を完全に削除します。元に戻せません。約%2$s解放されます。</string>
+    <string name="category_purge_action">パックとデータを削除</string>
+    <string name="category_pack_purged">パックとそのすべてのデータを削除しました。</string>
+<plurals name="categories_packs_installed"><item quantity="other">%1$d個のパッケージをインストール済み</item></plurals>
+<string name="category_phase_downloading">ダウンロード中…</string>
+<string name="category_phase_waiting_download">ダウンロード待機中…</string>
+<string name="category_phase_verifying">パックを確認中…</string>
+<string name="category_phase_installing">インストール中…</string>
+<string name="category_phase_waiting_import">インポート待機中…</string>
+<string name="category_phase_waiting_covers">カバー待機中…</string>
+<string name="category_phase_importing_catalog">カタログを読み込み中…</string>
+<string name="category_phase_importing_groups">統合を準備中…</string>
+<string name="category_phase_downloading_covers">カバーをダウンロード中：%1$d / %2$d</string>
+<string name="category_phase_retrying_covers">カバーを再試行中：%1$d / %2$d</string>
+<string name="category_deleting">削除中…</string>
+<string name="category_phase_finalizing">完了処理中…</string>
+<string name="category_pack_runtime_error">カタログを準備できませんでした。タップして再試行してください。</string>
+<string name="message_rating_operation_failed">評価を保存できませんでした。もう一度お試しください。</string>
+    <string name="message_icon_change_failed">アプリアイコンを変更できませんでした。</string>
+    <string name="icon_default_blue">Default · 青</string>
+    <string name="icon_default_glow_blue">Default Glow · 青</string>
+    <string name="icon_himmel_blue">Himmel · 青</string>
+    <string name="icon_maomao_green">Maomao · 緑</string>
+    <string name="icon_makise_red">Makise · 赤</string>
+    <string name="icon_zenitsu_yellow">Zenitsu · 黄</string>
+    <string name="icon_guts_black">Guts · 黒</string>
+    <string name="icon_killua_white">Killua · 白</string>
+    <string name="nav_search">検索</string>
+    <string name="packs_empty_invitation">設定からパッケージをダウンロードして始めましょう。</string>
+    <string name="download_pack">パッケージをダウンロード</string>
+    <string name="color_picker_saturation_value">彩度と明るさ</string>
+    <string name="color_picker_hue">色相</string>
+    <string name="loading_list">リストを読み込み中…</string>
+    <string name="covers_preparing_list">カバー一覧を準備中…</string>
+    <string name="covers_retrying_failed">失敗したカバーを再試行中…</string>
+    <string name="covers_operation_busy">このパックではカバー処理がすでに実行中です。</string>
+    <string name="covers_progress_details_explicit">ダウンロード済み %1$d · 利用不可 %2$d · 失敗 %3$d</string>
+    <string name="merge_book_series">シリーズ作品を統合</string>
+    <string name="book_genre_fantasy">ファンタジー</string>
+    <string name="book_genre_science_fiction">SF</string>
+    <string name="book_genre_romance">ロマンス</string>
+    <string name="book_genre_mystery_thriller">ミステリー・スリラー</string>
+    <string name="book_genre_horror">ホラー</string>
+    <string name="book_genre_adventure">冒険</string>
+    <string name="book_genre_historical_fiction">歴史小説</string>
+    <string name="book_genre_classics">古典</string>
+    <string name="book_genre_biography">伝記</string>
+    <string name="book_genre_history">歴史</string>
+    <string name="book_genre_science_technology">科学・技術</string>
+    <string name="book_genre_philosophy">哲学</string>
+    <string name="book_genre_other">その他・未分類</string>
 </resources>

@@ -105,10 +105,9 @@ class PopularityRankReconcilerTest {
     }
 
     @Test
-    fun failedSecondTop100PageKeepsRankingAndNeverStartsCovers() = runBlocking {
+    fun failedSecondTop100PageKeepsRanking() = runBlocking {
         val previous = (1..100).associate { "anime$it" to it }
         var ranking = previous
-        var progress = TopUpdateProgress.start(100)
         var rankingApplied = false
 
         try {
@@ -121,23 +120,16 @@ class PopularityRankReconcilerTest {
                         PopularAnimeEntry(id.toLong(), id.toLong(), 10_000 - id, null)
                     }
                 },
-                onPageFetched = { _, _, _, total ->
-                    progress = TopUpdateProgress.popularityFetched(progress, total)
-                }
+                onPageFetched = { _, _, _, _ -> }
             )
-            progress = TopUpdateProgress.applyingPopularity(progress)
             ranking = fetched.mapIndexed { index, _ -> "anime${index + 1}" to index + 1 }.toMap()
             rankingApplied = true
-            progress = TopUpdateProgress.downloadingCovers(progress, 0, 0, 0)
         } catch (_: IOException) {
-            progress = progress.copy(status = CoverPreloadStatus.FAILED)
+            // Keep the previously committed ranking when any page fails.
         }
 
         assertEquals(previous, ranking)
         assertFalse(rankingApplied)
-        assertEquals(CoverPreloadStatus.FAILED, progress.status)
-        assertFalse(progress.popularityUpdated)
-        assertEquals(0, progress.processed)
     }
 
     private fun rank(id: String, value: Int) = LocalPopularityRank(id, value)

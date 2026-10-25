@@ -1,0 +1,68 @@
+RankOffline third-party and data notices
+
+APPLICATION SOFTWARE
+
+RankOffline application source code is licensed GPL-3.0-only. The bundled data,
+provider content, third-party services, and trademarks retain their own terms
+and are not relicensed under the application source-code licence.
+
+Applicable AndroidX, Jetpack Compose, Room, DataStore, Kotlin, and Kotlinx
+runtime components are distributed under the Apache License 2.0. Local copies
+of GPL-3.0 and Apache-2.0 are packaged beside this notice.
+
+BUNDLED DATABASES AND METADATA SOURCES
+
+AnimeAPI by nattadasu supplies the Anime catalog foundation and provider
+mapping. AnimeAPI software is MIT-licensed; its compiled database is identified
+as ODbL 1.0 with contents under DbCL 1.0, and some raw components are CC0 1.0.
+AnimeAPI requires credit to AnimeAPI and Anime Offline Database.
+https://github.com/nattadasu/animeApi
+
+anime-offline-database supplies Anime title aliases only. The bundled derived
+anime_aliases.jsonl.gz uses cedya77/anime-offline-database release 2026-42,
+continuing the original manami-project/anime-offline-database project. The
+database is ODbL 1.0 and its contents are DbCL 1.0.
+https://github.com/cedya77/anime-offline-database
+https://github.com/manami-project/anime-offline-database
+
+AniList supplies selected Anime metadata, explicit relations, popularity, and
+primary cover metadata. Attribution does not imply authorization for broader
+collection or endorsement by AniList.
+https://anilist.co
+
+Jikan is used only as an existing Anime cover fallback. Jikan is an unofficial
+MyAnimeList API; neither Jikan nor MyAnimeList endorses RankOffline.
+https://jikan.moe
+
+MangaDex supplies Manga metadata, title aliases, tags, creator relationships,
+variant relations, and cover references. RankOffline does not offer chapter
+reading and does not distribute scanlation content.
+https://mangadex.org
+
+TMDB supplies Movie and Series metadata, collection/season grouping,
+alternative titles, company/network data, and poster references.
+https://www.themoviedb.org
+
+This product uses the TMDB API but is not endorsed or certified by TMDB.
+
+Open Library supplies Work metadata and author records through offline bulk
+dumps. Book covers are retrieved separately through the Open Library Covers
+service. No claim is made that all cover images are CC0 or public domain.
+https://openlibrary.org
+
+LICENCE REFERENCES
+
+GPL-3.0-only: https://www.gnu.org/licenses/gpl-3.0.html
+Apache-2.0: https://www.apache.org/licenses/LICENSE-2.0
+ODbL-1.0: https://opendatacommons.org/licenses/odbl/1-0/
+DbCL-1.0: https://opendatacommons.org/licenses/dbcl/1-0/
+CC0-1.0: https://creativecommons.org/publicdomain/zero/1.0/
+
+TRADEMARKS AND NON-ENDORSEMENT
+
+Provider names and logos belong to their respective owners. Their appearance
+identifies sources and does not imply affiliation, certification, or
+endorsement. RankOffline's name, logo, icons, and distinctive branding are
+subject to the repository TRADEMARKS.md policy.
+
+This notice records source and licence provenance; it is not legal advice.

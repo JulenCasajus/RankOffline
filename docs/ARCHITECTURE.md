@@ -1,77 +1,72 @@
-# Architecture
+# RankOffline architecture
 
-> **Version note:** `main` currently represents the v0.1.3 stable code. The v0.2.0 architecture below documents the ongoing local `feature/multi-media` work and is **not yet a released product**.
+RankOffline 0.2 is a local-first Android application made of a generic Core APK and independently installed, data-only packs. The five official `PackId` values are `animes`, `mangas`, `movies`, `series`, and `books`.
 
-RankOffline is a local-first Android app: Kotlin + Jetpack Compose for UI, ViewModel/StateFlow for coordination, Room for structured data, DataStore for preferences, and app-private files for installed packs and downloaded covers.
-
-## Separation of concerns
+## Runtime layers
 
 ```text
-UI (Compose) / ViewModel
-  ├── App settings and custom palettes (DataStore)
-  ├── User-owned ratings, scores, notes and profiles (Room)
-  ├── Pack lifecycle coordinator / readiness
-  │     ├── downloaded .pack → verify SHA/size → stage → promote
-  │     ├── catalog import → precomputed group import → finalization
-  │     └── READY only when runtime data is usable
-  └── Catalog / grouped queries / cover repositories (Room + private files)
+Compose UI
+  -> RankOfflineViewModel and domain coordinators
+  -> GenericMediaRepository / GenericMediaGroupRepository
+  -> shared Room media_* tables
+  -> verified files/packs/<pack_id>/ data
 ```
 
-Installed data-only payloads are stored under `files/packs/<pack_id>/` with `manifest.json`, `.complete`, and `catalog/`, `groups/`, `metadata/`, and optionally `covers/`. Archive bytes and each extracted file's SHA-256 are checked. `READY` is distinct from “files exist”; recovery, replacement and purge are serialized for each pack.
+All five official media types use the shared catalog, alias, filter, search, pagination, group, rating, ranking, and cover infrastructure. Provider-specific work is primarily release-time normalization and restricted cover URL
+resolution. Remote title discovery has been removed from the Android application. The legacy Anime repositories/tables remain only as an upgrade bridge and test surface for published 0.1.3 data; normal 0.2 catalog and rating writes use `media_*`.
 
-## Official pack IDs and catalogs
+## Room and user data
 
-| Pack ID | Media type | Catalog adapter | Merge |
-|---|---|---|---|
-| `animes` | `anime` | Anime-specific legacy Room/import format | Seasons / related Anime graph |
-| `mangas` | `manga` | Generic media items | `VARIANTS` |
-| `movies` | `movie` | Generic media items | `COLLECTION` (explicit TMDB collections) |
-| `series` | `series` | Generic media items | `SEASONS` (explicit TMDB show IDs) |
-| `books` | `book` | Generic media items | No Merge graph |
+Room owns `anime_rank.db`, currently schema **14**. The active shared tables are:
 
-The plural **pack ID** is stable for installed files; the singular **media type** is retained for persisted record compatibility.
+- `media_item`, `media_genre`, `media_credit`, and `media_alias` for catalog/reference data;
+- `media_group` and `media_group_member` for precomputed provider relationships;
+- `media_rating` / `media_rating_score` for item-owned personal state;
+- `media_group_rating` / `media_group_rating_score` for explicit group-owned personal state;
+- `media_catalog_metadata` for durable import version/hash/count verification.
 
-### Why Anime has a separate group importer
+Personal rating identity is `(pack_id, canonical_id)`. Item and group identities stay distinct. A saved simple or elaborate rating writes one canonical final score plus notes, status, profile, bonus, and any applicable category values. Room is the durable source of truth; UI revisions only trigger queries after successful persistence.
 
-`AnimeGroupCatalogImporter` is **not a second pack installer**. There is one common pack archive/verification/lifecycle layer, but currently **two database adapters**:
+Schema migrations are explicit and non-destructive. Migration 13 → 14 adds PackId ownership and moves stable Anime catalog, group, ratings, detailed scores, notes, status, profiles, and cover metadata into the common model. Conflicting legacy/common Anime ratings select one authoritative complete record by `updated_at`; ties retain the common record, and detailed scores follow the same winner. No destructive fallback is configured.
 
-- Anime: older `anime` / `anime_group` / `anime_group_member` schema; group records carry `rootAnimeId`, type and ordered Anime IDs. `BundledAnimeGroupCatalogManager` passes that graph to `AnimeGroupCatalogImporter`.
-- Manga/Movies/Series: generic `media_item` / `media_group` / `media_group_member` schema; group records carry representative IDs, popularity and explicit members. `GenericMediaGroupCatalogImporter` handles these.
+## Pack lifecycle
 
-Both obtain relationships from **precomputed pack data**. Neither should discover relationships when Merge is tapped. The separation exists for backward-compatible Anime ratings, existing IDs and schema, not because each provider needs a separate install system. Unifying database adapters later is an optional, migration-sensitive project, not a prerequisite for fast Merge.
-
-## Merge pipeline
+A pack is not READY merely because files exist. Per-pack lifecycle serialization coordinates startup recovery, install, import, and purge:
 
 ```text
-On the pack producer's machine:
-  identify explicit relationships → precompute IDs/members/representative
-  → write group records + manifest → build pack/index
-
-On Android, once:
-  download → verify → install → import catalog
-  → “Preparing merge” (import/verify relationships) → finalize → READY
-
-In everyday use:
-  Merge OFF → individual items
-  Merge ON  → indexed, paginated SQL over groups + ungrouped items
+download -> verify -> atomic file install -> import catalog
+         -> import/verify precomputed groups -> catalog READY
+         -> optional initial Top-100 cover acquisition (catalog remains usable)
 ```
 
-Only user-dependent score aggregates are computed at runtime. Group memberships and immutable popularity metadata come from the pack, not title matching on device.
+On process restart, unchanged catalog and group hashes take the `NoChange` path. Import failures produce ERROR/retry state; partial packs never activate. Operations for different packs may proceed independently, while operations for the same PackId cannot race.
 
-## User data, covers and deletion
+Pack deletion is an explicitly destructive product action: it purges that pack's reference data, ratings, detailed scores, notes/status, pack settings, covers, cache, and files. Global language, palette, onboarding, and app-icon settings remain.
 
-Ratings, profile-specific scores, notes and progress are separate from reference catalog records. Catalog **updates/recovery** must preserve them, as well as downloaded cover paths. Cover paths distinguish ordinary items from Movie/Series groups.
+## Merge and search
 
-**Deleting a pack through the explicit destructive “delete pack” action is different from updating it:** the v0.2.0 product design deliberately purges that pack's reference data, downloaded covers, ratings, notes, profiles/settings and other pack-owned state, after confirmation. Global theme, language and general app preferences remain. Never describe this deletion as preserving ratings.
+Relationships are computed by release tooling, never by the phone. Packs contain complete group records with provider group identity, representative ID, ordered members, member count, and popularity summary. Runtime Merge only switches between indexed, SQLite-paginated queries over imported memberships. It performs no title inference, provider request, or relationship write.
 
-A plain temporary import error must **never** trigger a user-data purge.
+Offline search uses the same repository for every media type, including aliases and
+manifest-declared filters/subtitle fields. Books have a conservative precomputed
+Work-level series-group artifact; coverage is intentionally limited rather than
+inferring unverifiable relationships on the phone.
 
-## Storage and compatibility
+## Covers
 
-- Room schema: **13** in the v0.2.0 development work; explicit migrations.
-- Raw pack `schemaVersion`: **1**.
-- Archive format: ZIP-based `.pack`, data-only, no executable plugins.
-- Local packs are fully useful offline; network access is only for requested downloads/searches/covers.
-- External-pack manifest parsing is groundwork; **end-user third-party import/UI adapters are not implemented**.
+Item and group covers use explicit storage identities and separate Room columns. A common UI contract observes the local path and download state; group covers read `media_group.local_cover_path`. Files are decoded off the main thread and cached in memory.
 
-See [PACK_FORMAT.md](PACK_FORMAT.md) and [CUSTOM_PACKS.md](CUSTOM_PACKS.md).
+Data-only pack manifests may declare constrained HTTPS cover sources, stable identities,
+and allowed hosts. Official legacy providers remain restricted fallback adapters. Anime
+can fall back to AniList/Jikan using its stable ID; Open Library candidates are tried
+in the stored order cover ID, ISBN-13, ISBN-10, edition OLID, and work OLID. Existing local covers remain usable offline. Normal browsing/startup never requires a provider
+call; optional Top-100 cover retrieval during new pack installation and user-requested Top-N
+operations may contact declared HTTPS hosts. No remote title search is performed.
+
+## Settings and themes
+
+DataStore owns global settings and PackId-namespaced media settings. Existing singular `MediaType` keys are still accepted during compatibility reads. Theme palettes persist only four source colors—background, surface, primary, and secondary. Material semantic colors are derived once per effective palette using contrast against the actual container. Old custom-theme JSON fields such as `mode` and `tertiary` are ignored safely.
+
+## Privacy and security
+
+Ratings, notes, profiles, database rows, preferences, packs, and downloaded covers remain in app-private storage. RankOffline has no account, telemetry, analytics, or remote rating storage. Packs are data only: manifests, paths, sizes, and SHA-256 are validated, traversal is rejected, and executable payload types are forbidden.
