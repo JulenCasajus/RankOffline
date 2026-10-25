@@ -34,9 +34,10 @@ GPL-3.0 and Apache-2.0 texts are packaged in `assets/legal/`.
   competing-service restrictions remain unresolved for release; attribution
   does not grant broader permission or imply endorsement.
 - [MangaDex](https://mangadex.org) supplies Manga metadata, aliases, tags,
-  creators, conservative variant relations, and cover references. Android may
-  request bounded title-search pages only after an explicit user action.
-  RankOffline does not provide chapter reading or distribute scanlation content. Its
+  creators, conservative variant relations, and cover references. Android 0.2
+  searches only the installed offline Manga catalog; it does not make remote
+  title-discovery calls. RankOffline does not provide chapter reading or
+  distribute scanlation content. Its
   current acceptable-use policy requires credit and must be reassessed before
   adding advertising or paid service features.
 - [TMDB](https://www.themoviedb.org) supplies Movie and Series metadata,
@@ -60,10 +61,11 @@ The ODbL, DbCL, and CC0 licence references are:
 - Existing Anime cover fallback may use [Jikan](https://jikan.moe), an
   unofficial MyAnimeList API. Neither Jikan nor MyAnimeList endorses
   RankOffline.
-- TMDB poster images use the approved TMDB image host when the user explicitly
-  downloads a cover.
-- Manga covers use MangaDex's cover service when explicitly requested.
-- Book covers are retrieved through the Open Library Covers service. Cover-image
+- TMDB poster images use a validated TMDB image host when the user explicitly
+  downloads a cover or enables optional installation-time Top-100 acquisition.
+- Manga covers use MangaDex's cover service on explicit user request or optional
+  installation-time cover acquisition.
+- Book covers are retrieved through the Open Library Covers service when enabled. Cover-image
   rights can vary; they are not claimed to be CC0 or public domain.
 
 No personal ratings or notes are sent to these providers.
