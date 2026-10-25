@@ -445,14 +445,88 @@ class MediaSettingsTest {
             "Soundtrack, sound effects and audiovisual integration.",
             category(MediaType.MOVIE, "audio").description
         )
-        assertEquals(
-            listOf("General", "Narrative", "Character-driven", "Visual", "Atmospheric"),
-            DefaultSettings.profiles(MediaType.MOVIE).profiles.map { it.name }
+        val expectedColors = mapOf(
+            MediaType.ANIME to listOf("#FFAA55", "#4FC3F7", "#E04BCF", "#81C784", "#EF5350"),
+            MediaType.MANGA to listOf("#FFAA55", "#4FC3F7", "#E04BCF", "#81C784"),
+            MediaType.MOVIE to listOf("#FFAA55", "#4FC3F7", "#E04BCF", "#81C784", "#EF5350"),
+            MediaType.SERIES to listOf("#FFAA55", "#4FC3F7", "#E04BCF", "#81C784", "#EF5350"),
+            MediaType.BOOK to listOf("#FFAA55", "#4FC3F7", "#E04BCF", "#81C784", "#EF5350")
         )
-        assertEquals(
-            listOf("General", "Narrative", "Character-driven", "Visual", "World / Adventure", "Atmospheric"),
-            DefaultSettings.profiles(MediaType.SERIES).profiles.map { it.name }
+        expectedColors.forEach { (mediaType, colors) ->
+            assertEquals(colors, DefaultSettings.ratingConfig(mediaType).categories.map { it.color })
+        }
+        val expectedDescriptions = mapOf(
+            MediaType.ANIME to listOf(
+                "Plot, themes, pacing, highlights, beginning, ending",
+                "Main characters, supporting characters, antagonist, development, depth, charisma, dynamics",
+                "Animation, art style, cinematography, backgrounds, effects, character design",
+                "Setting, lore, power system",
+                "OST, openings/endings, sound effects"
+            ),
+            MediaType.MANGA to listOf(
+                "Plot, themes, pacing, structure, dialogue, beginning and ending.",
+                "Main and supporting characters, development, depth, charisma and dynamics.",
+                "Drawing quality, art style, character design, backgrounds, panel composition, flow, visual clarity and storytelling.",
+                "Setting, lore, internal rules, systems and sense of place."
+            ),
+            MediaType.MOVIE to listOf(
+                "Plot, themes, dialogue, narrative construction and payoff.",
+                "Character writing, development, dynamics and charm.",
+                "Cinematography, production design, effects, lighting and visual identity.",
+                "Casting choices, performances, staging, direction, emotional impact and the film's ability to immerse and engage the viewer.",
+                "Soundtrack, sound effects and audiovisual integration."
+            ),
+            MediaType.SERIES to listOf(
+                "Plot, themes, dialogue, pacing, season structure and narrative payoff.",
+                "Main and supporting characters, development, depth, charisma and dynamics.",
+                "Cinematography, production design, effects, lighting and visual execution.",
+                "Setting, lore, internal rules and continuity where applicable.",
+                "Music, sound design, mixing and use of audio."
+            ),
+            MediaType.BOOK to listOf(
+                "Plot, themes, ideas, dialogue, narrative construction and ending.",
+                "Main and supporting characters, development, depth and relationships.",
+                "Language, voice, readability, imagery and stylistic execution.",
+                "Setting, lore, internal coherence and sense of place where applicable.",
+                "Narrative rhythm, chapter/section structure, progression and organization."
+            )
         )
+        expectedDescriptions.forEach { (mediaType, descriptions) ->
+            assertEquals(descriptions, DefaultSettings.ratingConfig(mediaType).categories.map { it.description })
+        }
+        val expectedProfiles = mapOf(
+            MediaType.ANIME to listOf(
+                "general" to "General", "narrative" to "Narrative",
+                "character_driven" to "Character-driven", "visual_action" to "Visual / Action",
+                "world_adventure" to "World / Adventure", "atmospheric" to "Atmospheric"
+            ),
+            MediaType.MANGA to listOf(
+                "general" to "General", "narrative" to "Narrative",
+                "character_driven" to "Character-driven", "art_focused" to "Art-focused",
+                "world_adventure" to "World / Adventure"
+            ),
+            MediaType.MOVIE to listOf(
+                "general" to "General", "narrative" to "Narrative",
+                "character_driven" to "Character-driven", "visual_direction" to "Visual",
+                "atmospheric" to "Atmospheric"
+            ),
+            MediaType.SERIES to listOf(
+                "general" to "General", "narrative" to "Narrative",
+                "character_driven" to "Character-driven", "visual_direction" to "Visual",
+                "world_adventure" to "World / Adventure", "atmospheric" to "Atmospheric"
+            ),
+            MediaType.BOOK to listOf(
+                "general" to "General", "narrative" to "Narrative",
+                "character_driven" to "Character-driven", "prose_style" to "Prose / Style",
+                "world_adventure" to "World / Adventure", "atmospheric" to "Atmospheric"
+            )
+        )
+        expectedProfiles.forEach { (mediaType, expected) ->
+            assertEquals(
+                expected,
+                DefaultSettings.profiles(mediaType).profiles.map { it.id to it.name }
+            )
+        }
     }
 
     @Test

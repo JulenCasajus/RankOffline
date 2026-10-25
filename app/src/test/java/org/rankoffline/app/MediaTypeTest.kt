@@ -70,7 +70,14 @@ class MediaTypeTest {
 
         assertEquals("book", updated.activeMediaType.persistedValue)
         assertSame(MediaType.BOOK, updated.activeMediaType)
-        assertEquals(initial.copy(activeMediaType = MediaType.BOOK), updated)
+        assertEquals(
+            initial.copy(
+                activeMediaType = MediaType.BOOK,
+                showImages = DefaultSettings.mediaSettings(MediaType.BOOK).showImages,
+                stickyScore = DefaultSettings.mediaSettings(MediaType.BOOK).stickyScore
+            ),
+            updated
+        )
     }
 
     @Test
