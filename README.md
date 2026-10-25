@@ -16,17 +16,11 @@ RankOffline is a **free, open-source Android app** for discovering and ranking *
 
 Choose only the categories you want. **Anime, Manga, Movies, Series, and Books** are separate downloadable data-only packs; the app itself does not require all five. After a pack is installed, you can browse its catalog, search, filter, rate, and rank **without an internet connection**.
 
-- **Anime:** anime titles, original and alternative title search, and season relationships.
-- **Manga:** searchable works, creators and conservative variant/edition grouping.
-- **Movies:** individual films and verified collection grouping.
-- **Series:** seasons and their parent-series grouping.
-- **Books:** works, authors and conservative series grouping; usable entirely without cover art.
-
 | Manga with artwork | Series grouped by show | Books without images |
 |:---:|:---:|:---:|
 | <img src="docs/screenshots/manga-browse.webp" alt="Browse the Manga catalog with cover images" width="240"> | <img src="docs/screenshots/series-merged.webp" alt="Series catalog grouped by parent TV show" width="240"> | <img src="docs/screenshots/books-no-covers.webp" alt="Browse Books in a compact text-first interface" width="240"> |
 
-Cover images are **optional and downloaded separately** when requested or enabled in the settings for a new pack. They are cached locally for offline viewing. Canceling an optional cover download does not remove the installed catalog.
+Cover images are **optional and downloaded separately** when requested or enabled in the settings for a new pack. They are cached locally for offline viewing.
 
 ## ⭐ Rate your way
 
@@ -38,7 +32,9 @@ RankOffline offers two independent ways to evaluate a work:
 
 Create and edit your own categories, category colors/descriptions, profiles, and weights. Add **personal notes** and keep a local status for each item. Saved scores are not silently recalculated just because you change a profile later.
 
-<p align="center"><img src="docs/screenshots/simple-rating.webp" alt="Simple Manga rating with personal taste bonus and notes" width="300"></p>
+| Simple rating | Elaborated rating |
+|:---:|:---:|
+| <img src="docs/screenshots/simple-rating.webp" alt="Simple Manga rating with personal taste bonus and notes" width="280"> | <img src="docs/screenshots/elaborate-rating.webp" alt="Elaborated Anime rating with weighted criteria and a Narrative profile" width="280"> |
 
 Read the [scoring documentation](docs/SCORING.md) for the full formula and behavior.
 
@@ -68,7 +64,9 @@ Switch **Merge** on or off without changing the original catalog data. RankOffli
 - **Per-pack settings:** choose whether to show images, merge related titles, keep the score header visible, and use one cover per group where supported.
 - **Cover management:** optionally download covers, show larger artwork, and remove downloaded covers.
 
-<p align="center"><img src="docs/screenshots/themes.webp" alt="RankOffline theme palette choices" width="300"></p>
+| Color themes | Launcher icons | Interface languages |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/themes.webp" alt="RankOffline theme palette choices" width="240"> | <img src="docs/screenshots/icons.webp" alt="Choose from eight RankOffline launcher icons in Settings" width="240"> | <img src="docs/screenshots/languages.webp" alt="RankOffline interface language selection with nine available languages" width="240"> |
 
 <details>
 <summary><strong>More screenshots: filters, category rankings, and cover viewer</strong></summary>
@@ -96,7 +94,7 @@ Switch **Merge** on or off without changing the original catalog data. RankOffli
 - Browse, search, filter, rate, and rank installed catalogs **offline**.
 - Personal ratings, notes, rating profiles, preferences, and cached covers stay in **app-private storage**.
 - **No login, analytics, telemetry, or cloud rating database.**
-- Network access is used for pack downloads and optional cover retrieval, **not remote title search**.
+- Network access is used **only** for packs and cover downloads.
 - The app uses **Jetpack Compose, Room, and DataStore**. Its data-only pack files are integrity-checked before installation.
 
 ## 🛠️ For developers
