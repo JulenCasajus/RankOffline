@@ -14,7 +14,7 @@ change.
 | Manga | MangaDex | Manga work/title | Verified variant/edition relations only | MangaDex cover-art CDN |
 | Series | TMDB | Numbered TV season | Parent TMDB series ID | TMDB image CDN |
 | Movies | TMDB | Movie | Canonical TMDB collection ID | TMDB image CDN |
-| Books | Open Library | Work | None initially; Work ID only if Editions are later loaded | Open Library Covers API |
+| Books | Open Library | Work | Conservative, verified Work-series links only; no Edition items | Open Library Covers API |
 
 No provider popularity metric is comparable across media types. It is used only
 to sort within the active catalog.
@@ -167,17 +167,18 @@ paid service, accounts, or telemetry; those constraints must not be relaxed
 without first reassessing MangaDex permission.
 
 Catalog generation may use `api.mangadex.org` in explicit bounded tooling.
-Android calls that same fixed HTTPS host only after the user explicitly chooses
-to search for more Manga online; visible result pages are normalized and stored
-locally by provider UUID. Typing never triggers provider requests. Explicit
-cover retrieval uses only `uploads.mangadex.org`. RankOffline does not read chapters, so it neither
+Android 0.2 does **not** search for additional Manga titles online. Its Search
+interface uses installed offline catalog/alias data only. Cover retrieval uses
+configured, validated HTTPS providers (including the official
+`uploads.mangadex.org` service). RankOffline does not read chapters, so it neither
 distributes scanlation content nor presents scanlation-group credits.
 
 ## Open Library: Books
 
-The initial Book catalog is Work-level: one Open Library Work is one RankOffline
-item. Editions and chapters are deliberately excluded, no Book group artifact
-is generated, and the UI hides Merge editions.
+The Book catalog is Work-level: one Open Library Work is one RankOffline item.
+Editions and chapters are deliberately excluded. A small, explicitly verified
+Book-series group artifact enables conservative Merge of separate Works; this
+is NOT an Edition-level merge and does not infer series from title similarity.
 
 Open Library distinguishes Works from Editions and publishes monthly bulk
 files. Its [Developer Center](https://openlibrary.org/developers) and
@@ -189,7 +190,7 @@ records without loading a full dump into memory.
 
 The offline generator streams a local Works dump and can optionally build and
 reuse a disk-backed SQLite index from a local Authors dump to resolve canonical
-`AUTHOR` credits. Work subjects become bounded generic genre/filter metadata,
+`AUTHOR` credits. Work subjects are mapped to a controlled set of normalized Book genre/filter labels,
 and the first valid Work Cover ID is stored for later explicit, on-demand cover
 retrieval. Catalog records retain the deterministic Works dump order so full
 generation remains streaming and approximately constant-memory. The tool never
@@ -216,10 +217,10 @@ initial catalog therefore searches the canonical Work title plus conservative
 Work-level aliases such as title and subtitle combined. A future offline
 Edition pass may enrich aliases without turning Editions into rankable items.
 
-Android may query Open Library Search only after the user explicitly chooses to
-search for more Books online. Results remain Work-level, are paged in bounded
-25-result requests, and are persisted locally; typing does not make requests.
-Cover ID is the preferred stored reference. Explicit user download resolves a
+Android 0.2 does **not** perform remote title discovery through Open Library Search.
+Book title/alias lookup is offline against the downloaded Work catalog.
+Cover ID is the preferred stored reference. Explicit user or permitted initial
+Top-100 cover downloading resolves a
 Large HTTPS cover URL and uses `default=false` so a missing image returns a real
 failure. Open Library explicitly asks clients not to crawl the Covers API; see
 the [Covers API guidance](https://openlibrary.org/dev/docs/api/covers).
@@ -259,13 +260,15 @@ Current unresolved release items include the existing AniList authorization
 constraint and provider-specific cover-art redistribution rights. Book Editions
 are intentionally not rankable items: the production model is one Work per Book.
 
-### Cover warm-up and Book merge decision
+### Installation-time cover acquisition and Book Merge
 
-RankOffline does not redistribute provider cover binaries in its APK or catalog
-packs. Instead, choosing the image-enabled onboarding style starts a one-time,
-bounded Top-100 warm-up for installed catalogs using the same fixed HTTPS hosts,
-validation, atomic install, and private cover cache as an explicit cover tap.
-Two downloads run concurrently. TMDB documents its image CDN and permits
+RankOffline does not currently redistribute provider cover binaries in its APK or
+catalog packs. For a newly installed pack, its own Show Images preference may
+trigger one bounded Top-100 private-cache download, with verified HTTPS hosts,
+validation, and the same per-pack cache as explicitly requested cover actions.
+The catalog remains offline-usable regardless of cover download success.
+Two cover requests run concurrently inside an individual cover operation;
+pack-to-pack scheduling is being refined for the final debug.6 test. TMDB documents its image CDN and permits
 non-commercial API data/image use with attribution; MangaDex exposes its cover
 thumbnail host but does not grant RankOffline redistribution rights; Open
 Library asks public clients to reference `covers.openlibrary.org` and explicitly
@@ -279,11 +282,10 @@ than image URLs, so its warm-up uses the existing bounded AniList/Jikan resolver
 and stores only the resolved private-device copy. Missing or rejected covers
 remain honest placeholders.
 
-Books continue to hide Merge. One Open Library Work is already the canonical
-work-level merge of its Editions. The current snapshot contains neither a
-reliable explicit relationship between separate Works nor identifiers suitable
-for a deterministic secondary cover-provider join. Title/author fuzzy matching
-would risk merging unrelated books and is therefore deliberately rejected.
-Open Library cover references cover 45,459/50,000 Books (90.92%) and 98/100 of
-the Top 100; no secondary provider is added without a stable identifier mapping
-and compatible terms.
+Books now expose a conservative Merge control backed by a small explicit group
+artifact (initial debug.5 set: 2 groups, 10 members). No fuzzy matching of
+Work titles/authors is performed. Open Library cover references cover 45,459
+of the original 50,000-item snapshot (90.92%); this is reference coverage, not
+guaranteed image availability or artwork redistribution permission. The next
+official Books pack is intended to default Show Images OFF while allowing users
+to choose manual cover downloads.
