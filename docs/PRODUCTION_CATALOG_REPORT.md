@@ -2,16 +2,16 @@
 
 > **Current 0.2 preview (2026-10-25):** The detailed "Block 21" measurements below
 > document historical build stages, not the exact current installable pack sizes.
-> Published `v0.2.0-debug.5` distributes five data-only `.pack` archives and
+> Published `v0.2.0-debug.6` distributes five data-only `.pack` archives and
 > a matching index, with **zero bundled cover-image binaries**. The current
 > production Books pack contains 50,000 Work-level items, 13 normalized genre
 > labels, and a conservative initial **2 series groups / 10 members**. The
 > latest Books archive is approximately 7.49 MB; previous Book catalog/gzip
 > measurements below reflect an earlier snapshot without these groups.
 > Installing a pack may perform per-device initial Top-100 cover retrieval
-> only when that pack's Show Images setting is enabled. Defaults are being
-> finalized for debug.6 (Books images OFF; Sticky Score Header ON for all;
-> Series Merge ON when One Cover per Group defaults ON).
+> only when that pack's Show Images setting is enabled. The current
+> trusted index on `main` confirms debug.6 defaults: Books images OFF,
+> Sticky Score Header ON for all, and Series Merge / One Cover per Group ON.
 >
 > **No external image rights are inferred** from provider cover URLs.
 > Archive/index hashes and sizes must be regenerated and rechecked together
@@ -27,7 +27,7 @@ are reported rather than replaced with fixtures or estimates.
 | Manga | 10,000 | MangaDex `followedCount DESC`, cached provider order | Complete: 10,000 items and 206 conservative variant groups |
 | Movies | 50,000 | TMDB daily-export popularity DESC, ID tie-break | Complete: 50,000 items and 2,156 collection groups |
 | Series | 10,000 parents + numbered seasons | TMDB parent popularity DESC, then season number and ID | Complete: 10,000 parents, 54,724 season items, and 6,181 season groups |
-| Books | 50,000 Works | Open Library `sort=readinglog` (`readinglog_count DESC`), Work ID tie-break | Complete: 50,000 Work-level Book items, no Edition items or groups |
+| Books | 50,000 Works | Open Library `sort=readinglog` (`readinglog_count DESC`), Work ID tie-break | Complete: 50,000 Work-level Book items, no Edition items; current official pack has 2 verified series groups (10 members) |
 
 ## Generator behavior
 

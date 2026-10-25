@@ -51,9 +51,11 @@ catalog keys are implemented.
 ```
 
 The example is illustrative, not a declaration of the current or forthcoming shipped defaults.
-New/changed official defaults (Books images OFF, Sticky Score ON for all, and Merge ON when
-One Cover per Group defaults ON) are planned for the debug.6 validation cycle; regenerated
-packs and their trusted index must be published together with the matching APK.
+The current official trusted index on `main` declares Books `showImages=false`,
+`stickyScoreHeader=true` across all five packs, and Series
+`mergeEnabled=true` with `oneCoverPerGroup=true`. These defaults were
+included in debug.6; the stable APK still requires its own matching
+seven-asset candidate verification. Existing user overrides take precedence.
 
 Supported filter types are `multi_select` and `range`. Supported current merge strategies are
 `NONE`, `GROUP_ID`, `COLLECTION_ID`, and `RELATION_GRAPH`; unknown values reject the pack safely.

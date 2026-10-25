@@ -27,11 +27,18 @@ RankOffline-Books-v0.2.0.pack
 Each archive's byte length and SHA-256 must match the trusted index that is
 embedded **byte-for-byte** in the APK. Pack URL for the production APK must
 resolve to `https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/`.
-The current stable workflow builds/releases the signed APK **only**.
-Before making 0.2 generally available, either extend that workflow to
-attach/verifiably publish the six data assets in the same release, or use a
-controlled draft-and-verify workflow. Do not assume that the current
-`.github/workflows/release.yml` already handles packs.
+The configured `.github/workflows/release.yml` builds all **seven** matched
+assets on the same runner: the signed APK, the trusted index, and five
+data-only packs. It validates each archive, verifies the index embedded in
+the APK, checks app metadata, and compares the stable signing certificate
+with `v0.1.3`. A manual `workflow_dispatch` run from `main` uploads a
+**private Actions candidate artifact**, but creates **no GitHub Release**.
+A run triggered by the exact `v0.2.0` tag creates a **draft Release** only
+after successful checks; manual publication remains a separate step.
+
+The configured workflow must still pass an actual CI run, and the signed
+`v0.1.3 → v0.2.0` in-place upgrade must be verified before publication.
+Neither a successful build nor a draft counts as a public stable release.
 
 Debug prereleases use their own tag-specific pack base URL and may keep a
 different application ID and signing certificate. Do not edit an earlier
@@ -84,18 +91,23 @@ generated signed APKs.
    ID, `versionName`, `versionCode` and pack URL.
 9. Review [DATA_SOURCES.md](DATA_SOURCES.md),
    [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) and provider/API terms.
-10. Merge validated code/documentation into `main`; create an immutable,
-    consistent `v0.2.0` tag once the release pipeline and seven-asset
-    publication sequence are prepared.
-11. Publish the seven matching assets; verify GitHub's reported file sizes,
-    hashes and downloaded installation. Do not declare success after an
-    APK-only workflow run.
-12. Verify Obtainium or direct stable updates without clearing personal data.
+10. Merge validated code/documentation into `main`; execute the manual
+    seven-file candidate workflow and verify its full success.
+11. Download the signed candidate artifact and confirm an in-place stable
+    `v0.1.3 → v0.2.0` upgrade without deleting personal data.
+12. Only then create an annotated, immutable `v0.2.0` tag on the exact
+    validated `main` commit. Inspect the automatically created draft and
+    its seven assets before publishing it.
+13. After public publication, recheck asset sizes, hashes, download URLs,
+    a clean install, and Obtainium or direct updates. A private candidate,
+    a build or a draft is not a published Release.
 
-The existing tag-triggered workflow excludes `v*-debug.*`, validates signing,
-runs tests, signs the APK and creates a GitHub Release for stable tags.
-It does not yet regenerate/upload the six pack assets; this is an explicit
-release-engineering task.
+The tag-triggered workflow excludes `v*-debug.*`, accepts only the exact
+stable tag `v0.2.0` for this workflow version, regenerates/verifies the
+six pack/index data assets, verifies the signed APK and prior stable signing
+identity, and creates a **draft** with the seven matching files. It refuses
+to replace an existing Release. Do not create the tag until the manual
+candidate run and in-place signed upgrade have passed.
 
 ## Local verification examples
 
