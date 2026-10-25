@@ -80,6 +80,8 @@ cover downloads do not invalidate an otherwise usable installed catalog.
 
 ## Screenshots
 
+Real-device screenshots will be added here after final 0.2.0 UI validation.
+
 <!-- Add privacy-reviewed captures to docs/screenshots/ and then uncomment links such as:
 ![Search across an installed pack](docs/screenshots/search.webp)
 ![Personal ranking](docs/screenshots/ranking.webp)
