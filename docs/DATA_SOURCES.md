@@ -268,7 +268,9 @@ trigger one bounded Top-100 private-cache download, with verified HTTPS hosts,
 validation, and the same per-pack cache as explicitly requested cover actions.
 The catalog remains offline-usable regardless of cover download success.
 Two cover requests run concurrently inside an individual cover operation;
-pack-to-pack scheduling is being refined for the final debug.6 test. TMDB documents its image CDN and permits
+the merged debug.6 implementation serializes pack archive transfers and
+Room import writes while allowing safe overlap of unrelated operations.
+TMDB documents its image CDN and permits
 non-commercial API data/image use with attribution; MangaDex exposes its cover
 thumbnail host but does not grant RankOffline redistribution rights; Open
 Library asks public clients to reference `covers.openlibrary.org` and explicitly
@@ -286,6 +288,5 @@ Books now expose a conservative Merge control backed by a small explicit group
 artifact (initial debug.5 set: 2 groups, 10 members). No fuzzy matching of
 Work titles/authors is performed. Open Library cover references cover 45,459
 of the original 50,000-item snapshot (90.92%); this is reference coverage, not
-guaranteed image availability or artwork redistribution permission. The next
-official Books pack is intended to default Show Images OFF while allowing users
+guaranteed image availability or artwork redistribution permission. The current official Books pack defaults Show Images OFF while allowing users
 to choose manual cover downloads.
