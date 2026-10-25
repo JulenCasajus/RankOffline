@@ -4,14 +4,16 @@ RankOffline is a **local-first Android app** for browsing independently installe
 
 ## Highlights
 
-- **Five independent data-only packs** installed outside the small Core APK.
+- **Five independent data-only packs** (Anime, Manga, Movies, Series and Books), downloadable independently of the Core APK.
 - **Simple rating** from 0 to 10 in 0.5-point steps.
 - **Elaborate rating** with reusable rating profiles, weighted categories, N/A support, and a separate personal-taste bonus.
 - **Custom categories** with editable names, descriptions, colors, and stable IDs.
 - **Custom profiles** with independent category weights; profiles can be created, renamed, edited, and deleted.
 - **Personal ranking** driven by one canonical saved score per item or explicit group.
 - Notes and watch status stored locally.
-- Optional, validated provider cover downloads with local offline reuse.
+- Fully offline catalog search (including imported title aliases), filters, Merge and rankings after installation; no remote title discovery.
+- Per-pack **Show Images**, **Sticky Score Header**, Merge and cover preferences. When enabled for a new pack, optional initial Top-100 covers download after catalog import; the catalog can be used while covers download.
+- Validated user-requested Top-N cover downloads, removable per-pack image cache, and local offline reuse.
 - Nine UI languages: English, Spanish, German, French, Russian, Japanese, Simplified Chinese, Basque, and Italian.
 - Eight selectable launcher icons backed by verified Android launcher aliases.
 - No analytics, telemetry, account system, or cloud rating storage.
@@ -47,7 +49,7 @@ The default profiles are designed around what primarily carries a work rather th
 
 A separate personal-taste bonus ranges from **+0.0 to +1.0** in 0.1 steps. The final elaborate score is capped at 10.
 
-Changing a profile later does **not** silently recalculate previously saved anime. A final score only changes when that anime is explicitly saved again.
+Changing a profile later does **not** silently recalculate previously saved entries. A final score only changes when an entry is explicitly saved again.
 
 See [docs/SCORING.md](docs/SCORING.md) for the complete model.
 
@@ -67,9 +69,24 @@ To rebuild the normalized pack set manually:
 python3 tools/category_packs/build_category_packs.py
 ```
 
-Provider-specific source tools produce normalized catalog/group snapshots. Group membership is
-derived offline from explicit provider relationships; the Android Merge toggle never discovers or
-rewrites relationships.
+Provider-specific source tools produce normalized catalog/group snapshots, including conservative
+Book-series groups and normalized Book genres. Group membership is derived offline from explicit
+provider relationships; the Android Merge toggle never discovers or rewrites relationships.
+
+Only catalog archives are installed automatically; cover-image binaries are not currently
+redistributed in the five official packs. A new pack may optionally download its Top-100 cover
+images to private storage when its **Show Images** setting is enabled. Failed or cancelled
+cover downloads do not invalidate an otherwise usable installed catalog.
+
+## Screenshots
+
+<!-- Add privacy-reviewed captures to docs/screenshots/ and then uncomment links such as:
+![Search across an installed pack](docs/screenshots/search.webp)
+![Personal ranking](docs/screenshots/ranking.webp)
+![Per-pack preferences](docs/screenshots/settings.webp)
+![Package management](docs/screenshots/packs.webp)
+Do not commit screenshots containing personal identifiers or confidential ratings/notes.
+-->
 
 ## Install
 
@@ -149,8 +166,8 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing
   canonical collection/season grouping, alternative titles, and poster
   references.
 - **Books:** [Open Library](https://openlibrary.org) bulk dumps provide Work and
-  author metadata; its Search API supports explicit user-triggered Work
-  discovery. Cover images are retrieved separately through its Covers service
+  author metadata. Work-level catalog search in the app is strictly offline.
+  Cover images may be retrieved separately through its Covers service
   and are not claimed to be CC0 or public domain.
 
 Application code and bundled/remote data have separate licences. See
@@ -162,7 +179,10 @@ policy limitations, and non-endorsement notices.
 
 RankOffline uses Jetpack Compose, Room, and DataStore. Ratings, notes, profile/category configuration, the database, and downloaded covers remain in app-private storage.
 
-Android Auto Backup and cleartext traffic are disabled. Network requests are limited to public anime identifiers and cover/popularity metadata; personal ratings and notes are not sent to those services.
+Android Auto Backup and cleartext traffic are disabled. After an archive is installed, browsing,
+search, grouping and rating remain offline. Network access is used for requested pack archive
+transfers and permitted cover retrieval (including optional initial cover acquisition), not
+remote title discovery; personal ratings and notes are not sent to providers.
 
 ## License and trademarks
 
