@@ -1,36 +1,46 @@
 # Releasing RankOffline
 
-RankOffline releases are built, signed, verified, and published by GitHub Actions when a version tag is pushed.
+RankOffline has two distinct Android application identities:
 
-The signing identity must remain the same across releases so existing Android installations can update normally.
+- Debug/test: `org.rankoffline.app.debug` (for example `0.2.0-debug.5`).
+- Signed stable release: `org.rankoffline.app` (the upgrade path from stable `0.1.3`).
 
-## Signing setup
+A debug-to-debug update does **not** validate the signed stable
+`0.1.3 → 0.2.0` migration. Preserve stable signing identity and use a
+strictly higher `versionCode` for every new version of the same application ID.
 
-The definitive release keystore should be backed up securely outside the repository.
+## Production 0.2 asset contract
 
-GitHub Actions uses an encoded copy of that same keystore stored as an encrypted repository secret. The workflow temporarily decodes it only inside the GitHub-hosted runner and removes temporary signing files in the final cleanup step.
+The normal APK contains no production catalog. A stable `v0.2.0` must
+distribute **seven matching assets**:
 
-Required GitHub Actions secrets:
+```text
+RankOffline-v0.2.0.apk
+category_pack_index.json
+RankOffline-Anime-v0.2.0.pack
+RankOffline-Manga-v0.2.0.pack
+RankOffline-Movies-v0.2.0.pack
+RankOffline-Series-v0.2.0.pack
+RankOffline-Books-v0.2.0.pack
+```
 
-- `RANKOFFLINE_KEYSTORE_BASE64`
-- `RANKOFFLINE_KEYSTORE_PASSWORD`
-- `RANKOFFLINE_KEY_ALIAS`
-- `RANKOFFLINE_KEY_PASSWORD`
+Each archive's byte length and SHA-256 must match the trusted index that is
+embedded **byte-for-byte** in the APK. Pack URL for the production APK must
+resolve to `https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/`.
+The current stable workflow builds/releases the signed APK **only**.
+Before making 0.2 generally available, either extend that workflow to
+attach/verifiably publish the six data assets in the same release, or use a
+controlled draft-and-verify workflow. Do not assume that the current
+`.github/workflows/release.yml` already handles packs.
 
-Never commit:
+Debug prereleases use their own tag-specific pack base URL and may keep a
+different application ID and signing certificate. Do not edit an earlier
+release tag to point at unrelated code.
 
-- the real keystore;
-- `keystore.properties`;
-- passwords or secret values;
-- generated signed APKs.
+## Signing and secrets
 
-These paths are ignored by Git.
-
-## Local signing
-
-Local signing remains useful for pre-release verification.
-
-Copy `keystore.properties.example` to `keystore.properties` and configure the same definitive release keystore:
+Store the definitive stable keystore offline and back it up. Locally,
+`keystore.properties` configures:
 
 ```properties
 storeFile=/absolute/or/project-relative/path/to/RankOffline-release.jks
@@ -39,81 +49,86 @@ keyAlias=rankoffline
 keyPassword=...
 ```
 
-Then run:
+The GitHub Action uses these encrypted secrets:
+
+- `RANKOFFLINE_KEYSTORE_BASE64`
+- `RANKOFFLINE_KEYSTORE_PASSWORD`
+- `RANKOFFLINE_KEY_ALIAS`
+- `RANKOFFLINE_KEY_PASSWORD`
+
+Never commit the keystore, `keystore.properties`, passwords, access tokens or
+generated signed APKs.
+
+## Checklist before v0.2.0
+
+1. Complete and review the final debug.6 fixes. Test the real device,
+   particularly five-pack installs, queueing, Top-100 providers and cancellation.
+2. Verify a **non-destructive signed stable** 0.1.3 → 0.2.0 install with the
+   exact stable app ID/key. Check ratings, notes, category weights, profiles,
+   themes, settings and offline packs.
+3. Regenerate and validate the five pack files with the current tooling and
+   intended release defaults. Keep third-party cover binaries out unless there
+   is documented permission to redistribute them.
+4. Verify the index and all pack payload paths, sizes and hashes.
+5. Configure Gradle's **release** `versionName = "0.2.0"`, increase the
+   stable `versionCode` above the last published stable code and set the
+   correct production pack base URL. Do not confuse the debug output-name
+   override with the release `versionName`.
+6. Verify the APK-embedded `category_pack_index.json` is byte-identical
+   to the index included among the upload assets.
+7. Run `git diff --check`, focused/full unit tests, `assembleDebug`,
+   relevant instrumentation tests and `assembleRelease` with validated
+   signing settings. Check targetSdk suitability for the chosen channel.
+8. Verify the signed APK with `apksigner verify --print-certs`, compare its
+   certificate against the previous stable release, and inspect the package
+   ID, `versionName`, `versionCode` and pack URL.
+9. Review [DATA_SOURCES.md](DATA_SOURCES.md),
+   [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) and provider/API terms.
+10. Merge validated code/documentation into `main`; create an immutable,
+    consistent `v0.2.0` tag once the release pipeline and seven-asset
+    publication sequence are prepared.
+11. Publish the seven matching assets; verify GitHub's reported file sizes,
+    hashes and downloaded installation. Do not declare success after an
+    APK-only workflow run.
+12. Verify Obtainium or direct stable updates without clearing personal data.
+
+The existing tag-triggered workflow excludes `v*-debug.*`, validates signing,
+runs tests, signs the APK and creates a GitHub Release for stable tags.
+It does not yet regenerate/upload the six pack assets; this is an explicit
+release-engineering task.
+
+## Local verification examples
 
 ```bash
-tools/build_release.sh
+git diff --check
+./gradlew testDebugUnitTest
+./gradlew assembleDebug
+./gradlew connectedDebugAndroidTest  # when a healthy test device is available
+./gradlew :app:verifyReleaseSigning
+./gradlew assembleRelease
 ```
 
-The script:
+The current official pack builder writes output to
+`tools/.cache/category-packs/output/`:
 
-1. runs JVM tests;
-2. builds the signed release APK;
-3. copies it to `dist/RankOffline-vX.Y.Z.apk`;
-4. verifies package/signature metadata when Android build-tools are available.
-
-## Release checklist
-
-1. Make sure the intended code and documentation are committed.
-2. Update `versionName` in `app/build.gradle.kts`.
-3. Increment `versionCode`. Never reuse or decrease a published value.
-4. Confirm `targetSdk` meets the current requirements of every intended
-   distribution channel, especially Google Play.
-5. Do **not** regenerate the bundled catalog unless the release intentionally contains a catalog update.
-6. Run local validation:
-
-   ```bash
-   git diff --check
-   ./gradlew testDebugUnitTest
-   ./gradlew assembleDebug
-   ```
-
-   When a healthy emulator/device is available:
-
-   ```bash
-   ./gradlew connectedDebugAndroidTest
-   ```
-
-7. For releases containing a Room migration, test a real update from the previous published APK and confirm ratings, notes, categories, profiles, and settings survive.
-8. Push the release commit to `main` and wait for **Build Android APK** to succeed.
-9. Create and push the matching tag:
-
-   ```bash
-   git tag -a vX.Y.Z -m "RankOffline vX.Y.Z"
-   git push origin vX.Y.Z
-   ```
-
-10. The **Release RankOffline** workflow then:
-   - validates the bundled catalog hash;
-   - verifies that the tag matches Gradle `versionName`;
-   - validates signing secrets;
-   - runs unit tests;
-   - builds the signed release APK;
-   - verifies its signature with `apksigner`;
-   - uploads the APK as an Actions artifact;
-   - creates the GitHub Release for tag-triggered runs.
-
-11. Confirm the release contains `RankOffline-vX.Y.Z.apk`.
-12. Verify Obtainium detects and installs the update over the previous version without clearing app data.
-
-## Versioning
-
-Published Android updates require a monotonically increasing `versionCode`.
-
-Example progression:
-
-```text
-v0.1.0 -> versionCode 1
-v0.1.1 -> versionCode 2
-v0.2.0 -> versionCode 3
+```bash
+python3 tools/category_packs/build_category_packs.py
 ```
 
-The semantic version may skip patch versions when a release contains a meaningful feature change; the Android `versionCode` still increments by at least one.
+For a local signed release, `tools/build_release.sh` also performs
+versioned output/signature checks. The CI workflow uses an encrypted copy of
+the same stable signing key and removes its temporary copy after use.
 
-## Security notes
+Never release an APK with an outdated index. Never publish a debug APK under
+the stable tag.
 
-The release workflow has only the repository permission required to create releases. The ordinary Android build workflow is read-only.
+## Privacy, provider rights and future updates
 
-Signing material is injected through encrypted GitHub Actions secrets, written with restrictive runner permissions, and deleted in an `always()` cleanup step.
+All catalog/reference operations are offline after a pack is installed.
+Remote requests cover verified pack archive downloads and optional image
+retrieval, not remote title discovery. Personal ratings stay private.
 
-If the definitive signing key is lost or replaced, future APKs will not update installations signed with the previous key. Keep an offline backup.
+Provider metadata, images and logos retain independent terms. Access to an
+image URL is not evidence of redistribution permission.
+
+`RankOfflineAll` and community-pack installation belong to a later version.
