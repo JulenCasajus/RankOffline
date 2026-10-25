@@ -160,6 +160,31 @@ class CoverManagementIntegrationTest {
         assertEquals(2, downloader.attempts("offline"))
         assertTrue(snapshots.any { it.status == CoverPreloadStatus.RETRYING_COVERS })
         assertTrue(snapshots.all { it.processed <= it.target })
+        assertTrue(snapshots.all { it.available <= it.target })
+        assertTrue(snapshots.map(CoverPreloadProgress::available).zipWithNext().all { (a, b) -> a <= b })
+        assertTrue(snapshots.filter { it.status == CoverPreloadStatus.RETRYING_COVERS }
+            .all { it.available < it.target })
+    }
+
+    @Test
+    fun zeroByteCachedCoverIsNotCountedAsAvailable() = runBlocking {
+        val invalid = item(MediaType.MOVIE, "invalid-cache", "tmdb", "/invalid-cache.jpg")
+            .copy(popularityRank = 1)
+        val invalidFile = File(context.filesDir, "downloaded_covers/movies/invalid-cache.webp")
+        invalidFile.parentFile?.mkdirs()
+        invalidFile.createNewFile()
+        mediaRepository.upsertItem(invalid.copy(localCoverPath = invalidFile.absolutePath))
+        val downloader = FakeDownloader()
+        val manager = CoverPreloadManager(
+            GenericMediaCoverRepository(context, database, downloader = downloader)
+        )
+
+        val result = manager.preloadTop(MediaType.MOVIE, 1, false)
+
+        assertEquals(0, result.existing)
+        assertEquals(1, result.downloaded)
+        assertEquals(1, result.available)
+        assertEquals(1, downloader.invocations.get())
     }
 
     @Test

@@ -68,7 +68,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 7
-        versionName = "0.1.3"
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "CATEGORY_PACK_BASE_URL", "\"$categoryPackBaseUrl\"")
         buildConfigField("boolean", "BUNDLED_PRODUCTION_CATALOGS", bundleProductionCatalogs.toString())

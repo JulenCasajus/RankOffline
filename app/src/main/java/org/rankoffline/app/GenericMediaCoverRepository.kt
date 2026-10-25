@@ -246,6 +246,11 @@ class GenericMediaCoverRepository(
             .size
     }.distinctUntilChanged().flowOn(Dispatchers.IO)
 
+    internal fun hasValidLocalCover(item: MediaItem): Boolean {
+        val file = item.localCoverPath?.takeIf(String::isNotBlank)?.let(::File) ?: return false
+        return storage.isRemovable(file, item.mediaType) && isValidImage(file)
+    }
+
     suspend fun ratedCoverItems(mediaType: MediaType): List<MediaItem> = withContext(Dispatchers.IO) {
         dao.ratedCoverItems(mediaType.persistedValue, mediaType.toPackId().value)
             .map(MediaItemEntity::toDomain)

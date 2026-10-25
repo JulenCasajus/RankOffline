@@ -1,7 +1,6 @@
 package org.rankoffline.app
 
 import android.util.Log
-import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -123,6 +122,7 @@ class CoverPreloadManager(
                         }
                     }
                     processed++
+                    logResult(mediaType, candidate, result, pass = 1)
                 }
                 publish(CoverPreloadProgress(
                     mediaType = mediaType,
@@ -142,7 +142,7 @@ class CoverPreloadManager(
                     val results = coroutineScope {
                         batch.map { candidate -> async { candidate.download() } }.awaitAll()
                     }
-                    results.forEach { result ->
+                    results.forEachIndexed { index, result ->
                         errors = (errors - 1).coerceAtLeast(0)
                         when (result) {
                             CoverDownloadResult.Downloaded -> downloaded++
@@ -152,6 +152,7 @@ class CoverPreloadManager(
                             CoverDownloadResult.NetworkError,
                             CoverDownloadResult.TemporaryError -> errors++
                         }
+                        logResult(mediaType, batch[index], result, pass = 2)
                     }
                     publish(currentProgress(mediaType).copy(
                         status = CoverPreloadStatus.RETRYING_COVERS,
@@ -199,8 +200,7 @@ class CoverPreloadManager(
         var existing = 0
         var unavailable = 0
         candidates.forEach { candidate ->
-            val localPath = candidate.localCoverPath
-            if (!localPath.isNullOrBlank() && File(localPath).isFile) {
+            if (candidate.hasValidLocalCover()) {
                 existing++
             } else if (!candidate.hasResolvableRemoteCover()) {
                 unavailable++
@@ -235,6 +235,10 @@ class CoverPreloadManager(
         is RatedCoverCandidate.GenericItem -> genericCoverRepository.downloadCover(item.id)
     }
 
+    private fun RatedCoverCandidate.hasValidLocalCover(): Boolean = when (this) {
+        is RatedCoverCandidate.GenericItem -> genericCoverRepository.hasValidLocalCover(item)
+    }
+
     private fun RatedCoverCandidate.hasResolvableRemoteCover(): Boolean = when (this) {
         is RatedCoverCandidate.GenericItem ->
             genericCoverRepository.resolvedRemoteUrl(item) != null ||
@@ -244,11 +248,32 @@ class CoverPreloadManager(
 
     private sealed interface RatedCoverCandidate {
         val localCoverPath: String?
+        val debugId: String
 
         data class GenericItem(val item: MediaItem) : RatedCoverCandidate {
             override val localCoverPath get() = item.localCoverPath
+            override val debugId get() = item.id
         }
     }
+
+    private fun logResult(
+        mediaType: MediaType,
+        candidate: RatedCoverCandidate,
+        result: CoverDownloadResult,
+        pass: Int
+    ) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(
+            TAG,
+            "pack=${mediaType.toPackId().value} item=${candidate.debugId} operation=preload " +
+                "pass=$pass result=${result.javaClass.simpleName} retry=${pass == 1 && result.isRetryable()}"
+        )
+    }
+
+    private fun CoverDownloadResult.isRetryable(): Boolean =
+        this == CoverDownloadResult.AlreadyInProgress ||
+            this == CoverDownloadResult.NetworkError ||
+            this == CoverDownloadResult.TemporaryError
 
     private data class RatedCoverPlan(
         val total: Int,

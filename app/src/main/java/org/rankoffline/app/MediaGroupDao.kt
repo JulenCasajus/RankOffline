@@ -125,6 +125,30 @@ interface MediaGroupDao {
 
     @Query(
         """
+        WITH memberships AS (
+            SELECT member.media_id AS target_id, mediaGroup.id AS group_id
+            FROM media_group_member member
+            INNER JOIN media_group mediaGroup ON mediaGroup.id=member.group_id
+            WHERE mediaGroup.media_type=:mediaType AND mediaGroup.group_type=:groupType
+              AND mediaGroup.member_count>1
+        ), chosenGroups AS (
+            SELECT target_id, MIN(group_id) AS group_id
+            FROM memberships GROUP BY target_id
+        )
+        SELECT chosen.target_id AS target_id,
+               (SELECT firstMember.media_id FROM media_group_member firstMember
+                WHERE firstMember.group_id=chosen.group_id
+                ORDER BY firstMember.position ASC, firstMember.media_id ASC LIMIT 1) AS cover_media_id
+        FROM chosenGroups chosen
+        """
+    )
+    suspend fun allSharedCoverIdentitiesForItems(
+        mediaType: String,
+        groupType: String
+    ): List<SharedCoverIdentityRow>
+
+    @Query(
+        """
         SELECT mediaGroup.id AS target_id,
                (SELECT firstMember.media_id FROM media_group_member firstMember
                 WHERE firstMember.group_id=mediaGroup.id
@@ -134,6 +158,22 @@ interface MediaGroupDao {
         """
     )
     suspend fun sharedCoverIdentitiesForGroups(groupIds: List<String>): List<SharedCoverIdentityRow>
+
+    @Query(
+        """
+        SELECT mediaGroup.id AS target_id,
+               (SELECT firstMember.media_id FROM media_group_member firstMember
+                WHERE firstMember.group_id=mediaGroup.id
+                ORDER BY firstMember.position ASC, firstMember.media_id ASC LIMIT 1) AS cover_media_id
+        FROM media_group mediaGroup
+        WHERE mediaGroup.media_type=:mediaType AND mediaGroup.group_type=:groupType
+          AND mediaGroup.member_count>1
+        """
+    )
+    suspend fun allSharedCoverIdentitiesForGroups(
+        mediaType: String,
+        groupType: String
+    ): List<SharedCoverIdentityRow>
 
     @Query(
         """

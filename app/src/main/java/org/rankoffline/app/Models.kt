@@ -387,8 +387,9 @@ data class CoverPreloadProgress(
         CoverPreloadStatus.DOWNLOADING_COVERS,
         CoverPreloadStatus.RETRYING_COVERS
     )
-    val available: Int get() = existing + downloaded
-    val fraction: Float get() = if (target <= 0) 0f else (processed.toFloat() / target).coerceIn(0f, 1f)
+    /** Verified local images. Attempts, failures and unavailable candidates never enter this count. */
+    val available: Int get() = (existing + downloaded).coerceAtMost(target.coerceAtLeast(0))
+    val fraction: Float get() = if (target <= 0) 0f else (available.toFloat() / target).coerceIn(0f, 1f)
 }
 
 fun CoverPreloadProgress.shouldClearAfterLeavingSettings(): Boolean =

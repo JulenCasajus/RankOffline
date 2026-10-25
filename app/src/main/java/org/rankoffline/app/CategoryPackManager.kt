@@ -934,8 +934,9 @@ class CategoryPackManager(
                 totalDownloadBytes = total,
                 totalInstalledBytes = installedTotal,
                 coverTarget = progress.target,
-                coverProcessed = progress.processed,
-                coverAvailable = progress.existing + progress.downloaded,
+                // The visible X/Y value is verified local availability, not completed attempts.
+                coverProcessed = progress.available,
+                coverAvailable = progress.available,
                 coverUnavailable = progress.unavailable,
                 coverErrors = progress.errors,
                 coverRetrying = progress.status == CoverPreloadStatus.RETRYING_COVERS

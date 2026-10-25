@@ -1169,7 +1169,7 @@ private fun CoverPreloadProgressView(preloadProgress: CoverPreloadProgress) {
             CoverPreloadStatus.PREPARING_COVER_LIST ->
                 stringResource(R.string.covers_preparing_list)
             CoverPreloadStatus.RETRYING_COVERS ->
-                stringResource(R.string.covers_retrying_failed)
+                stringResource(R.string.covers_downloading_rated)
             CoverPreloadStatus.COMPLETED -> stringResource(R.string.covers_completed)
             CoverPreloadStatus.CANCELLED -> stringResource(R.string.covers_download_interrupted)
             CoverPreloadStatus.FAILED -> stringResource(R.string.covers_download_interrupted)
@@ -1183,7 +1183,7 @@ private fun CoverPreloadProgressView(preloadProgress: CoverPreloadProgress) {
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
     } else {
         Text(
-            stringResource(R.string.covers_progress, preloadProgress.processed, preloadProgress.target),
+            stringResource(R.string.covers_progress, preloadProgress.available, preloadProgress.target),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 10.dp)
         )

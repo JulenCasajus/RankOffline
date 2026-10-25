@@ -948,11 +948,7 @@ private fun CategoryPackRow(
                                 stringResource(R.string.category_phase_waiting_covers)
                             CategoryPackInstallPhase.DOWNLOADING_COVERS ->
                                 stringResource(
-                                    if (progress.coverRetrying) {
-                                        R.string.category_phase_retrying_covers
-                                    } else {
-                                        R.string.category_phase_downloading_covers
-                                    },
+                                    R.string.category_phase_downloading_covers,
                                     progress.coverProcessed,
                                     progress.coverTarget
                                 )

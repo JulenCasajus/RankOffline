@@ -6,6 +6,7 @@ on:
     tags:
       - 'v*'
       - '!v*-debug.*'
+
 permissions:
   contents: write
 
@@ -16,24 +17,27 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout
+      - name: Checkout exact source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Validate signing secrets
+      - name: Only release stable 0.2.0 from main
         shell: bash
-        env:
-          KEYSTORE_BASE64: ${{ secrets.RANKOFFLINE_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.RANKOFFLINE_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.RANKOFFLINE_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.RANKOFFLINE_KEY_PASSWORD }}
         run: |
-          : "${KEYSTORE_BASE64:?Missing RANKOFFLINE_KEYSTORE_BASE64}"
-          : "${STORE_PASSWORD:?Missing RANKOFFLINE_KEYSTORE_PASSWORD}"
-          : "${KEY_ALIAS:?Missing RANKOFFLINE_KEY_ALIAS}"
-          : "${KEY_PASSWORD:?Missing RANKOFFLINE_KEY_PASSWORD}"
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            [[ "${GITHUB_REF}" == "refs/heads/main" ]] || { echo 'Manual release candidates must run from main'; exit 1; }
+          else
+            [[ "${GITHUB_REF_NAME}" == 'v0.2.0' ]] || { echo 'This workflow version only supports v0.2.0'; exit 1; }
+            git fetch origin main
+            git merge-base --is-ancestor "${GITHUB_SHA}" origin/main || { echo 'Stable tag must point to a commit on main'; exit 1; }
+          fi
+          grep -qE '^[[:space:]]*versionName = "0\.2\.0"' app/build.gradle.kts
+          grep -qE '^[[:space:]]*versionCode = 7$' app/build.gradle.kts
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -47,33 +51,64 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Validate bundled catalog
+      - name: Validate committed Anime catalog
         shell: bash
         run: |
-          echo "$(cat app/src/main/assets/anime_catalog.version)  app/src/main/assets/anime_catalog.json" \
-            | sha256sum --check -
+          set -euo pipefail
+          echo "$(cat app/src/main/assets/anime_catalog.version)  app/src/main/assets/anime_catalog.json" | sha256sum --check -
 
-      - name: Validate tag matches versionName
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Build deterministic five data-only packs and trusted index
         shell: bash
         run: |
-          VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)"/\1/p' app/build.gradle.kts)"
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-
-          echo "Gradle versionName: $VERSION_NAME"
-          echo "Git tag version:     $TAG_VERSION"
-
-          if [ -z "$VERSION_NAME" ]; then
-            echo "ERROR: could not read versionName from app/build.gradle.kts"
-            exit 1
+          set -euo pipefail
+          python3 tools/category_packs/build_category_packs.py --allow-missing-covers
+          # Generate the index and archives together on the SAME runner to avoid any
+          # host/zlib-dependent archive checksum mismatch. The APK embeds this index.
+          if ! git diff --quiet -- app/src/main/assets/category_pack_index.json; then
+            echo "NOTICE: generated archive/index bytes differ from committed development index; same-run archives and embedded index will be verified."
           fi
+          mkdir -p dist
+          cp tools/.cache/category-packs/output/RankOffline-*-v0.2.0.pack dist/
+          cp tools/.cache/category-packs/output/category_pack_index.json dist/
 
-          if [ "$VERSION_NAME" != "$TAG_VERSION" ]; then
-            echo "ERROR: tag v$TAG_VERSION does not match versionName $VERSION_NAME"
-            exit 1
-          fi
+      - name: Verify pack archive bytes, hashes and manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, json, zipfile
 
-      - name: Configure release signing
+          folder = Path('dist')
+          index_bytes = (folder/'category_pack_index.json').read_bytes()
+          index = json.loads(index_bytes)
+          assert index['schemaVersion'] == 1
+          assert {p['packId'] for p in index['packs']} == {'animes','mangas','movies','series','books'}
+          assert len(index['packs']) == 5
+          assert index_bytes == Path('app/src/main/assets/category_pack_index.json').read_bytes()
+          listed = {p['archive'] for p in index['packs']}
+          assert len(listed) == 5
+          assert {p.name for p in folder.glob('*.pack')} == listed
+          for p in index['packs']:
+              path = folder/p['archive']
+              assert path.is_file(), path
+              assert path.stat().st_size == p['downloadBytes'], path
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == p['archiveSha256'], path
+              assert not p['manifest'].get('covers'), 'Unlicensed bundled covers must not be redistributed'
+              with zipfile.ZipFile(path) as z:
+                  assert z.testzip() is None, path
+                  assert json.loads(z.read('manifest.json')) == p['manifest'], path
+                  actual = set(z.namelist())
+                  specs = p['manifest']['integrity']['files']
+                  assert actual == {'manifest.json'} | {f['path'] for f in specs}
+                  for spec in specs:
+                      blob = z.read(spec['path'])
+                      assert len(blob) == spec['bytes']
+                      assert hashlib.sha256(blob).hexdigest() == spec['sha256']
+              print('OK', p['packId'], path.stat().st_size)
+          PY
+
+      - name: Validate release signing secrets
         shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.RANKOFFLINE_KEYSTORE_BASE64 }}
@@ -81,6 +116,11 @@ jobs:
           KEY_ALIAS: ${{ secrets.RANKOFFLINE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RANKOFFLINE_KEY_PASSWORD }}
         run: |
+          set -euo pipefail
+          : "${KEYSTORE_BASE64:?Missing RANKOFFLINE_KEYSTORE_BASE64}"
+          : "${STORE_PASSWORD:?Missing RANKOFFLINE_KEYSTORE_PASSWORD}"
+          : "${KEY_ALIAS:?Missing RANKOFFLINE_KEY_ALIAS}"
+          : "${KEY_PASSWORD:?Missing RANKOFFLINE_KEY_PASSWORD}"
           umask 077
           KEYSTORE_PATH="$RUNNER_TEMP/rankoffline-release.jks"
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
@@ -94,63 +134,74 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
-      - name: Build signed release APK
-        run: ./gradlew assembleRelease
-
-      - name: Read version
-        id: version
+      - name: Build signed stable APK with production pack URL
         shell: bash
         run: |
-          VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)"/\1/p' app/build.gradle.kts)"
+          set -euo pipefail
+          ./gradlew assembleRelease \
+            -Prankoffline.categoryPackBaseUrl=https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/ \
+            -Prankoffline.bundleProductionCatalogs=false
+          cp app/build/outputs/apk/release/app-release.apk dist/RankOffline-v0.2.0.apk
+          grep -R -F -q 'https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/' \
+            app/build/generated/source/buildConfig/release
 
-          if [ -z "$VERSION_NAME" ]; then
-            echo "Could not read versionName"
-            exit 1
-          fi
-
-          echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare release APK
+      - name: Verify APK content, metadata and original stable signing identity
         shell: bash
-        run: |
-          mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk \
-             "dist/RankOffline-v${{ steps.version.outputs.version }}.apk"
-
-      - name: Verify APK signature
-        shell: bash
-        run: |
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort | tail -1)"
-
-          if [ -z "$APKSIGNER" ]; then
-            echo "apksigner not found"
-            exit 1
-          fi
-
-          "$APKSIGNER" verify \
-            --verbose \
-            --print-certs \
-            "dist/RankOffline-v${{ steps.version.outputs.version }}.apk"
-
-      - name: Upload signed APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: RankOffline-v${{ steps.version.outputs.version }}
-          path: dist/RankOffline-v${{ steps.version.outputs.version }}.apk
-          if-no-files-found: error
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            "dist/RankOffline-v${{ steps.version.outputs.version }}.apk" \
-            --title "RankOffline $GITHUB_REF_NAME" \
-            --generate-notes
+          set -euo pipefail
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
+          test -n "$APKSIGNER" && test -n "$AAPT"
+          "$APKSIGNER" verify --verbose --print-certs dist/RankOffline-v0.2.0.apk
+          "$AAPT" dump badging dist/RankOffline-v0.2.0.apk | grep -E "^package: name='org\.rankoffline\.app' versionCode='7' versionName='0\.2\.0'"
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          with zipfile.ZipFile('dist/RankOffline-v0.2.0.apk') as z:
+              actual = z.read('assets/category_pack_index.json')
+          expected = Path('dist/category_pack_index.json').read_bytes()
+          assert actual == expected, 'APK embedded trusted pack index differs from uploaded asset'
+          print('OK: identical embedded and uploaded pack indexes')
+          PY
+          mkdir -p "$RUNNER_TEMP/old-stable"
+          gh release download v0.1.3 --repo "$GITHUB_REPOSITORY" \
+            --pattern 'RankOffline-v0.1.3.apk' --dir "$RUNNER_TEMP/old-stable"
+          OLD_CERT="$("$APKSIGNER" verify --print-certs "$RUNNER_TEMP/old-stable/RankOffline-v0.1.3.apk" | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+)$/\1/p')"
+          NEW_CERT="$("$APKSIGNER" verify --print-certs dist/RankOffline-v0.2.0.apk | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+)$/\1/p')"
+          test -n "$OLD_CERT" && test "$OLD_CERT" = "$NEW_CERT" || { echo 'ERROR: release signing certificate does not match stable v0.1.3'; exit 1; }
+          echo 'OK: stable APK signing certificate matches v0.1.3'
+          test "$(find dist -maxdepth 1 -type f | wc -l | tr -d ' ')" = '7'
 
-      - name: Remove temporary signing files
+      - name: Upload seven-file signed candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RankOffline-v0.2.0-candidate
+          path: dist/*
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Create DRAFT stable release only when a tag triggers the workflow
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to overwrite files automatically'
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --draft \
+            --title 'RankOffline v0.2.0' \
+            --notes 'First stable multi-pack release. Five installable offline catalog packs; personalized rankings, ratings and settings. Release assets are verified, and this draft requires manual approval before publication.' \
+            --latest=false
+
+      - name: Remove temporary signing material
         if: always()
         shell: bash
         run: |

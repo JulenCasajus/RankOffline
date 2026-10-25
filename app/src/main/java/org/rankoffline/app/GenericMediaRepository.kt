@@ -1,9 +1,11 @@
 package org.rankoffline.app
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 data class GenericMediaRatingSave(
     val rating: MediaRatingEntity,
@@ -75,6 +77,33 @@ class GenericMediaRepository(
     private val dao = database.mediaDao()
     private val groupDao = database.mediaGroupDao()
     private val catalogDao = database.mediaCatalogDao()
+    private val sharedCoverCaches = ConcurrentHashMap<MediaType, SharedCoverCache>()
+
+    /** Loaded after group import, before READY is published, while the import writer is idle. */
+    suspend fun refreshSharedCoverIdentities(mediaType: MediaType, groupType: String?) =
+        withContext(Dispatchers.IO) {
+            if (groupType == null) {
+                sharedCoverCaches.remove(mediaType)
+                return@withContext
+            }
+            val itemIdentities = groupDao.allSharedCoverIdentitiesForItems(
+                mediaType.persistedValue,
+                groupType
+            )
+            val groupIdentities = groupDao.allSharedCoverIdentitiesForGroups(
+                mediaType.persistedValue,
+                groupType
+            )
+            sharedCoverCaches[mediaType] = SharedCoverCache(
+                groupType = groupType,
+                items = itemIdentities.associate { it.targetId to it.coverMediaId },
+                groups = groupIdentities.associate { it.targetId to it.coverMediaId }
+            )
+        }
+
+    fun clearSharedCoverIdentities(mediaType: MediaType) {
+        sharedCoverCaches.remove(mediaType)
+    }
 
     suspend fun itemCount(mediaType: MediaType): Int = withContext(Dispatchers.IO) {
         dao.itemCount(mediaType.persistedValue)
@@ -92,13 +121,14 @@ class GenericMediaRepository(
         mergeEnabled: Boolean,
         limit: Int = 200,
         offset: Int = 0
-    ): List<MediaListEntry> = withContext(Dispatchers.IO) {
+    ): List<MediaListEntry> = timedRead(mediaType, "search") {
         requireIntegratedMediaType(mediaType)
         val role = packManifest(mediaType)?.creditRole() ?: mediaType.genericFilterCreditRole()
         val packId = mediaType.toPackId().value
         val configuredGroupType = packManifest(mediaType)?.groupTypeOrNull()
             ?: mediaType.genericGroupType()
         val groupType = configuredGroupType.takeIf { mergeEnabled }
+        val catalogQueryStarted = System.nanoTime()
         val entries = if (groupType == null) {
             dao.searchItems(
                 mediaType.persistedValue,
@@ -139,11 +169,16 @@ class GenericMediaRepository(
                 else itemsById[visible.id]?.let { MediaListEntry.Item(it.toDomain()) }
             }
         }
+        logReadPhase(mediaType, "search-catalog", catalogQueryStarted)
+        val aliasStarted = System.nanoTime()
+        val titledEntries = entries.withMatchingAliasTitles(query)
+        logReadPhase(mediaType, "search-aliases", aliasStarted)
+        val coversStarted = System.nanoTime()
         attachSharedCoverIdentities(
-            entries.withMatchingAliasTitles(query),
+            titledEntries,
             mediaType,
             configuredGroupType
-        )
+        ).also { logReadPhase(mediaType, "search-cover-identities", coversStarted) }
     }
 
     private suspend fun List<MediaListEntry>.withMatchingAliasTitles(
@@ -173,7 +208,7 @@ class GenericMediaRepository(
         categoryId: String?,
         descending: Boolean,
         mergeEnabled: Boolean
-    ): List<MediaListEntry> = withContext(Dispatchers.IO) {
+    ): List<MediaListEntry> = timedRead(mediaType, "ranking") {
         requireIntegratedMediaType(mediaType)
         val role = packManifest(mediaType)?.creditRole() ?: mediaType.genericFilterCreditRole()
         val packId = mediaType.toPackId().value
@@ -402,6 +437,54 @@ class GenericMediaRepository(
         return requireNotNull(MediaType.entries.firstOrNull { it.persistedValue == persistedType })
     }
 
+    /**
+     * Separates coroutine-dispatch wait from database/query work in debug diagnostics. This is
+     * intentionally around the complete repository read because grouped results need several
+     * indexed statements; the distinction still tells us whether Room/SQLite or the IO executor
+     * delayed a READY pack while another pack was importing.
+     */
+    private suspend fun <T> timedRead(
+        mediaType: MediaType,
+        operation: String,
+        block: suspend () -> T
+    ): T {
+        val queuedAt = System.nanoTime()
+        return withContext(Dispatchers.IO) {
+            val startedAt = System.nanoTime()
+            try {
+                block().also {
+                    if (BuildConfig.DEBUG) {
+                        Log.d(
+                            CATALOG_LOG_TAG,
+                            "pack=${mediaType.toPackId().value} operation=$operation " +
+                                "dispatcherWaitMs=${(startedAt - queuedAt) / 1_000_000L} " +
+                                "queryMs=${(System.nanoTime() - startedAt) / 1_000_000L} success=true"
+                        )
+                    }
+                }
+            } catch (exception: Exception) {
+                Log.e(
+                    CATALOG_LOG_TAG,
+                    "pack=${mediaType.toPackId().value} operation=$operation " +
+                        "dispatcherWaitMs=${(startedAt - queuedAt) / 1_000_000L} " +
+                        "queryMs=${(System.nanoTime() - startedAt) / 1_000_000L} " +
+                        "failure=${exception.javaClass.simpleName}: ${exception.message}",
+                    exception
+                )
+                throw exception
+            }
+        }
+    }
+
+    private fun logReadPhase(mediaType: MediaType, operation: String, startedAt: Long) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(
+            CATALOG_LOG_TAG,
+            "pack=${mediaType.toPackId().value} operation=$operation " +
+                "elapsedMs=${(System.nanoTime() - startedAt) / 1_000_000L}"
+        )
+    }
+
     private suspend fun mediaTypeForItemIdentity(mediaId: String): MediaType {
         dao.mediaType(mediaId)?.let { persisted ->
             return requireNotNull(MediaType.entries.firstOrNull { it.persistedValue == persisted })
@@ -422,24 +505,22 @@ class GenericMediaRepository(
         groupType: String?
     ): List<MediaListEntry> {
         if (entries.isEmpty() || groupType == null) return entries
+        val cache = sharedCoverCaches[mediaType]?.takeIf { it.groupType == groupType }
         val itemIds = entries.asSequence()
             .filterIsInstance<MediaListEntry.Item>()
             .map { it.id }
             .toList()
-        val itemCoverIds = buildMap {
+        val itemCoverIds = cache?.items ?: buildMap {
             itemIds.chunked(SQLITE_ID_BATCH).forEach { batch ->
-                groupDao.sharedCoverIdentitiesForItems(
-                    mediaType.persistedValue,
-                    groupType,
-                    batch
-                ).forEach { put(it.targetId, it.coverMediaId) }
+                groupDao.sharedCoverIdentitiesForItems(mediaType.persistedValue, groupType, batch)
+                    .forEach { put(it.targetId, it.coverMediaId) }
             }
         }
         val groupIds = entries.asSequence()
             .filterIsInstance<MediaListEntry.Group>()
             .map { it.id }
             .toList()
-        val groupCoverIds = buildMap {
+        val groupCoverIds = cache?.groups ?: buildMap {
             groupIds.chunked(SQLITE_ID_BATCH).forEach { batch ->
                 groupDao.sharedCoverIdentitiesForGroups(batch)
                     .forEach { put(it.targetId, it.coverMediaId) }
@@ -457,7 +538,14 @@ class GenericMediaRepository(
 
 }
 
+private data class SharedCoverCache(
+    val groupType: String,
+    val items: Map<String, String>,
+    val groups: Map<String, String>
+)
+
 private const val SQLITE_ID_BATCH = 900
+private const val CATALOG_LOG_TAG = "RankOfflineCatalog"
 
 private fun requireIntegratedMediaType(mediaType: MediaType) {
     require(mediaType in MediaType.entries)

@@ -809,6 +809,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                 mediaType = mediaType,
                 purgeRuntimeData = {
                     genericRepository.purgePackData(mediaType)
+                    genericRepository.clearSharedCoverIdentities(mediaType)
                     settingsRepository.purgePackSettings(mediaType)
                 },
                 finalizeRuntime = {
@@ -864,6 +865,11 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
                 onPhase = onInstallPhase
             ).also { result ->
                 if (result == CatalogAvailability.AVAILABLE) {
+                    genericRepository.refreshSharedCoverIdentities(
+                        mediaType,
+                        categoryPackManager.descriptor(mediaType)?.manifest?.groupTypeOrNull()
+                            ?: mediaType.genericGroupType()
+                    )
                     if (directory != null) {
                         categoryPackManager.descriptor(mediaType)?.manifest?.let { manifest ->
                             genericRepository.installPackCovers(manifest, directory)

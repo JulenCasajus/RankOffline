@@ -195,6 +195,35 @@ class CoverInteractionTest {
         assertEquals(null, coverTransferFailureForHttpStatus(200))
     }
 
+    @Test
+    fun visibleCoverProgressCountsOnlyVerifiedAvailableImages() {
+        val afterFailedAttempts = CoverPreloadProgress(
+            status = CoverPreloadStatus.RETRYING_COVERS,
+            target = 100,
+            processed = 100,
+            existing = 20,
+            downloaded = 70,
+            unavailable = 4,
+            errors = 6
+        )
+
+        assertEquals(90, afterFailedAttempts.available)
+        assertEquals(0.9f, afterFailedAttempts.fraction, 0.0f)
+
+        val afterOneSuccessfulRetry = afterFailedAttempts.copy(downloaded = 71, errors = 5)
+        assertEquals(91, afterOneSuccessfulRetry.available)
+        assertEquals(0.91f, afterOneSuccessfulRetry.fraction, 0.0f)
+    }
+
+    @Test
+    fun animeMetadataHttpFailuresKeepTemporaryErrorsRetryable() {
+        assertEquals(AnimeMetadataHttpFailure.PERMANENT, animeMetadataHttpFailure(404))
+        assertEquals(AnimeMetadataHttpFailure.PERMANENT, animeMetadataHttpFailure(410))
+        assertEquals(AnimeMetadataHttpFailure.RETRYABLE, animeMetadataHttpFailure(429))
+        assertEquals(AnimeMetadataHttpFailure.RETRYABLE, animeMetadataHttpFailure(500))
+        assertEquals(AnimeMetadataHttpFailure.RETRYABLE, animeMetadataHttpFailure(503))
+    }
+
     private fun cleanupAfterExit(progress: CoverPreloadProgress): CoverPreloadProgress =
         if (progress.shouldClearAfterLeavingSettings()) CoverPreloadProgress() else progress
 }

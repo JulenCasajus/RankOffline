@@ -63,12 +63,9 @@ class GenericMediaCatalogImporter(
         val sqlite = database.openHelper.writableDatabase
         val timings = ImportTimings()
         val freshCatalog = dao.catalogItemCount(manifest.mediaType) == 0L
-        // These secondary indexes make browsing fast but are expensive to maintain for tens of
-        // thousands of fresh auxiliary rows. DDL is transactional here: a failed import restores
-        // both the previous rows and indexes.
-        sqlite.execSQL("DROP INDEX IF EXISTS `idx_media_genre_genre`")
-        sqlite.execSQL("DROP INDEX IF EXISTS `idx_media_credit_role_name`")
-        sqlite.execSQL("DROP INDEX IF EXISTS `idx_media_alias_title`")
+        // Keep shared indexes installed throughout the transaction. Dropping them saved import
+        // time, but the schema lock could stall cold queries for an unrelated READY pack until a
+        // large import committed. Batched writes keep index maintenance bounded without DDL.
         sqlite.execSQL(
             "CREATE TABLE `$stageName` (" +
                 "id TEXT NOT NULL PRIMARY KEY, " +
@@ -158,13 +155,6 @@ class GenericMediaCatalogImporter(
                 arrayOf(manifest.mediaType)
             )
             timings.reconcileSqlNanos += System.nanoTime() - reconcileStarted
-            val indexStarted = System.nanoTime()
-            sqlite.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_genre_genre` ON `media_genre` (`genre`)")
-            sqlite.execSQL(
-                "CREATE INDEX IF NOT EXISTS `idx_media_credit_role_name` ON `media_credit` (`role`, `name`)"
-            )
-            sqlite.execSQL("CREATE INDEX IF NOT EXISTS `idx_media_alias_title` ON `media_alias` (`title`)")
-            timings.indexSqlNanos += System.nanoTime() - indexStarted
             dao.upsertMetadata(
                 listOf(
                     metadata(manifest, METADATA_VERSION, manifest.catalogVersion),
@@ -180,8 +170,7 @@ class GenericMediaCatalogImporter(
                     "parseMs=${timings.parseNanos / 1_000_000L} " +
                     "itemSqlMs=${timings.itemSqlNanos / 1_000_000L} " +
                     "auxSqlMs=${timings.auxSqlNanos / 1_000_000L} " +
-                    "reconcileSqlMs=${timings.reconcileSqlNanos / 1_000_000L} " +
-                    "indexSqlMs=${timings.indexSqlNanos / 1_000_000L} fresh=$freshCatalog"
+                    "reconcileSqlMs=${timings.reconcileSqlNanos / 1_000_000L} fresh=$freshCatalog"
             )
             return MediaCatalogImportResult.Imported(parsedCount)
         } finally {
@@ -313,8 +302,7 @@ class GenericMediaCatalogImporter(
         var parseNanos: Long = 0L,
         var itemSqlNanos: Long = 0L,
         var auxSqlNanos: Long = 0L,
-        var reconcileSqlNanos: Long = 0L,
-        var indexSqlNanos: Long = 0L
+        var reconcileSqlNanos: Long = 0L
     )
 }
 

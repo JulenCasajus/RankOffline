@@ -19,6 +19,7 @@ import androidx.room.Upsert
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteQuery
+import java.util.concurrent.Executors
 import kotlinx.coroutines.flow.Flow
 
 const val ROOM_DATABASE_VERSION = 14
@@ -692,9 +693,22 @@ abstract class AnimeDatabase : RoomDatabase() {
         const val DATABASE_NAME = "anime_rank.db"
 
         @Volatile private var instance: AnimeDatabase? = null
+        private val queryExecutor = Executors.newFixedThreadPool(4) { runnable ->
+            Thread(runnable, "RankOfflineDbRead").apply { isDaemon = true }
+        }
+        private val transactionExecutor = Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "RankOfflineDbWrite").apply { isDaemon = true }
+        }
 
         fun getInstance(context: Context): AnimeDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, AnimeDatabase::class.java, DATABASE_NAME)
+                // Stable imports use long write transactions. WAL guarantees already-committed
+                // READY packs remain readable on separate Room query connections.
+                .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
+                // Keep cold READY-pack reads off the executor occupied by a long import. Room's
+                // default executor sharing can otherwise queue reads even though WAL permits them.
+                .setQueryExecutor(queryExecutor)
+                .setTransactionExecutor(transactionExecutor)
                 .addMigrations(
                     MIGRATION_1_5,
                     MIGRATION_2_5,
