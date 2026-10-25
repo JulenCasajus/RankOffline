@@ -45,10 +45,15 @@ catalog keys are implemented.
   ],
   "subtitle": ["genre", "year", "network"],
   "merge": {"enabled": true, "strategy": "GROUP_ID", "groupType": "SEASONS"},
-  "defaults": {"showImages": true, "stickyScoreHeader": false, "mergeEnabled": false, "ratingMode": "simple"},
+  "defaults": {"showImages": true, "stickyScoreHeader": false, "mergeEnabled": false, "oneCoverPerGroup": true, "ratingMode": "simple"},
   "integrity": {"installedBytes": 123, "files": [{"path": "catalog/series.jsonl.gzip", "bytes": 123, "sha256": "<64 lowercase hex>"}]}
 }
 ```
+
+The example is illustrative, not a declaration of the current or forthcoming shipped defaults.
+New/changed official defaults (Books images OFF, Sticky Score ON for all, and Merge ON when
+One Cover per Group defaults ON) are planned for the debug.6 validation cycle; regenerated
+packs and their trusted index must be published together with the matching APK.
 
 Supported filter types are `multi_select` and `range`. Supported current merge strategies are
 `NONE`, `GROUP_ID`, `COLLECTION_ID`, and `RELATION_GRAPH`; unknown values reject the pack safely.
@@ -66,6 +71,12 @@ explicit. A catalog `remoteCoverRef` may alternatively be a schema-1 JSON string
 IP/local destinations, undeclared hosts, traversal, unsafe redirects, and executable content; a
 pack never supplies executable resolver code or credentials. Older official artifacts continue
 through their restricted built-in compatibility adapters.
+
+After a pack's catalog and groups are verified/imported, it can be browsed and rated without
+waiting for optional initial Top-100 cover acquisition. `Show Images` controls this
+installation-time, user-private HTTP cover fetch; it never enables online title search.
+The cover cache is counted and deleted per pack, including any properly licensed files
+bundled inside the pack. Manual Top-N cover retrieval remains available.
 
 Deleting a pack purges its catalog, groups, covers, cache, ratings, notes, ranking state, saved
 filters, and pack settings while leaving global language/theme/onboarding state intact. Future
@@ -86,6 +97,8 @@ Group discovery is a release-time concern. A group JSONL record contains the sta
 identity, explicit members, `representativeMediaId`, `memberCount`, `popularity`, and
 `popularityRank`. Series use the TMDB parent-show ID, Movies use the explicit TMDB collection ID,
 and Manga use the deterministic connected component of allowed MangaDex variant relations.
+Books use a conservative Work-level series-group artifact built from explicit/verified
+relationships rather than treating editions as independent catalog entries.
 Android imports these values verbatim and performs indexed, paginated group queries; it does not
 infer relationships from titles, contact a provider, or rebuild membership after installation.
 
