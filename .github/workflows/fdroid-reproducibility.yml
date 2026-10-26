@@ -48,63 +48,11 @@ jobs:
         run: |
           set -euo pipefail
           test ! -e keystore.properties || { echo 'Signing properties must be absent'; exit 1; }
-          # Match the exact narrow prebuild patch in the F-Droid metadata.
-          # Verify it matched precisely the published tag's signing guard.
-          test "$(grep -c '^tasks.matching { it.name == "preReleaseBuild" }.configureEach {            -Prankoffline.categoryPackBaseUrl=https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/ \
-            -Prankoffline.bundleProductionCatalogs=false
-          test -s app/build/outputs/apk/release/app-release-unsigned.apk
-
-      - name: Download authentic stable GitHub APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 --silent --show-error \
-            https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/RankOffline-v0.2.0.apk \
-            --output /tmp/RankOffline-v0.2.0.apk
-          test -s /tmp/RankOffline-v0.2.0.apk
-
-      - name: Compare upstream signed and clean unsigned APKs
-        shell: bash
-        run: |
-          set -euo pipefail
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
-          test -n "$APKSIGNER"
-          echo "$(dirname "$APKSIGNER")" >> "$GITHUB_PATH"
-          "$APKSIGNER" verify --verbose --print-certs /tmp/RankOffline-v0.2.0.apk
-          # F-Droid must reproduce the exact unsigned APK bytes before signature copying.
-          PATH="$(dirname "$APKSIGNER"):$PATH" apksigcopier compare --unsigned \
-            /tmp/RankOffline-v0.2.0.apk \
-            app/build/outputs/apk/release/app-release-unsigned.apk
-          echo 'OK: signed GitHub v0.2.0 is reproducible from public source'
- app/build.gradle.kts)" = 1
+          # Execute the same narrow patch used by the official F-Droid recipe.
+          # Fail if the expected guard is not present exactly once.
+          test "$(grep -Fc 'tasks.matching { it.name == "preReleaseBuild" }.configureEach {' app/build.gradle.kts)" = 1
           sed -i '/^tasks.matching { it.name == "preReleaseBuild" }.configureEach {$/,+2d' app/build.gradle.kts
-          ! grep -q '^tasks.matching { it.name == "preReleaseBuild" }.configureEach {            -Prankoffline.categoryPackBaseUrl=https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/ \
-            -Prankoffline.bundleProductionCatalogs=false
-          test -s app/build/outputs/apk/release/app-release-unsigned.apk
-
-      - name: Download authentic stable GitHub APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 --silent --show-error \
-            https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/RankOffline-v0.2.0.apk \
-            --output /tmp/RankOffline-v0.2.0.apk
-          test -s /tmp/RankOffline-v0.2.0.apk
-
-      - name: Compare upstream signed and clean unsigned APKs
-        shell: bash
-        run: |
-          set -euo pipefail
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
-          test -n "$APKSIGNER"
-          echo "$(dirname "$APKSIGNER")" >> "$GITHUB_PATH"
-          "$APKSIGNER" verify --verbose --print-certs /tmp/RankOffline-v0.2.0.apk
-          # F-Droid must reproduce the exact unsigned APK bytes before signature copying.
-          PATH="$(dirname "$APKSIGNER"):$PATH" apksigcopier compare --unsigned \
-            /tmp/RankOffline-v0.2.0.apk \
-            app/build/outputs/apk/release/app-release-unsigned.apk
-          echo 'OK: signed GitHub v0.2.0 is reproducible from public source'
- app/build.gradle.kts
+          ! grep -Fq 'tasks.matching { it.name == "preReleaseBuild" }.configureEach {' app/build.gradle.kts
           ./gradlew --no-daemon clean assembleRelease \
             -Prankoffline.categoryPackBaseUrl=https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/ \
             -Prankoffline.bundleProductionCatalogs=false
