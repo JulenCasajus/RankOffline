@@ -1,0 +1,77 @@
+name: Check v0.2.0 APK reproducibility
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/fdroid-reproducibility.yml'
+      - 'distribution/fdroid/**'
+      - 'docs/FDROID_PUBLISHING.md'
+      - 'fastlane/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact published v0.2.0 source
+        uses: actions/checkout@v4
+        with:
+          ref: v0.2.0
+          persist-credentials: false
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Python for apksigcopier
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install signature comparison tool
+        run: python -m pip install apksigcopier==1.1.1
+
+      - name: Build clean unsigned release without signing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e keystore.properties || { echo 'Signing properties must be absent'; exit 1; }
+          ./gradlew --no-daemon clean assembleRelease \
+            -Prankoffline.categoryPackBaseUrl=https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/ \
+            -Prankoffline.bundleProductionCatalogs=false
+          test -s app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Download authentic stable GitHub APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --silent --show-error \
+            https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/RankOffline-v0.2.0.apk \
+            --output /tmp/RankOffline-v0.2.0.apk
+          test -s /tmp/RankOffline-v0.2.0.apk
+
+      - name: Compare upstream signed and clean unsigned APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          test -n "$APKSIGNER"
+          echo "$(dirname "$APKSIGNER")" >> "$GITHUB_PATH"
+          "$APKSIGNER" verify --verbose --print-certs /tmp/RankOffline-v0.2.0.apk
+          # F-Droid must reproduce the exact unsigned APK bytes before signature copying.
+          PATH="$(dirname "$APKSIGNER"):$PATH" apksigcopier compare --unsigned \
+            /tmp/RankOffline-v0.2.0.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+          echo 'OK: signed GitHub v0.2.0 is reproducible from public source'
