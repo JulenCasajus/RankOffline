@@ -40,7 +40,9 @@ assuming it is imported automatically by F-Droid from this repository.
    git fetch origin --tags
    git worktree add --detach /tmp/rankoffline-fdroid-v020 v0.2.0
    cd /tmp/rankoffline-fdroid-v020
-   ./gradlew --no-daemon assembleRelease \
+   # The tagged v0.2.0 source enforces signing even for unsigned builds.
+   # Exclude only that guard when comparing; do not modify production signing.
+   ./gradlew --no-daemon assembleRelease -x :app:verifyReleaseSigning \
      -Prankoffline.categoryPackBaseUrl=https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/ \
      -Prankoffline.bundleProductionCatalogs=false
    # Download RankOffline-v0.2.0.apk from the GitHub v0.2.0 Release.
@@ -49,7 +51,9 @@ assuming it is imported automatically by F-Droid from this repository.
      app/build/outputs/apk/release/app-release-unsigned.apk
    ```
 
-   A zero exit status is required. Differences require investigation (e.g.
+   The F-Droid recipe uses an equivalent narrowly scoped prebuild patch to
+   remove the preReleaseBuild signing guard without changing the application
+   code or release key. A zero exit status is required. Differences require investigation (e.g.
    pinned toolchain, ZIP ordering, embedded metadata, or AGP). Do not publish
    the draft recipe under reproducible-build settings until it actually passes.
    Remove the temporary worktree after testing using `git worktree remove`.

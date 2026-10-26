@@ -48,7 +48,9 @@ jobs:
         run: |
           set -euo pipefail
           test ! -e keystore.properties || { echo 'Signing properties must be absent'; exit 1; }
-          ./gradlew --no-daemon clean assembleRelease \
+          # The published tag makes preReleaseBuild depend on a local signing guard.
+          # F-Droid needs an unsigned rebuild; omit only this guard for comparison.
+          ./gradlew --no-daemon clean assembleRelease -x :app:verifyReleaseSigning \
             -Prankoffline.categoryPackBaseUrl=https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.0/ \
             -Prankoffline.bundleProductionCatalogs=false
           test -s app/build/outputs/apk/release/app-release-unsigned.apk

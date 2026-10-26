@@ -15,6 +15,9 @@ Builds:
     versionCode: 7
     commit: 4f1c66a2b17d50c9a5e863368db252d778dbb37e
     subdir: app
+    # Only remove the local signing *requirement* while building F-Droid's unsigned APK.
+    # The Android source code and release signing in GitHub Actions stay unchanged.
+    prebuild: sed -i '/^tasks.matching { it.name == "preReleaseBuild" }.configureEach {$/,+2d' build.gradle.kts
     gradle:
       - yes
 
