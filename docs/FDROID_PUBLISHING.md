@@ -1,7 +1,9 @@
 # Preparing official F-Droid distribution
 
-This is a preparation guide, **not** proof that RankOffline is accepted,
-reproducible, or currently available in the official F-Droid repository.
+This is a preparation guide, **not** proof that RankOffline is accepted or
+currently available in the official F-Droid repository. A clean upstream build
+comparison already passed on 2026-10-26, but the native fdroiddata scanner,
+build and reviewer checks must still be completed.
 
 ## Goal
 
@@ -27,12 +29,18 @@ assuming it is imported automatically by F-Droid from this repository.
 - The v0.2.0 build currently defaults to the GitHub v0.2.0 pack URL and
   `bundleProductionCatalogs=false`; preserve these build inputs for comparison.
 
-## Blocking checks before submission
+## Verified checks and remaining submission work
 
 1. **Build from a clean v0.2.0 checkout, not an arbitrary latest main branch.**
    The Gradle version, Git tag, catalog index and build dependencies must match
    the already-published APK. F-Droid builds must not rely on signing secrets.
-2. **Prove reproducibility against the actual signed stable GitHub APK.**
+2. **Reproducibility against the actual signed stable GitHub APK: VERIFIED upstream.**
+   The [2026-10-26 GitHub Actions run](https://github.com/JulenCasajus/RankOffline/actions/runs/40296894242)
+   checked out the immutable `v0.2.0` tag, rebuilt the unsigned APK and passed
+   `apksigcopier compare --unsigned` against the original signed public APK.
+   The PR workflow also exercises the same narrow signing-guard patch as the
+   F-Droid recipe. This is strong evidence of reproducibility but does **not**
+   replace testing the actual recipe and scanner in fdroiddata.
    On macOS/Linux with JDK 17, the Android SDK, `apksigner`, Python and
    `apksigcopier` available, in a **separate worktree** from development:
 
@@ -51,12 +59,12 @@ assuming it is imported automatically by F-Droid from this repository.
      app/build/outputs/apk/release/app-release-unsigned.apk
    ```
 
-   The F-Droid recipe uses an equivalent narrowly scoped prebuild patch to
-   remove the preReleaseBuild signing guard without changing the application
-   code or release key. A zero exit status is required. Differences require investigation (e.g.
-   pinned toolchain, ZIP ordering, embedded metadata, or AGP). Do not publish
-   the draft recipe under reproducible-build settings until it actually passes.
-   Remove the temporary worktree after testing using `git worktree remove`.
+   The metadata's `prebuild` patch removes only the `preReleaseBuild` signing
+   guard, without changing application code or the release key. The GitHub
+   workflow now tests this exact patch; the local `-x` command shown above
+   is an equivalent quick comparison. Recheck reproducibility in the native
+   F-Droid build environment; do not bypass scanner or comparison failures.
+   Remove the temporary worktree using `git worktree remove`.
 3. **Run F-Droid's own scan and build.** Fork
    [fdroiddata](https://gitlab.com/fdroid/fdroiddata), place the draft YAML in
    `metadata/org.rankoffline.app.yml`, and run `fdroid lint org.rankoffline.app`,
