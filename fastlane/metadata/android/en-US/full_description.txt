@@ -1,0 +1,26 @@
+RankOffline is a free, open-source Android app for rating and ranking
+anime, manga, movies, TV series, and books.
+
+Install only the offline catalog packs you want. Browse and search your
+installed catalogs without an account or an internet connection.
+
+Features:
+* Independently downloadable Anime, Manga, Movies, Series, and Books packs
+* Simple ratings with an optional personal-taste bonus
+* Detailed ratings with weighted categories and reusable rating profiles
+* Personal ranking lists, category sorting, and a Top 3 podium
+* Filters, alternative title searches, and optional grouping of related items
+* Custom themes, selectable launcher icons, and multiple interface languages
+* Optional cover downloads and locally stored notes
+
+Your scores, notes, rating profiles and preferences stay on your device.
+No registration, tracking, advertisements or cloud ratings database.
+
+An internet connection is required only to download catalog packs and
+optional cover images. The downloaded catalog data is stored locally.
+
+Important: choosing to delete a pack together with its data also deletes
+its local ratings, notes, covers, and associated settings.
+
+Third-party catalogs and cover artwork are governed by their respective
+providers' terms. RankOffline is not affiliated with or endorsed by them.
