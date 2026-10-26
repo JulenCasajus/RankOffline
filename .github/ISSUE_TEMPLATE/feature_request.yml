@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest a focused RankOffline improvement.
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: "Please search existing issues and the [roadmap](https://github.com/JulenCasajus/RankOffline/blob/main/docs/ROADMAP.md) first. Suggested features are not guaranteed."
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or user need
+      description: Explain why the change matters.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed experience
+      description: Describe what a user should be able to do.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Relevant area
+      options:
+        - Ratings / rankings
+        - Offline catalogs / discovery
+        - Grouping / merging
+        - Covers
+        - Customization / localization
+        - Backup / data portability
+        - Accessibility
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or optional mockups
+    validations:
+      required: false

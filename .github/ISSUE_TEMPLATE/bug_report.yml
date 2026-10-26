@@ -1,0 +1,62 @@
+name: Bug report
+description: Report a reproducible problem in a public RankOffline release.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for reporting! Never post personal data or credentials. For sensitive security issues follow [SECURITY.md](https://github.com/JulenCasajus/RankOffline/blob/main/SECURITY.md)."
+  - type: input
+    id: version
+    attributes:
+      label: RankOffline version
+      placeholder: "v0.2.0"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Android version and device
+      placeholder: "Android 15, Samsung Galaxy A55"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area affected
+      options:
+        - Catalog installation / download
+        - Browse / search / filters
+        - Ratings / rankings
+        - Grouping / merge
+        - Covers
+        - Settings / localization
+        - Data loss / migration
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include installed catalog packs and numbered actions.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or sanitized logs (optional)
+      description: Redact any ratings, personal notes, tokens, file paths or identifiers.
+    validations:
+      required: false

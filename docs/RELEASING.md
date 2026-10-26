@@ -1,5 +1,21 @@
 # Releasing RankOffline
 
+**Current stable release: [v0.2.0](https://github.com/JulenCasajus/RankOffline/releases/tag/v0.2.0), already published.** The version-specific instructions below describe the historical v0.2.0 release contract. Do **not** reuse the v0.2.0 tag, versionCode, pack URL or release workflow unchanged for future versions.
+
+## Checklist for the next stable release
+
+1. Complete code review and test all changes. Recheck preservation of ratings, notes and settings across **signed stable** upgrades, including published migration paths. A debug-to-debug update alone is insufficient.
+2. Verify offline pack installation, cancellation, process interruption/recovery, optional covers, performance and any new export/import or backup behavior on representative devices. Document skipped tests.
+3. Audit third-party provider permissions, catalog redistribution, logos/icons, source attribution and privacy notices before distributing new assets. Unresolved permissions must be addressed rather than concealed.
+4. Update Gradle `versionName` and strictly increasing `versionCode`, pack index/API version, URL and release metadata. Preserve the stable package ID and signing key.
+5. Update and revalidate `.github/workflows/release.yml`: the existing workflow is specifically wired for **v0.2.0** and cannot be assumed to publish later versions safely.
+6. Build and independently inspect the signed APK, match APK-embedded pack index to the published JSON/pack hashes, validate archive contents, and confirm the signing certificate and package version.
+7. Update [CHANGELOG](../CHANGELOG.md), [README](../README.md), Fastlane descriptions/changelog and [privacy notice](../PRIVACY.md) when user-visible behavior changes. Keep unreleased features explicitly labeled.
+8. Only after a reviewed candidate and stable in-place upgrade pass: merge, tag immutably, check draft assets and publish deliberately. Then verify downloads and installation in the public release.
+
+Never commit signing keys, provider credentials, user data or signed APKs to source control.
+
+
 RankOffline has two distinct Android application identities:
 
 - Debug/test: `org.rankoffline.app.debug` (for example `0.2.0-debug.5`).
@@ -36,9 +52,7 @@ with `v0.1.3`. A manual `workflow_dispatch` run from `main` uploads a
 A run triggered by the exact `v0.2.0` tag creates a **draft Release** only
 after successful checks; manual publication remains a separate step.
 
-The configured workflow must still pass an actual CI run, and the signed
-`v0.1.3 → v0.2.0` in-place upgrade must be verified before publication.
-Neither a successful build nor a draft counts as a public stable release.
+The v0.2.0 release is already public. These details remain for historical reproducibility and should not be treated as publication instructions for the next version.
 
 Debug prereleases use their own tag-specific pack base URL and may keep a
 different application ID and signing certificate. Do not edit an earlier
@@ -66,7 +80,7 @@ The GitHub Action uses these encrypted secrets:
 Never commit the keystore, `keystore.properties`, passwords, access tokens or
 generated signed APKs.
 
-## Checklist before v0.2.0
+## Historical v0.2.0 release checklist (archived)
 
 1. Complete and review the final debug.6 fixes. Test the real device,
    particularly five-pack installs, queueing, Top-100 providers and cancellation.
@@ -143,4 +157,4 @@ retrieval, not remote title discovery. Personal ratings stay private.
 Provider metadata, images and logos retain independent terms. Access to an
 image URL is not evidence of redistribution permission.
 
-`RankOfflineAll` and community-pack installation belong to a later version.
+`RankOfflineAll` is under development for a later release and is not shipped in the public v0.2.0 APK. Community-pack installation is a separate future idea. See [ROADMAP.md](ROADMAP.md).

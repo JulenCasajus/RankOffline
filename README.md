@@ -6,6 +6,8 @@ RankOffline is a **free, open-source Android app** for discovering and ranking *
 
 **[Download RankOffline v0.2.0](https://github.com/JulenCasajus/RankOffline/releases/tag/v0.2.0)** · [Installation](#installation) · [Rating system](#rate-your-way) · [Privacy](#offline-first-and-private)
 
+**Project information:** [Privacy & data](PRIVACY.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+
 ## ✨ Discover. Rate. Rank.
 
 | Discover your favorites | Rate your way | See your personal podium |

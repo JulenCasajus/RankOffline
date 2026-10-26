@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security issue or sensitive disclosure
+    url: https://github.com/JulenCasajus/RankOffline/blob/main/SECURITY.md
+    about: Do not report vulnerabilities publicly. Read private-reporting guidance first.
+  - name: Privacy and data handling
+    url: https://github.com/JulenCasajus/RankOffline/blob/main/PRIVACY.md
+    about: Information on RankOffline data storage and network use.
