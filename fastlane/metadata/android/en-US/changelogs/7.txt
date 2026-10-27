@@ -1,5 +1,0 @@
-First stable multi-catalog release.
-* Five independently downloadable offline packs: Anime, Manga, Movies, Series, Books
-* Simple and weighted detailed ratings with reusable profiles
-* Personal rankings, Top 3 podium, search, filters, and grouping
-* Optional cover downloads, themes, launcher icons, and local notes
