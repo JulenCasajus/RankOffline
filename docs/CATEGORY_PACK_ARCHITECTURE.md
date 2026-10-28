@@ -19,7 +19,7 @@ Installation is staged and atomic:
 7. publish catalog READY once its Room data is usable; optional Top-100 cover retrieval, if enabled
    for this pack, is separate from catalog readiness. Cover failures cannot invalidate the catalog.
 
-The debug.6 implementation, now merged into `main`, limits archive transfers
+The current implementation limits archive transfers
 to one at a time; safe unrelated imports may overlap transfers, while Room
 import writes are serialized. Pending/queued pack and cover states are
 represented explicitly. These implementation choices still require stable
@@ -41,6 +41,10 @@ redistribution of third-party artwork has not been established. Do not describe 
 cover availability as a right to bundle or republish files.
 
 ## Deletion
+
+**Uninstall pack, keep personal data** removes the reference catalog, groups, pack files and cover
+cache while retaining PackId-scoped ratings, detailed scores, notes/status, profiles/categories and
+preferences. Reinstalling compatible canonical identities reconnects that personal state.
 
 **Delete pack and data** is the centralized destructive boundary. It removes the pack files, catalog, groups, bundled/downloaded covers, cache, PackId-scoped ratings and detailed scores, notes/status, ranking state, filters, profiles/categories, and pack settings. Global language, palette, app icon, and onboarding state remain. If the active/last pack is deleted, navigation falls back safely to another READY pack or the zero-pack package-management experience.
 

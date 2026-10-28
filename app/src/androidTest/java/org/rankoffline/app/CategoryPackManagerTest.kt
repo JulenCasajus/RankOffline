@@ -195,6 +195,26 @@ class CategoryPackManagerTest {
 
         assertEquals(1, maxDownloads.get())
         assertEquals(1, activeImports.get())
+        val queuedForImport = withTimeout(5_000) {
+            manager.states.first { states ->
+                states[MediaType.ANIME]?.installProgress?.phase ==
+                    CategoryPackInstallPhase.IMPORTING_CATALOG &&
+                    MediaType.entries.filterNot { it == MediaType.ANIME }.all { mediaType ->
+                        states[mediaType]?.installProgress?.phase ==
+                            CategoryPackInstallPhase.WAITING_IMPORT
+                    }
+            }
+        }
+        assertEquals(
+            CategoryPackInstallPhase.IMPORTING_CATALOG,
+            queuedForImport.getValue(MediaType.ANIME).installProgress?.phase
+        )
+        assertTrue(
+            MediaType.entries.filterNot { it == MediaType.ANIME }.all { mediaType ->
+                queuedForImport.getValue(mediaType).installProgress?.phase ==
+                    CategoryPackInstallPhase.WAITING_IMPORT
+            }
+        )
         releaseFirstImport.complete(Unit)
         assertEquals(
             List(MediaType.entries.size) { CategoryPackDownloadResult.INSTALLED },
@@ -350,8 +370,7 @@ class CategoryPackManagerTest {
 
         val anime = fixture(MediaType.ANIME, "anime_catalog.jsonl.gzip", "anime fixture".toByteArray())
         val cancelled = managerFor(anime)
-        assertEquals(
-            CategoryPackDownloadResult.INSTALLED,
+        val interrupted = runCatching {
             cancelled.downloadAndInstall(
                 mediaType = MediaType.ANIME,
                 downloadInitialCovers = true,
@@ -366,15 +385,21 @@ class CategoryPackManagerTest {
                     throw CancellationException("fixture cancellation")
                 }
             )
-        )
+        }
+        assertTrue(interrupted.exceptionOrNull() is CancellationException)
         val cancelledState = cancelled.states.value.getValue(MediaType.ANIME)
         assertTrue(cancelledState.available)
         assertTrue(requireNotNull(cancelled.installedDirectory(MediaType.ANIME)).isDirectory)
         assertEquals(
-            InitialCoverAcquisitionStatus.CANCELLED,
+            InitialCoverAcquisitionStatus.PENDING,
             cancelledState.initialCoverAcquisition?.status
         )
         assertEquals(35, cancelledState.initialCoverAcquisition?.available)
+        cancelled.requestInitialCoverCancellation(MediaType.ANIME)
+        assertEquals(
+            InitialCoverAcquisitionStatus.CANCELLED,
+            cancelled.states.value.getValue(MediaType.ANIME).initialCoverAcquisition?.status
+        )
     }
 
     @Test
@@ -464,6 +489,96 @@ class CategoryPackManagerTest {
             )
         )
         assertTrue(recovered.states.value.getValue(MediaType.BOOK).available)
+    }
+
+    @Test
+    fun cancelledRecoveryDoesNotLeaveWaitingImportProgressBehind() = runBlocking {
+        File(context.filesDir, CategoryPackManager.PACK_ROOT).deleteRecursively()
+        val fixture = fixture(MediaType.BOOK, "book_catalog.jsonl.gzip", "book fixture".toByteArray())
+        val downloader = CategoryPackArchiveDownloader { _, destination, progress ->
+            destination.writeBytes(fixture.archive)
+            progress(fixture.archive.size.toLong())
+            CategoryPackDownloadResult.INSTALLED
+        }
+        val descriptors = mapOf(OfficialPackIds.Books to fixture.descriptor)
+        val installed = CategoryPackManager(
+            context,
+            injectedDownloader = downloader,
+            injectedDescriptors = descriptors,
+            bundledCatalogsAvailable = false
+        )
+        assertEquals(CategoryPackDownloadResult.INSTALLED, installed.downloadAndInstall(MediaType.BOOK))
+
+        val recovered = CategoryPackManager(
+            context,
+            injectedDownloader = downloader,
+            injectedDescriptors = descriptors,
+            bundledCatalogsAvailable = false
+        )
+        recovered.recoverFilesystem()
+        recovered.refresh()
+        val importStarted = CompletableDeferred<Unit>()
+        val keepImportOpen = CompletableDeferred<Unit>()
+        val recovery = async {
+            recovered.recoverRuntime(
+                MediaType.BOOK,
+                clearMissingCatalog = {},
+                initializeRuntime = { phase ->
+                    phase(CategoryPackInstallPhase.IMPORTING_CATALOG)
+                    importStarted.complete(Unit)
+                    keepImportOpen.await()
+                    CatalogAvailability.AVAILABLE
+                }
+            )
+        }
+        importStarted.await()
+        recovery.cancel()
+        recovery.join()
+
+        val state = recovered.states.value.getValue(MediaType.BOOK)
+        assertEquals(null, state.installProgress)
+        assertEquals(CategoryPackRuntimeStatus.FILES_INSTALLED, state.runtimeStatus)
+    }
+
+    @Test
+    fun cancellationAfterPromotionRestoresPreviousFilesAndRuntime() = runBlocking {
+        File(context.filesDir, CategoryPackManager.PACK_ROOT).deleteRecursively()
+        val original = fixture(MediaType.BOOK, "book_catalog.jsonl.gzip", "original".toByteArray())
+        val originalManager = managerFor(original)
+        assertEquals(
+            CategoryPackDownloadResult.INSTALLED,
+            originalManager.downloadAndInstall(MediaType.BOOK)
+        )
+        val replacement = fixture(
+            MediaType.BOOK,
+            "book_catalog.jsonl.gzip",
+            "replacement".toByteArray()
+        )
+        val replacing = managerFor(replacement)
+        var importCalls = 0
+        val operation = async {
+            replacing.downloadAndInstall(
+                MediaType.BOOK,
+                importInstalledPack = { phase ->
+                    importCalls++
+                    phase(CategoryPackInstallPhase.IMPORTING_CATALOG)
+                    if (importCalls == 1) throw CancellationException("cancel replacement")
+                    true
+                }
+            )
+        }
+
+        runCatching { operation.await() }
+
+        assertEquals(2, importCalls)
+        assertArrayEquals(
+            original.payload,
+            File(
+                requireNotNull(replacing.installedDirectory(MediaType.BOOK)),
+                "catalog/book_catalog.jsonl.gzip"
+            ).readBytes()
+        )
+        assertTrue(replacing.states.value.getValue(MediaType.BOOK).available)
     }
 
     @Test

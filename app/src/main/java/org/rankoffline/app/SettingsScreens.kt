@@ -1,9 +1,12 @@
 package org.rankoffline.app
 
 import android.content.Context
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -69,9 +72,61 @@ internal fun SettingsScreen(
     viewModel: RankOfflineViewModel
 ) {
     var destination by remember { mutableStateOf(SettingsDestination.HOME) }
+    var confirmReplaceBackup by remember { mutableStateOf(false) }
     val preloadProgress by viewModel.coverPreloadProgress.collectAsState()
     val downloadedCoverCount by viewModel.downloadedCoverCount.collectAsState()
+    val packPersonalStorage by viewModel.packPersonalStorage.collectAsState()
+    val viewingScope by viewModel.viewingScope.collectAsState()
+    val allAvailable by viewModel.allAvailable.collectAsState()
+    val allSelected = viewingScope == ViewingScope.All
+    val backupPreview by viewModel.backupPreview.collectAsState()
+    val personalDataTransfer by viewModel.personalDataTransfer.collectAsState()
+    val pendingPersonalDataShare by viewModel.pendingPersonalDataShare.collectAsState()
+    val rankingShareData by viewModel.rankingShareData.collectAsState()
+    val rankingShareExport by viewModel.rankingShareExport.collectAsState()
+    val pendingRankingShare by viewModel.pendingRankingShare.collectAsState()
+    val context = LocalContext.current
+    val exportBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> uri?.let(viewModel::exportPersonalData) }
+    val importBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(viewModel::preparePersonalDataImport) }
     val noInstalledPacks = availableMediaTypes.isEmpty()
+    val shareChooserTitle = stringResource(R.string.personal_backup_share_chooser)
+    LaunchedEffect(pendingPersonalDataShare) {
+        val uri = pendingPersonalDataShare ?: return@LaunchedEffect
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = ClipData.newUri(context.contentResolver, "RankOffline backup", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        runCatching {
+            context.startActivity(Intent.createChooser(send, shareChooserTitle))
+        }.onSuccess {
+            viewModel.personalDataShareHandled()
+        }.onFailure {
+            viewModel.personalDataShareFailed()
+        }
+    }
+    val rankingShareChooserTitle = stringResource(R.string.ranking_share_chooser)
+    LaunchedEffect(pendingRankingShare) {
+        val uri = pendingRankingShare ?: return@LaunchedEffect
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "image/png"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = ClipData.newUri(context.contentResolver, "RankOffline ranking", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        runCatching {
+            context.startActivity(Intent.createChooser(send, rankingShareChooserTitle))
+        }.onSuccess {
+            viewModel.rankingShareHandled()
+        }.onFailure {
+            viewModel.rankingShareFailed()
+        }
+    }
     LaunchedEffect(availableMediaTypes) {
         if (availableMediaTypes.isEmpty() && destination in setOf(
                 SettingsDestination.ACTIVE_PACK,
@@ -79,7 +134,8 @@ internal fun SettingsScreen(
                 SettingsDestination.GENERAL_COVERS,
                 SettingsDestination.RATING,
                 SettingsDestination.RATING_PROFILES,
-                SettingsDestination.RATING_CATEGORIES
+                SettingsDestination.RATING_CATEGORIES,
+                SettingsDestination.SHARE_RANKING
             )
         ) destination = SettingsDestination.HOME
     }
@@ -103,6 +159,7 @@ internal fun SettingsScreen(
             SettingsDestination.LANGUAGE -> SettingsDestination.GENERAL
             SettingsDestination.RATING_PROFILES,
             SettingsDestination.RATING_CATEGORIES -> SettingsDestination.RATING
+            SettingsDestination.SHARE_RANKING -> SettingsDestination.ACTIVE_PACK
             else -> SettingsDestination.HOME
         }
     }
@@ -115,6 +172,9 @@ internal fun SettingsScreen(
             noPacksInstalled = noInstalledPacks,
             availableMediaTypes = availableMediaTypes,
             onMediaTypeSelected = viewModel::updateActiveMediaType,
+            allAvailable = allAvailable,
+            allSelected = allSelected,
+            onAllSelected = viewModel::selectAllMedia,
             onUnavailableMediaType = { destination = SettingsDestination.GENERAL_CATEGORIES },
             onGeneral = { destination = SettingsDestination.GENERAL },
             onActivePack = { destination = SettingsDestination.ACTIVE_PACK },
@@ -130,13 +190,29 @@ internal fun SettingsScreen(
         )
         SettingsDestination.ACTIVE_PACK -> ActivePackSettingsScreen(
             activeMediaType = settings.activeMediaType,
+            allSelected = allSelected,
+            personalDataTransfer = personalDataTransfer,
             onDisplay = { destination = SettingsDestination.GENERAL_DISPLAY },
             onCovers = { destination = SettingsDestination.GENERAL_COVERS },
             onRating = { destination = SettingsDestination.RATING },
+            onShareRanking = {
+                val scope = if (allSelected) ViewingScope.All
+                else ViewingScope.Pack(settings.activeMediaType)
+                viewModel.loadRankingShare(scope)
+                destination = SettingsDestination.SHARE_RANKING
+            },
+            onExportPersonalData = {
+                val suffix = if (allSelected) "all" else settings.activeMediaType.toPackId().value
+                exportBackup.launch("RankOffline-$suffix-personal-data.json")
+            },
+            onImportPersonalData = {
+                importBackup.launch(arrayOf("application/json", "text/json", "text/plain"))
+            },
             onBack = goBack
         )
         SettingsDestination.GENERAL_DISPLAY -> DisplaySettingsScreen(
             settings = settings,
+            allSelected = allSelected,
             onStickyScoreChange = viewModel::updateStickyScore,
             onShowImagesChange = viewModel::updateShowImages,
             onOneCoverPerGroupChange = viewModel::updateOneCoverPerGroup,
@@ -158,10 +234,28 @@ internal fun SettingsScreen(
         )
         SettingsDestination.GENERAL_CATEGORIES -> CategorySettingsScreen(
             categoryPackStates = categoryPackStates,
+            packPersonalStorage = packPersonalStorage,
             downloadProgress = categoryDownloadProgress,
             onDownloadCategory = viewModel::downloadCategory,
             onCancelCategoryCoverDownload = viewModel::cancelInitialCoverDownload,
             onRemoveCategory = viewModel::removeCategoryCatalog,
+            onPurgeCategory = { viewModel.purgePack(it.toPackId()) },
+            onBack = goBack
+        )
+        SettingsDestination.SHARE_RANKING -> RankingShareScreen(
+            data = rankingShareData,
+            readyMediaTypes = availableMediaTypes,
+            allAvailable = allAvailable,
+            initialShowImages = { scope ->
+                when (scope) {
+                    ViewingScope.All -> settings.allViewSettings.showImages
+                    is ViewingScope.Pack -> settings.mediaSettings.getValue(scope.mediaType).showImages
+                }
+            },
+            exporting = rankingShareExport.rendering,
+            onScopeSelected = viewModel::loadRankingShare,
+            scopeSelectionEnabled = false,
+            onContinue = viewModel::exportRankingShare,
             onBack = goBack
         )
         SettingsDestination.GENERAL_COVERS -> CoversSettingsScreen(
@@ -210,6 +304,78 @@ internal fun SettingsScreen(
         SettingsDestination.ABOUT -> LicenceAboutScreen(catalogCount = catalogCount, onBack = goBack)
         SettingsDestination.DONATION -> DonationSettingsScreen(onBack = goBack)
     }
+    backupPreview?.takeUnless { confirmReplaceBackup }?.let { preview ->
+        AlertDialog(
+            onDismissRequest = {
+                if (!personalDataTransfer.active) viewModel.dismissPersonalDataImport()
+            },
+            title = { Text(stringResource(R.string.personal_backup_preview_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        stringResource(
+                            R.string.personal_backup_preview_body,
+                            preview.ratingCount,
+                            preview.groupRatingCount,
+                            preview.packIds.size
+                        )
+                    )
+                    Text(
+                        stringResource(R.string.personal_backup_preview_policy),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = viewModel::dismissPersonalDataImport,
+                    enabled = !personalDataTransfer.active
+                ) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(enabled = !personalDataTransfer.active, onClick = {
+                        viewModel.importPersonalData(PersonalDataImportMode.MERGE_NEWER)
+                    }) { Text(stringResource(R.string.personal_backup_merge)) }
+                    TextButton(enabled = !personalDataTransfer.active, onClick = {
+                        confirmReplaceBackup = true
+                    }) {
+                        Text(
+                            stringResource(R.string.personal_backup_replace),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        )
+    }
+    if (confirmReplaceBackup) {
+        AlertDialog(
+            onDismissRequest = { if (!personalDataTransfer.active) confirmReplaceBackup = false },
+            title = { Text(stringResource(R.string.personal_backup_replace_confirm_title)) },
+            text = { Text(stringResource(R.string.personal_backup_replace_confirm_body)) },
+            dismissButton = {
+                TextButton(
+                    enabled = !personalDataTransfer.active,
+                    onClick = { confirmReplaceBackup = false }
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !personalDataTransfer.active,
+                    onClick = {
+                        confirmReplaceBackup = false
+                        viewModel.importPersonalData(PersonalDataImportMode.REPLACE)
+                    }
+                ) {
+                    Text(stringResource(R.string.personal_backup_replace), color = MaterialTheme.colorScheme.error)
+                }
+            }
+        )
+    }
 }
 
 private enum class SettingsDestination {
@@ -219,6 +385,7 @@ private enum class SettingsDestination {
     GENERAL_DISPLAY,
     GENERAL_THEME,
     GENERAL_CATEGORIES,
+    SHARE_RANKING,
     GENERAL_COVERS,
     LANGUAGE,
     RATING,
@@ -235,6 +402,9 @@ private fun SettingsHomeScreen(
     noPacksInstalled: Boolean,
     availableMediaTypes: Set<MediaType>,
     onMediaTypeSelected: (MediaType) -> Unit,
+    allAvailable: Boolean,
+    allSelected: Boolean,
+    onAllSelected: () -> Unit,
     onUnavailableMediaType: (MediaType) -> Unit,
     onGeneral: () -> Unit,
     onActivePack: () -> Unit,
@@ -251,7 +421,10 @@ private fun SettingsHomeScreen(
             onMediaTypeSelected = onMediaTypeSelected,
             availableMediaTypes = availableMediaTypes,
             onDownloadPack = { onUnavailableMediaType(activeMediaType) },
-            noPacksInstalled = noPacksInstalled
+            noPacksInstalled = noPacksInstalled,
+            allAvailable = allAvailable,
+            allSelected = allSelected,
+            onAllSelected = onAllSelected
         )
         SettingsMenuItem(
             icon = Icons.Default.Settings,
@@ -265,7 +438,8 @@ private fun SettingsHomeScreen(
                 title = stringResource(R.string.settings_active_pack_title),
                 description = stringResource(
                     R.string.settings_active_pack_description,
-                    stringResource(activeMediaType.labelResource)
+                    if (allSelected) stringResource(R.string.media_all)
+                    else stringResource(activeMediaType.labelResource)
                 ),
                 onClick = onActivePack
             )
@@ -370,7 +544,8 @@ private fun SettingsActionButton(
     onClick: () -> Unit,
     label: String,
     icon: ImageVector,
-    filled: Boolean
+    filled: Boolean,
+    enabled: Boolean = true
 ) {
     val modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
     val content: @Composable RowScope.() -> Unit = {
@@ -381,6 +556,7 @@ private fun SettingsActionButton(
     if (filled) {
         Button(
             onClick = onClick,
+            enabled = enabled,
             modifier = modifier,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -391,6 +567,7 @@ private fun SettingsActionButton(
     } else {
         OutlinedButton(
             onClick = onClick,
+            enabled = enabled,
             modifier = modifier,
             content = content
         )
@@ -558,15 +735,21 @@ private fun GeneralSettingsScreen(
 @Composable
 private fun ActivePackSettingsScreen(
     activeMediaType: MediaType,
+    allSelected: Boolean,
+    personalDataTransfer: PersonalDataTransferState,
     onDisplay: () -> Unit,
     onCovers: () -> Unit,
     onRating: () -> Unit,
+    onShareRanking: () -> Unit,
+    onExportPersonalData: () -> Unit,
+    onImportPersonalData: () -> Unit,
     onBack: () -> Unit
 ) {
     SettingsSubscreen(
         stringResource(
             R.string.settings_active_pack_screen_title,
-            stringResource(activeMediaType.labelResource)
+            if (allSelected) stringResource(R.string.media_all)
+            else stringResource(activeMediaType.labelResource)
         ),
         onBack
     ) {
@@ -583,21 +766,76 @@ private fun ActivePackSettingsScreen(
                     onClick = onDisplay
                 )
             }
-            item {
-                SettingsMenuItem(
-                    icon = Icons.Default.CloudDownload,
-                    title = stringResource(R.string.covers_settings_title),
-                    description = stringResource(R.string.covers_settings_description),
-                    onClick = onCovers
-                )
+            if (!allSelected) {
+                item {
+                    SettingsMenuItem(
+                        icon = Icons.Default.CloudDownload,
+                        title = stringResource(R.string.covers_settings_title),
+                        description = stringResource(R.string.covers_settings_description),
+                        onClick = onCovers
+                    )
+                }
+                item {
+                    SettingsMenuItem(
+                        icon = Icons.Default.Star,
+                        title = stringResource(R.string.settings_rating_title),
+                        description = stringResource(R.string.settings_rating_description),
+                        onClick = onRating
+                    )
+                }
             }
             item {
-                SettingsMenuItem(
-                    icon = Icons.Default.Star,
-                    title = stringResource(R.string.settings_rating_title),
-                    description = stringResource(R.string.settings_rating_description),
-                    onClick = onRating
-                )
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Panel),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.personal_backup_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            stringResource(
+                                if (allSelected) R.string.personal_backup_scope_explanation_all
+                                else R.string.personal_backup_scope_explanation
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        if (personalDataTransfer.active) {
+                            LinearProgressIndicator(Modifier.fillMaxWidth())
+                            Text(
+                                stringResource(R.string.personal_backup_working),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TransferActionRow(
+                            onClick = onShareRanking,
+                            title = stringResource(R.string.ranking_share_title),
+                            subtitle = stringResource(R.string.ranking_share_subtitle),
+                            icon = Icons.Default.Share,
+                            enabled = !personalDataTransfer.active
+                        )
+                        TransferActionRow(
+                            onClick = onExportPersonalData,
+                            title = stringResource(R.string.personal_backup_export),
+                            subtitle = stringResource(R.string.personal_backup_export_subtitle),
+                            icon = Icons.Default.DownloadForOffline,
+                            enabled = !personalDataTransfer.active
+                        )
+                        TransferActionRow(
+                            onClick = onImportPersonalData,
+                            title = stringResource(R.string.personal_backup_import),
+                            subtitle = stringResource(R.string.personal_backup_import_subtitle),
+                            icon = Icons.Default.UploadFile,
+                            enabled = !personalDataTransfer.active
+                        )
+                    }
+                }
             }
         }
     }
@@ -984,6 +1222,7 @@ private fun AppPalette.withColor(slot: ThemeColorSlot, color: Color): AppPalette
 @Composable
 private fun DisplaySettingsScreen(
     settings: AppSettingsState,
+    allSelected: Boolean,
     onStickyScoreChange: (Boolean) -> Unit,
     onShowImagesChange: (Boolean) -> Unit,
     onOneCoverPerGroupChange: (Boolean) -> Unit,
@@ -1003,16 +1242,22 @@ private fun DisplaySettingsScreen(
                                 Text(stringResource(R.string.general_sticky_score), fontWeight = FontWeight.SemiBold)
                                 Text(stringResource(R.string.general_sticky_score_description), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Switch(checked = settings.stickyScore, onCheckedChange = onStickyScoreChange)
+                            Switch(
+                                checked = if (allSelected) settings.allViewSettings.stickyScore else settings.stickyScore,
+                                onCheckedChange = onStickyScoreChange
+                            )
                         }
                         Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(stringResource(R.string.general_show_images), fontWeight = FontWeight.SemiBold)
                                 Text(stringResource(R.string.general_show_images_description), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Switch(checked = settings.showImages, onCheckedChange = onShowImagesChange)
+                            Switch(
+                                checked = if (allSelected) settings.allViewSettings.showImages else settings.showImages,
+                                onCheckedChange = onShowImagesChange
+                            )
                         }
-                        Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (!allSelected) Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     stringResource(R.string.covers_one_per_group),
@@ -1039,10 +1284,12 @@ private fun DisplaySettingsScreen(
 @Composable
 private fun CategorySettingsScreen(
     categoryPackStates: Map<MediaType, CategoryPackState>,
+    packPersonalStorage: Map<MediaType, PackPersonalStorage>,
     downloadProgress: CategoryDownloadProgress?,
     onDownloadCategory: (MediaType) -> Unit,
     onCancelCategoryCoverDownload: (MediaType) -> Unit,
     onRemoveCategory: (MediaType) -> Unit,
+    onPurgeCategory: (MediaType) -> Unit,
     onBack: () -> Unit
 ) {
     SettingsSubscreen(stringResource(R.string.categories_title), onBack) {
@@ -1055,13 +1302,46 @@ private fun CategorySettingsScreen(
                 Column {
                     CategoryManagementContent(
                         categoryPacks = categoryPackStates,
+                        packPersonalStorage = packPersonalStorage,
                         downloadProgress = downloadProgress,
                         onDownloadCategory = onDownloadCategory,
                         onCancelCategoryCoverDownload = onCancelCategoryCoverDownload,
-                        onRemoveCategory = onRemoveCategory
+                        onRemoveCategory = onRemoveCategory,
+                        onPurgeCategory = onPurgeCategory
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TransferActionRow(
+    onClick: () -> Unit,
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    enabled: Boolean
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.Default.ChevronRight, contentDescription = stringResource(R.string.settings_open_item, title))
         }
     }
 }
@@ -1116,7 +1396,17 @@ private fun CoversSettingsScreen(
                             ) {
                                 Icon(Icons.Default.Download, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.covers_download_top, limit))
+                                Text(
+                                    stringResource(
+                                        if (preloadProgress.status in setOf(
+                                                CoverPreloadStatus.CANCELLED,
+                                                CoverPreloadStatus.FAILED
+                                            ) && preloadProgress.target == limit
+                                        ) R.string.covers_continue_top
+                                        else R.string.covers_download_top,
+                                        limit
+                                    )
+                                )
                             }
                         }
                         CoverPreloadProgressView(preloadProgress)

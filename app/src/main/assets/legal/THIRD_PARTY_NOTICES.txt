@@ -27,7 +27,8 @@ https://github.com/manami-project/anime-offline-database
 
 AniList supplies selected Anime metadata, explicit relations, popularity, and
 primary cover metadata. Attribution does not imply authorization for broader
-collection or endorsement by AniList.
+collection or endorsement by AniList. Known collection and competing-service
+restrictions remain unresolved and require provider confirmation for release.
 https://anilist.co
 
 Jikan is used only as an existing Anime cover fallback. Jikan is an unofficial
@@ -36,11 +37,15 @@ https://jikan.moe
 
 MangaDex supplies Manga metadata, title aliases, tags, creator relationships,
 variant relations, and cover references. RankOffline does not offer chapter
-reading and does not distribute scanlation content.
+reading and does not distribute scanlation content. Current acceptable-use
+requirements include service credit and must be reassessed before advertising
+or paid service features are introduced.
 https://mangadex.org
 
 TMDB supplies Movie and Series metadata, collection/season grouping,
 alternative titles, company/network data, and poster references.
+Current use is non-commercial; commercial use requires separate review with
+TMDB.
 https://www.themoviedb.org
 
 This product uses the TMDB API but is not endorsed or certified by TMDB.
@@ -64,5 +69,9 @@ Provider names and logos belong to their respective owners. Their appearance
 identifies sources and does not imply affiliation, certification, or
 endorsement. RankOffline's name, logo, icons, and distinctive branding are
 subject to the repository TRADEMARKS.md policy.
+
+No personal ratings or notes are sent to cover or metadata providers. Cover
+image rights can differ from metadata rights; attribution is not permission to
+redistribute provider artwork.
 
 This notice records source and licence provenance; it is not legal advice.

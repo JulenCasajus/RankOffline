@@ -71,6 +71,13 @@ data class MediaSettings(
 )
 
 @Serializable
+data class AllViewSettings(
+    val showImages: Boolean = true,
+    val stickyScore: Boolean = true,
+    val catalogSortOrder: CatalogSortOrder = CatalogSortOrder.POPULARITY
+)
+
+@Serializable
 internal data class PersistedMediaSettings(
     val media: Map<String, MediaSettings> = emptyMap()
 )
@@ -338,6 +345,7 @@ data class AppSettingsState(
     val activeMediaType: MediaType = MediaType.ANIME,
     val catalogSortOrders: Map<MediaType, CatalogSortOrder> = defaultCatalogSortOrders(),
     val mediaSettings: Map<MediaType, MediaSettings> = DefaultSettings.allMediaSettings(),
+    val allViewSettings: AllViewSettings = AllViewSettings(),
     val appIcon: AppIcon = AppIcon.DARK,
     val themeSelection: ThemeSelection = ThemeSelection.BuiltIn(AppThemePalette.MIDNIGHT_NEON),
     val customPalettes: List<CustomAppPalette> = emptyList(),
@@ -373,6 +381,7 @@ class SettingsRepository internal constructor(
 ) {
     private val json = settingsJson
     private val updateMutex = Mutex()
+    private val initialLoadMutex = Mutex()
 
     private val stickyScoreKey = booleanPreferencesKey("sticky_score")
     private val showImagesKey = booleanPreferencesKey("show_images")
@@ -383,6 +392,7 @@ class SettingsRepository internal constructor(
     private val ratingProfilesKey = stringPreferencesKey("rating_profiles")
     private val mediaSettingsKey = stringPreferencesKey("media_settings_v1")
     private val initializedPackSettingsKey = stringSetPreferencesKey("initialized_pack_settings_v1")
+    private val allViewSettingsKey = stringPreferencesKey("all_view_settings_v1")
     private val appIconKey = stringPreferencesKey("app_icon")
     private val themePaletteKey = stringPreferencesKey("theme_palette")
     private val customPalettesKey = stringPreferencesKey("custom_app_palettes_v1")
@@ -397,7 +407,9 @@ class SettingsRepository internal constructor(
     private var removedLegacyCategoryIds: List<String> = emptyList()
     private var initializedPackSettings: Set<MediaType> = emptySet()
 
-    suspend fun loadInitialState() {
+    suspend fun loadInitialState() = initialLoadMutex.withLock {
+        updateMutex.withLock updateLock@ {
+        if (_state.value.settingsLoaded) return@updateLock
         val prefs = context.dataStore.data.first()
         val onboarding = resolveOnboardingState(
             completedVersion = prefs[completedOnboardingVersionKey]
@@ -422,6 +434,8 @@ class SettingsRepository internal constructor(
             legacyShowImages,
             legacyStickyScore
         )
+        val allViewSettings = decodeOrNull<AllViewSettings>(prefs[allViewSettingsKey])
+            ?: AllViewSettings()
         initializedPackSettings = prefs[initializedPackSettingsKey]
             ?.mapNotNullTo(mutableSetOf()) { PackId(it).toOfficialMediaTypeOrNull() }
             ?: if (prefs[mediaSettingsKey] != null) MediaType.entries.toSet() else emptySet()
@@ -470,10 +484,19 @@ class SettingsRepository internal constructor(
         }
         val normalizedSnapshot = encodeMediaSettingsSnapshot(mediaSettings)
         val animeMirror = mediaSettings.getValue(MediaType.ANIME).toLegacyAnimeSettings()
-        context.dataStore.edit { mutablePrefs ->
+        val initializedIds = initializedPackSettings.mapTo(mutableSetOf()) { it.toPackId().value }
+        val legacyConfig = json.encodeToString(requireNotNull(animeMirror.ratingConfig))
+        val legacyProfiles = json.encodeToString(requireNotNull(animeMirror.ratingProfiles))
+        val normalizationRequired = prefs[mediaSettingsKey] != normalizedSnapshot ||
+            prefs[initializedPackSettingsKey] != initializedIds ||
+            prefs[themePaletteKey] != themeSelection.persistedValue ||
+            prefs[elaborateRatingEnabledKey] != animeMirror.elaborateRatingEnabled ||
+            prefs[ratingConfigKey] != legacyConfig ||
+            prefs[ratingProfilesKey] != legacyProfiles ||
+            prefs[mergeSeasonsEnabledKey] != animeMirror.mergeEnabled
+        if (normalizationRequired) context.dataStore.edit { mutablePrefs ->
             mutablePrefs[mediaSettingsKey] = normalizedSnapshot
-            mutablePrefs[initializedPackSettingsKey] = initializedPackSettings
-                .mapTo(mutableSetOf()) { it.toPackId().value }
+            mutablePrefs[initializedPackSettingsKey] = initializedIds
             mutablePrefs[themePaletteKey] = themeSelection.persistedValue
             mirrorLegacyAnimeSettings(mutablePrefs, animeMirror)
         }
@@ -485,21 +508,25 @@ class SettingsRepository internal constructor(
             activeMediaType = activeMediaType,
             catalogSortOrders = resolveCatalogSortOrders(prefs[catalogSortOrdersKey]),
             mediaSettings = mediaSettings,
+            allViewSettings = allViewSettings,
             appIcon = appIcon,
             themeSelection = themeSelection,
             customPalettes = customPalettes,
             builtInPaletteOverrides = themeWorkspace.builtInOverrides,
             hiddenBuiltInPalettes = themeWorkspace.hiddenBuiltIns,
             language = language,
-            hasCompletedWelcome = if (BuildConfig.DEBUG) false else onboarding.hasCompletedWelcome,
-            hasCompletedOnboarding = if (BuildConfig.DEBUG) false else onboarding.hasCompletedOnboarding,
+            hasCompletedWelcome = onboarding.hasCompletedWelcome,
+            hasCompletedOnboarding = onboarding.hasCompletedOnboarding,
             settingsLoaded = true
         )
         localeController.apply(language)
+        }
     }
 
     internal fun takeRemovedLegacyCategoryIds(): List<String> =
         removedLegacyCategoryIds.also { removedLegacyCategoryIds = emptyList() }
+
+    internal fun initializedPackSettingsSnapshot(): Set<MediaType> = initializedPackSettings.toSet()
 
     suspend fun updateShowImages(value: Boolean) = updateMutex.withLock {
         persistActiveMediaSettings { it.copy(showImages = value) }
@@ -628,6 +655,126 @@ class SettingsRepository internal constructor(
 
     suspend fun updateOneCoverPerGroup(value: Boolean) = updateMutex.withLock {
         persistActiveMediaSettings { it.copy(oneCoverPerGroup = value) }
+    }
+
+    suspend fun updateAllShowImages(value: Boolean) = updateMutex.withLock {
+        val updated = _state.value.allViewSettings.copy(showImages = value)
+        context.dataStore.edit { it[allViewSettingsKey] = json.encodeToString(updated) }
+        _state.value = _state.value.copy(allViewSettings = updated)
+    }
+
+    suspend fun updateAllStickyScore(value: Boolean) = updateMutex.withLock {
+        val updated = _state.value.allViewSettings.copy(stickyScore = value)
+        context.dataStore.edit { it[allViewSettingsKey] = json.encodeToString(updated) }
+        _state.value = _state.value.copy(allViewSettings = updated)
+    }
+
+    suspend fun updateAllCatalogSortOrder(value: CatalogSortOrder) = updateMutex.withLock {
+        val updated = _state.value.allViewSettings.copy(catalogSortOrder = value)
+        context.dataStore.edit { it[allViewSettingsKey] = json.encodeToString(updated) }
+        _state.value = _state.value.copy(allViewSettings = updated)
+    }
+
+    suspend fun applyImportedPersonalSettings(
+        imported: Map<MediaType, MediaSettings>,
+        importedInitializedPacks: Set<MediaType>,
+        importedWorkspace: ThemeWorkspace,
+        importedSortOrders: Map<MediaType, CatalogSortOrder>,
+        importedAllViewSettings: AllViewSettings,
+        importedThemeSelection: String,
+        replace: Boolean,
+        scopeMediaTypes: Set<MediaType>? = null,
+        includeGlobalSettings: Boolean = true
+    ) = updateMutex.withLock {
+        val updatedMedia = if (replace) {
+            if (scopeMediaTypes == null) {
+                DefaultSettings.allMediaSettings() + imported
+            } else {
+                _state.value.mediaSettings +
+                    scopeMediaTypes.associateWith(DefaultSettings::mediaSettings) + imported
+            }
+        } else {
+            _state.value.mediaSettings + imported
+        }
+        val palettes = if (!includeGlobalSettings) {
+            _state.value.customPalettes
+        } else if (replace) importedWorkspace.customPalettes else {
+            (_state.value.customPalettes + importedWorkspace.customPalettes)
+                .associateBy(CustomAppPalette::id)
+                .values.toList()
+        }
+        val overrides = if (!includeGlobalSettings) {
+            _state.value.builtInPaletteOverrides
+        } else if (replace) importedWorkspace.builtInOverrides else
+            _state.value.builtInPaletteOverrides + importedWorkspace.builtInOverrides
+        val hiddenBuiltIns = if (!includeGlobalSettings) {
+            _state.value.hiddenBuiltInPalettes
+        } else if (replace) importedWorkspace.hiddenBuiltIns else
+            _state.value.hiddenBuiltInPalettes + importedWorkspace.hiddenBuiltIns
+        val requestedSelection = if (includeGlobalSettings && replace) {
+            ThemeSelection.fromPersistedValue(importedThemeSelection, palettes)
+        } else {
+            _state.value.themeSelection
+        }
+        val safeSelection = requestedSelection.takeIf { selection ->
+            when (selection) {
+                is ThemeSelection.Custom -> palettes.any { it.id == selection.id }
+                is ThemeSelection.BuiltIn -> selection.palette !in hiddenBuiltIns
+            }
+        } ?: AppThemePalette.entries.firstOrNull { it !in hiddenBuiltIns }
+            ?.let(ThemeSelection::BuiltIn)
+            ?: palettes.firstOrNull()?.let { ThemeSelection.Custom(it.id) }
+            ?: ThemeSelection.BuiltIn(AppThemePalette.MIDNIGHT_NEON)
+        val sortOrders = if (replace) {
+            if (scopeMediaTypes == null) {
+                defaultCatalogSortOrders() + importedSortOrders
+            } else {
+                _state.value.catalogSortOrders +
+                    scopeMediaTypes.associateWith { CatalogSortOrder.POPULARITY } + importedSortOrders
+            }
+        } else {
+            _state.value.catalogSortOrders + importedSortOrders
+        }
+        val allViewSettings = if (includeGlobalSettings && replace) {
+            importedAllViewSettings
+        } else {
+            _state.value.allViewSettings
+        }
+        val initialized = if (replace && scopeMediaTypes == null) {
+            importedInitializedPacks
+        } else if (replace) {
+            (initializedPackSettings - scopeMediaTypes.orEmpty()) + importedInitializedPacks
+        } else {
+            initializedPackSettings + importedInitializedPacks
+        }
+        context.dataStore.edit { prefs ->
+            prefs[mediaSettingsKey] = encodeMediaSettingsSnapshot(updatedMedia)
+            prefs[initializedPackSettingsKey] = initialized
+                .mapTo(linkedSetOf()) { it.toPackId().value }
+            prefs[catalogSortOrdersKey] = encodeCatalogSortOrders(sortOrders)
+            prefs[allViewSettingsKey] = json.encodeToString(allViewSettings)
+            prefs[customPalettesKey] = encodeThemeWorkspace(
+                ThemeWorkspace(palettes, overrides, hiddenBuiltIns)
+            )
+            prefs[themePaletteKey] = safeSelection.persistedValue
+            mirrorLegacyAnimeSettings(
+                prefs,
+                updatedMedia.getValue(MediaType.ANIME).toLegacyAnimeSettings()
+            )
+        }
+        val active = updatedMedia.getValue(_state.value.activeMediaType)
+        initializedPackSettings = initialized
+        _state.value = _state.value.copy(
+            mediaSettings = updatedMedia,
+            catalogSortOrders = sortOrders,
+            allViewSettings = allViewSettings,
+            customPalettes = palettes,
+            builtInPaletteOverrides = overrides,
+            hiddenBuiltInPalettes = hiddenBuiltIns,
+            themeSelection = safeSelection,
+            showImages = active.showImages,
+            stickyScore = active.stickyScore
+        )
     }
 
     /** Atomically resolves the settings used by a genuinely new/purged pack installation. */

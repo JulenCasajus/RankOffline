@@ -44,6 +44,7 @@
     <string name="covers_download_rated">Скачать обложки оценённых элементов</string>
     <string name="covers_downloading_rated">Загрузка обложек…</string>
     <string name="covers_download_top">Скачать топ-%1$d</string>
+    <string name="covers_continue_top">Продолжить топ-%1$d</string>
     <string name="covers_one_per_group">Одна обложка на группу</string>
     <string name="covers_one_per_group_description">Использовать обложку первого элемента группы для всех элементов этой группы.</string>
     <string name="filters_title">Фильтры</string><string name="filters_active">Фильтры (%1$d)</string><string name="filters_clear">Сбросить фильтры</string><string name="filters_all">Все / Без фильтра</string>
@@ -70,6 +71,9 @@
     <string name="group_entries_count">%1$d записей</string>
     <string name="group_calculated">Расчётная</string>
     <string name="sort_action">Сортировка</string>
+    <string name="sort_direction_ascending">По возрастанию</string>
+    <string name="sort_direction_descending">По убыванию</string>
+    <string name="sort_direction_accessibility">Текущий порядок: %1$s. Нажмите, чтобы изменить на %2$s.</string>
     <string name="group_derived_count">Расчётная · оценено %1$d из %2$d</string>
     <string name="group_rated_count">Оценено %1$d из %2$d</string>
     <string name="group_unrated">Без оценки</string>
@@ -103,7 +107,7 @@
 <string name="about_non_affiliation">Названия и знаки поставщиков обозначают источники данных. Они не означают аффилированность, сертификацию или одобрение.</string><string name="about_trademark_policy">Политика товарных знаков</string>
 <string name="score_group_title">Оценка группы</string>
 <string name="search_clear">Очистить поиск</string>
-<string name="popularity_settings_description">Снимок популярности и доступность обновления</string><string name="popularity_runtime_unavailable">Данные о популярности входят во встроенный каталог. Обновление во время работы для этого типа медиа в этой сборке недоступно.</string><string name="search_more_online">Найти больше результатов в сети</string><string name="search_online_results">Результаты из сети</string><string name="search_online_loading">Поиск в сети…</string><string name="search_online_empty">Больше результатов в сети нет.</string><string name="search_online_error">Поиск в сети не выполнен. Локальные результаты по-прежнему доступны.</string><string name="action_retry">Повторить</string><string name="category_selector_title">Выберите категорию</string><string name="category_not_installed">Не загружена</string><string name="onboarding_welcome_title">Добро пожаловать в RankOffline!</string><string name="onboarding_welcome_body">Оценивайте и организуйте аниме, мангу, сериалы, фильмы и книги по-своему.</string><string name="onboarding_privacy">Ваши оценки принадлежат вам: RankOffline работает локально и конфиденциально.</string><string name="onboarding_choose_style">Выберите стиль</string><string name="onboarding_change_later">Его всегда можно изменить в настройках.</string><string name="onboarding_minimal">Минимализм</string><string name="onboarding_minimal_description">Лёгкий режим без обложек.</string><string name="onboarding_with_images">С изображениями</string><string name="onboarding_with_images_description">Требует загрузки обложек.</string><string name="onboarding_rating_style">Стиль оценки</string><string name="onboarding_rating_simple">Простая оценка</string><string name="onboarding_rating_simple_description">Быстрые прямые оценки.</string><string name="onboarding_rating_elaborated">Подробная оценка</string><string name="onboarding_rating_elaborated_description">Подробная оценка настраиваемых категорий.</string><string name="onboarding_start">Начать</string><string name="onboarding_categories_title">С чего хотите начать?</string><string name="onboarding_categories_subtitle">Выберите нужные офлайн-каталоги. Позже их можно изменить в настройках.</string><string name="onboarding_done">Готово</string><string name="categories_title">Пакеты</string><string name="categories_settings_description">Скачивайте пакеты и управляйте ими.</string><string name="categories_storage_title">Данные пакетов</string><string name="categories_installed_size">Установлено: %1$s</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">Включена в сборку</string><string name="category_downloaded">Загружена</string><string name="category_delete">Удалить категорию</string><string name="category_download">Загрузить категорию</string><string name="category_included_not_reclaimable">Встроенный каталог; место APK освободить нельзя</string><string name="category_remove_catalog">Удалить каталог</string><string name="category_remove_title">Удалить каталог %1$s</string><string name="category_remove_confirmation">Каталог и локальные обложки будут удалены, освободив около %1$s. Оценки и личные данные сохранятся.</string><string name="category_delete_my_data">Удалить мои данные</string><string name="category_delete_personal_title">Удалить мои данные %1$s</string><string name="category_delete_personal_confirmation">Оценки и личные настройки %1$s будут удалены навсегда. Это действие необратимо. Каталог останется установлен.</string><string name="category_delete_personal_action">Удалить навсегда</string><string name="category_download_not_configured">Хранилище пакетов не настроено в этой сборке.</string><string name="category_download_complete">Категория загружена и готова офлайн.</string><string name="category_pack_invalid">Пакет категории повреждён или неполон.</string><string name="category_download_unavailable">Загрузка категории недоступна в этой сборке.</string><string name="category_catalog_removed">Каталог удалён. Оценки сохранены.</string><string name="category_personal_data_deleted">Личные данные категории удалены.</string>
+<string name="popularity_settings_description">Снимок популярности и доступность обновления</string><string name="popularity_runtime_unavailable">Данные о популярности входят во встроенный каталог. Обновление во время работы для этого типа медиа в этой сборке недоступно.</string><string name="action_retry">Повторить</string><string name="category_selector_title">Выберите категорию</string><string name="category_not_installed">Не загружена</string><string name="onboarding_welcome_title">Добро пожаловать в RankOffline!</string><string name="onboarding_welcome_body">Оценивайте и организуйте аниме, мангу, сериалы, фильмы и книги по-своему.</string><string name="onboarding_privacy">Ваши оценки принадлежат вам: RankOffline работает локально и конфиденциально.</string><string name="onboarding_choose_style">Выберите стиль</string><string name="onboarding_change_later">Его всегда можно изменить в настройках.</string><string name="onboarding_minimal">Минимализм</string><string name="onboarding_minimal_description">Лёгкий режим без обложек.</string><string name="onboarding_with_images">С изображениями</string><string name="onboarding_with_images_description">Требует загрузки обложек.</string><string name="onboarding_rating_style">Стиль оценки</string><string name="onboarding_rating_simple">Простая оценка</string><string name="onboarding_rating_simple_description">Быстрые прямые оценки.</string><string name="onboarding_rating_elaborated">Подробная оценка</string><string name="onboarding_rating_elaborated_description">Подробная оценка настраиваемых категорий.</string><string name="onboarding_start">Начать</string><string name="onboarding_categories_title">С чего хотите начать?</string><string name="onboarding_categories_subtitle">Выберите нужные офлайн-каталоги. Позже их можно изменить в настройках.</string><string name="onboarding_done">Готово</string><string name="categories_title">Пакеты</string><string name="categories_settings_description">Скачивайте пакеты и управляйте ими.</string><string name="categories_storage_title">Данные пакетов</string><string name="categories_installed_size">Установлено: %1$s</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">Включена в сборку</string><string name="category_downloaded">Загружена</string><string name="category_delete">Удалить категорию</string><string name="category_download">Загрузить категорию</string><string name="category_included_not_reclaimable">Встроенный каталог; место APK освободить нельзя</string><string name="category_remove_catalog">Удалить каталог</string><string name="category_remove_title">Удалить каталог %1$s</string><string name="category_remove_confirmation">Каталог и локальные обложки будут удалены, освободив около %1$s. Оценки и личные данные сохранятся.</string><string name="category_delete_my_data">Удалить мои данные</string><string name="category_delete_personal_title">Удалить мои данные %1$s</string><string name="category_delete_personal_confirmation">Оценки и личные настройки %1$s будут удалены навсегда. Это действие необратимо. Каталог останется установлен.</string><string name="category_delete_personal_action">Удалить навсегда</string><string name="category_download_not_configured">Хранилище пакетов не настроено в этой сборке.</string><string name="category_download_complete">Категория загружена и готова офлайн.</string><string name="category_pack_invalid">Пакет категории повреждён или неполон.</string><string name="category_download_unavailable">Загрузка категории недоступна в этой сборке.</string><string name="category_catalog_removed">Каталог удалён. Оценки сохранены.</string><string name="category_personal_data_deleted">Личные данные категории удалены.</string>
     <string name="settings_display_description">Внешний вид и отображение изображений</string>
     <string name="settings_theme_title">Тема</string>
     <string name="settings_theme_description">Выберите цветовую палитру приложения</string>
@@ -146,7 +150,7 @@
 <string name="category_phase_importing_catalog">Импорт каталога…</string>
 <string name="category_phase_importing_groups">Подготовка объединения…</string>
 <string name="category_phase_downloading_covers">Загрузка обложек: %1$d / %2$d</string>
-<string name="category_phase_retrying_covers">Повторная загрузка обложек: %1$d / %2$d</string>
+
 <string name="category_deleting">Удаление…</string>
 <string name="category_phase_finalizing">Завершение…</string>
 <string name="category_pack_runtime_error">Не удалось подготовить каталог. Нажмите, чтобы повторить.</string>
@@ -167,7 +171,7 @@
     <string name="color_picker_hue">Оттенок</string>
     <string name="loading_list">Загрузка списка…</string>
     <string name="covers_preparing_list">Подготовка списка обложек…</string>
-    <string name="covers_retrying_failed">Повторная загрузка неудачных обложек…</string>
+
     <string name="covers_operation_busy">Для этого пакета уже выполняется операция с обложками.</string>
     <string name="covers_progress_details_explicit">Скачано: %1$d · недоступно: %2$d · ошибок: %3$d</string>
     <string name="merge_book_series">Объединить книжные серии</string>
@@ -184,4 +188,44 @@
     <string name="book_genre_science_technology">Наука и технологии</string>
     <string name="book_genre_philosophy">Философия</string>
     <string name="book_genre_other">Другое / Без категории</string>
+    <string name="pack_background_channel">Операции с пакетами</string>
+    <string name="pack_background_title">Подготовка офлайн-пакета</string>
+    <string name="pack_background_downloading">Загрузка пакета…</string>
+    <string name="pack_storage_details">Сведения о хранилище</string>
+    <string name="pack_storage_expected">Ожидаемый размер: %1$s</string>
+    <string name="pack_storage_transfer">Передача: %1$s</string>
+    <string name="pack_storage_catalog">Каталог</string>
+    <string name="pack_storage_groups">Группы</string>
+    <string name="pack_storage_metadata">Метаданные</string>
+    <string name="pack_storage_archive">Сохранённый архив пакета</string>
+    <string name="pack_storage_covers">Обложки</string>
+    <string name="pack_storage_physical_total">Физический итог</string>
+    <string name="pack_storage_personal_logical">Личные данные (логическая оценка): %1$s</string>
+    <string name="category_uninstall_keep_data">Удалить пакет, сохранив личные данные</string>
+    <string name="category_remove_choices">Выберите, сохранять ли оценки, заметки, профили и настройки для повторной установки. Удаление локальных файлов пакета и обложек освободит около %1$s.</string>
+    <string name="media_all">Все</string>
+    <string name="personal_backup_title">Резервная копия личных данных</string>
+    <string name="personal_backup_description">Экспорт и восстановление оценок, настроек и пользовательских тем</string>
+    <string name="personal_backup_explanation">Копии — это незашифрованные JSON-файлы с личными данными и пользовательскими темами. Выбранный поставщик документов может хранить или синхронизировать их. Каталоги и обложки не включаются.</string>
+    <string name="personal_backup_scope_explanation">Эти действия используют только выбранный пакет. Каждая оценка сохраняет идентификатор своего пакета.</string>
+    <string name="personal_backup_scope_explanation_all">RankOfflineAll делится общим рейтингом и переносит данные всех готовых пакетов. Каждая оценка сохраняет идентификатор исходного пакета.</string>
+    <string name="personal_backup_export">Экспортировать копию</string>
+    <string name="personal_backup_import">Импортировать копию</string>
+    <string name="personal_backup_preview_title">Импортировать личные данные?</string>
+    <string name="personal_backup_preview_body">Проверено оценок: %1$d, оценок групп: %2$d, настроек пакетов: %3$d.</string>
+    <string name="personal_backup_preview_policy">Объединение сохраняет более новую оценку каждого элемента и импортирует переданные настройки. Замена заменяет все оценки и область настроек из копии.</string>
+    <string name="personal_backup_merge">Объединить новые</string>
+    <string name="personal_backup_replace">Заменить</string>
+    <string name="personal_backup_exported">Резервная копия личных данных экспортирована.</string>
+    <string name="personal_backup_imported">Личные данные импортированы.</string>
+    <string name="personal_backup_invalid">Выбранная копия недействительна или несовместима.</string>
+    <string name="personal_backup_failed">Не удалось выполнить операцию с копией.</string>
+    <string name="personal_backup_share">Поделиться копией</string>
+    <string name="personal_backup_share_chooser">Поделиться личной резервной копией</string>
+    <string name="personal_backup_working">Обработка…</string>
+    <string name="personal_backup_busy">Уже выполняется другая операция с личными данными.</string>
+    <string name="personal_backup_import_subtitle">Выберите JSON-файл на устройстве</string><string name="personal_backup_export_subtitle">Сохраните данные в JSON-файл</string><string name="personal_backup_share_json">Поделиться JSON-копией</string>
+    <string name="ranking_share_title">Поделиться рейтингом</string><string name="ranking_share_subtitle">Создать и поделиться визуальной сводкой</string><string name="ranking_share_chooser">Поделиться изображением рейтинга</string><string name="ranking_share_show_images">Показывать изображения</string><string name="ranking_share_show_images_description">Добавить доступные локальные обложки</string><string name="ranking_share_heading">Мой топ-%1$d: %2$s</string><string name="ranking_share_failed">Не удалось создать изображение рейтинга.</string><string name="ranking_share_empty">Оцените хотя бы один элемент, чтобы создать изображение рейтинга.</string><string name="ranking_share_preview_description">Предпросмотр изображения рейтинга</string><string name="ranking_share_page_indicator">Шаблон %1$d из %2$d%3$s</string><string name="ranking_share_selected">, выбран</string>
+    <string name="ranking_share_scope_all">RankOffline</string><string name="ranking_share_scope_anime">Аниме</string><string name="ranking_share_scope_manga">Манга</string><string name="ranking_share_scope_movies">Фильмы</string><string name="ranking_share_scope_series">Сериалы</string><string name="ranking_share_scope_books">Книги</string>
+    <string name="personal_backup_replace_confirm_title">Заменить личные данные?</string><string name="personal_backup_replace_confirm_body">Заменяет оценки, подробные баллы, настройки и профили из этой копии. Данные других пакетов не удаляются.</string>
 </resources>

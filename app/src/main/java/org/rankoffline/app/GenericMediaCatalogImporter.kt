@@ -9,6 +9,8 @@ import java.security.MessageDigest
 import java.util.UUID
 import java.util.zip.GZIPInputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 sealed interface MediaCatalogImportResult {
@@ -49,7 +51,7 @@ class GenericMediaCatalogImporter(
         result
     }
 
-    private suspend fun isCurrent(manifest: MediaCatalogManifest): Boolean =
+    internal suspend fun isCurrent(manifest: MediaCatalogManifest): Boolean =
         dao.metadata(manifest.mediaType, METADATA_VERSION) == manifest.catalogVersion &&
             dao.metadata(manifest.mediaType, METADATA_SHA256) == manifest.sha256 &&
             dao.metadata(manifest.mediaType, METADATA_ITEM_COUNT) == manifest.itemCount.toString() &&
@@ -63,11 +65,11 @@ class GenericMediaCatalogImporter(
         val sqlite = database.openHelper.writableDatabase
         val timings = ImportTimings()
         val freshCatalog = dao.catalogItemCount(manifest.mediaType) == 0L
-        // Keep shared indexes installed throughout the transaction. Dropping them saved import
-        // time, but the schema lock could stall cold queries for an unrelated READY pack until a
-        // large import committed. Batched writes keep index maintenance bounded without DDL.
+        // This identity set is private to the current write connection. Keeping it in SQLite's
+        // temporary schema avoids holding a main-schema lock for the whole import, so WAL readers
+        // can continue using already READY packs while this transaction remains atomic.
         sqlite.execSQL(
-            "CREATE TABLE `$stageName` (" +
+            "CREATE TEMP TABLE `$stageName` (" +
                 "id TEXT NOT NULL PRIMARY KEY, " +
                 "media_type TEXT NOT NULL, " +
                 "provider TEXT NOT NULL, " +
@@ -124,6 +126,7 @@ class GenericMediaCatalogImporter(
                 batch += record
                 parsedCount++
                 if (batch.size == batchSize) {
+                    currentCoroutineContext().ensureActive()
                     writeBatch(batch, timings, freshCatalog)
                     batch.clear()
                 }
@@ -133,7 +136,9 @@ class GenericMediaCatalogImporter(
             // GZIPInputStream may stop with unread trailing raw bytes. Drain the digest stream so
             // the hash always covers the exact compressed asset supplied by the caller.
             val drainBuffer = ByteArray(8 * 1024)
-            while (digestInput.read(drainBuffer) != -1) Unit
+            while (digestInput.read(drainBuffer) != -1) {
+                currentCoroutineContext().ensureActive()
+            }
             val actualSha256 = digest.digest().joinToString("") { "%02x".format(it) }
             if (actualSha256 != manifest.sha256) {
                 throw MediaCatalogImportException(

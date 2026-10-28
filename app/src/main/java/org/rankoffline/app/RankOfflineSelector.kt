@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -38,6 +39,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -155,7 +158,7 @@ fun <T> RankOfflineSelector(
             }
         }
 
-        DropdownMenu(
+        RankOfflinePopupMenu(
             expanded = expanded,
             onDismissRequest = {
                 expanded = false
@@ -168,74 +171,93 @@ fun <T> RankOfflineSelector(
                         Modifier.fillMaxWidth()
                     }
                 ),
-            shape = menuShape,
-            containerColor = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp,
-            shadowElevation = 10.dp,
-            border = BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
-            )
         ) {
             values.forEach { value ->
-
                 val selected = value == selectedValue
-
-                val rowColor = if (selected) {
-                    lerp(
-                        MaterialTheme.colorScheme.surface,
-                        MaterialTheme.colorScheme.primary,
-                        0.14f
-                    )
-                } else {
-                    Color.Transparent
-                }
-
-                DropdownMenuItem(
-                    text = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            optionLeadingContent(value)
-
-                            Text(
-                                text = valueLabel(value),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = if (selected) {
-                                    FontWeight.SemiBold
-                                } else {
-                                    FontWeight.Normal
-                                }
-                            )
-                        }
-                    },
+                RankOfflinePopupMenuItem(
+                    label = valueLabel(value),
+                    selected = selected,
                     onClick = {
                         expanded = false
-
                         if (!selected) {
                             onValueSelected(value)
                         }
                     },
-                    trailingIcon = {
-                        if (selected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    },
+                    leadingContent = { optionLeadingContent(value) },
                     modifier = Modifier
                         .then(optionTestTag?.invoke(value)?.let(Modifier::testTag) ?: Modifier)
-                        .padding(
-                            horizontal = 6.dp,
-                            vertical = 2.dp
-                        )
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(rowColor)
                 )
             }
         }
     }
+}
+
+/** Shared popup surface for compact selectors and Search/Ranking sort controls. */
+@Composable
+fun RankOfflinePopupMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 10.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
+        ),
+        content = content
+    )
+}
+
+/** One consistently styled, accessible selected row inside [RankOfflinePopupMenu]. */
+@Composable
+fun RankOfflinePopupMenuItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    leadingContent: @Composable (() -> Unit)? = null
+) {
+    val rowColor = if (selected) {
+        lerp(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.primary, 0.14f)
+    } else {
+        Color.Transparent
+    }
+    DropdownMenuItem(
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                leadingContent?.invoke()
+                Text(
+                    text = label,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                )
+            }
+        },
+        onClick = onClick,
+        trailingIcon = {
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        modifier = modifier
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(rowColor)
+            .semantics { this.selected = selected }
+    )
 }

@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
@@ -86,6 +88,7 @@ fun FirstRunOnboarding(
     onDownloadCategory: (MediaType) -> Unit,
     onCancelCategoryCoverDownload: (MediaType) -> Unit = {},
     onRemoveCategory: (MediaType) -> Unit,
+    onPurgeCategory: (MediaType) -> Unit = {},
     onMediaTypeSelected: (MediaType) -> Unit,
     onOnboardingComplete: () -> Unit
 ) {
@@ -103,6 +106,7 @@ fun FirstRunOnboarding(
             onDownloadCategory = onDownloadCategory,
             onCancelCategoryCoverDownload = onCancelCategoryCoverDownload,
             onRemoveCategory = onRemoveCategory,
+            onPurgeCategory = onPurgeCategory,
             selectedMediaType = onboardingSelectedMediaType(
                 activeMediaType = settings.activeMediaType,
                 categoryPacks = categoryPacks
@@ -507,6 +511,7 @@ private fun CategoryOnboardingDialog(
     onDownloadCategory: (MediaType) -> Unit,
     onCancelCategoryCoverDownload: (MediaType) -> Unit,
     onRemoveCategory: (MediaType) -> Unit,
+    onPurgeCategory: (MediaType) -> Unit,
     selectedMediaType: MediaType?,
     onMediaTypeSelected: (MediaType) -> Unit,
     onComplete: () -> Unit
@@ -531,9 +536,11 @@ private fun CategoryOnboardingDialog(
         CategoryManagementContent(
             categoryPacks = categoryPacks,
             downloadProgress = downloadProgress,
+            compactUnavailableRows = true,
             onDownloadCategory = onDownloadCategory,
             onCancelCategoryCoverDownload = onCancelCategoryCoverDownload,
             onRemoveCategory = onRemoveCategory,
+            onPurgeCategory = onPurgeCategory,
             selectedMediaType = selectedMediaType,
             onMediaTypeSelected = onMediaTypeSelected
         )
@@ -730,11 +737,14 @@ private fun OnboardingOptionCard(
 @Composable
 fun CategoryManagementContent(
     categoryPacks: Map<MediaType, CategoryPackState>,
+    packPersonalStorage: Map<MediaType, PackPersonalStorage> = emptyMap(),
     @Suppress("UNUSED_PARAMETER")
     downloadProgress: CategoryDownloadProgress? = null,
+    compactUnavailableRows: Boolean = false,
     onDownloadCategory: (MediaType) -> Unit = {},
     onCancelCategoryCoverDownload: (MediaType) -> Unit = {},
     onRemoveCategory: (MediaType) -> Unit = {},
+    onPurgeCategory: (MediaType) -> Unit = {},
     selectedMediaType: MediaType? = null,
     onMediaTypeSelected: ((MediaType) -> Unit)? = null
 ) {
@@ -811,6 +821,8 @@ fun CategoryManagementContent(
     states.forEach { state ->
         CategoryPackRow(
             state = state,
+            personalStorage = packPersonalStorage[state.mediaType] ?: PackPersonalStorage(),
+            compactUnavailable = compactUnavailableRows,
             selected = state.mediaType == selectedMediaType,
             onSelect = {
                 if (state.available) {
@@ -836,29 +848,42 @@ fun CategoryManagementContent(
         val state =
             categoryPacks.getValue(mediaType)
 
-        CategoryConfirmationDialog(
-            title = stringResource(
-                R.string.category_purge_title,
-                stringResource(mediaType.labelResource)
-            ),
-            body = stringResource(
-                R.string.category_purge_confirmation,
-                stringResource(mediaType.labelResource),
-                Formatter.formatFileSize(
-                    context,
-                    state.reclaimableBytes
-                )
-            ),
-            confirmText = stringResource(
-                R.string.category_purge_action
-            ),
-            destructive = true,
-            onDismiss = {
-                pendingRemoval = null
+        AlertDialog(
+            onDismissRequest = { pendingRemoval = null },
+            title = {
+                Text(stringResource(R.string.category_remove_title, stringResource(mediaType.labelResource)))
             },
-            onConfirm = {
-                pendingRemoval = null
-                onRemoveCategory(mediaType)
+            text = {
+                Text(
+                    stringResource(
+                        R.string.category_remove_choices,
+                        Formatter.formatFileSize(context, state.reclaimableBytes)
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingRemoval = null
+                    onPurgeCategory(mediaType)
+                }) {
+                    Text(
+                        stringResource(R.string.category_purge_action),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { pendingRemoval = null }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                    TextButton(onClick = {
+                        pendingRemoval = null
+                        onRemoveCategory(mediaType)
+                    }) {
+                        Text(stringResource(R.string.category_uninstall_keep_data))
+                    }
+                }
             }
         )
     }
@@ -868,6 +893,8 @@ fun CategoryManagementContent(
 @Composable
 private fun CategoryPackRow(
     state: CategoryPackState,
+    personalStorage: PackPersonalStorage,
+    compactUnavailable: Boolean,
     selected: Boolean,
     onSelect: () -> Unit,
     onDownload: () -> Unit,
@@ -876,6 +903,7 @@ private fun CategoryPackRow(
 ) {
     val context = LocalContext.current
     val progress = state.installProgress
+    var storageExpanded by rememberSaveable(state.mediaType) { mutableStateOf(false) }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -970,9 +998,11 @@ private fun CategoryPackRow(
                                 )
 
                             CategoryPackOrigin.UNAVAILABLE ->
-                                stringResource(
-                                    R.string.category_not_installed
-                                )
+                                if (compactUnavailable) {
+                                    Formatter.formatFileSize(context, state.finalStorageBytes)
+                                } else {
+                                    stringResource(R.string.category_not_installed)
+                                }
                             }
                         },
                         color =
@@ -980,21 +1010,48 @@ private fun CategoryPackRow(
                         fontSize = 11.sp
                     )
 
-                    if (progress == null && !state.available) {
+                    if (progress == null && !state.available && !compactUnavailable) {
+                        Text(
+                            text = stringResource(
+                                R.string.pack_storage_expected,
+                                Formatter.formatFileSize(context, state.finalStorageBytes)
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                        state.downloadBytes?.let { transferBytes ->
+                            Text(
+                                text = stringResource(
+                                    R.string.pack_storage_transfer,
+                                    Formatter.formatFileSize(context, transferBytes)
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+
+                if (progress == null && state.available && !compactUnavailable) {
+                    Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = Formatter.formatFileSize(context, state.finalStorageBytes),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
+                        Icon(
+                            imageVector = if (storageExpanded) Icons.Default.ExpandLess
+                            else Icons.Default.ExpandMore,
+                            contentDescription = stringResource(R.string.pack_storage_details),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clickable(role = Role.Button) {
+                                    storageExpanded = !storageExpanded
+                                }
+                                .padding(13.dp)
+                        )
                     }
-                }
-
-                if (progress == null && state.available) {
-                    Text(
-                        text = Formatter.formatFileSize(context, state.finalStorageBytes),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp
-                    )
                 }
 
                 if (selected) {
@@ -1022,9 +1079,9 @@ private fun CategoryPackRow(
                             contentDescription = stringResource(R.string.action_retry),
                             tint = state.mediaType.accentColor,
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(48.dp)
                                 .clickable(role = Role.Button, onClick = onDownload)
-                                .padding(8.dp)
+                                .padding(12.dp)
                         )
                     }
                     val icon = when {
@@ -1046,13 +1103,13 @@ private fun CategoryPackRow(
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(48.dp)
                             .clickable(
                                 enabled = state.canDelete || state.canDownload,
                                 role = Role.Button,
                                 onClick = if (state.canDelete) onRemove else onDownload
                             )
-                            .padding(8.dp)
+                            .padding(12.dp)
                     )
                 } else if (
                     progress.phase == CategoryPackInstallPhase.WAITING_COVERS ||
@@ -1063,9 +1120,9 @@ private fun CategoryPackRow(
                         contentDescription = stringResource(R.string.action_cancel),
                         tint = state.mediaType.accentColor,
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(48.dp)
                             .clickable(role = Role.Button, onClick = onCancelCoverDownload)
-                            .padding(8.dp)
+                            .padding(12.dp)
                     )
                 }
             }
@@ -1134,7 +1191,72 @@ private fun CategoryPackRow(
                         Modifier.padding(top = 4.dp)
                 )
             }
+
+            if (
+                progress == null &&
+                state.available &&
+                !compactUnavailable &&
+                storageExpanded
+            ) {
+                PackStorageBreakdownContent(state, personalStorage)
+            }
         }
+    }
+}
+
+@Composable
+private fun PackStorageBreakdownContent(
+    state: CategoryPackState,
+    personalStorage: PackPersonalStorage
+) {
+    val context = LocalContext.current
+    Column(
+        Modifier.fillMaxWidth().padding(top = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        PackStorageLine(R.string.pack_storage_catalog, state.catalogDataBytes, context)
+        if (state.groupDataBytes > 0L) {
+            PackStorageLine(R.string.pack_storage_groups, state.groupDataBytes, context)
+        }
+        if (state.metadataBytes > 0L) {
+            PackStorageLine(R.string.pack_storage_metadata, state.metadataBytes, context)
+        }
+        if (state.retainedArchiveBytes > 0L) {
+            PackStorageLine(R.string.pack_storage_archive, state.retainedArchiveBytes, context)
+        }
+        PackStorageLine(R.string.pack_storage_covers, state.downloadedCoverBytes, context)
+        PackStorageLine(R.string.pack_storage_physical_total, state.installedBytes, context, true)
+        Text(
+            text = stringResource(
+                R.string.pack_storage_personal_logical,
+                Formatter.formatFileSize(context, personalStorage.logicalTotalBytes)
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+private fun PackStorageLine(
+    labelResource: Int,
+    bytes: Long,
+    context: android.content.Context,
+    emphasized: Boolean = false
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(
+            stringResource(labelResource),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp,
+            fontWeight = if (emphasized) FontWeight.SemiBold else FontWeight.Normal
+        )
+        Text(
+            Formatter.formatFileSize(context, bytes),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp,
+            fontWeight = if (emphasized) FontWeight.SemiBold else FontWeight.Normal
+        )
     }
 }
 

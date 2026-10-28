@@ -46,7 +46,11 @@ catalog keys are implemented.
   "subtitle": ["genre", "year", "network"],
   "merge": {"enabled": true, "strategy": "GROUP_ID", "groupType": "SEASONS"},
   "defaults": {"showImages": true, "stickyScoreHeader": false, "mergeEnabled": false, "oneCoverPerGroup": true, "ratingMode": "simple"},
-  "integrity": {"installedBytes": 123, "files": [{"path": "catalog/series.jsonl.gzip", "bytes": 123, "sha256": "<64 lowercase hex>"}]}
+  "presentation": {"shareBackground": "metadata/share_background.webp"},
+  "integrity": {"installedBytes": 456, "files": [
+    {"path": "catalog/series.jsonl.gzip", "bytes": 123, "sha256": "<64 lowercase hex>"},
+    {"path": "metadata/share_background.webp", "bytes": 333, "sha256": "<64 lowercase hex>"}
+  ]}
 }
 ```
 
@@ -66,6 +70,13 @@ canonical item/group ID to a declared local cover file. After verification, extr
 user-removable per-pack cover cache; the verified `.pack` archive is retained separately and normal
 startup recovery does not restore covers the user deleted.
 
+`presentation.shareBackground` is optional and backward compatible. When present it references one
+PNG, JPEG or WebP file below `metadata/`, declared in `integrity.files`, limited to 8 MiB and covered
+by the normal installed-size/SHA-256 verification. Android decodes it at a bounded sample size and
+adds a contrast overlay for ranking-share cards. A missing, deleted or undecodable asset falls back
+to RankOffline's procedural pack-colored background; older published packs need no changes. Pack
+artwork must have documented redistribution permission—attribution alone is not permission.
+
 `coverSources` is optional for backward compatibility. It declaratively maps a catalog provider to
 one or more HTTPS templates using only `{reference}` and `{providerId}`. Hosts and attribution are
 explicit. A catalog `remoteCoverRef` may alternatively be a schema-1 JSON string containing a
@@ -80,9 +91,11 @@ installation-time, user-private HTTP cover fetch; it never enables online title 
 The cover cache is counted and deleted per pack, including any properly licensed files
 bundled inside the pack. Manual Top-N cover retrieval remains available.
 
-Deleting a pack purges its catalog, groups, covers, cache, ratings, notes, ranking state, saved
-filters, and pack settings while leaving global language/theme/onboarding state intact. Future
-third-party installation needs only an obtain/validate/install/register UI; it must remain data-only.
+Uninstalling a pack removes its catalog, groups, files and cover cache while retaining PackId-owned
+ratings, detailed scores, notes and preferences for a compatible reinstall. The separately confirmed
+**Delete pack and data** action also purges those personal records and pack settings. Both modes leave
+global language/theme/onboarding state intact. Future third-party installation additionally requires
+collision rejection or composite catalog identities; it must remain data-only.
 
 Release tooling creates `RankOffline-<Name>-v0.2.0.pack` ZIP-compatible artifacts plus the trusted
 `category_pack_index.json`. Upload those files beside the APK in the GitHub `v0.2.0` release.

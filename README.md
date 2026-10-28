@@ -14,8 +14,11 @@ RankOffline is a **local-first Android app** for browsing independently installe
 - **Personal ranking** driven by one canonical saved score per item or explicit group.
 - Notes and watch status stored locally.
 - Fully offline catalog search (including imported title aliases), filters, Merge and rankings after installation; no remote title discovery.
+- A virtual **All** view combines Search and personal rankings when at least two packs are ready, without copying catalogs or ratings.
 - Per-pack **Show Images**, **Sticky Score Header**, Merge and cover preferences. When enabled for a new pack, optional initial Top-100 covers download after catalog import; the catalog can be used while covers download.
 - Validated user-requested Top-N cover downloads, removable per-pack image cache, and local offline reuse.
+- Lifecycle-safe pack jobs recover through WorkManager, and catalog uninstall can preserve PackId-owned personal data for reinstall.
+- User-controlled, versioned JSON export/import for personal ratings, settings, profiles and custom themes through Android's file picker.
 - Nine UI languages: English, Spanish, German, French, Russian, Japanese, Simplified Chinese, Basque, and Italian.
 - Eight selectable launcher icons backed by verified Android launcher aliases.
 - No analytics, telemetry, account system, or cloud rating storage.
@@ -61,8 +64,9 @@ RankOffline Core is a small APK. Production catalogs are independently downloade
 installed as data-only packs; installed packs then provide browsing, search, ratings and ranking
 fully offline.
 
-Schema-v1 packs are verified and atomically installed below app-private `files/packs/`. Deleting a
-pack is an explicit destructive purge of that pack and its PackId-scoped personal state. See
+Schema-v1 packs are verified and atomically installed below app-private `files/packs/`. Uninstall
+can retain PackId-scoped personal data for a compatible reinstall; a separate confirmed action
+permanently removes the pack and its personal data. See
 [`docs/CATEGORY_PACK_ARCHITECTURE.md`](docs/CATEGORY_PACK_ARCHITECTURE.md).
 
 To rebuild the normalized pack set manually:
@@ -157,6 +161,7 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the release checklist and signing
 - [Scoring model](docs/SCORING.md)
 - [Releasing](docs/RELEASING.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Privacy](PRIVACY.md)
 
 ## Data attribution
 

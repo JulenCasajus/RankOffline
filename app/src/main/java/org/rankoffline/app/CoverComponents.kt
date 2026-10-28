@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 private sealed interface ObservedCoverPath {
     data object Resolving : ObservedCoverPath
@@ -148,13 +149,12 @@ internal fun CoverViewerDialog(
         observationSource?.observeLocalCoverPath(storageIdentity.id) ?: flowOf(coverAnime.localCoverPath)
     }
     val initialPath = coverAnime.localCoverPath
-    val observedPath by produceState<ObservedCoverPath>(
-        initialValue = initialPath?.let(ObservedCoverPath::Resolved) ?: ObservedCoverPath.Resolving,
-        key1 = pathFlow,
-        key2 = storageIdentity
-    ) {
-        pathFlow.collect { path -> value = ObservedCoverPath.Resolved(path) }
+    val observedPathFlow = remember(pathFlow, storageIdentity) {
+        pathFlow.map<String?, ObservedCoverPath>(ObservedCoverPath::Resolved)
     }
+    val observedPath by observedPathFlow.collectAsState(
+        initial = initialPath?.let(ObservedCoverPath::Resolved) ?: ObservedCoverPath.Resolving
+    )
     val localPath = (observedPath as? ObservedCoverPath.Resolved)?.path
     var bitmap by remember(storageIdentity, localPath) {
         mutableStateOf(localPath?.let { coverRepository.cachedBitmap(storageIdentity.id, it) })

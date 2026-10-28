@@ -33,7 +33,14 @@ class CategoryPackInstaller(private val root: File) {
         openFile: (CategoryPackFileSpec) -> InputStream
     ): File {
         validateManifest(manifest)
-        root.mkdirs()
+        check(root.isDirectory || root.mkdirs()) { "Unable to create category-pack root" }
+        check(!deletionMarker(manifest.packId).exists()) {
+            "Pack deletion must finish before installation"
+        }
+        // A retained .previous means an earlier replacement was promoted but never committed by
+        // the Room/runtime phase. Reconcile that checkpoint before attempting another install so
+        // repeated invocations cannot delete the only known-good installation.
+        check(recover(manifest.packId)) { "Unable to recover interrupted category-pack operation" }
         val destination = File(root, manifest.packId.value)
         val staging = File(root, ".${manifest.packId.value}-${UUID.randomUUID()}.part")
         check(staging.mkdirs()) { "Unable to create category-pack staging directory" }
@@ -41,7 +48,11 @@ class CategoryPackInstaller(private val root: File) {
             manifest.files.forEach { spec ->
                 val output = File(staging, spec.name)
                 require(output.canonicalPath.startsWith(staging.canonicalPath + File.separator))
-                output.parentFile?.mkdirs()
+                output.parentFile?.let { parent ->
+                    check(parent.isDirectory || parent.mkdirs()) {
+                        "Unable to create category-pack directory"
+                    }
+                }
                 val digest = MessageDigest.getInstance("SHA-256")
                 var bytes = 0L
                 openFile(spec).use { input ->
@@ -64,7 +75,7 @@ class CategoryPackInstaller(private val root: File) {
             File(staging, COMPLETE_MARKER).writeText(manifest.snapshot, Charsets.UTF_8)
 
             val previous = File(root, ".${manifest.packId.value}.previous")
-            previous.deleteRecursively()
+            check(deleteRecursivelyIfPresent(previous)) { "Unable to remove retained pack" }
             if (destination.exists()) {
                 Files.move(destination.toPath(), previous.toPath(), StandardCopyOption.REPLACE_EXISTING)
             }
@@ -75,7 +86,9 @@ class CategoryPackInstaller(private val root: File) {
                     StandardCopyOption.ATOMIC_MOVE,
                     StandardCopyOption.REPLACE_EXISTING
                 )
-                if (!retainPreviousUntilCommit) previous.deleteRecursively()
+                if (!retainPreviousUntilCommit) {
+                    check(deleteRecursivelyIfPresent(previous)) { "Unable to commit category pack" }
+                }
             } catch (failure: Exception) {
                 if (!destination.exists() && previous.exists()) {
                     Files.move(previous.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -84,7 +97,7 @@ class CategoryPackInstaller(private val root: File) {
             }
             return destination
         } finally {
-            staging.deleteRecursively()
+            deleteRecursivelyIfPresent(staging)
         }
     }
 
@@ -95,45 +108,107 @@ class CategoryPackInstaller(private val root: File) {
 
     fun installedDirectory(mediaType: MediaType): File? = installedDirectory(mediaType.toPackId())
 
+    fun packDirectory(packId: PackId): File = File(root, packId.value)
+
+    fun residualBytes(packId: PackId): Long = ownedArtifacts(packId)
+        .filter(File::exists)
+        .sumOf(File::recursiveBytes)
+
+    fun hasPendingDeletion(packId: PackId): Boolean = deletionMarker(packId).exists()
+
+    fun matchesInstalledManifest(manifest: CategoryPackInstallManifest): Boolean {
+        val directory = installedDirectory(manifest.packId) ?: return false
+        if (hasPendingDeletion(manifest.packId)) return false
+        val encoded = runCatching { File(directory, PACK_MANIFEST).readText(Charsets.UTF_8) }
+            .getOrNull() ?: return false
+        if (encoded != manifest.encodedManifest) return false
+        // Bundled covers become user-removable cache entries after installation. Their absence
+        // must not invalidate an otherwise verified catalog on every later startup.
+        return manifest.files.filterNot { it.name.startsWith("covers/") }.all { spec ->
+            val file = File(directory, spec.name)
+            runCatching {
+                file.canonicalPath.startsWith(directory.canonicalPath + File.separator) &&
+                    file.isFile && file.length() == spec.bytes
+            }.getOrDefault(false)
+        }
+    }
+
     /** Commits a promoted replacement only after its Room catalog and groups are ready. */
     fun commitReplacement(packId: PackId) {
-        File(root, ".${packId.value}.previous").deleteRecursively()
+        check(deleteRecursivelyIfPresent(File(root, ".${packId.value}.previous"))) {
+            "Unable to remove retained category pack"
+        }
     }
 
     /** Restores the last complete pack, or removes a failed first installation. */
     fun rollbackReplacement(packId: PackId) {
         val destination = File(root, packId.value)
         val previous = File(root, ".${packId.value}.previous")
-        destination.deleteRecursively()
+        check(deleteRecursivelyIfPresent(destination)) { "Unable to remove failed category pack" }
         if (previous.exists()) {
             Files.move(previous.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
     }
 
     /** Repairs an interrupted atomic promotion and removes inactive staging directories. */
-    fun recover(packId: PackId) {
-        root.mkdirs()
+    fun recover(packId: PackId): Boolean {
+        check(root.isDirectory || root.mkdirs()) { "Unable to create category-pack root" }
         val destination = File(root, packId.value)
         val previous = File(root, ".${packId.value}.previous")
+        if (hasPendingDeletion(packId)) {
+            val deleted = installationArtifacts(packId)
+                .map(::deleteRecursivelyIfPresent)
+                .all { it }
+            if (deleted && !deletionMarker(packId).delete() && deletionMarker(packId).exists()) {
+                return false
+            }
+            return deleted
+        }
         if (File(previous, COMPLETE_MARKER).isFile) {
             // A retained previous directory means promotion did not reach runtime READY. Prefer
             // the last known-good files; startup will reconcile Room metadata with them.
-            destination.deleteRecursively()
+            check(deleteRecursivelyIfPresent(destination)) {
+                "Unable to remove interrupted replacement"
+            }
             Files.move(previous.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
-        root.listFiles().orEmpty()
+        return root.listFiles().orEmpty()
             .filter { it.name.startsWith(".${packId.value}-") && it.name.endsWith(".part") }
-            .forEach(File::deleteRecursively)
+            .map(::deleteRecursivelyIfPresent)
+            .all { it }
     }
 
-    fun recover(mediaType: MediaType) = recover(mediaType.toPackId())
+    fun recover(mediaType: MediaType): Boolean = recover(mediaType.toPackId())
 
     fun deleteInstalledPack(packId: PackId): Boolean {
-        val directory = installedDirectory(packId) ?: return true
-        return directory.deleteRecursively()
+        // Cleanup also owns retained replacements and staging left by interruption. Restricting
+        // the targets to this exact PackId avoids touching unrelated installations.
+        check(root.isDirectory || root.mkdirs()) { "Unable to create category-pack root" }
+        val marker = deletionMarker(packId)
+        if (!marker.exists()) marker.writeText("deleting", Charsets.UTF_8)
+        val deleted = installationArtifacts(packId)
+            .map(::deleteRecursivelyIfPresent)
+            .all { it }
+        val markerDeleted = !deleted || marker.delete() || !marker.exists()
+        return deleted && markerDeleted
     }
 
     fun deleteInstalledPack(mediaType: MediaType): Boolean = deleteInstalledPack(mediaType.toPackId())
+
+    private fun installationArtifacts(packId: PackId): List<File> = buildList {
+        add(packDirectory(packId))
+        add(File(root, ".${packId.value}.previous"))
+        addAll(
+            root.listFiles().orEmpty().filter {
+                it.name.startsWith(".${packId.value}-") && it.name.endsWith(".part")
+            }
+        )
+    }.distinctBy { it.absolutePath }
+
+    private fun ownedArtifacts(packId: PackId): List<File> =
+        installationArtifacts(packId) + deletionMarker(packId)
+
+    private fun deletionMarker(packId: PackId): File = File(root, ".${packId.value}.deleting")
 
     private fun validateManifest(manifest: CategoryPackInstallManifest) {
         require(manifest.snapshot.isNotBlank())
@@ -156,5 +231,14 @@ class CategoryPackInstaller(private val root: File) {
         private val SHA_256 = Regex("[0-9a-fA-F]{64}")
     }
 }
+
+private fun File.recursiveBytes(): Long = when {
+    isFile -> length()
+    isDirectory -> listFiles().orEmpty().sumOf(File::recursiveBytes)
+    else -> 0L
+}
+
+private fun deleteRecursivelyIfPresent(file: File): Boolean =
+    !file.exists() || (file.deleteRecursively() && !file.exists())
 
 private fun MessageDigest.hex(): String = digest().joinToString("") { "%02x".format(it) }

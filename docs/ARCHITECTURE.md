@@ -39,9 +39,32 @@ download -> verify -> atomic file install -> import catalog
          -> optional initial Top-100 cover acquisition (catalog remains usable)
 ```
 
-On process restart, unchanged catalog and group hashes take the `NoChange` path. Import failures produce ERROR/retry state; partial packs never activate. Operations for different packs may proceed independently, while operations for the same PackId cannot race.
+Install and recovery work is owned by uniquely named WorkManager jobs, rather than an Activity or
+ViewModel coroutine. The worker and UI share one process-wide service graph and the same per-PackId
+locks. Recoverable transfer/runtime failures use bounded exponential WorkManager retry; invalid
+archives, hashes and incompatible schemas fail permanently. On process restart, active WorkManager
+jobs and verified files reconstruct UI state; unchanged catalog and group
+hashes, counts and payload sizes are verified through a lightweight startup path and become READY
+without enqueuing a recovery job or reopening the large compressed catalogs. Missing, changed or
+interrupted state takes the full recovery/`NoChange` path. Network constraints apply to archive/cover transfer without
+preventing an installed catalog from recovering offline. Import failures produce ERROR/retry state;
+partial packs never activate. Operations for different packs may proceed independently, while
+operations for the same PackId cannot race. Android does not run WorkManager while the user keeps
+the app force-stopped; eligible work resumes only after Android allows the app to run again.
 
-Pack deletion is an explicitly destructive product action: it purges that pack's reference data, ratings, detailed scores, notes/status, pack settings, covers, cache, and files. Global language, palette, onboarding, and app-icon settings remain.
+There are two removal paths. **Uninstall, keep personal data** removes reference catalog/group data,
+files and covers while retaining PackId-owned ratings, detailed scores, notes/status and preferences.
+Reinstalling the same compatible identities reconnects that data. **Delete pack and data** also
+purges those personal records and pack settings. Global language, palette, onboarding, and app-icon
+settings remain.
+
+## Storage accounting
+
+Pack files are measured from their actual app-private paths: normalized catalog/group/metadata
+payloads, retained verified archive and removable covers. Personal Room rows and DataStore settings
+are reported separately as a **logical estimate** because SQLite pages are shared and cannot be
+truthfully assigned as exact physical bytes to one PackId. Flows invalidate the estimate after
+rating/settings changes; file totals refresh after lifecycle and cover operations.
 
 ## Merge and search
 
@@ -52,9 +75,24 @@ manifest-declared filters/subtitle fields. Books have a conservative precomputed
 Work-level series-group artifact; coverage is intentionally limited rather than
 inferring unverifiable relationships on the phone.
 
+`RankOfflineAll` is a virtual viewing scope available only with at least two READY packs. It owns no
+catalog or rating rows. Popularity pages interleave each source pack's ranks deterministically;
+alphabetic Search uses bounded per-pack cursors and a deterministic k-way merge instead of loading
+ever-growing prefixes. Rated Ranking combines source results while retaining each row's source
+identity. Opening or rating a result uses the source pack's settings. The virtual scope has its own
+display and catalog-sort preferences and disappears immediately when fewer than two packs remain.
+Category-score ordering is offered only for active category definitions shared by every participating
+pack; unrelated same-looking IDs are not silently compared.
+
 ## Covers
 
 Item and group covers use explicit storage identities and separate Room columns. A common UI contract observes the local path and download state; group covers read `media_group.local_cover_path`. Files are decoded off the main thread and cached in memory.
+
+Ranking sharing is separate from JSON backup sharing. It reads only the current personal ranking,
+titles, scores and local cover paths, then uses one deterministic 9:16 renderer for both preview and
+the 1080×1920 PNG. Temporary PNGs remain in an app-private cache and are exposed only through a
+short-lived FileProvider read grant. Optional integrity-declared pack artwork supplies a thematic
+background; no network is needed and notes/settings are never rendered.
 
 Data-only pack manifests may declare constrained HTTPS cover sources, stable identities,
 and allowed hosts. Official legacy providers remain restricted fallback adapters. Anime
@@ -66,6 +104,22 @@ operations may contact declared HTTPS hosts. No remote title search is performed
 ## Settings and themes
 
 DataStore owns global settings and PackId-namespaced media settings. Existing singular `MediaType` keys are still accepted during compatibility reads. Theme palettes persist only four source colors—background, surface, primary, and secondary. Material semantic colors are derived once per effective palette using contrast against the actual container. Old custom-theme JSON fields such as `mode` and `tertiary` are ignored safely.
+
+## Personal-data backup
+
+Settings → Packages uses Android's Storage Access Framework to export/import a bounded, versioned
+JSON backup and Android's Sharesheet to share a private-cache `content://` URI.
+It contains PackId-scoped ratings and detailed scores, notes/status/profile references, media
+settings, catalog sort preferences, the virtual All display settings, and custom/built-in palette
+edits. It excludes catalogs, pack archives, credentials and cover binaries. Import is validated
+before mutation; Room restoration is transactional, supports newer-wins merge or explicit replace,
+and detached personal rows remain valid while their pack is uninstalled. A durable restore journal
+coordinates Room and DataStore crash recovery without claiming cross-store transactional atomicity.
+Import, export and share are serialized as one explicitly visible personal-data operation. External
+service synchronization remains disabled; pack-scoped identity, provider-ID mapping, rating-scale
+conversion and dry-run conflict primitives exist only as a tested boundary for a future authorized
+connector.
+See [PERSONAL_BACKUP_FORMAT.md](PERSONAL_BACKUP_FORMAT.md) for the schema and conflict rules.
 
 ## Privacy and security
 

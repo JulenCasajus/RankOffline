@@ -40,6 +40,11 @@ data class MediaItemRatingRow(
     )
 }
 
+data class MediaCoverPathRow(
+    @ColumnInfo(name = "media_id") val mediaId: String,
+    @ColumnInfo(name = "local_cover_path") val localCoverPath: String?
+)
+
 data class MediaCategoryScoreRow(
     @ColumnInfo(name = "media_id") val mediaId: String,
     val score: Double?,
@@ -237,6 +242,9 @@ interface MediaDao {
 
     @Query("SELECT * FROM media_item WHERE id = :mediaId")
     suspend fun item(mediaId: String): MediaItemEntity?
+
+    @Query("SELECT id AS media_id, local_cover_path FROM media_item WHERE id IN (:mediaIds)")
+    suspend fun coverPaths(mediaIds: List<String>): List<MediaCoverPathRow>
 
     @Query(
         "SELECT COUNT(*) FROM media_item WHERE media_type = :mediaType " +

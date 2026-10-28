@@ -5,15 +5,6 @@ import org.junit.Test
 
 class MovieSeriesIntegrationLogicTest {
     @Test
-    fun mediaTypesDispatchToExpectedPersistencePaths() {
-        assertEquals(MediaDataPath.GENERIC, MediaType.ANIME.dataPath())
-        assertEquals(MediaDataPath.GENERIC, MediaType.MANGA.dataPath())
-        assertEquals(MediaDataPath.GENERIC, MediaType.MOVIE.dataPath())
-        assertEquals(MediaDataPath.GENERIC, MediaType.SERIES.dataPath())
-        assertEquals(MediaDataPath.GENERIC, MediaType.BOOK.dataPath())
-    }
-
-    @Test
     fun genericMediaUseTheirProviderCreditRoles() {
         assertEquals("PRODUCTION_COMPANY", MediaType.MOVIE.genericFilterCreditRole())
         assertEquals("NETWORK", MediaType.SERIES.genericFilterCreditRole())
@@ -72,7 +63,7 @@ class MovieSeriesIntegrationLogicTest {
         }
         assertEquals(
             listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC),
-            MediaType.BOOK.catalogSortCriteria()
+            catalogSortCriteria()
         )
     }
 }

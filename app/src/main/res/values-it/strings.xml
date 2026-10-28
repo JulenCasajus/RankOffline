@@ -44,6 +44,7 @@
     <string name="covers_download_rated">Scarica le copertine degli elementi valutati</string>
     <string name="covers_downloading_rated">Download delle copertine…</string>
     <string name="covers_download_top">Scarica Top %1$d</string>
+    <string name="covers_continue_top">Continua Top %1$d</string>
     <string name="covers_one_per_group">Una copertina per gruppo</string>
     <string name="covers_one_per_group_description">Usa la copertina del primo elemento del gruppo per tutti gli elementi del gruppo.</string>
     <string name="filters_title">Filtri</string><string name="filters_active">Filtri (%1$d)</string><string name="filters_clear">Cancella filtri</string><string name="filters_all">Tutti / Nessun filtro</string>
@@ -70,6 +71,9 @@
     <string name="group_entries_count">%1$d titoli</string>
     <string name="group_calculated">Calcolato</string>
     <string name="sort_action">Ordina</string>
+    <string name="sort_direction_ascending">Crescente</string>
+    <string name="sort_direction_descending">Decrescente</string>
+    <string name="sort_direction_accessibility">Ordine attuale: %1$s. Tocca per passare a %2$s.</string>
     <string name="group_derived_count">Calcolato · %1$d/%2$d valutati</string>
     <string name="group_rated_count">%1$d/%2$d valutati</string>
     <string name="group_unrated">Senza voto</string>
@@ -103,7 +107,7 @@
 <string name="about_non_affiliation">Nomi e marchi dei fornitori identificano le fonti dei dati. Non implicano affiliazione, certificazione o approvazione.</string><string name="about_trademark_policy">Politica sui marchi</string>
 <string name="score_group_title">Punteggio del gruppo</string>
 <string name="search_clear">Cancella ricerca</string>
-<string name="popularity_settings_description">Istantanea della popolarità e disponibilità dell’aggiornamento</string><string name="popularity_runtime_unavailable">La popolarità proviene dal catalogo incluso. In questa build l’aggiornamento durante l’uso non è disponibile per questo tipo di contenuto.</string><string name="search_more_online">Cerca altri risultati online</string><string name="search_online_results">Risultati online</string><string name="search_online_loading">Ricerca online…</string><string name="search_online_empty">Non ci sono altri risultati online.</string><string name="search_online_error">La ricerca online non è riuscita. I risultati locali restano disponibili.</string><string name="action_retry">Riprova</string><string name="category_selector_title">Scegli una categoria</string><string name="category_not_installed">Non scaricata</string><string name="onboarding_welcome_title">Benvenuto in RankOffline!</string><string name="onboarding_welcome_body">Valuta e organizza anime, manga, serie, film e libri a modo tuo.</string><string name="onboarding_privacy">Le tue valutazioni sono tue: RankOffline funziona localmente e tutela la privacy.</string><string name="onboarding_choose_style">Scegli il tuo stile</string><string name="onboarding_change_later">Potrai cambiarlo dalle Impostazioni.</string><string name="onboarding_minimal">Minimalista</string><string name="onboarding_minimal_description">Un’esperienza leggera senza copertine.</string><string name="onboarding_with_images">Con immagini</string><string name="onboarding_with_images_description">Richiede di scaricare le copertine.</string><string name="onboarding_rating_style">Stile di valutazione</string><string name="onboarding_rating_simple">Valutazione semplice</string><string name="onboarding_rating_simple_description">Punteggi rapidi e diretti.</string><string name="onboarding_rating_elaborated">Valutazione elaborata</string><string name="onboarding_rating_elaborated_description">Categorie configurabili in dettaglio.</string><string name="onboarding_start">Inizia</string><string name="onboarding_categories_title">Da dove vuoi iniziare?</string><string name="onboarding_categories_subtitle">Scegli i cataloghi da usare offline. Potrai gestirli più tardi dalle Impostazioni.</string><string name="onboarding_done">Fatto</string><string name="categories_title">Pacchetti</string><string name="categories_settings_description">Scarica e gestisci i pacchetti.</string><string name="categories_storage_title">Dati dei pacchetti</string><string name="categories_installed_size">%1$s installati</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">Inclusa nella build</string><string name="category_downloaded">Scaricata</string><string name="category_delete">Elimina categoria</string><string name="category_download">Scarica categoria</string><string name="category_included_not_reclaimable">Catalogo incluso; spazio APK non liberabile</string><string name="category_remove_catalog">Rimuovi catalogo</string><string name="category_remove_title">Rimuovi catalogo %1$s</string><string name="category_remove_confirmation">Il catalogo e le copertine locali verranno rimossi, liberando circa %1$s. Valutazioni e dati personali saranno conservati.</string><string name="category_delete_my_data">Elimina i miei dati</string><string name="category_delete_personal_title">Elimina i miei dati %1$s</string><string name="category_delete_personal_confirmation">Valutazioni e impostazioni personali per %1$s verranno eliminate definitivamente. L’azione è irreversibile. Il catalogo resterà installato.</string><string name="category_delete_personal_action">Elimina definitivamente</string><string name="category_download_not_configured">L’hosting dei pacchetti non è configurato in questa build.</string><string name="category_download_complete">Categoria scaricata e pronta offline.</string><string name="category_pack_invalid">Il pacchetto non è valido o è incompleto.</string><string name="category_download_unavailable">Il download non è disponibile in questa build.</string><string name="category_catalog_removed">Catalogo rimosso. Le valutazioni sono state conservate.</string><string name="category_personal_data_deleted">Dati personali della categoria eliminati.</string>
+<string name="popularity_settings_description">Istantanea della popolarità e disponibilità dell’aggiornamento</string><string name="popularity_runtime_unavailable">La popolarità proviene dal catalogo incluso. In questa build l’aggiornamento durante l’uso non è disponibile per questo tipo di contenuto.</string><string name="action_retry">Riprova</string><string name="category_selector_title">Scegli una categoria</string><string name="category_not_installed">Non scaricata</string><string name="onboarding_welcome_title">Benvenuto in RankOffline!</string><string name="onboarding_welcome_body">Valuta e organizza anime, manga, serie, film e libri a modo tuo.</string><string name="onboarding_privacy">Le tue valutazioni sono tue: RankOffline funziona localmente e tutela la privacy.</string><string name="onboarding_choose_style">Scegli il tuo stile</string><string name="onboarding_change_later">Potrai cambiarlo dalle Impostazioni.</string><string name="onboarding_minimal">Minimalista</string><string name="onboarding_minimal_description">Un’esperienza leggera senza copertine.</string><string name="onboarding_with_images">Con immagini</string><string name="onboarding_with_images_description">Richiede di scaricare le copertine.</string><string name="onboarding_rating_style">Stile di valutazione</string><string name="onboarding_rating_simple">Valutazione semplice</string><string name="onboarding_rating_simple_description">Punteggi rapidi e diretti.</string><string name="onboarding_rating_elaborated">Valutazione elaborata</string><string name="onboarding_rating_elaborated_description">Categorie configurabili in dettaglio.</string><string name="onboarding_start">Inizia</string><string name="onboarding_categories_title">Da dove vuoi iniziare?</string><string name="onboarding_categories_subtitle">Scegli i cataloghi da usare offline. Potrai gestirli più tardi dalle Impostazioni.</string><string name="onboarding_done">Fatto</string><string name="categories_title">Pacchetti</string><string name="categories_settings_description">Scarica e gestisci i pacchetti.</string><string name="categories_storage_title">Dati dei pacchetti</string><string name="categories_installed_size">%1$s installati</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">Inclusa nella build</string><string name="category_downloaded">Scaricata</string><string name="category_delete">Elimina categoria</string><string name="category_download">Scarica categoria</string><string name="category_included_not_reclaimable">Catalogo incluso; spazio APK non liberabile</string><string name="category_remove_catalog">Rimuovi catalogo</string><string name="category_remove_title">Rimuovi catalogo %1$s</string><string name="category_remove_confirmation">Il catalogo e le copertine locali verranno rimossi, liberando circa %1$s. Valutazioni e dati personali saranno conservati.</string><string name="category_delete_my_data">Elimina i miei dati</string><string name="category_delete_personal_title">Elimina i miei dati %1$s</string><string name="category_delete_personal_confirmation">Valutazioni e impostazioni personali per %1$s verranno eliminate definitivamente. L’azione è irreversibile. Il catalogo resterà installato.</string><string name="category_delete_personal_action">Elimina definitivamente</string><string name="category_download_not_configured">L’hosting dei pacchetti non è configurato in questa build.</string><string name="category_download_complete">Categoria scaricata e pronta offline.</string><string name="category_pack_invalid">Il pacchetto non è valido o è incompleto.</string><string name="category_download_unavailable">Il download non è disponibile in questa build.</string><string name="category_catalog_removed">Catalogo rimosso. Le valutazioni sono state conservate.</string><string name="category_personal_data_deleted">Dati personali della categoria eliminati.</string>
     <string name="settings_display_description">Aspetto e visualizzazione delle immagini</string>
     <string name="settings_theme_title">Tema</string>
     <string name="settings_theme_description">Scegli la palette di colori dell’app</string>
@@ -146,7 +150,7 @@
 <string name="category_phase_importing_catalog">Importazione catalogo…</string>
 <string name="category_phase_importing_groups">Preparazione unione…</string>
 <string name="category_phase_downloading_covers">Download copertine: %1$d / %2$d</string>
-<string name="category_phase_retrying_covers">Nuovo tentativo copertine: %1$d / %2$d</string>
+
 <string name="category_deleting">Eliminazione…</string>
 <string name="category_phase_finalizing">Finalizzazione…</string>
 <string name="category_pack_runtime_error">Impossibile preparare il catalogo. Tocca per riprovare.</string>
@@ -167,7 +171,7 @@
     <string name="color_picker_hue">Tonalità</string>
     <string name="loading_list">Caricamento elenco…</string>
     <string name="covers_preparing_list">Preparazione elenco copertine…</string>
-    <string name="covers_retrying_failed">Nuovo tentativo delle copertine non riuscite…</string>
+
     <string name="covers_operation_busy">È già in corso un’operazione copertine per questo pacchetto.</string>
     <string name="covers_progress_details_explicit">%1$d scaricate · %2$d non disponibili · %3$d non riuscite</string>
     <string name="merge_book_series">Unisci serie di libri</string>
@@ -184,4 +188,44 @@
     <string name="book_genre_science_technology">Scienza e tecnologia</string>
     <string name="book_genre_philosophy">Filosofia</string>
     <string name="book_genre_other">Altro / Non classificato</string>
+    <string name="pack_background_channel">Operazioni sui pacchetti</string>
+    <string name="pack_background_title">Preparazione del pacchetto offline</string>
+    <string name="pack_background_downloading">Download del pacchetto…</string>
+    <string name="pack_storage_details">Dettagli archiviazione</string>
+    <string name="pack_storage_expected">Installazione prevista: %1$s</string>
+    <string name="pack_storage_transfer">Trasferimento: %1$s</string>
+    <string name="pack_storage_catalog">Catalogo</string>
+    <string name="pack_storage_groups">Gruppi</string>
+    <string name="pack_storage_metadata">Metadati</string>
+    <string name="pack_storage_archive">Archivio del pacchetto conservato</string>
+    <string name="pack_storage_covers">Copertine</string>
+    <string name="pack_storage_physical_total">Totale fisico</string>
+    <string name="pack_storage_personal_logical">Dati personali (stima logica): %1$s</string>
+    <string name="category_uninstall_keep_data">Disinstalla e conserva i dati personali</string>
+    <string name="category_remove_choices">Scegli se conservare valutazioni, note, profili e impostazioni per una futura reinstallazione. La rimozione dei file e delle copertine locali libera circa %1$s.</string>
+    <string name="media_all">Tutto</string>
+    <string name="personal_backup_title">Backup dei dati personali</string>
+    <string name="personal_backup_description">Esporta o ripristina valutazioni, impostazioni e temi personalizzati</string>
+    <string name="personal_backup_explanation">I backup sono file JSON non crittografati con dati personali e temi personalizzati. Il provider di documenti scelto può conservarli o sincronizzarli. Cataloghi e copertine non sono inclusi.</string>
+    <string name="personal_backup_scope_explanation">Queste azioni usano solo il pacchetto selezionato. Ogni valutazione mantiene l’ID del proprio pacchetto.</string>
+    <string name="personal_backup_scope_explanation_all">RankOfflineAll condivide la classifica combinata e trasferisce i dati di tutti i pacchetti pronti. Ogni valutazione mantiene l’ID del pacchetto originale.</string>
+    <string name="personal_backup_export">Esporta backup</string>
+    <string name="personal_backup_import">Importa backup</string>
+    <string name="personal_backup_preview_title">Importare i dati personali?</string>
+    <string name="personal_backup_preview_body">Sono state convalidate %1$d valutazioni individuali, %2$d di gruppo e le impostazioni di %3$d pacchetti.</string>
+    <string name="personal_backup_preview_policy">Unisci mantiene la valutazione più recente per ogni elemento e importa le impostazioni fornite. Sostituisci rimpiazza tutte le valutazioni e l’ambito delle impostazioni del backup.</string>
+    <string name="personal_backup_merge">Unisci i più recenti</string>
+    <string name="personal_backup_replace">Sostituisci</string>
+    <string name="personal_backup_exported">Backup dei dati personali esportato.</string>
+    <string name="personal_backup_imported">Dati personali importati.</string>
+    <string name="personal_backup_invalid">Il backup selezionato non è valido o compatibile.</string>
+    <string name="personal_backup_failed">Operazione di backup non riuscita.</string>
+    <string name="personal_backup_share">Condividi backup</string>
+    <string name="personal_backup_share_chooser">Condividi backup personale</string>
+    <string name="personal_backup_working">Elaborazione…</string>
+    <string name="personal_backup_busy">È già in corso un’altra operazione sui dati personali.</string>
+    <string name="personal_backup_import_subtitle">Seleziona un file JSON dal dispositivo</string><string name="personal_backup_export_subtitle">Salva i dati come file JSON</string><string name="personal_backup_share_json">Condividi backup JSON</string>
+    <string name="ranking_share_title">Condividi classifica</string><string name="ranking_share_subtitle">Crea e condividi un riepilogo visivo</string><string name="ranking_share_chooser">Condividi immagine classifica</string><string name="ranking_share_show_images">Mostra immagini</string><string name="ranking_share_show_images_description">Includi le copertine disponibili localmente</string><string name="ranking_share_heading">La mia Top %1$d %2$s</string><string name="ranking_share_failed">Impossibile creare l’immagine della classifica.</string><string name="ranking_share_empty">Valuta almeno un elemento per creare un’immagine della classifica.</string><string name="ranking_share_preview_description">Anteprima dell’immagine della classifica</string><string name="ranking_share_page_indicator">Modello %1$d di %2$d%3$s</string><string name="ranking_share_selected">, selezionato</string>
+    <string name="ranking_share_scope_all">RankOffline</string><string name="ranking_share_scope_anime">Anime</string><string name="ranking_share_scope_manga">Manga</string><string name="ranking_share_scope_movies">Film</string><string name="ranking_share_scope_series">Serie</string><string name="ranking_share_scope_books">Libri</string>
+    <string name="personal_backup_replace_confirm_title">Sostituire i dati personali?</string><string name="personal_backup_replace_confirm_body">Sostituisce valutazioni, punteggi dettagliati, impostazioni e profili inclusi nel backup. I dati degli altri pacchetti non vengono eliminati.</string>
 </resources>

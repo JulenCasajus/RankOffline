@@ -34,9 +34,9 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def image_extension(path: Path) -> str:
+def image_extension(path: Path, max_bytes: int = MAX_IMAGE_BYTES) -> str:
     size = path.stat().st_size
-    if size <= 0 or size > MAX_IMAGE_BYTES:
+    if size <= 0 or size > max_bytes:
         raise ValueError(f"Invalid image size for {path}: {size}")
     head = path.read_bytes()[:16]
     if head.startswith(b"RIFF") and head[8:12] == b"WEBP":

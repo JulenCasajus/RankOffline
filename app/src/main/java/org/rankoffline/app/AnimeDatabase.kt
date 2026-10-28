@@ -688,6 +688,7 @@ abstract class AnimeDatabase : RoomDatabase() {
     abstract fun mediaDao(): MediaDao
     abstract fun mediaGroupDao(): MediaGroupDao
     abstract fun mediaCatalogDao(): MediaCatalogDao
+    abstract fun personalDataDao(): PersonalDataDao
 
     companion object {
         const val DATABASE_NAME = "anime_rank.db"

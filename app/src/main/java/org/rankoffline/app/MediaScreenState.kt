@@ -60,10 +60,6 @@ internal fun AnimeFilters.toGenericMediaFilters(): GenericMediaFilters = Generic
     creditName = studio
 )
 
-enum class MediaDataPath { GENERIC }
-
-fun MediaType.dataPath(): MediaDataPath = MediaDataPath.GENERIC
-
 fun MediaType.genericFilterCreditRole(): String? = when (this) {
     MediaType.ANIME -> "STUDIO"
     MediaType.MANGA -> "AUTHOR"
@@ -84,7 +80,7 @@ fun MediaType.genericGroupType(): String? = when (this) {
 
 fun MediaType.supportsMerge(): Boolean = genericGroupType() != null
 
-fun MediaType.catalogSortCriteria(): List<CatalogSortOrder> =
+fun catalogSortCriteria(): List<CatalogSortOrder> =
     listOf(CatalogSortOrder.POPULARITY, CatalogSortOrder.TITLE_ASC)
 
 internal fun defaultSearchUiStates(): Map<MediaType, SearchUiState> =
@@ -128,4 +124,21 @@ internal fun RankingUiState.withValidCategory(categoryIds: Set<String>): Ranking
         },
         categoryId = null
     )
+}
+
+/** Categories are comparable in All only when every participating pack defines the same concept. */
+internal fun compatibleAllRatingCategories(
+    mediaTypes: Collection<MediaType>,
+    settings: Map<MediaType, MediaSettings>
+): List<RatingCategory> {
+    val first = mediaTypes.firstOrNull() ?: return emptyList()
+    val remaining = mediaTypes.drop(1)
+    return settings.getValue(first).ratingConfig.categories.filter { candidate ->
+        candidate.active && remaining.all { mediaType ->
+            settings.getValue(mediaType).ratingConfig.categories.any { category ->
+                category.active && category.id == candidate.id &&
+                    category.name.trim().equals(candidate.name.trim(), ignoreCase = true)
+            }
+        }
+    }
 }

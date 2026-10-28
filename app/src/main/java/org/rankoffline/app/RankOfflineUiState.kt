@@ -4,11 +4,33 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+sealed interface ViewingScope {
+    data class Pack(val mediaType: MediaType) : ViewingScope
+    data object All : ViewingScope
+}
+
+internal data class AllCatalogRequest(
+    val mediaTypes: List<MediaType>,
+    val state: SearchUiState,
+    val mergeByMedia: Map<MediaType, Boolean>,
+    val revisionToken: Long
+)
+
+internal data class AllRankingRequest(
+    val mediaTypes: List<MediaType>,
+    val state: RankingUiState,
+    val mergeByMedia: Map<MediaType, Boolean>,
+    val revisionToken: Long
+)
+
 data class RatingEditorState(
     val anime: Anime,
     val isGroup: Boolean = false,
     val draft: RatingDraft? = null
 )
+
+internal fun RatingEditorState?.matches(anime: Anime, isGroup: Boolean): Boolean =
+    this != null && this.isGroup == isGroup && this.anime.mediaType == anime.mediaType && this.anime.id == anime.id
 
 internal data class CatalogRequest(
     val mediaType: MediaType,
@@ -34,7 +56,7 @@ internal fun applyRatingOverrides(
     items: List<Anime>,
     overrides: Map<String, RatingDisplayOverride>
 ): List<Anime> = items.map { item ->
-    overrides[item.id]?.let { override ->
+    (overrides[ratingOverrideKey(item.mediaType, item.id)] ?: overrides[item.id])?.let { override ->
         item.copy(
             finalScore = override.finalScore,
             baseScore = override.qualityScore,
@@ -42,6 +64,9 @@ internal fun applyRatingOverrides(
         )
     } ?: item
 }
+
+internal fun ratingOverrideKey(mediaType: MediaType, id: String): String =
+    "${mediaType.toPackId().value}:$id"
 
 data class SearchPageState(
     val mediaType: MediaType? = null,

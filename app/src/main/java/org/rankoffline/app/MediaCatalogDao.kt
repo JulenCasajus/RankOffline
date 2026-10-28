@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 data class MediaCatalogItemFields(
     val id: String,
@@ -29,6 +30,32 @@ data class MediaCatalogItemFields(
 
 @Dao
 interface MediaCatalogDao {
+    @Query(
+        "SELECT COALESCE(SUM(length(CAST(media_id AS BLOB)) + length(CAST(notes AS BLOB)) + " +
+            "length(CAST(status AS BLOB)) + COALESCE(length(CAST(profile_id AS BLOB)), 0) + 40), 0) " +
+            "FROM media_rating WHERE pack_id = :packId"
+    )
+    fun observeItemRatingLogicalBytes(packId: String): Flow<Long>
+
+    @Query(
+        "SELECT COALESCE(SUM(length(CAST(media_id AS BLOB)) + length(CAST(category_id AS BLOB)) + 16), 0) " +
+            "FROM media_rating_score WHERE pack_id = :packId"
+    )
+    fun observeItemScoreLogicalBytes(packId: String): Flow<Long>
+
+    @Query(
+        "SELECT COALESCE(SUM(length(CAST(group_id AS BLOB)) + length(CAST(notes AS BLOB)) + " +
+            "length(CAST(status AS BLOB)) + COALESCE(length(CAST(profile_id AS BLOB)), 0) + 40), 0) " +
+            "FROM media_group_rating WHERE pack_id = :packId"
+    )
+    fun observeGroupRatingLogicalBytes(packId: String): Flow<Long>
+
+    @Query(
+        "SELECT COALESCE(SUM(length(CAST(group_id AS BLOB)) + length(CAST(category_id AS BLOB)) + 16), 0) " +
+            "FROM media_group_rating_score WHERE pack_id = :packId"
+    )
+    fun observeGroupScoreLogicalBytes(packId: String): Flow<Long>
+
     @Query("SELECT id FROM media_item WHERE id IN (:mediaIds)")
     suspend fun existingMediaIds(mediaIds: List<String>): List<String>
 
@@ -71,6 +98,12 @@ interface MediaCatalogDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMetadata(metadata: List<MediaCatalogMetadataEntity>)
+
+    @Query(
+        "DELETE FROM media_catalog_metadata " +
+            "WHERE media_type = :mediaType AND metadata_key = :key"
+    )
+    suspend fun deleteMetadata(mediaType: String, key: String): Int
 
     @Query("DELETE FROM media_group WHERE media_type = :mediaType")
     suspend fun deleteCatalogGroups(mediaType: String): Int

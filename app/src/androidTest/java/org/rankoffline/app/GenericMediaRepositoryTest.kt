@@ -362,6 +362,53 @@ class GenericMediaRepositoryTest {
         assertEquals(false, (explicit.first() as MediaListEntry.Group).derived)
     }
 
+    @Test
+    fun virtualAllInterleavesPopularityAndRanksWithoutCopyingSourceRows() = runBlocking {
+        val animeOne = item(MediaType.ANIME, "mal:1", "1")
+            .copy(popularityRank = 1, title = "Zeta")
+        val animeTwo = item(MediaType.ANIME, "mal:2", "2")
+            .copy(popularityRank = 2, title = "Beta")
+        val bookOne = item(MediaType.BOOK, "book:openlibrary:OL1W", "OL1W")
+            .copy(popularityRank = 1, title = "Alpha")
+        repository.upsertItems(listOf(animeOne, animeTwo, bookOne))
+
+        val catalog = repository.searchAllPage(
+            mediaTypes = listOf(MediaType.ANIME, MediaType.BOOK),
+            query = "",
+            sortOrder = CatalogSortOrder.POPULARITY,
+            filters = GenericMediaFilters(),
+            mergeByMedia = emptyMap(),
+            limit = 10
+        ).entries
+        assertEquals(listOf(animeOne.id, bookOne.id, animeTwo.id), catalog.map { it.id })
+        assertEquals(
+            listOf(MediaType.ANIME, MediaType.BOOK, MediaType.ANIME),
+            catalog.map { it.mediaType }
+        )
+        val alphabetic = repository.searchAllPage(
+            mediaTypes = listOf(MediaType.ANIME, MediaType.BOOK),
+            query = "",
+            sortOrder = CatalogSortOrder.TITLE_ASC,
+            filters = GenericMediaFilters(),
+            mergeByMedia = emptyMap(),
+            limit = 10
+        ).entries
+        assertEquals(listOf("Alpha", "Beta", "Zeta"), alphabetic.map { it.title })
+
+        repository.saveSimpleRating(animeOne.id, RatingDraft(), 7.0, 7.0)
+        repository.saveSimpleRating(bookOne.id, RatingDraft(), 9.0, 9.0)
+        val ranking = repository.rankingAll(
+            mediaTypes = listOf(MediaType.ANIME, MediaType.BOOK),
+            filters = GenericMediaFilters(),
+            sortOrder = RankingSortOrder.FINAL_SCORE,
+            categoryId = null,
+            descending = true,
+            mergeByMedia = emptyMap()
+        )
+        assertEquals(listOf(bookOne.id, animeOne.id), ranking.map { it.id })
+        assertEquals(listOf(MediaType.BOOK, MediaType.ANIME), ranking.map { it.mediaType })
+    }
+
     private fun item(type: MediaType, id: String, providerId: String) = MediaItemEntity(
         id = id,
         mediaType = type.persistedValue,

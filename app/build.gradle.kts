@@ -67,7 +67,7 @@ android {
         applicationId = "org.rankoffline.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
+        versionCode = 8
         versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "CATEGORY_PACK_BASE_URL", "\"$categoryPackBaseUrl\"")
@@ -131,7 +131,7 @@ android {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         variant.outputs.forEach { output ->
-            output.versionName.set("0.2.0-debug.6")
+            output.versionName.set("0.2.1-debug.1")
         }
     }
 }
@@ -176,6 +176,7 @@ dependencies {
     // Official backward-compatible per-app locale support for minSdk 26.
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
@@ -200,6 +201,7 @@ dependencies {
     // Android 17 removed the reflective InputManager API used by Espresso 3.6.x.
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("androidx.room:room-testing:$roomVersion")
+    androidTestImplementation("androidx.work:work-testing:2.10.5")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

@@ -9,6 +9,8 @@ import java.security.MessageDigest
 import java.util.UUID
 import java.util.zip.GZIPInputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 sealed interface MediaGroupCatalogImportResult {
@@ -53,7 +55,7 @@ class GenericMediaGroupCatalogImporter(
         result
     }
 
-    private suspend fun isCurrent(
+    internal suspend fun isCurrent(
         manifest: MediaGroupCatalogManifest,
         expectedGroupType: String?
     ): Boolean =
@@ -77,8 +79,11 @@ class GenericMediaGroupCatalogImporter(
         var parseNanos = 0L
         var writeNanos = 0L
         var membershipCount = 0L
+        // The staging identities are transaction-local bookkeeping. A TEMP table avoids taking a
+        // main-schema lock that would otherwise block unrelated READY-pack reads for the complete
+        // group import.
         sqlite.execSQL(
-            "CREATE TABLE `$stageName` (id TEXT NOT NULL PRIMARY KEY, group_type TEXT NOT NULL, " +
+            "CREATE TEMP TABLE `$stageName` (id TEXT NOT NULL PRIMARY KEY, group_type TEXT NOT NULL, " +
                 "provider_group_id TEXT NOT NULL, UNIQUE(group_type, provider_group_id))"
         )
         try {
@@ -125,6 +130,7 @@ class GenericMediaGroupCatalogImporter(
                 membershipCount += record.memberCount
                 parsedCount++
                 if (batch.size == batchSize) {
+                    currentCoroutineContext().ensureActive()
                     val writeStarted = System.nanoTime()
                     writeBatch(batch)
                     writeNanos += System.nanoTime() - writeStarted
@@ -138,7 +144,9 @@ class GenericMediaGroupCatalogImporter(
             }
 
             val drainBuffer = ByteArray(8 * 1024)
-            while (digestInput.read(drainBuffer) != -1) Unit
+            while (digestInput.read(drainBuffer) != -1) {
+                currentCoroutineContext().ensureActive()
+            }
             val actualSha = digest.digest().joinToString("") { "%02x".format(it) }
             if (actualSha != manifest.sha256) {
                 throw MediaCatalogImportException("Group catalog SHA-256 mismatch")

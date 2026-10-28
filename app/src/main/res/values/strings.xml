@@ -19,6 +19,9 @@
     <string name="sort_title_ascending" translatable="false">A → Z</string>
     <string name="sort_title_descending" translatable="false">Z → A</string>
     <string name="sort_descending_format" translatable="false">↓ %1$s</string>
+    <string name="sort_direction_ascending">Ascending</string>
+    <string name="sort_direction_descending">Descending</string>
+    <string name="sort_direction_accessibility">Current order: %1$s. Tap to change to %2$s.</string>
 
     <string name="cover_download">Download cover</string>
     <string name="cover_close">Close</string>
@@ -281,6 +284,7 @@
     <string name="covers_download_rated">Download covers for rated items</string>
     <string name="covers_downloading_rated">Downloading covers…</string>
     <string name="covers_download_top">Download Top %1$d</string>
+    <string name="covers_continue_top">Continue Top %1$d</string>
     <string name="covers_one_per_group">One cover per group</string>
     <string name="covers_one_per_group_description">Use the first group member\'s cover for every item in that group.</string>
     <string name="filters_title">Filters</string><string name="filters_active">Filters (%1$d)</string><string name="filters_clear">Clear filters</string><string name="filters_all">All / No filter</string>
@@ -320,11 +324,11 @@
     <string name="search_clear">Clear search</string>
     <string name="popularity_settings_description">Popularity snapshot and refresh availability</string>
     <string name="popularity_runtime_unavailable">Popularity is supplied by the bundled catalog. Runtime refresh is not available for this media type in this build.</string>
-    <string name="search_more_online">Search for more results online</string>
-    <string name="search_online_results">Online results</string>
-    <string name="search_online_loading">Searching online…</string>
-    <string name="search_online_empty">No more online results.</string>
-    <string name="search_online_error">Online search failed. Local results are still available.</string>
+
+
+
+
+
     <string name="action_retry">Retry</string>
     <string name="category_selector_title">Choose a category</string>
     <string name="download_pack">Download pack</string>
@@ -364,7 +368,7 @@
     <string name="category_phase_importing_catalog">Importing catalog…</string>
     <string name="category_phase_importing_groups">Preparing merge…</string>
     <string name="category_phase_downloading_covers">Downloading covers: %1$d / %2$d</string>
-    <string name="category_phase_retrying_covers">Retrying covers: %1$d / %2$d</string>
+
     <string name="category_deleting">Deleting…</string>
     <string name="category_phase_finalizing">Finalizing…</string>
     <string name="category_delete">Delete category</string>
@@ -432,7 +436,7 @@
     <string name="color_picker_hue">Hue</string>
     <string name="loading_list">Loading list…</string>
     <string name="covers_preparing_list">Preparing cover list…</string>
-    <string name="covers_retrying_failed">Retrying failed covers…</string>
+
     <string name="covers_operation_busy">A cover operation is already running for this pack.</string>
     <string name="covers_progress_details_explicit">%1$d downloaded · %2$d unavailable · %3$d failed</string>
     <string name="merge_book_series">Merge book series</string>
@@ -449,4 +453,44 @@
     <string name="book_genre_science_technology">Science &amp; Technology</string>
     <string name="book_genre_philosophy">Philosophy</string>
     <string name="book_genre_other">Other / Unclassified</string>
+    <string name="pack_background_channel">Pack operations</string>
+    <string name="pack_background_title">Preparing offline pack</string>
+    <string name="pack_background_downloading">Downloading pack…</string>
+    <string name="pack_storage_details">Storage details</string>
+    <string name="pack_storage_expected">Expected installed: %1$s</string>
+    <string name="pack_storage_transfer">Transfer: %1$s</string>
+    <string name="pack_storage_catalog">Catalog</string>
+    <string name="pack_storage_groups">Groups</string>
+    <string name="pack_storage_metadata">Metadata</string>
+    <string name="pack_storage_archive">Retained pack archive</string>
+    <string name="pack_storage_covers">Covers</string>
+    <string name="pack_storage_physical_total">Physical total</string>
+    <string name="pack_storage_personal_logical">Personal data (logical estimate): %1$s</string>
+    <string name="category_uninstall_keep_data">Uninstall, keep personal data</string>
+    <string name="category_remove_choices">Choose whether to keep your ratings, notes, profiles and settings for a later reinstall. Removing local pack files and covers frees approximately %1$s.</string>
+    <string name="media_all">All</string>
+    <string name="personal_backup_title">Personal data backup</string>
+    <string name="personal_backup_description">Export or restore ratings, settings and custom themes</string>
+    <string name="personal_backup_explanation">Backups are unencrypted JSON with personal data and custom themes only. Your chosen document provider may store or sync them. Catalogs and cover images are never included.</string>
+    <string name="personal_backup_scope_explanation">These actions use only the currently selected package. Every rating keeps its package ID.</string>
+    <string name="personal_backup_scope_explanation_all">RankOfflineAll shares the combined ranking and transfers data from all ready packages. Every rating keeps its original package ID.</string>
+    <string name="personal_backup_export">Export backup</string>
+    <string name="personal_backup_import">Import backup</string>
+    <string name="personal_backup_preview_title">Import personal data?</string>
+    <string name="personal_backup_preview_body">%1$d item ratings, %2$d group ratings and %3$d pack settings were validated.</string>
+    <string name="personal_backup_preview_policy">Merge keeps the newer rating for each item and imports supplied settings. Replace replaces all ratings and the backed-up settings scope.</string>
+    <string name="personal_backup_merge">Merge newer</string>
+    <string name="personal_backup_replace">Replace</string>
+    <string name="personal_backup_exported">Personal data backup exported.</string>
+    <string name="personal_backup_imported">Personal data imported.</string>
+    <string name="personal_backup_invalid">The selected backup is invalid or incompatible.</string>
+    <string name="personal_backup_failed">The backup operation failed.</string>
+    <string name="personal_backup_share">Share backup</string>
+    <string name="personal_backup_share_chooser">Share personal backup</string>
+    <string name="personal_backup_working">Working…</string>
+    <string name="personal_backup_busy">Another personal-data operation is already running.</string>
+    <string name="personal_backup_import_subtitle">Select a JSON file from your device</string><string name="personal_backup_export_subtitle">Save your data as a JSON file</string><string name="personal_backup_share_json">Share JSON backup</string>
+    <string name="ranking_share_title">Share ranking</string><string name="ranking_share_subtitle">Create and share a visual summary</string><string name="ranking_share_chooser">Share ranking image</string><string name="ranking_share_show_images">Show images</string><string name="ranking_share_show_images_description">Include locally available media covers</string><string name="ranking_share_heading">My Top %1$d %2$s</string><string name="ranking_share_failed">The ranking image could not be created.</string><string name="ranking_share_empty">Rate at least one item to create a ranking image.</string><string name="ranking_share_preview_description">Ranking image preview</string><string name="ranking_share_page_indicator">Template %1$d of %2$d%3$s</string><string name="ranking_share_selected">, selected</string>
+    <string name="ranking_share_scope_all">RankOffline</string><string name="ranking_share_scope_anime">Anime</string><string name="ranking_share_scope_manga">Manga</string><string name="ranking_share_scope_movies">Movies</string><string name="ranking_share_scope_series">Series</string><string name="ranking_share_scope_books">Books</string>
+    <string name="personal_backup_replace_confirm_title">Replace personal data?</string><string name="personal_backup_replace_confirm_body">Replace ratings, detailed scores, package settings and profiles covered by this backup. Data from other packages is not deleted.</string>
 </resources>

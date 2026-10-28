@@ -21,17 +21,19 @@ internal class CoverOperationsCoordinator(
     private val genericCoverRepository: GenericMediaCoverRepository,
     private val genericGroupCoverRepository: GenericMediaGroupCoverRepository,
     private val preloadManager: CoverPreloadManager,
-    private val sendMessage: suspend (UserMessage) -> Unit
+    private val sendMessage: suspend (UserMessage) -> Unit,
+    private val onStorageChanged: suspend (MediaType) -> Unit = {}
 ) {
     val progressByMedia: StateFlow<Map<MediaType, CoverPreloadProgress>> =
         preloadManager.progressByMedia
     private val manualPreloadJobs = ConcurrentHashMap<MediaType, Job>()
     private val initialPreloadJobs = ConcurrentHashMap<MediaType, Deferred<CoverPreloadProgress>>()
-    private val manualDownloadJobs = ConcurrentHashMap<String, ManualCoverJob>()
+    private val manualDownloadJobs = ConcurrentHashMap<CoverOperationKey, ManualCoverJob>()
     private var settingsVisible = false
 
     fun download(anime: Anime) {
-        if (manualDownloadJobs.containsKey(anime.id)) return
+        val key = CoverOperationKey(anime.mediaType, anime.id)
+        if (manualDownloadJobs.containsKey(key)) return
         lateinit var job: Job
         job = scope.launch(start = CoroutineStart.LAZY) {
             try {
@@ -45,15 +47,15 @@ internal class CoverOperationsCoordinator(
                     CoverDownloadResult.TemporaryError ->
                         sendMessage(UserMessage.Text(R.string.message_cover_download_failed))
                     CoverDownloadResult.Downloaded,
-                    CoverDownloadResult.AlreadyAvailable,
+                    CoverDownloadResult.AlreadyAvailable -> onStorageChanged(anime.mediaType)
                     CoverDownloadResult.AlreadyInProgress -> Unit
                 }
             } finally {
-                manualDownloadJobs.remove(anime.id, ManualCoverJob(anime.mediaType, job))
+                manualDownloadJobs.remove(key, ManualCoverJob(anime.mediaType, job))
             }
         }
         val operation = ManualCoverJob(anime.mediaType, job)
-        val previous = manualDownloadJobs.putIfAbsent(anime.id, operation)
+        val previous = manualDownloadJobs.putIfAbsent(key, operation)
         if (previous == null) job.start() else job.cancel()
     }
 
@@ -124,6 +126,16 @@ internal class CoverOperationsCoordinator(
         initialPreloadJobs[mediaType]?.cancelAndJoin()
     }
 
+    suspend fun cancelPackAndJoin(mediaType: MediaType) {
+        cancelPreloadAndJoin(mediaType)
+        val jobs = manualDownloadJobs.values
+            .filter { it.mediaType == mediaType }
+            .map(ManualCoverJob::job)
+        jobs.forEach(Job::cancel)
+        jobs.forEach { it.join() }
+        manualDownloadJobs.entries.removeAll { it.value.mediaType == mediaType }
+    }
+
     suspend fun cancelAllAndJoin() {
         val manualPreloads = manualPreloadJobs.values.toList()
         manualPreloads.forEach(Job::cancel)
@@ -156,6 +168,7 @@ internal class CoverOperationsCoordinator(
                 )
             )
             onComplete(deleted)
+            if (deleted) onStorageChanged(anime.mediaType)
         }
     }
 
@@ -171,6 +184,7 @@ internal class CoverOperationsCoordinator(
             val removed = genericCoverRepository.clearDownloadedCovers(mediaType) +
                 genericGroupCoverRepository.clearDownloadedCovers(mediaType)
             genericCoverRepository.clearDownloadedCoverFiles(mediaType)
+            onStorageChanged(mediaType)
             preloadManager.resetProgress(mediaType)
             sendMessage(
                 if (removed == 1) UserMessage.Text(R.string.message_cover_deleted)
@@ -188,6 +202,7 @@ internal class CoverOperationsCoordinator(
         job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 preloadManager.preloadTop(mediaType, limit, oneCoverPerGroup)
+                onStorageChanged(mediaType)
                 if (!settingsVisible) clearTerminalProgress(mediaType)
             } finally {
                 manualPreloadJobs.remove(mediaType, job)
@@ -204,4 +219,5 @@ internal class CoverOperationsCoordinator(
     }
 
     private data class ManualCoverJob(val mediaType: MediaType, val job: Job)
+    private data class CoverOperationKey(val mediaType: MediaType, val canonicalId: String)
 }

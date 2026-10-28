@@ -44,6 +44,7 @@
     <string name="covers_download_rated">下载已评分条目的封面</string>
     <string name="covers_downloading_rated">正在下载封面…</string>
     <string name="covers_download_top">下载前 %1$d 名</string>
+    <string name="covers_continue_top">继续前 %1$d 名</string>
     <string name="covers_one_per_group">每组一张封面</string>
     <string name="covers_one_per_group_description">对组内所有条目使用该组第一个条目的封面。</string>
     <string name="filters_title">筛选</string><string name="filters_active">筛选（%1$d）</string><string name="filters_clear">清除筛选</string><string name="filters_all">全部 / 不筛选</string>
@@ -70,6 +71,9 @@
     <string name="group_entries_count">%1$d 部作品</string>
     <string name="group_calculated">计算得分</string>
     <string name="sort_action">排序</string>
+    <string name="sort_direction_ascending">升序</string>
+    <string name="sort_direction_descending">降序</string>
+    <string name="sort_direction_accessibility">当前顺序：%1$s。点按可切换为%2$s。</string>
     <string name="group_derived_count">计算得分 · 已评分 %1$d/%2$d</string>
     <string name="group_rated_count">已评分 %1$d/%2$d</string>
     <string name="group_unrated">未评分</string>
@@ -103,7 +107,7 @@
 <string name="about_non_affiliation">提供方名称和商标仅用于标识数据来源，不表示隶属、认证或认可。</string><string name="about_trademark_policy">商标政策</string>
 <string name="score_group_title">组评分</string>
 <string name="search_clear">清除搜索</string>
-<string name="popularity_settings_description">人气快照与更新可用性</string><string name="popularity_runtime_unavailable">人气由内置目录提供。此版本不支持在运行时更新该媒体类型的人气。</string><string name="search_more_online">在线搜索更多结果</string><string name="search_online_results">在线结果</string><string name="search_online_loading">正在在线搜索…</string><string name="search_online_empty">没有更多在线结果。</string><string name="search_online_error">在线搜索失败。本地结果仍然可用。</string><string name="action_retry">重试</string><string name="category_selector_title">选择类别</string><string name="category_not_installed">未下载</string><string name="onboarding_welcome_title">欢迎使用 RankOffline!</string><string name="onboarding_welcome_body">按照自己的方式评分并整理动画、漫画、剧集、电影和书籍。</string><string name="onboarding_privacy">你的评分属于你：RankOffline 注重本地运行和隐私。</string><string name="onboarding_choose_style">选择样式</string><string name="onboarding_change_later">之后可随时在设置中更改。</string><string name="onboarding_minimal">极简</string><string name="onboarding_minimal_description">不显示封面的轻量体验。</string><string name="onboarding_with_images">显示图片</string><string name="onboarding_with_images_description">需要下载封面。</string><string name="onboarding_rating_style">评分样式</string><string name="onboarding_rating_simple">简单评分</string><string name="onboarding_rating_simple_description">快速直接地评分。</string><string name="onboarding_rating_elaborated">详细评分</string><string name="onboarding_rating_elaborated_description">详细评价可配置类别。</string><string name="onboarding_start">开始</string><string name="onboarding_categories_title">想从哪里开始？</string><string name="onboarding_categories_subtitle">选择要离线使用的目录。之后可在设置中管理。</string><string name="onboarding_done">完成</string><string name="categories_title">内容包</string><string name="categories_settings_description">下载并管理内容包。</string><string name="categories_storage_title">内容包数据</string><string name="categories_installed_size">已安装 %1$s</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">此版本内置</string><string name="category_downloaded">已下载</string><string name="category_delete">删除类别</string><string name="category_download">下载类别</string><string name="category_included_not_reclaimable">内置目录；无法释放 APK 空间</string><string name="category_remove_catalog">删除目录</string><string name="category_remove_title">删除 %1$s 目录</string><string name="category_remove_confirmation">将删除已下载目录和本地封面，释放约 %1$s。你的评分和个人数据会保留。</string><string name="category_delete_my_data">删除我的数据</string><string name="category_delete_personal_title">删除我的 %1$s 数据</string><string name="category_delete_personal_confirmation">这会永久删除你在 %1$s 中的评分和个人设置，且无法撤销。目录仍会保留。</string><string name="category_delete_personal_action">永久删除</string><string name="category_download_not_configured">此版本未配置目录包托管。</string><string name="category_download_complete">类别已下载，可离线使用。</string><string name="category_pack_invalid">类别包无效或不完整。</string><string name="category_download_unavailable">此版本不提供类别下载。</string><string name="category_catalog_removed">目录已删除，你的评分已保留。</string><string name="category_personal_data_deleted">类别个人数据已删除。</string>
+<string name="popularity_settings_description">人气快照与更新可用性</string><string name="popularity_runtime_unavailable">人气由内置目录提供。此版本不支持在运行时更新该媒体类型的人气。</string><string name="action_retry">重试</string><string name="category_selector_title">选择类别</string><string name="category_not_installed">未下载</string><string name="onboarding_welcome_title">欢迎使用 RankOffline!</string><string name="onboarding_welcome_body">按照自己的方式评分并整理动画、漫画、剧集、电影和书籍。</string><string name="onboarding_privacy">你的评分属于你：RankOffline 注重本地运行和隐私。</string><string name="onboarding_choose_style">选择样式</string><string name="onboarding_change_later">之后可随时在设置中更改。</string><string name="onboarding_minimal">极简</string><string name="onboarding_minimal_description">不显示封面的轻量体验。</string><string name="onboarding_with_images">显示图片</string><string name="onboarding_with_images_description">需要下载封面。</string><string name="onboarding_rating_style">评分样式</string><string name="onboarding_rating_simple">简单评分</string><string name="onboarding_rating_simple_description">快速直接地评分。</string><string name="onboarding_rating_elaborated">详细评分</string><string name="onboarding_rating_elaborated_description">详细评价可配置类别。</string><string name="onboarding_start">开始</string><string name="onboarding_categories_title">想从哪里开始？</string><string name="onboarding_categories_subtitle">选择要离线使用的目录。之后可在设置中管理。</string><string name="onboarding_done">完成</string><string name="categories_title">内容包</string><string name="categories_settings_description">下载并管理内容包。</string><string name="categories_storage_title">内容包数据</string><string name="categories_installed_size">已安装 %1$s</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">此版本内置</string><string name="category_downloaded">已下载</string><string name="category_delete">删除类别</string><string name="category_download">下载类别</string><string name="category_included_not_reclaimable">内置目录；无法释放 APK 空间</string><string name="category_remove_catalog">删除目录</string><string name="category_remove_title">删除 %1$s 目录</string><string name="category_remove_confirmation">将删除已下载目录和本地封面，释放约 %1$s。你的评分和个人数据会保留。</string><string name="category_delete_my_data">删除我的数据</string><string name="category_delete_personal_title">删除我的 %1$s 数据</string><string name="category_delete_personal_confirmation">这会永久删除你在 %1$s 中的评分和个人设置，且无法撤销。目录仍会保留。</string><string name="category_delete_personal_action">永久删除</string><string name="category_download_not_configured">此版本未配置目录包托管。</string><string name="category_download_complete">类别已下载，可离线使用。</string><string name="category_pack_invalid">类别包无效或不完整。</string><string name="category_download_unavailable">此版本不提供类别下载。</string><string name="category_catalog_removed">目录已删除，你的评分已保留。</string><string name="category_personal_data_deleted">类别个人数据已删除。</string>
     <string name="settings_display_description">外观与图片显示</string>
     <string name="settings_theme_title">主题</string>
     <string name="settings_theme_description">选择应用的配色方案</string>
@@ -146,7 +150,7 @@
 <string name="category_phase_importing_catalog">正在导入目录…</string>
 <string name="category_phase_importing_groups">正在准备合并…</string>
 <string name="category_phase_downloading_covers">正在下载封面：%1$d / %2$d</string>
-<string name="category_phase_retrying_covers">正在重试封面：%1$d / %2$d</string>
+
 <string name="category_deleting">正在删除…</string>
 <string name="category_phase_finalizing">正在完成…</string>
 <string name="category_pack_runtime_error">无法准备目录。点按重试。</string>
@@ -167,7 +171,7 @@
     <string name="color_picker_hue">色相</string>
     <string name="loading_list">正在加载列表…</string>
     <string name="covers_preparing_list">正在准备封面列表…</string>
-    <string name="covers_retrying_failed">正在重试失败的封面…</string>
+
     <string name="covers_operation_busy">此内容包已有封面操作正在进行。</string>
     <string name="covers_progress_details_explicit">已下载 %1$d · 不可用 %2$d · 失败 %3$d</string>
     <string name="merge_book_series">合并图书系列</string>
@@ -184,4 +188,44 @@
     <string name="book_genre_science_technology">科学与技术</string>
     <string name="book_genre_philosophy">哲学</string>
     <string name="book_genre_other">其他 / 未分类</string>
+    <string name="pack_background_channel">内容包操作</string>
+    <string name="pack_background_title">正在准备离线内容包</string>
+    <string name="pack_background_downloading">正在下载内容包…</string>
+    <string name="pack_storage_details">存储详情</string>
+    <string name="pack_storage_expected">预计安装大小：%1$s</string>
+    <string name="pack_storage_transfer">传输大小：%1$s</string>
+    <string name="pack_storage_catalog">目录</string>
+    <string name="pack_storage_groups">分组</string>
+    <string name="pack_storage_metadata">元数据</string>
+    <string name="pack_storage_archive">保留的内容包归档</string>
+    <string name="pack_storage_covers">封面</string>
+    <string name="pack_storage_physical_total">物理总量</string>
+    <string name="pack_storage_personal_logical">个人数据（逻辑估算）：%1$s</string>
+    <string name="category_uninstall_keep_data">卸载并保留个人数据</string>
+    <string name="category_remove_choices">选择是否为以后重新安装保留评分、备注、配置和设置。删除本地内容包文件和封面可释放约 %1$s。</string>
+    <string name="media_all">全部</string>
+    <string name="personal_backup_title">个人数据备份</string>
+    <string name="personal_backup_description">导出或恢复评分、设置和自定义主题</string>
+    <string name="personal_backup_explanation">备份是包含个人数据和自定义主题的未加密 JSON 文件。所选文档提供商可能会存储或同步这些文件。备份不包含目录或封面图片。</string>
+    <string name="personal_backup_scope_explanation">这些操作仅使用当前所选内容包。每条评分都会保留其内容包 ID。</string>
+    <string name="personal_backup_scope_explanation_all">RankOfflineAll 会分享合并排名并传输所有已就绪内容包的数据。每条评分都会保留其原始内容包 ID。</string>
+    <string name="personal_backup_export">导出备份</string>
+    <string name="personal_backup_import">导入备份</string>
+    <string name="personal_backup_preview_title">导入个人数据？</string>
+    <string name="personal_backup_preview_body">已验证 %1$d 个条目评分、%2$d 个分组评分和 %3$d 个内容包设置。</string>
+    <string name="personal_backup_preview_policy">合并会保留每个条目的较新评分并导入所含设置。替换会替换所有评分以及备份范围内的设置。</string>
+    <string name="personal_backup_merge">合并较新数据</string>
+    <string name="personal_backup_replace">替换</string>
+    <string name="personal_backup_exported">个人数据备份已导出。</string>
+    <string name="personal_backup_imported">个人数据已导入。</string>
+    <string name="personal_backup_invalid">所选备份无效或不兼容。</string>
+    <string name="personal_backup_failed">备份操作失败。</string>
+    <string name="personal_backup_share">分享备份</string>
+    <string name="personal_backup_share_chooser">分享个人备份</string>
+    <string name="personal_backup_working">处理中…</string>
+    <string name="personal_backup_busy">已有另一项个人数据操作正在进行。</string>
+    <string name="personal_backup_import_subtitle">从设备选择 JSON 文件</string><string name="personal_backup_export_subtitle">将数据保存为 JSON 文件</string><string name="personal_backup_share_json">分享 JSON 备份</string>
+    <string name="ranking_share_title">分享排名</string><string name="ranking_share_subtitle">创建并分享可视化摘要</string><string name="ranking_share_chooser">分享排名图片</string><string name="ranking_share_show_images">显示图片</string><string name="ranking_share_show_images_description">包含本地可用封面</string><string name="ranking_share_heading">我的 %2$s 前 %1$d 名</string><string name="ranking_share_failed">无法创建排名图片。</string><string name="ranking_share_empty">请至少为一个条目评分以创建排名图片。</string><string name="ranking_share_preview_description">排名图片预览</string><string name="ranking_share_page_indicator">模板 %1$d/%2$d%3$s</string><string name="ranking_share_selected">，已选择</string>
+    <string name="ranking_share_scope_all">RankOffline</string><string name="ranking_share_scope_anime">动画</string><string name="ranking_share_scope_manga">漫画</string><string name="ranking_share_scope_movies">电影</string><string name="ranking_share_scope_series">剧集</string><string name="ranking_share_scope_books">图书</string>
+    <string name="personal_backup_replace_confirm_title">替换个人数据？</string><string name="personal_backup_replace_confirm_body">替换此备份涵盖的评分、详细分数、内容包设置和配置。不会删除其他内容包的数据。</string>
 </resources>

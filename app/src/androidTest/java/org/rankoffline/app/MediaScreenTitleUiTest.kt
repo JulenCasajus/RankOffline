@@ -75,4 +75,32 @@ class MediaScreenTitleUiTest {
             assertTrue(selected != null)
         }
     }
+
+    @Test
+    fun allIsFirstVirtualOptionOnlyWhenEnabledAndKeepsSourcePacksIntact() {
+        var allSelections = 0
+        composeRule.setContent {
+            RankOfflineTheme(AppThemePalette.MIDNIGHT_NEON) {
+                MediaScreenTitle(
+                    title = "RankOffline",
+                    activeMediaType = MediaType.ANIME,
+                    onMediaTypeSelected = {},
+                    availableMediaTypes = setOf(MediaType.ANIME, MediaType.BOOK),
+                    onDownloadPack = {},
+                    allAvailable = true,
+                    allSelected = true,
+                    onAllSelected = { allSelections += 1 }
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("media_screen_title").performClick()
+        composeRule.onNodeWithTag("media_all").assertIsDisplayed().performClick()
+        composeRule.runOnIdle { assertEquals(1, allSelections) }
+
+        composeRule.onNodeWithTag("media_screen_title").performClick()
+        composeRule.onNodeWithTag("media_pack_anime").assertIsDisplayed()
+        composeRule.onNodeWithTag("media_pack_book").assertIsDisplayed()
+        composeRule.onNodeWithTag("media_download_pack").assertIsDisplayed()
+    }
 }

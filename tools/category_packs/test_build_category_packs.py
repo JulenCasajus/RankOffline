@@ -2,11 +2,48 @@ import hashlib
 import json
 import unittest
 import zipfile
+import struct
+import tempfile
+from pathlib import Path
 
 import build_category_packs as packs
 
 
 class CategoryPackBuildTest(unittest.TestCase):
+    def test_optional_share_background_is_declared_and_hashed_as_metadata(self):
+        previous = packs.SHARE_BACKGROUNDS
+        try:
+            with tempfile.TemporaryDirectory() as temp:
+                packs.SHARE_BACKGROUNDS = Path(temp)
+                payload = b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR" + struct.pack(">II", 1080, 1920)
+                (packs.SHARE_BACKGROUNDS / "movies.png").write_bytes(payload)
+                prepared = packs.optional_share_background("movies")
+                self.assertEqual([("metadata/share_background.png", payload)], prepared)
+                specs = [{"path": prepared[0][0], "bytes": len(payload), "sha256": packs.bytes_sha256(payload)}]
+                manifest = packs.pack_manifest("movies", specs)
+                self.assertEqual("metadata/share_background.png", manifest["presentation"]["shareBackground"])
+        finally:
+            packs.SHARE_BACKGROUNDS = previous
+
+    def test_share_background_uses_its_eight_megabyte_limit(self):
+        previous = packs.SHARE_BACKGROUNDS
+        try:
+            with tempfile.TemporaryDirectory() as temp:
+                packs.SHARE_BACKGROUNDS = Path(temp)
+                source = packs.SHARE_BACKGROUNDS / "anime.png"
+                header = b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR" + struct.pack(">II", 1080, 1920)
+                source.write_bytes(header)
+                with source.open("ab") as target:
+                    target.truncate(3 * 1024 * 1024)
+                self.assertEqual(3 * 1024 * 1024, len(packs.optional_share_background("anime")[0][1]))
+
+                with source.open("ab") as target:
+                    target.truncate(8 * 1024 * 1024 + 1)
+                with self.assertRaises(ValueError):
+                    packs.optional_share_background("anime")
+        finally:
+            packs.SHARE_BACKGROUNDS = previous
+
     def test_official_pack_defaults_match_runtime_policy(self):
         manifests = {
             pack_id: packs.pack_manifest(pack_id, [])

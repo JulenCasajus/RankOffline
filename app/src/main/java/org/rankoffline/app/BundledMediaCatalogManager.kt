@@ -19,6 +19,35 @@ class BundledMediaCatalogManager(
     private val itemImporter = GenericMediaCatalogImporter(database)
     private val groupImporter = GenericMediaGroupCatalogImporter(database)
 
+    /** Lightweight durable check used on healthy startup; it never opens the large gzip files. */
+    suspend fun isCurrent(
+        mediaType: MediaType,
+        packManifest: PackManifest? = null
+    ): Boolean = withContext(Dispatchers.IO) {
+        val prefix = mediaType.persistedValue
+        val installedPack = CategoryPackInstaller(
+            File(appContext.filesDir, CategoryPackManager.PACK_ROOT)
+        ).installedDirectory(mediaType)
+        val itemManifest = catalogText(
+            installedPack,
+            "catalog/${prefix}_catalog.manifest.json",
+            "${prefix}_catalog.manifest.json"
+        )?.let(::parseMediaCatalogManifest) ?: return@withContext false
+        if (itemManifest.mediaType != prefix || !itemImporter.isCurrent(itemManifest)) {
+            return@withContext false
+        }
+        if (!mediaType.supportsMerge()) return@withContext true
+        val groupManifest = catalogText(
+            installedPack,
+            "groups/${prefix}_groups.manifest.json",
+            "${prefix}_groups.manifest.json"
+        )?.let(::parseMediaGroupCatalogManifest) ?: return@withContext false
+        groupManifest.mediaType == prefix && groupImporter.isCurrent(
+            groupManifest,
+            packManifest?.groupTypeOrNull()
+        )
+    }
+
     suspend fun importOptional(
         mediaType: MediaType,
         packManifest: PackManifest? = null,
@@ -111,6 +140,9 @@ class BundledMediaCatalogManager(
         installedPack?.let { File(it, packPath).takeIf(File::isFile)?.inputStream() }
             ?: if (bundledCatalogsAvailable) runCatching { assets.open(legacyAssetName) }.getOrNull()
             else null
+
+    private fun catalogText(installedPack: File?, packPath: String, legacyAssetName: String): String? =
+        catalogInput(installedPack, packPath, legacyAssetName)?.bufferedReader()?.use { it.readText() }
 }
 
 private fun catalogManagerElapsedMs(startedAt: Long): Long =

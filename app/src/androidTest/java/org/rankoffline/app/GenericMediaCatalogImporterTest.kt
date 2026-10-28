@@ -73,6 +73,9 @@ class GenericMediaCatalogImporterTest {
             override fun read(): Int = error("A current catalog must not be parsed")
         }
         assertEquals(MediaCatalogImportResult.NoChange, importer.importIfNeeded(manifest, unreadable))
+        assertTrue(importer.isCurrent(manifest))
+        database.mediaCatalogDao().deleteCatalogItems("movie")
+        assertEquals(false, importer.isCurrent(manifest))
     }
 
     @Test

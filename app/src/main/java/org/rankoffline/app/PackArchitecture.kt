@@ -133,7 +133,9 @@ data class PackManifest(
     val subtitle: List<String>,
     val merge: PackMergeDefinition,
     val defaults: PackDefaults,
-    val files: List<PackManifestFile>
+    val files: List<PackManifestFile>,
+    /** Optional integrity-declared, local-only artwork for ranking share cards. */
+    val shareBackground: String? = null
 )
 
 data class PackCoverRecord(val canonicalId: String, val relativePath: String)
@@ -263,6 +265,22 @@ object PackManifestParser {
         require(files.map(PackManifestFile::path).distinct().size == files.size)
         require(files.sumOf(PackManifestFile::bytes) == integrity.getLong("installedBytes"))
         val declaredPaths = files.mapTo(hashSetOf()) { it.path }
+        val shareBackground = root.optJSONObject("presentation")
+            ?.optString("shareBackground")
+            ?.takeIf(String::isNotBlank)
+            ?.also { path ->
+                validateDataPath(path)
+                require(path.startsWith("metadata/") && path in declaredPaths) {
+                    "Share background must be an integrity-declared metadata payload"
+                }
+                require(path.lowercase().endsWith(".png") || path.lowercase().endsWith(".jpg") ||
+                    path.lowercase().endsWith(".jpeg") || path.lowercase().endsWith(".webp")) {
+                    "Unsupported share background image format"
+                }
+                require(files.first { it.path == path }.bytes in 1..MAX_SHARE_BACKGROUND_BYTES) {
+                    "Share background is empty or too large"
+                }
+            }
         val sections = listOf("catalog", "groups", "covers").associateWith { section ->
             root.getJSONArray(section).strings().also { paths -> paths.forEach { path ->
                 validateDataPath(path)
@@ -309,7 +327,8 @@ object PackManifestParser {
                     "oneCoverPerGroup", packId == OfficialPackIds.Series
                 )
             ),
-            files = files
+            files = files,
+            shareBackground = shareBackground
         )
     }
 
@@ -324,6 +343,8 @@ object PackManifestParser {
             "Pack payload path is outside supported data directories"
         }
     }
+
+    internal const val MAX_SHARE_BACKGROUND_BYTES = 8L * 1024L * 1024L
 
 }
 
@@ -353,6 +374,17 @@ fun PackManifest.creditRole(): String? = filters.firstNotNullOfOrNull { filter -
 
 fun PackManifest.groupTypeOrNull(): String? = merge.groupType.takeIf {
     capabilities.merge && merge.enabled && merge.strategy != PackMergeStrategy.NONE
+}
+
+fun PackManifest.resolveShareBackground(installedDirectory: File): File? {
+    val relative = shareBackground ?: return null
+    val resolved = File(installedDirectory, relative)
+    val root = installedDirectory.canonicalFile
+    val canonical = resolved.canonicalFile
+    if (!canonical.path.startsWith(root.path + File.separator) || !canonical.isFile ||
+        canonical.length() !in 1..PackManifestParser.MAX_SHARE_BACKGROUND_BYTES
+    ) return null
+    return canonical
 }
 
 /** Bootstrap metadata used before a pack is installed; installed manifests use the same fields. */

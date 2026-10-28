@@ -2,11 +2,16 @@ package org.rankoffline.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,7 +60,10 @@ fun MediaScreenTitle(
     modifier: Modifier = Modifier,
     availableMediaTypes: Set<MediaType> = MediaType.entries.toSet(),
     onDownloadPack: () -> Unit,
-    noPacksInstalled: Boolean = false
+    noPacksInstalled: Boolean = false,
+    allAvailable: Boolean = false,
+    allSelected: Boolean = false,
+    onAllSelected: () -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
     val titleStyle = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold)
@@ -78,7 +86,11 @@ fun MediaScreenTitle(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = if (noPacksInstalled) AnnotatedString(title) else mediaScreenTitle(
+                text = if (noPacksInstalled) AnnotatedString(title) else if (allSelected) mediaScreenTitle(
+                    title,
+                    stringResource(R.string.media_all),
+                    MaterialTheme.colorScheme.onBackground
+                ) else mediaScreenTitle(
                     title, localizedLabels.getValue(activeMediaType), activeMediaType.accentColor
                 ),
                 style = titleStyle,
@@ -90,7 +102,7 @@ fun MediaScreenTitle(
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null,
-                tint = if (noPacksInstalled) MaterialTheme.colorScheme.onBackground
+                tint = if (noPacksInstalled || allSelected) MaterialTheme.colorScheme.onBackground
                 else activeMediaType.accentColor
             )
         }
@@ -106,15 +118,62 @@ fun MediaScreenTitle(
                 tonalElevation = 8.dp,
                 modifier = Modifier.fillMaxWidth(0.9f)
             ) {
-                Column(Modifier.padding(16.dp)) {
+                BoxWithConstraints {
+                Column(
+                    Modifier
+                        .heightIn(max = maxHeight * 0.86f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
                     Text(
                         text = stringResource(R.string.category_selector_title),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
                     )
+                    if (allAvailable) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (allSelected) {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                                } else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("media_all")
+                                .padding(vertical = 4.dp)
+                                .selectable(selected = allSelected, role = Role.RadioButton) {
+                                    expanded = false
+                                    onAllSelected()
+                                }
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = mediaScreenTitle(
+                                        appName,
+                                        stringResource(R.string.media_all),
+                                        MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 18.sp
+                                )
+                                Spacer(Modifier.weight(1f))
+                                if (allSelected) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
                     menuOptions.forEach { mediaType ->
-                        val selected = mediaType == activeMediaType
+                        val selected = !allSelected && mediaType == activeMediaType
                         Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = if (selected) mediaType.accentColor.copy(alpha = 0.14f)
@@ -125,7 +184,7 @@ fun MediaScreenTitle(
                                 .fillMaxWidth()
                                 .testTag("media_pack_${mediaType.persistedValue}")
                                 .padding(vertical = 4.dp)
-                                .clickable(role = Role.Button) {
+                                .selectable(selected = selected, role = Role.RadioButton) {
                                     expanded = false
                                     onMediaTypeSelected(mediaType)
                                 }
@@ -184,6 +243,7 @@ fun MediaScreenTitle(
                             )
                         }
                     }
+                }
                 }
             }
         }

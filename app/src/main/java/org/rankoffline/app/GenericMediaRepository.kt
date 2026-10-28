@@ -2,14 +2,27 @@ package org.rankoffline.app
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
-import androidx.room.withTransaction
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 data class GenericMediaRatingSave(
     val rating: MediaRatingEntity,
     val scores: List<MediaRatingScoreEntity>
+)
+
+internal data class AllCatalogCursor(
+    val offsets: Map<MediaType, Int> = emptyMap(),
+    val exhausted: Set<MediaType> = emptySet(),
+    val nextPopularityPack: Int = 0
+)
+
+internal data class AllCatalogPage(
+    val entries: List<MediaListEntry>,
+    val nextCursor: AllCatalogCursor,
+    val hasMore: Boolean
 )
 
 internal fun buildGenericElaborateRating(
@@ -122,7 +135,6 @@ class GenericMediaRepository(
         limit: Int = 200,
         offset: Int = 0
     ): List<MediaListEntry> = timedRead(mediaType, "search") {
-        requireIntegratedMediaType(mediaType)
         val role = packManifest(mediaType)?.creditRole() ?: mediaType.genericFilterCreditRole()
         val packId = mediaType.toPackId().value
         val configuredGroupType = packManifest(mediaType)?.groupTypeOrNull()
@@ -181,6 +193,89 @@ class GenericMediaRepository(
         ).also { logReadPhase(mediaType, "search-cover-identities", coversStarted) }
     }
 
+    /**
+     * Cursor-based virtual page. Source queries are bounded by [limit], so deep scrolling does
+     * not reload every preceding row from every pack.
+     */
+    internal suspend fun searchAllPage(
+        mediaTypes: List<MediaType>,
+        query: String,
+        sortOrder: CatalogSortOrder,
+        filters: GenericMediaFilters,
+        mergeByMedia: Map<MediaType, Boolean>,
+        limit: Int,
+        cursor: AllCatalogCursor = AllCatalogCursor()
+    ): AllCatalogPage = coroutineScope {
+        require(limit > 0)
+        if (mediaTypes.isEmpty()) {
+            return@coroutineScope AllCatalogPage(emptyList(), cursor, hasMore = false)
+        }
+        val pages = mediaTypes.filterNot { it in cursor.exhausted }.associateWith { mediaType ->
+            async {
+                search(
+                    mediaType = mediaType,
+                    query = query,
+                    sortOrder = sortOrder,
+                    filters = filters,
+                    mergeEnabled = mergeByMedia[mediaType] == true,
+                    limit = limit,
+                    offset = cursor.offsets[mediaType] ?: 0
+                )
+            }
+        }.mapValues { it.value.await() }
+        mergeAllCatalogPage(mediaTypes, pages, sortOrder, limit, cursor)
+    }
+
+    suspend fun rankingAll(
+        mediaTypes: List<MediaType>,
+        filters: GenericMediaFilters,
+        sortOrder: RankingSortOrder,
+        categoryId: String?,
+        descending: Boolean,
+        mergeByMedia: Map<MediaType, Boolean>
+    ): List<MediaListEntry> = coroutineScope {
+        val startedAt = System.nanoTime()
+        val result = mediaTypes.map { mediaType ->
+            async {
+                ranking(
+                    mediaType,
+                    filters,
+                    sortOrder,
+                    categoryId,
+                    descending,
+                    mergeByMedia[mediaType] == true
+                )
+            }
+        }.flatMap { it.await() }.sortedWith { left, right ->
+            val leftScore = left.rankingScore(sortOrder)
+            val rightScore = right.rankingScore(sortOrder)
+            when {
+                leftScore == null && rightScore == null -> 0
+                leftScore == null -> 1
+                rightScore == null -> -1
+                else -> {
+                    val score = if (descending) rightScore.compareTo(leftScore)
+                    else leftScore.compareTo(rightScore)
+                    if (score != 0) score else compareValuesBy(
+                        left,
+                        right,
+                        { it.title.lowercase() },
+                        { it.mediaType.persistedValue },
+                        { it.id }
+                    )
+                }
+            }
+        }
+        if (BuildConfig.DEBUG) {
+            Log.d(
+                CATALOG_LOG_TAG,
+                "scope=all operation=ranking packs=${mediaTypes.size} rows=${result.size} " +
+                    "elapsedMs=${(System.nanoTime() - startedAt) / 1_000_000L}"
+            )
+        }
+        result
+    }
+
     private suspend fun List<MediaListEntry>.withMatchingAliasTitles(
         query: String
     ): List<MediaListEntry> {
@@ -209,7 +304,6 @@ class GenericMediaRepository(
         descending: Boolean,
         mergeEnabled: Boolean
     ): List<MediaListEntry> = timedRead(mediaType, "ranking") {
-        requireIntegratedMediaType(mediaType)
         val role = packManifest(mediaType)?.creditRole() ?: mediaType.genericFilterCreditRole()
         val packId = mediaType.toPackId().value
         val configuredGroupType = packManifest(mediaType)?.groupTypeOrNull()
@@ -266,7 +360,6 @@ class GenericMediaRepository(
 
     suspend fun filterOptions(mediaType: MediaType): GenericMediaFilterOptions =
         withContext(Dispatchers.IO) {
-            requireIntegratedMediaType(mediaType)
             val role = packManifest(mediaType)?.creditRole() ?: mediaType.genericFilterCreditRole()
             GenericMediaFilterOptions(
                 genres = dao.genres(mediaType.persistedValue),
@@ -285,6 +378,12 @@ class GenericMediaRepository(
         entity.toDomain(dao.rating(mediaType.toPackId().value, mediaId))
     }
 
+    suspend fun localCoverPaths(mediaIds: Collection<String>): Map<String, String> = withContext(Dispatchers.IO) {
+        mediaIds.distinct().chunked(SQLITE_ID_BATCH).flatMap { dao.coverPaths(it) }
+            .mapNotNull { row -> row.localCoverPath?.let { row.mediaId to it } }
+            .toMap()
+    }
+
     suspend fun upsertItem(item: MediaItemEntity) = withContext(Dispatchers.IO) {
         requireGenericMediaType(item.mediaType)
         dao.upsertItem(item)
@@ -296,17 +395,14 @@ class GenericMediaRepository(
     }
 
     suspend fun deleteCatalogReferenceData(mediaType: MediaType) = withContext(Dispatchers.IO) {
-        requireIntegratedMediaType(mediaType)
         catalogDao.deleteCatalogReferenceData(mediaType.persistedValue)
     }
 
     suspend fun deleteAllPersonalData(mediaType: MediaType) = withContext(Dispatchers.IO) {
-        requireIntegratedMediaType(mediaType)
         catalogDao.deletePersonalData(mediaType.toPackId().value)
     }
 
     suspend fun purgePackData(mediaType: MediaType) = withContext(Dispatchers.IO) {
-        requireIntegratedMediaType(mediaType)
         catalogDao.purgePackData(
             mediaType.persistedValue,
             mediaType.toPackId().value
@@ -544,12 +640,104 @@ private data class SharedCoverCache(
     val groups: Map<String, String>
 )
 
+internal fun mergeAllCatalogPage(
+    mediaTypes: List<MediaType>,
+    pages: Map<MediaType, List<MediaListEntry>>,
+    sortOrder: CatalogSortOrder,
+    limit: Int,
+    cursor: AllCatalogCursor
+): AllCatalogPage {
+    require(limit > 0)
+    val consumed = mediaTypes.associateWithTo(linkedMapOf()) { 0 }
+    val exhausted = cursor.exhausted.toMutableSet()
+    val result = ArrayList<MediaListEntry>(limit)
+    var nextPopularityPack = cursor.nextPopularityPack.coerceAtLeast(0)
+
+    if (sortOrder == CatalogSortOrder.POPULARITY ||
+        sortOrder == CatalogSortOrder.POPULARITY_REVERSE
+    ) {
+        var withoutEmission = 0
+        while (result.size < limit && withoutEmission < mediaTypes.size) {
+            val index = nextPopularityPack % mediaTypes.size
+            val mediaType = mediaTypes[index]
+            nextPopularityPack = (index + 1) % mediaTypes.size
+            val page = pages[mediaType].orEmpty()
+            val position = consumed.getValue(mediaType)
+            if (mediaType !in exhausted && position < page.size) {
+                result += page[position]
+                consumed[mediaType] = position + 1
+                withoutEmission = 0
+            } else {
+                if (page.size < limit && position >= page.size) exhausted += mediaType
+                withoutEmission++
+            }
+        }
+    } else {
+        val comparator = allTitleComparator(sortOrder)
+        while (result.size < limit) {
+            val next = mediaTypes.asSequence()
+                .filterNot { it in exhausted }
+                .mapNotNull { mediaType ->
+                    pages[mediaType]?.getOrNull(consumed.getValue(mediaType))
+                        ?.let { mediaType to it }
+                }
+                .minWithOrNull { left, right -> comparator.compare(left.second, right.second) }
+                ?: break
+            result += next.second
+            consumed[next.first] = consumed.getValue(next.first) + 1
+        }
+    }
+
+    mediaTypes.forEach { mediaType ->
+        val page = pages[mediaType].orEmpty()
+        if (page.size < limit && consumed.getValue(mediaType) >= page.size) {
+            exhausted += mediaType
+        }
+    }
+    val offsets = cursor.offsets.toMutableMap()
+    consumed.forEach { (mediaType, count) ->
+        if (count > 0) offsets[mediaType] = (offsets[mediaType] ?: 0) + count
+    }
+    return AllCatalogPage(
+        entries = result,
+        nextCursor = AllCatalogCursor(offsets, exhausted, nextPopularityPack),
+        hasMore = mediaTypes.any { it !in exhausted }
+    )
+}
+
+private fun allTitleComparator(sortOrder: CatalogSortOrder): Comparator<MediaListEntry> =
+    Comparator { left, right ->
+        // Match SQLite's built-in NOCASE collation (ASCII folding over UTF-8 bytes) so each
+        // per-pack page is a valid input for this k-way merge, including non-ASCII titles.
+        val title = sqliteNoCaseCompare(left.title, right.title)
+        val orderedTitle = if (sortOrder == CatalogSortOrder.TITLE_DESC) -title else title
+        if (orderedTitle != 0) orderedTitle
+        else compareValuesBy(
+            left,
+            right,
+            { it.mediaType.persistedValue },
+            { it.id }
+        )
+    }
+
+private fun sqliteNoCaseCompare(left: String, right: String): Int {
+    val a = left.encodeToByteArray()
+    val b = right.encodeToByteArray()
+    val common = minOf(a.size, b.size)
+    for (index in 0 until common) {
+        val comparison = sqliteNoCaseByte(a[index]).compareTo(sqliteNoCaseByte(b[index]))
+        if (comparison != 0) return comparison
+    }
+    return a.size.compareTo(b.size)
+}
+
+private fun sqliteNoCaseByte(value: Byte): Int {
+    val unsigned = value.toInt() and 0xFF
+    return if (unsigned in 0x41..0x5A) unsigned + 0x20 else unsigned
+}
+
 private const val SQLITE_ID_BATCH = 900
 private const val CATALOG_LOG_TAG = "RankOfflineCatalog"
-
-private fun requireIntegratedMediaType(mediaType: MediaType) {
-    require(mediaType in MediaType.entries)
-}
 
 private fun MediaListEntry.rankingScore(sortOrder: RankingSortOrder): Double? = when (sortOrder) {
     RankingSortOrder.FINAL_SCORE -> finalScore
@@ -557,45 +745,6 @@ private fun MediaListEntry.rankingScore(sortOrder: RankingSortOrder): Double? = 
     RankingSortOrder.PERSONAL_TASTE -> additiveScore?.times(10.0)
     RankingSortOrder.CATEGORY_SCORE -> categoryScore
 }?.takeIf { it.isFinite() && it in RATING_MIN..RATING_MAX }
-
-private fun sortCatalogEntries(
-    entries: List<MediaListEntry>,
-    sortOrder: CatalogSortOrder
-): List<MediaListEntry> = when (sortOrder) {
-    CatalogSortOrder.TITLE_ASC -> entries.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
-    CatalogSortOrder.TITLE_DESC -> entries.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.title })
-    CatalogSortOrder.POPULARITY,
-    CatalogSortOrder.POPULARITY_REVERSE -> entries.sortedWith { left, right ->
-        fun MediaListEntry.popularity() = when (this) {
-            is MediaListEntry.Item -> value.popularity
-            is MediaListEntry.Group -> popularity
-        }
-        fun MediaListEntry.popularityRank() = when (this) {
-            is MediaListEntry.Item -> value.popularityRank
-            is MediaListEntry.Group -> popularityRank
-        }
-        val leftRank = left.popularityRank()
-        val rightRank = right.popularityRank()
-        val rankComparison = when {
-            leftRank == null && rightRank == null -> 0
-            leftRank == null -> 1
-            rightRank == null -> -1
-            sortOrder == CatalogSortOrder.POPULARITY -> leftRank.compareTo(rightRank)
-            else -> rightRank.compareTo(leftRank)
-        }
-        if (rankComparison != 0) return@sortedWith rankComparison
-        val a = left.popularity()
-        val b = right.popularity()
-        val score = when {
-            a == null && b == null -> 0
-            a == null -> 1
-            b == null -> -1
-            sortOrder == CatalogSortOrder.POPULARITY -> b.compareTo(a)
-            else -> a.compareTo(b)
-        }
-        if (score != 0) score else compareValuesBy(left, right, { it.title.lowercase() }, { it.id })
-    }
-}
 
 internal fun requireGenericMediaType(persistedType: String) {
     val mediaType = MediaType.entries.firstOrNull { it.persistedValue == persistedType }

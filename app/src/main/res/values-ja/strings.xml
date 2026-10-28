@@ -44,6 +44,7 @@
     <string name="covers_download_rated">評価済み項目のカバーをダウンロード</string>
     <string name="covers_downloading_rated">カバーをダウンロード中…</string>
     <string name="covers_download_top">トップ%1$dをダウンロード</string>
+    <string name="covers_continue_top">トップ%1$dを続行</string>
     <string name="covers_one_per_group">グループごとに1つのカバー</string>
     <string name="covers_one_per_group_description">グループの最初の項目のカバーを、そのグループ内のすべての項目に使用します。</string>
     <string name="filters_title">フィルター</string><string name="filters_active">フィルター（%1$d）</string><string name="filters_clear">フィルターをクリア</string><string name="filters_all">すべて / フィルターなし</string>
@@ -70,6 +71,9 @@
     <string name="group_entries_count">%1$d作品</string>
     <string name="group_calculated">算出値</string>
     <string name="sort_action">並べ替え</string>
+    <string name="sort_direction_ascending">昇順</string>
+    <string name="sort_direction_descending">降順</string>
+    <string name="sort_direction_accessibility">現在の順序: %1$s。タップして%2$sに変更します。</string>
     <string name="group_derived_count">算出値 · %1$d/%2$d作品を評価済み</string>
     <string name="group_rated_count">%1$d/%2$d作品を評価済み</string>
     <string name="group_unrated">未評価</string>
@@ -103,7 +107,7 @@
 <string name="about_non_affiliation">提供元の名称と商標はデータ源を示すもので、提携、認証、推奨を意味しません。</string><string name="about_trademark_policy">商標ポリシー</string>
 <string name="score_group_title">グループスコア</string>
 <string name="search_clear">検索をクリア</string>
-<string name="popularity_settings_description">人気度スナップショットと更新の可否</string><string name="popularity_runtime_unavailable">人気度は同梱カタログから提供されます。このビルドでは、このメディア種別の実行時更新は利用できません。</string><string name="search_more_online">オンラインでさらに検索</string><string name="search_online_results">オンラインの結果</string><string name="search_online_loading">オンラインで検索中…</string><string name="search_online_empty">これ以上オンラインの結果はありません。</string><string name="search_online_error">オンライン検索に失敗しました。ローカルの結果は引き続き利用できます。</string><string name="action_retry">再試行</string><string name="category_selector_title">カテゴリーを選択</string><string name="category_not_installed">未ダウンロード</string><string name="onboarding_welcome_title">RankOfflineへようこそ!</string><string name="onboarding_welcome_body">アニメ、マンガ、シリーズ、映画、本を自分らしく評価・整理できます。</string><string name="onboarding_privacy">評価はあなたのものです。RankOfflineはローカルでプライバシーを守って動作します。</string><string name="onboarding_choose_style">スタイルを選択</string><string name="onboarding_change_later">設定からいつでも変更できます。</string><string name="onboarding_minimal">ミニマル</string><string name="onboarding_minimal_description">表紙なしの軽量表示です。</string><string name="onboarding_with_images">画像あり</string><string name="onboarding_with_images_description">表紙のダウンロードが必要です。</string><string name="onboarding_rating_style">評価スタイル</string><string name="onboarding_rating_simple">シンプル評価</string><string name="onboarding_rating_simple_description">すばやく直接採点します。</string><string name="onboarding_rating_elaborated">詳細評価</string><string name="onboarding_rating_elaborated_description">設定可能なカテゴリーを詳しく評価します。</string><string name="onboarding_start">始める</string><string name="onboarding_categories_title">どこから始めますか？</string><string name="onboarding_categories_subtitle">使用するオフラインカタログを選択してください。後で設定から管理できます。</string><string name="onboarding_done">完了</string><string name="categories_title">パッケージ</string><string name="categories_settings_description">パッケージをダウンロードして管理します。</string><string name="categories_storage_title">パッケージデータ</string><string name="categories_installed_size">インストール済み %1$s</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">このビルドに同梱</string><string name="category_downloaded">ダウンロード済み</string><string name="category_delete">カテゴリーを削除</string><string name="category_download">カテゴリーをダウンロード</string><string name="category_included_not_reclaimable">同梱カタログのAPK容量は解放できません</string><string name="category_remove_catalog">カタログを削除</string><string name="category_remove_title">%1$s カタログを削除</string><string name="category_remove_confirmation">カタログとローカル表紙を削除し、約 %1$s を解放します。評価と個人データは保持されます。</string><string name="category_delete_my_data">自分のデータを削除</string><string name="category_delete_personal_title">%1$s の個人データを削除</string><string name="category_delete_personal_confirmation">%1$s の評価と個人設定を完全に削除します。元に戻せません。カタログは残ります。</string><string name="category_delete_personal_action">完全に削除</string><string name="category_download_not_configured">このビルドではパック配信先が設定されていません。</string><string name="category_download_complete">カテゴリーをダウンロードし、オフラインで利用できます。</string><string name="category_pack_invalid">カテゴリーパックが無効または不完全です。</string><string name="category_download_unavailable">このビルドではカテゴリーをダウンロードできません。</string><string name="category_catalog_removed">カタログを削除しました。評価は保持されています。</string><string name="category_personal_data_deleted">カテゴリーの個人データを削除しました。</string>
+<string name="popularity_settings_description">人気度スナップショットと更新の可否</string><string name="popularity_runtime_unavailable">人気度は同梱カタログから提供されます。このビルドでは、このメディア種別の実行時更新は利用できません。</string><string name="action_retry">再試行</string><string name="category_selector_title">カテゴリーを選択</string><string name="category_not_installed">未ダウンロード</string><string name="onboarding_welcome_title">RankOfflineへようこそ!</string><string name="onboarding_welcome_body">アニメ、マンガ、シリーズ、映画、本を自分らしく評価・整理できます。</string><string name="onboarding_privacy">評価はあなたのものです。RankOfflineはローカルでプライバシーを守って動作します。</string><string name="onboarding_choose_style">スタイルを選択</string><string name="onboarding_change_later">設定からいつでも変更できます。</string><string name="onboarding_minimal">ミニマル</string><string name="onboarding_minimal_description">表紙なしの軽量表示です。</string><string name="onboarding_with_images">画像あり</string><string name="onboarding_with_images_description">表紙のダウンロードが必要です。</string><string name="onboarding_rating_style">評価スタイル</string><string name="onboarding_rating_simple">シンプル評価</string><string name="onboarding_rating_simple_description">すばやく直接採点します。</string><string name="onboarding_rating_elaborated">詳細評価</string><string name="onboarding_rating_elaborated_description">設定可能なカテゴリーを詳しく評価します。</string><string name="onboarding_start">始める</string><string name="onboarding_categories_title">どこから始めますか？</string><string name="onboarding_categories_subtitle">使用するオフラインカタログを選択してください。後で設定から管理できます。</string><string name="onboarding_done">完了</string><string name="categories_title">パッケージ</string><string name="categories_settings_description">パッケージをダウンロードして管理します。</string><string name="categories_storage_title">パッケージデータ</string><string name="categories_installed_size">インストール済み %1$s</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">このビルドに同梱</string><string name="category_downloaded">ダウンロード済み</string><string name="category_delete">カテゴリーを削除</string><string name="category_download">カテゴリーをダウンロード</string><string name="category_included_not_reclaimable">同梱カタログのAPK容量は解放できません</string><string name="category_remove_catalog">カタログを削除</string><string name="category_remove_title">%1$s カタログを削除</string><string name="category_remove_confirmation">カタログとローカル表紙を削除し、約 %1$s を解放します。評価と個人データは保持されます。</string><string name="category_delete_my_data">自分のデータを削除</string><string name="category_delete_personal_title">%1$s の個人データを削除</string><string name="category_delete_personal_confirmation">%1$s の評価と個人設定を完全に削除します。元に戻せません。カタログは残ります。</string><string name="category_delete_personal_action">完全に削除</string><string name="category_download_not_configured">このビルドではパック配信先が設定されていません。</string><string name="category_download_complete">カテゴリーをダウンロードし、オフラインで利用できます。</string><string name="category_pack_invalid">カテゴリーパックが無効または不完全です。</string><string name="category_download_unavailable">このビルドではカテゴリーをダウンロードできません。</string><string name="category_catalog_removed">カタログを削除しました。評価は保持されています。</string><string name="category_personal_data_deleted">カテゴリーの個人データを削除しました。</string>
     <string name="settings_display_description">外観と画像表示</string>
     <string name="settings_theme_title">テーマ</string>
     <string name="settings_theme_description">アプリのカラーパレットを選択</string>
@@ -146,7 +150,7 @@
 <string name="category_phase_importing_catalog">カタログを読み込み中…</string>
 <string name="category_phase_importing_groups">統合を準備中…</string>
 <string name="category_phase_downloading_covers">カバーをダウンロード中：%1$d / %2$d</string>
-<string name="category_phase_retrying_covers">カバーを再試行中：%1$d / %2$d</string>
+
 <string name="category_deleting">削除中…</string>
 <string name="category_phase_finalizing">完了処理中…</string>
 <string name="category_pack_runtime_error">カタログを準備できませんでした。タップして再試行してください。</string>
@@ -167,7 +171,7 @@
     <string name="color_picker_hue">色相</string>
     <string name="loading_list">リストを読み込み中…</string>
     <string name="covers_preparing_list">カバー一覧を準備中…</string>
-    <string name="covers_retrying_failed">失敗したカバーを再試行中…</string>
+
     <string name="covers_operation_busy">このパックではカバー処理がすでに実行中です。</string>
     <string name="covers_progress_details_explicit">ダウンロード済み %1$d · 利用不可 %2$d · 失敗 %3$d</string>
     <string name="merge_book_series">シリーズ作品を統合</string>
@@ -184,4 +188,44 @@
     <string name="book_genre_science_technology">科学・技術</string>
     <string name="book_genre_philosophy">哲学</string>
     <string name="book_genre_other">その他・未分類</string>
+    <string name="pack_background_channel">パック操作</string>
+    <string name="pack_background_title">オフラインパックを準備中</string>
+    <string name="pack_background_downloading">パックをダウンロード中…</string>
+    <string name="pack_storage_details">ストレージの詳細</string>
+    <string name="pack_storage_expected">インストール予定: %1$s</string>
+    <string name="pack_storage_transfer">転送量: %1$s</string>
+    <string name="pack_storage_catalog">カタログ</string>
+    <string name="pack_storage_groups">グループ</string>
+    <string name="pack_storage_metadata">メタデータ</string>
+    <string name="pack_storage_archive">保持されたパックアーカイブ</string>
+    <string name="pack_storage_covers">カバー</string>
+    <string name="pack_storage_physical_total">物理合計</string>
+    <string name="pack_storage_personal_logical">個人データ（論理推定）: %1$s</string>
+    <string name="category_uninstall_keep_data">個人データを残してアンインストール</string>
+    <string name="category_remove_choices">評価、メモ、プロフィール、設定を再インストール用に残すか選択します。ローカルのパックファイルとカバーを削除すると約 %1$s 解放されます。</string>
+    <string name="media_all">すべて</string>
+    <string name="personal_backup_title">個人データのバックアップ</string>
+    <string name="personal_backup_description">評価、設定、カスタムテーマをエクスポートまたは復元</string>
+    <string name="personal_backup_explanation">バックアップは個人データとカスタムテーマを含む暗号化されていない JSON ファイルです。選択したドキュメントプロバイダーが保存または同期する場合があります。カタログやカバー画像は含まれません。</string>
+    <string name="personal_backup_scope_explanation">これらの操作では現在選択中のパックのみを使用します。各評価には元のパック ID が保持されます。</string>
+    <string name="personal_backup_scope_explanation_all">RankOfflineAll は統合ランキングを共有し、準備済みの全パックのデータを転送します。各評価には元のパック ID が保持されます。</string>
+    <string name="personal_backup_export">バックアップをエクスポート</string>
+    <string name="personal_backup_import">バックアップをインポート</string>
+    <string name="personal_backup_preview_title">個人データをインポートしますか？</string>
+    <string name="personal_backup_preview_body">%1$d 件の個別評価、%2$d 件のグループ評価、%3$d パックの設定を検証しました。</string>
+    <string name="personal_backup_preview_policy">統合では各項目の新しい評価を保持し、含まれる設定を取り込みます。置き換えではすべての評価とバックアップ対象の設定を置き換えます。</string>
+    <string name="personal_backup_merge">新しいデータを統合</string>
+    <string name="personal_backup_replace">置き換え</string>
+    <string name="personal_backup_exported">個人データのバックアップをエクスポートしました。</string>
+    <string name="personal_backup_imported">個人データをインポートしました。</string>
+    <string name="personal_backup_invalid">選択したバックアップは無効または非互換です。</string>
+    <string name="personal_backup_failed">バックアップ操作に失敗しました。</string>
+    <string name="personal_backup_share">バックアップを共有</string>
+    <string name="personal_backup_share_chooser">個人バックアップを共有</string>
+    <string name="personal_backup_working">処理中…</string>
+    <string name="personal_backup_busy">別の個人データ操作がすでに実行中です。</string>
+    <string name="personal_backup_import_subtitle">端末からJSONファイルを選択</string><string name="personal_backup_export_subtitle">データをJSONファイルとして保存</string><string name="personal_backup_share_json">JSONバックアップを共有</string>
+    <string name="ranking_share_title">ランキングを共有</string><string name="ranking_share_subtitle">ビジュアルサマリーを作成して共有</string><string name="ranking_share_chooser">ランキング画像を共有</string><string name="ranking_share_show_images">画像を表示</string><string name="ranking_share_show_images_description">端末にあるカバーを含める</string><string name="ranking_share_heading">私の%2$sトップ%1$d</string><string name="ranking_share_failed">ランキング画像を作成できませんでした。</string><string name="ranking_share_empty">ランキング画像を作成するには1件以上評価してください。</string><string name="ranking_share_preview_description">ランキング画像のプレビュー</string><string name="ranking_share_page_indicator">テンプレート%1$d/%2$d%3$s</string><string name="ranking_share_selected">、選択中</string>
+    <string name="ranking_share_scope_all">RankOffline</string><string name="ranking_share_scope_anime">アニメ</string><string name="ranking_share_scope_manga">マンガ</string><string name="ranking_share_scope_movies">映画</string><string name="ranking_share_scope_series">シリーズ</string><string name="ranking_share_scope_books">本</string>
+    <string name="personal_backup_replace_confirm_title">個人データを置き換えますか？</string><string name="personal_backup_replace_confirm_body">このバックアップに含まれる評価、詳細スコア、パック設定、プロフィールを置き換えます。他のパックのデータは削除されません。</string>
 </resources>

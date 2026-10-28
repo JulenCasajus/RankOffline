@@ -136,4 +136,15 @@ class MediaScreenStateTest {
         assertEquals(false, updated.getValue(MediaType.SERIES).descending)
         assertEquals(2020, updated.getValue(MediaType.SERIES).filters.year)
     }
+
+    @Test
+    fun ratingEditorIdentityIncludesPackAndGroupKind() {
+        val anime = Anime(id = "shared-id", title = "Anime", mediaType = MediaType.ANIME)
+        val manga = Anime(id = "shared-id", title = "Manga", mediaType = MediaType.MANGA)
+        val state = RatingEditorState(anime, isGroup = false)
+
+        assertEquals(true, state.matches(anime, isGroup = false))
+        assertEquals(false, state.matches(anime, isGroup = true))
+        assertEquals(false, state.matches(manga, isGroup = false))
+    }
 }

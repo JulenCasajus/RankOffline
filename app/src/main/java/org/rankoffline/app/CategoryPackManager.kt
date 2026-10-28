@@ -11,6 +11,7 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipFile
+import java.util.zip.ZipException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -67,8 +68,7 @@ data class CategoryPackInstallProgress(
     val coverProcessed: Int = 0,
     val coverAvailable: Int = 0,
     val coverUnavailable: Int = 0,
-    val coverErrors: Int = 0,
-    val coverRetrying: Boolean = false
+    val coverErrors: Int = 0
 ) {
     val fraction: Float
         get() = if (totalDownloadBytes <= 0L) 0f else
@@ -87,6 +87,10 @@ data class CategoryPackState(
     val reclaimableBytes: Long,
     val downloadBytes: Long? = null,
     val declaredInstalledBytes: Long? = null,
+    val retainedArchiveBytes: Long = 0L,
+    val catalogDataBytes: Long = catalogBytes,
+    val groupDataBytes: Long = 0L,
+    val metadataBytes: Long = 0L,
     val installProgress: CategoryPackInstallProgress? = null,
     val initialCoverAcquisition: InitialCoverAcquisitionResult? = null,
     val downloadConfigured: Boolean = false,
@@ -98,7 +102,7 @@ data class CategoryPackState(
     val available: Boolean
         get() = origin != CategoryPackOrigin.UNAVAILABLE &&
             runtimeStatus == CategoryPackRuntimeStatus.READY
-    val installedBytes: Long get() = catalogBytes + downloadedCoverBytes
+    val installedBytes: Long get() = catalogBytes + retainedArchiveBytes + downloadedCoverBytes
     val finalStorageBytes: Long
         get() = if (origin == CategoryPackOrigin.UNAVAILABLE) {
             declaredInstalledBytes ?: 0L
@@ -106,8 +110,11 @@ data class CategoryPackState(
             installedBytes
         }
     val canDelete: Boolean
-        get() = origin == CategoryPackOrigin.DOWNLOADED &&
-            runtimeStatus == CategoryPackRuntimeStatus.READY && installProgress == null
+        get() = installProgress == null && (
+            (origin == CategoryPackOrigin.DOWNLOADED &&
+                runtimeStatus == CategoryPackRuntimeStatus.READY) ||
+                (runtimeStatus == CategoryPackRuntimeStatus.ERROR && reclaimableBytes > 0L)
+            )
     val canDownload: Boolean
         get() = origin == CategoryPackOrigin.UNAVAILABLE && downloadBytes != null &&
             downloadConfigured && installProgress == null
@@ -151,7 +158,13 @@ data class CategoryPackDescriptor(
     val archiveSha256: String
 )
 
-enum class CategoryPackDownloadResult { INSTALLED, UNAVAILABLE, NETWORK_ERROR, INVALID_PACK }
+enum class CategoryPackDownloadResult {
+    INSTALLED,
+    UNAVAILABLE,
+    NETWORK_ERROR,
+    INVALID_PACK,
+    RUNTIME_ERROR
+}
 
 fun interface CategoryPackArchiveDownloader {
     suspend fun download(
@@ -232,11 +245,18 @@ class SecureCategoryPackArchiveDownloader(baseUrl: String) : CategoryPackArchive
                                 ?: return@withContext CategoryPackDownloadResult.NETWORK_ERROR
                             current = current.resolve(location)
                         }
-                        HttpURLConnection.HTTP_NOT_FOUND ->
+                        HttpURLConnection.HTTP_NOT_FOUND, HttpURLConnection.HTTP_GONE ->
                             return@withContext CategoryPackDownloadResult.UNAVAILABLE
-                        else -> return@withContext if (code in 400..499) {
+                        else -> return@withContext if (
+                            code == HttpURLConnection.HTTP_CLIENT_TIMEOUT ||
+                            code == 425 ||
+                            code == 429 ||
+                            code >= 500
+                        ) {
+                            CategoryPackDownloadResult.NETWORK_ERROR
+                        } else {
                             CategoryPackDownloadResult.UNAVAILABLE
-                        } else CategoryPackDownloadResult.NETWORK_ERROR
+                        }
                     }
                 } finally {
                     connection.disconnect()
@@ -298,6 +318,7 @@ class CategoryPackManager(
     /** Serializes top-level operations without holding the catalog/filesystem lifecycle lock. */
     private val operationMutexes = ConcurrentHashMap<PackId, Mutex>()
     private val transferLock = Any()
+    private val initialCoverStatusLock = Any()
     private val transfers = linkedMapOf<MediaType, Pair<Long, Long>>()
     private val installProgress = linkedMapOf<MediaType, CategoryPackInstallProgress>()
     private val runtimeStatuses = linkedMapOf<MediaType, CategoryPackRuntimeStatus>()
@@ -310,23 +331,75 @@ class CategoryPackManager(
 
     val downloadConfigured: Boolean get() = injectedDownloader != null || secureDownloader.configured
 
+    /** Publishes queue state immediately while WorkManager is waiting for its execution slot. */
+    suspend fun markInstallQueued(mediaType: MediaType) = withContext(Dispatchers.IO) {
+        if (synchronized(transferLock) { installProgress.containsKey(mediaType) }) {
+            return@withContext
+        }
+        val descriptor = descriptors[mediaType.toPackId()] ?: return@withContext
+        registerTransfer(
+            mediaType,
+            descriptor.archiveBytes,
+            descriptor.installManifest.installedBytes
+        )
+        setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.INITIALIZING)
+        refresh()
+    }
+
+    suspend fun markRecoveryQueued(mediaType: MediaType) = withContext(Dispatchers.IO) {
+        if (synchronized(transferLock) { installProgress.containsKey(mediaType) }) {
+            return@withContext
+        }
+        val descriptor = descriptors[mediaType.toPackId()]
+        registerTransfer(
+            mediaType,
+            descriptor?.archiveBytes ?: 0L,
+            descriptor?.installManifest?.installedBytes ?: 0L
+        )
+        setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.INITIALIZING)
+        updateInstallPhase(mediaType, CategoryPackInstallPhase.WAITING_IMPORT)
+        refresh()
+    }
+
+    suspend fun markInitialCoversQueued(mediaType: MediaType) = withContext(Dispatchers.IO) {
+        if (synchronized(transferLock) { installProgress.containsKey(mediaType) }) {
+            return@withContext
+        }
+        val current = readInitialCoverAcquisition(mediaType)
+        if (current?.status != InitialCoverAcquisitionStatus.PENDING) return@withContext
+        val descriptor = descriptors[mediaType.toPackId()]
+        registerTransfer(
+            mediaType,
+            descriptor?.archiveBytes ?: 0L,
+            descriptor?.installManifest?.installedBytes ?: 0L
+        )
+        updateInstallPhase(mediaType, CategoryPackInstallPhase.WAITING_COVERS)
+        refresh()
+    }
+
     suspend fun recoverFilesystem() = withContext(Dispatchers.IO) {
         migrateLegacyPacks()
-        descriptors.keys.forEach(installer::recover)
-        MediaType.entries.forEach { mediaType ->
-            val current = readInitialCoverAcquisition(mediaType)
-            if (current?.status == InitialCoverAcquisitionStatus.PENDING) {
-                persistInitialCoverAcquisition(
-                    mediaType,
-                    current.copy(status = InitialCoverAcquisitionStatus.CANCELLED)
+        descriptors.keys.forEach { packId ->
+            val recovered = runCatching { installer.recover(packId) }.getOrElse { exception ->
+                Log.e(
+                    PACK_LOG_TAG,
+                    "pack=${packId.value} operation=filesystem-recovery failed=" +
+                        "${exception.javaClass.simpleName}: ${exception.message}",
+                    exception
                 )
+                false
+            }
+            if (!recovered) {
+                packId.toOfficialMediaTypeOrNull()?.let { mediaType ->
+                    setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.ERROR)
+                }
             }
         }
     }
 
-    suspend fun refresh() = withContext(Dispatchers.IO) {
+    suspend fun refresh(includeStorageDetails: Boolean = true) = withContext(Dispatchers.IO) {
         registry.refresh(descriptors.mapValues { it.value.archiveBytes })
-        _states.value = MediaType.entries.associateWith(::stateFor)
+        _states.value = MediaType.entries.associateWith { stateFor(it, includeStorageDetails) }
     }
 
     /**
@@ -353,6 +426,10 @@ class CategoryPackManager(
         updateInstallPhase(mediaType, CategoryPackInstallPhase.WAITING_IMPORT)
         val result = try {
             importMutex.withLock {
+                // WAITING_IMPORT means this pack is genuinely queued behind another writer.
+                // Publish the active phase as soon as it owns the import slot, including the
+                // manifest-validation work that happens before the importer reports a phase.
+                updateInstallPhase(mediaType, CategoryPackInstallPhase.IMPORTING_CATALOG)
                 initializeRuntime { phase ->
                     if (phase == CategoryPackInstallPhase.IMPORTING_CATALOG ||
                         phase == CategoryPackInstallPhase.IMPORTING_GROUPS
@@ -360,6 +437,11 @@ class CategoryPackManager(
                 }
             }
         } catch (cancelled: CancellationException) {
+            withContext(NonCancellable) {
+                finishTransfer(mediaType)
+                setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.FILES_INSTALLED)
+                refresh()
+            }
             throw cancelled
         } catch (exception: Exception) {
             Log.e(
@@ -370,7 +452,7 @@ class CategoryPackManager(
             )
             CatalogAvailability.ERROR
         }
-        clearInstallProgress(mediaType)
+        finishTransfer(mediaType)
         setRuntimeStatus(
             mediaType,
             if (result == CatalogAvailability.AVAILABLE) CategoryPackRuntimeStatus.READY
@@ -421,6 +503,13 @@ class CategoryPackManager(
         ) {
             return CategoryPackDownloadResult.INVALID_PACK
         }
+        val previousStatus = synchronized(transferLock) {
+            runtimeStatuses[mediaType] ?: if (installedArtifactIsCurrent(mediaType)) {
+                CategoryPackRuntimeStatus.READY
+            } else {
+                CategoryPackRuntimeStatus.FILES_MISSING
+            }
+        }
         registerTransfer(
             mediaType,
             descriptor.archiveBytes,
@@ -465,19 +554,24 @@ class CategoryPackManager(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (exception: Exception) {
+                val classified = classifyArchiveValidationFailure(exception)
                 Log.e(
                     PACK_LOG_TAG,
                     "pack=${packId.value} operation=download-or-verify failed=" +
-                        "${exception.javaClass.simpleName}: ${exception.message}",
+                        "${exception.javaClass.simpleName}: ${exception.message} result=$classified",
                     exception
                 )
-                CategoryPackDownloadResult.INVALID_PACK
+                classified
             }
             if (archiveResult != CategoryPackDownloadResult.INSTALLED) {
                 setRuntimeStatus(
                     mediaType,
-                    if (installer.installedDirectory(mediaType) != null) {
+                    if (previousStatus == CategoryPackRuntimeStatus.READY &&
+                        installedArtifactIsCurrent(mediaType)
+                    ) {
                         CategoryPackRuntimeStatus.READY
+                    } else if (installer.installedDirectory(mediaType) != null) {
+                        CategoryPackRuntimeStatus.FILES_INSTALLED
                     } else {
                         CategoryPackRuntimeStatus.FILES_MISSING
                     }
@@ -487,6 +581,14 @@ class CategoryPackManager(
 
             val catalogResult = lifecycleMutex(mediaType).withLock lifecycleLock@{
                 var promoted = false
+                suspend fun restorePreviousInstallation() {
+                    if (!promoted) return
+                    installer.rollbackReplacement(packId)
+                    promoted = false
+                    importMutex.withLock {
+                        recoverPreviousRuntime(mediaType, importInstalledPack)
+                    }
+                }
                 try {
                     ZipFile(archive).use { zip ->
                             updateInstallPhase(mediaType, CategoryPackInstallPhase.INSTALLING)
@@ -500,6 +602,7 @@ class CategoryPackManager(
                     }
                     updateInstallPhase(mediaType, CategoryPackInstallPhase.WAITING_IMPORT)
                     val imported = importMutex.withLock {
+                        updateInstallPhase(mediaType, CategoryPackInstallPhase.IMPORTING_CATALOG)
                         importInstalledPack { phase ->
                             require(
                                 phase == CategoryPackInstallPhase.IMPORTING_CATALOG ||
@@ -509,12 +612,8 @@ class CategoryPackManager(
                         }
                     }
                     if (!imported) {
-                        installer.rollbackReplacement(packId)
-                        promoted = false
-                        importMutex.withLock {
-                            recoverPreviousRuntime(mediaType, importInstalledPack)
-                        }
-                        return@lifecycleLock CategoryPackDownloadResult.INVALID_PACK
+                        restorePreviousInstallation()
+                        return@lifecycleLock CategoryPackDownloadResult.RUNTIME_ERROR
                     }
                     updateInstallPhase(mediaType, CategoryPackInstallPhase.FINALIZING)
                     registry.refresh(descriptors.mapValues { it.value.archiveBytes })
@@ -526,7 +625,20 @@ class CategoryPackManager(
                     refresh()
                     CategoryPackDownloadResult.INSTALLED
                 } catch (cancelled: CancellationException) {
-                    if (promoted) installer.rollbackReplacement(packId)
+                    if (promoted) {
+                        val rollback = runCatching {
+                            withContext(NonCancellable) { restorePreviousInstallation() }
+                        }
+                        rollback.onFailure { cleanupError ->
+                            Log.e(
+                                PACK_LOG_TAG,
+                                "pack=${packId.value} operation=cancel-rollback failed=" +
+                                    "${cleanupError.javaClass.simpleName}: ${cleanupError.message}",
+                                cleanupError
+                            )
+                            setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.ERROR)
+                        }
+                    }
                     throw cancelled
                 } catch (exception: Exception) {
                     Log.e(
@@ -536,14 +648,19 @@ class CategoryPackManager(
                         exception
                     )
                     if (promoted) {
-                        installer.rollbackReplacement(packId)
-                        importMutex.withLock {
-                            recoverPreviousRuntime(mediaType, importInstalledPack)
+                        runCatching { restorePreviousInstallation() }.onFailure { cleanupError ->
+                            Log.e(
+                                PACK_LOG_TAG,
+                                "pack=${packId.value} operation=failure-rollback failed=" +
+                                    "${cleanupError.javaClass.simpleName}: ${cleanupError.message}",
+                                cleanupError
+                            )
+                            setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.ERROR)
                         }
                     } else {
                         setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.ERROR)
                     }
-                    CategoryPackDownloadResult.INVALID_PACK
+                    CategoryPackDownloadResult.RUNTIME_ERROR
                 }
             }
             if (catalogResult != CategoryPackDownloadResult.INSTALLED) return catalogResult
@@ -565,17 +682,8 @@ class CategoryPackManager(
                 )
                 val progress = try {
                     acquireInitialCovers { updateCoverProgress(mediaType, it) }
-                } catch (_: CancellationException) {
-                    val current = synchronized(transferLock) { installProgress[mediaType] }
-                    CoverPreloadProgress(
-                        mediaType = mediaType,
-                        status = CoverPreloadStatus.CANCELLED,
-                        target = current?.coverTarget ?: INITIAL_COVER_TARGET,
-                        processed = current?.coverProcessed ?: 0,
-                        existing = current?.coverAvailable ?: 0,
-                        unavailable = current?.coverUnavailable ?: 0,
-                        errors = current?.coverErrors ?: 0
-                    )
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
                 } catch (exception: Exception) {
                     Log.w(
                         PACK_LOG_TAG,
@@ -602,8 +710,20 @@ class CategoryPackManager(
                 }
             }
             CategoryPackDownloadResult.INSTALLED
+        } catch (cancelled: CancellationException) {
+            if (synchronized(transferLock) { runtimeStatuses[mediaType] } ==
+                CategoryPackRuntimeStatus.INITIALIZING
+            ) {
+                setRuntimeStatus(mediaType, previousStatus)
+            }
+            throw cancelled
         } finally {
-            archive.delete()
+            if (archive.exists() && !archive.delete()) {
+                Log.w(
+                    PACK_LOG_TAG,
+                    "pack=${packId.value} operation=temp-archive-cleanup path=${archive.name} failed"
+                )
+            }
             finishTransfer(mediaType)
             withContext(NonCancellable) { refresh() }
         }
@@ -625,6 +745,11 @@ class CategoryPackManager(
         return@lifecycle try {
             purgeRuntimeData()
             val deleted = withContext(Dispatchers.IO) { deleteInstalledFilesLocked(mediaType) }
+            if (!deleted) {
+                setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.ERROR)
+                refresh()
+                return@lifecycle false
+            }
             setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.FILES_MISSING)
             refresh()
             finalizeRuntime()
@@ -690,6 +815,102 @@ class CategoryPackManager(
     fun descriptor(mediaType: MediaType): CategoryPackDescriptor? = descriptors[mediaType.toPackId()]
     fun packDefinition(packId: PackId): PackDefinition? = registry.definition(packId)
 
+    fun installedArtifactIsCurrent(mediaType: MediaType): Boolean {
+        val descriptor = descriptor(mediaType) ?: return false
+        return installer.matchesInstalledManifest(descriptor.installManifest)
+    }
+
+    suspend fun publishVerifiedReady(
+        mediaType: MediaType,
+        includeStorageDetails: Boolean = true
+    ): Boolean =
+        lifecycleMutex(mediaType).withLock {
+            if (!installedArtifactIsCurrent(mediaType)) return@withLock false
+            setRuntimeStatus(mediaType, CategoryPackRuntimeStatus.READY)
+            refresh(includeStorageDetails)
+            true
+        }
+
+    fun initialCoverAcquisition(mediaType: MediaType): InitialCoverAcquisitionResult? =
+        readInitialCoverAcquisition(mediaType)
+
+    /** Records an explicit user cancellation before WorkManager stops the running coroutine. */
+    suspend fun requestInitialCoverCancellation(mediaType: MediaType) = withContext(Dispatchers.IO) {
+        synchronized(initialCoverStatusLock) {
+            val current = readInitialCoverAcquisition(mediaType) ?: return@synchronized
+            if (current.status == InitialCoverAcquisitionStatus.PENDING) {
+                writeInitialCoverAcquisition(
+                    mediaType,
+                    current.copy(status = InitialCoverAcquisitionStatus.CANCELLED)
+                )
+            }
+        }
+        refresh()
+    }
+
+    suspend fun skipPendingInitialCoverAcquisition(mediaType: MediaType) {
+        operationMutex(mediaType).withLock {
+            val current = readInitialCoverAcquisition(mediaType) ?: return@withLock
+            if (current.status == InitialCoverAcquisitionStatus.PENDING) {
+                persistInitialCoverAcquisition(
+                    mediaType,
+                    current.copy(status = InitialCoverAcquisitionStatus.SKIPPED)
+                )
+                refresh()
+            }
+        }
+    }
+
+    /** Resumes only the optional image stage of an already imported, READY catalog. */
+    suspend fun resumeInitialCoverAcquisition(
+        mediaType: MediaType,
+        acquire: suspend ((CoverPreloadProgress) -> Unit) -> CoverPreloadProgress
+    ): InitialCoverAcquisitionResult = operationMutex(mediaType).withLock {
+        val current = readInitialCoverAcquisition(mediaType)
+        if (current?.status != InitialCoverAcquisitionStatus.PENDING) {
+            return@withLock current ?: InitialCoverAcquisitionResult(
+                InitialCoverAcquisitionStatus.SKIPPED
+            )
+        }
+        val descriptor = descriptors[mediaType.toPackId()]
+        registerTransfer(
+            mediaType,
+            descriptor?.archiveBytes ?: 0L,
+            descriptor?.installManifest?.installedBytes ?: 0L
+        )
+        try {
+            val result = try {
+                updateCoverProgress(
+                    mediaType,
+                    CoverPreloadProgress(
+                        mediaType = mediaType,
+                        status = CoverPreloadStatus.DOWNLOADING_COVERS,
+                        target = current.target.coerceAtLeast(INITIAL_COVER_TARGET)
+                    )
+                )
+                acquire { updateCoverProgress(mediaType, it) }.toInitialCoverAcquisition()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (exception: Exception) {
+                Log.w(
+                    PACK_LOG_TAG,
+                    "pack=${mediaType.toPackId().value} operation=resume-initial-covers failed=" +
+                        "${exception.javaClass.simpleName}: ${exception.message}",
+                    exception
+                )
+                current.copy(
+                    status = InitialCoverAcquisitionStatus.PARTIAL,
+                    errors = current.errors + 1
+                )
+            }
+            persistInitialCoverAcquisition(mediaType, result)
+            result
+        } finally {
+            finishTransfer(mediaType)
+            refresh()
+        }
+    }
+
     private fun migrateLegacyPacks() {
         val legacyRoot = File(appContext.filesDir, LEGACY_PACK_ROOT)
         if (!legacyRoot.isDirectory) return
@@ -712,12 +933,39 @@ class CategoryPackManager(
         if (legacyRoot.listFiles().isNullOrEmpty()) legacyRoot.delete()
     }
 
-    private fun stateFor(mediaType: MediaType): CategoryPackState {
+    private fun stateFor(
+        mediaType: MediaType,
+        includeStorageDetails: Boolean = true
+    ): CategoryPackState {
         val installedPack = installer.installedDirectory(mediaType.toPackId())
+        val previous = _states.value[mediaType]
+        val residualPackBytes = if (installedPack == null && includeStorageDetails) {
+            installer.residualBytes(mediaType.toPackId())
+        } else previous?.reclaimableBytes ?: 0L
         val bundledBytes = bundledAssetBytes[mediaType] ?: 0L
-        val catalogBytes = installedPack?.recursiveFileBytes() ?: bundledBytes
-        val coverBytes = downloadedCoverBytes(mediaType)
+        val bundledCoverBytes = if (includeStorageDetails) {
+            installedPack?.resolve("covers")?.recursiveFileBytes() ?: 0L
+        } else previous?.downloadedCoverBytes ?: 0L
+        val catalogBytes = if (includeStorageDetails) installedPack?.let {
+            (it.recursiveFileBytes() - bundledCoverBytes).coerceAtLeast(0L)
+        } ?: bundledBytes else previous?.catalogBytes ?: 0L
+        val coverBytes = if (includeStorageDetails) {
+            downloadedCoverBytes(mediaType) + bundledCoverBytes
+        } else previous?.downloadedCoverBytes ?: 0L
         val descriptor = descriptors[mediaType.toPackId()]
+        val retainedArchiveBytes = if (includeStorageDetails) descriptor?.archiveName?.let { archiveName ->
+            File(File(appContext.filesDir, PACK_ARCHIVE_ROOT), archiveName)
+                .takeIf(File::isFile)?.length()
+        } ?: 0L else previous?.retainedArchiveBytes ?: 0L
+        val catalogDataBytes = if (includeStorageDetails) {
+            installedPack?.resolve("catalog")?.recursiveFileBytes() ?: bundledBytes
+        } else previous?.catalogDataBytes ?: 0L
+        val groupDataBytes = if (includeStorageDetails) {
+            installedPack?.resolve("groups")?.recursiveFileBytes() ?: 0L
+        } else previous?.groupDataBytes ?: 0L
+        val metadataBytes = if (installedPack == null) 0L else {
+            (catalogBytes - catalogDataBytes - groupDataBytes).coerceAtLeast(0L)
+        }
         val origin = when {
             installedPack != null -> CategoryPackOrigin.DOWNLOADED
             bundledBytes > 0L -> CategoryPackOrigin.BUNDLED
@@ -725,8 +973,14 @@ class CategoryPackManager(
         }
         val runtimeStatus = synchronized(transferLock) {
             if (origin == CategoryPackOrigin.UNAVAILABLE) {
-                runtimeStatuses[mediaType] = CategoryPackRuntimeStatus.FILES_MISSING
-                CategoryPackRuntimeStatus.FILES_MISSING
+                val retained = runtimeStatuses[mediaType]
+                if (retained == CategoryPackRuntimeStatus.ERROR &&
+                    (residualPackBytes > 0L || installer.hasPendingDeletion(mediaType.toPackId()))
+                ) retained
+                else {
+                    runtimeStatuses[mediaType] = CategoryPackRuntimeStatus.FILES_MISSING
+                    CategoryPackRuntimeStatus.FILES_MISSING
+                }
             } else {
                 runtimeStatuses.getOrPut(mediaType) { CategoryPackRuntimeStatus.FILES_INSTALLED }
             }
@@ -736,9 +990,15 @@ class CategoryPackManager(
             origin = origin,
             catalogBytes = catalogBytes,
             downloadedCoverBytes = coverBytes,
-            reclaimableBytes = coverBytes + if (installedPack != null) catalogBytes else 0L,
+            reclaimableBytes = coverBytes + retainedArchiveBytes +
+                if (installedPack != null) catalogBytes
+                else residualPackBytes,
             downloadBytes = descriptor?.archiveBytes,
             declaredInstalledBytes = descriptor?.installManifest?.installedBytes,
+            retainedArchiveBytes = retainedArchiveBytes,
+            catalogDataBytes = catalogDataBytes,
+            groupDataBytes = groupDataBytes,
+            metadataBytes = metadataBytes,
             installProgress = synchronized(transferLock) { installProgress[mediaType] },
             initialCoverAcquisition = readInitialCoverAcquisition(mediaType),
             downloadConfigured = downloadConfigured,
@@ -826,7 +1086,16 @@ class CategoryPackManager(
         mediaType: MediaType,
         result: InitialCoverAcquisitionResult
     ) {
-        runCatching { writeInitialCoverAcquisition(mediaType, result) }.onFailure { exception ->
+        runCatching {
+            synchronized(initialCoverStatusLock) {
+                val existing = readInitialCoverAcquisition(mediaType)
+                if (existing?.status != InitialCoverAcquisitionStatus.CANCELLED ||
+                    result.status == InitialCoverAcquisitionStatus.CANCELLED
+                ) {
+                    writeInitialCoverAcquisition(mediaType, result)
+                }
+            }
+        }.onFailure { exception ->
             Log.w(
                 PACK_LOG_TAG,
                 "pack=${mediaType.toPackId().value} operation=cover-status-persist " +
@@ -938,8 +1207,7 @@ class CategoryPackManager(
                 coverProcessed = progress.available,
                 coverAvailable = progress.available,
                 coverUnavailable = progress.unavailable,
-                coverErrors = progress.errors,
-                coverRetrying = progress.status == CoverPreloadStatus.RETRYING_COVERS
+                coverErrors = progress.errors
             )
             publishPackProgress(mediaType)
         }
@@ -953,11 +1221,6 @@ class CategoryPackManager(
                 errors = progress.errors
             )
         )
-    }
-
-    private fun clearInstallProgress(mediaType: MediaType) = synchronized(transferLock) {
-        installProgress.remove(mediaType)
-        publishPackProgress(mediaType)
     }
 
     private fun setRuntimeStatus(mediaType: MediaType, status: CategoryPackRuntimeStatus) =
@@ -1036,6 +1299,15 @@ class CategoryPackManager(
         private const val PACK_LOG_TAG = "RankOfflinePack"
     }
 }
+
+internal fun classifyArchiveValidationFailure(exception: Exception): CategoryPackDownloadResult =
+    when (exception) {
+        is ZipException,
+        is IllegalArgumentException,
+        is SecurityException -> CategoryPackDownloadResult.INVALID_PACK
+        is IOException -> CategoryPackDownloadResult.NETWORK_ERROR
+        else -> CategoryPackDownloadResult.RUNTIME_ERROR
+    }
 
 private fun CoverPreloadProgress.toInitialCoverAcquisition(): InitialCoverAcquisitionResult {
     val available = existing + downloaded

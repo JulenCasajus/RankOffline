@@ -44,6 +44,7 @@
     <string name="covers_download_rated">Deskargatu baloratutako elementuen azalak</string>
     <string name="covers_downloading_rated">Azalak deskargatzen…</string>
     <string name="covers_download_top">Deskargatu Top %1$d</string>
+    <string name="covers_continue_top">Jarraitu Top %1$d</string>
     <string name="covers_one_per_group">Azal bat taldeko</string>
     <string name="covers_one_per_group_description">Erabili taldeko lehen elementuaren azala taldeko elementu guztientzat.</string>
     <string name="filters_title">Iragazkiak</string><string name="filters_active">Iragazkiak (%1$d)</string><string name="filters_clear">Garbitu iragazkiak</string><string name="filters_all">Guztiak / Iragazkirik gabe</string>
@@ -70,6 +71,9 @@
     <string name="group_entries_count">%1$d sarrera</string>
     <string name="group_calculated">Kalkulatua</string>
     <string name="sort_action">Ordenatu</string>
+    <string name="sort_direction_ascending">Goranzkoa</string>
+    <string name="sort_direction_descending">Beheranzkoa</string>
+    <string name="sort_direction_accessibility">Uneko ordena: %1$s. Sakatu %2$s ordenara aldatzeko.</string>
     <string name="group_derived_count">Kalkulatua · %1$d/%2$d baloratuta</string>
     <string name="group_rated_count">%1$d/%2$d baloratuta</string>
     <string name="group_unrated">Baloratu gabe</string>
@@ -103,7 +107,7 @@
 <string name="about_non_affiliation">Hornitzaileen izenek eta markek datu-iturriak identifikatzen dituzte. Ez dute afiliazio, ziurtapen edo babesik adierazten.</string><string name="about_trademark_policy">Marken politika</string>
 <string name="score_group_title">Taldearen puntuazioa</string>
 <string name="search_clear">Garbitu bilaketa</string>
-<string name="popularity_settings_description">Ospearen argazkia eta eguneratzearen erabilgarritasuna</string><string name="popularity_runtime_unavailable">Ospea aplikazioarekin datorren katalogotik dator. Konpilazio honetan ezin da multimedia mota hau aplikaziotik eguneratu.</string><string name="search_more_online">Bilatu emaitza gehiago sarean</string><string name="search_online_results">Sareko emaitzak</string><string name="search_online_loading">Sarean bilatzen…</string><string name="search_online_empty">Ez dago sareko emaitza gehiagorik.</string><string name="search_online_error">Sareko bilaketak huts egin du. Tokiko emaitzek erabilgarri jarraitzen dute.</string><string name="action_retry">Saiatu berriro</string><string name="category_selector_title">Aukeratu kategoria</string><string name="category_not_installed">Deskargatu gabe</string><string name="onboarding_welcome_title">Ongi etorri RankOfflinera!!</string><string name="onboarding_welcome_body">Baloratu eta antolatu animeak, mangak, telesailak, filmak eta liburuak zure erara.</string><string name="onboarding_privacy">Zure balorazioak zureak dira: RankOffline lokalean eta pribatutasunez dabil.</string><string name="onboarding_choose_style">Aukeratu estiloa</string><string name="onboarding_change_later">Ezarpenetan alda dezakezu.</string><string name="onboarding_minimal">Minimalista</string><string name="onboarding_minimal_description">Azalik gabeko esperientzia arina.</string><string name="onboarding_with_images">Irudiekin</string><string name="onboarding_with_images_description">Azalak deskargatu behar dira.</string><string name="onboarding_rating_style">Balorazio-estiloa</string><string name="onboarding_rating_simple">Balorazio sinplea</string><string name="onboarding_rating_simple_description">Puntuazio azkar eta zuzenak.</string><string name="onboarding_rating_elaborated">Balorazio landua</string><string name="onboarding_rating_elaborated_description">Kategoria konfiguragarriak xehetasunez.</string><string name="onboarding_start">Hasi</string><string name="onboarding_categories_title">Nondik hasi nahi duzu?</string><string name="onboarding_categories_subtitle">Aukeratu lineaz kanpo erabili nahi dituzun katalogoak. Gero Ezarpenetan kudea ditzakezu.</string><string name="onboarding_done">Eginda</string><string name="categories_title">Paketeak</string><string name="categories_settings_description">Deskargatu eta kudeatu paketeak.</string><string name="categories_storage_title">Paketeen datuak</string><string name="categories_installed_size">%1$s instalatuta</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">Build honetan sartuta</string><string name="category_downloaded">Deskargatuta</string><string name="category_delete">Ezabatu kategoria</string><string name="category_download">Deskargatu kategoria</string><string name="category_included_not_reclaimable">Barneko katalogoa; APK-ko lekua ezin da askatu</string><string name="category_remove_catalog">Katalogoa ezabatu</string><string name="category_remove_title">Ezabatu %1$s katalogoa</string><string name="category_remove_confirmation">Katalogoa eta tokiko azalak ezabatuko dira, gutxi gorabehera %1$s askatuz. Balorazioak eta datu pertsonalak gordeko dira.</string><string name="category_delete_my_data">Ezabatu nire datuak</string><string name="category_delete_personal_title">Ezabatu nire %1$s datuak</string><string name="category_delete_personal_confirmation">%1$s kategoriako balorazio eta ezarpen pertsonalak betiko ezabatuko dira. Ezin da desegin. Katalogoa instalatuta geratuko da.</string><string name="category_delete_personal_action">Betiko ezabatu</string><string name="category_download_not_configured">Paketeen ostatatzea ez dago konfiguratuta build honetan.</string><string name="category_download_complete">Kategoria deskargatuta eta lineaz kanpo prest.</string><string name="category_pack_invalid">Kategoria-paketea baliogabea edo osatugabea da.</string><string name="category_download_unavailable">Kategoria deskargatzea ez dago erabilgarri build honetan.</string><string name="category_catalog_removed">Katalogoa ezabatu da. Balorazioak gorde dira.</string><string name="category_personal_data_deleted">Kategoriako datu pertsonalak ezabatu dira.</string>
+<string name="popularity_settings_description">Ospearen argazkia eta eguneratzearen erabilgarritasuna</string><string name="popularity_runtime_unavailable">Ospea aplikazioarekin datorren katalogotik dator. Konpilazio honetan ezin da multimedia mota hau aplikaziotik eguneratu.</string><string name="action_retry">Saiatu berriro</string><string name="category_selector_title">Aukeratu kategoria</string><string name="category_not_installed">Deskargatu gabe</string><string name="onboarding_welcome_title">Ongi etorri RankOfflinera!!</string><string name="onboarding_welcome_body">Baloratu eta antolatu animeak, mangak, telesailak, filmak eta liburuak zure erara.</string><string name="onboarding_privacy">Zure balorazioak zureak dira: RankOffline lokalean eta pribatutasunez dabil.</string><string name="onboarding_choose_style">Aukeratu estiloa</string><string name="onboarding_change_later">Ezarpenetan alda dezakezu.</string><string name="onboarding_minimal">Minimalista</string><string name="onboarding_minimal_description">Azalik gabeko esperientzia arina.</string><string name="onboarding_with_images">Irudiekin</string><string name="onboarding_with_images_description">Azalak deskargatu behar dira.</string><string name="onboarding_rating_style">Balorazio-estiloa</string><string name="onboarding_rating_simple">Balorazio sinplea</string><string name="onboarding_rating_simple_description">Puntuazio azkar eta zuzenak.</string><string name="onboarding_rating_elaborated">Balorazio landua</string><string name="onboarding_rating_elaborated_description">Kategoria konfiguragarriak xehetasunez.</string><string name="onboarding_start">Hasi</string><string name="onboarding_categories_title">Nondik hasi nahi duzu?</string><string name="onboarding_categories_subtitle">Aukeratu lineaz kanpo erabili nahi dituzun katalogoak. Gero Ezarpenetan kudea ditzakezu.</string><string name="onboarding_done">Eginda</string><string name="categories_title">Paketeak</string><string name="categories_settings_description">Deskargatu eta kudeatu paketeak.</string><string name="categories_storage_title">Paketeen datuak</string><string name="categories_installed_size">%1$s instalatuta</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">Build honetan sartuta</string><string name="category_downloaded">Deskargatuta</string><string name="category_delete">Ezabatu kategoria</string><string name="category_download">Deskargatu kategoria</string><string name="category_included_not_reclaimable">Barneko katalogoa; APK-ko lekua ezin da askatu</string><string name="category_remove_catalog">Katalogoa ezabatu</string><string name="category_remove_title">Ezabatu %1$s katalogoa</string><string name="category_remove_confirmation">Katalogoa eta tokiko azalak ezabatuko dira, gutxi gorabehera %1$s askatuz. Balorazioak eta datu pertsonalak gordeko dira.</string><string name="category_delete_my_data">Ezabatu nire datuak</string><string name="category_delete_personal_title">Ezabatu nire %1$s datuak</string><string name="category_delete_personal_confirmation">%1$s kategoriako balorazio eta ezarpen pertsonalak betiko ezabatuko dira. Ezin da desegin. Katalogoa instalatuta geratuko da.</string><string name="category_delete_personal_action">Betiko ezabatu</string><string name="category_download_not_configured">Paketeen ostatatzea ez dago konfiguratuta build honetan.</string><string name="category_download_complete">Kategoria deskargatuta eta lineaz kanpo prest.</string><string name="category_pack_invalid">Kategoria-paketea baliogabea edo osatugabea da.</string><string name="category_download_unavailable">Kategoria deskargatzea ez dago erabilgarri build honetan.</string><string name="category_catalog_removed">Katalogoa ezabatu da. Balorazioak gorde dira.</string><string name="category_personal_data_deleted">Kategoriako datu pertsonalak ezabatu dira.</string>
     <string name="settings_display_description">Itxura eta irudien bistaratzea</string>
     <string name="settings_theme_title">Gaia</string>
     <string name="settings_theme_description">Aukeratu aplikazioaren kolore-paleta</string>
@@ -146,7 +150,7 @@
 <string name="category_phase_importing_catalog">Katalogoa inportatzen…</string>
 <string name="category_phase_importing_groups">Bateratzea prestatzen…</string>
 <string name="category_phase_downloading_covers">Azalak deskargatzen: %1$d / %2$d</string>
-<string name="category_phase_retrying_covers">Azalak berriro saiatzen: %1$d / %2$d</string>
+
 <string name="category_deleting">Ezabatzen…</string>
 <string name="category_phase_finalizing">Amaitzen…</string>
 <string name="category_pack_runtime_error">Ezin izan da katalogoa prestatu. Sakatu berriro saiatzeko.</string>
@@ -167,7 +171,7 @@
     <string name="color_picker_hue">Tonua</string>
     <string name="loading_list">Zerrenda kargatzen…</string>
     <string name="covers_preparing_list">Azalen zerrenda prestatzen…</string>
-    <string name="covers_retrying_failed">Huts egindako azalak berriro saiatzen…</string>
+
     <string name="covers_operation_busy">Pakete honetarako azal-eragiketa bat martxan dago.</string>
     <string name="covers_progress_details_explicit">%1$d deskargatuta · %2$d erabilgarri ez · %3$d huts eginda</string>
     <string name="merge_book_series">Batu liburu-sailak</string>
@@ -184,4 +188,44 @@
     <string name="book_genre_science_technology">Zientzia eta teknologia</string>
     <string name="book_genre_philosophy">Filosofia</string>
     <string name="book_genre_other">Bestelakoa / Sailkatu gabe</string>
+    <string name="pack_background_channel">Pakete-eragiketak</string>
+    <string name="pack_background_title">Lineaz kanpoko paketea prestatzen</string>
+    <string name="pack_background_downloading">Paketea deskargatzen…</string>
+    <string name="pack_storage_details">Biltegiratze-xehetasunak</string>
+    <string name="pack_storage_expected">Aurreikusitako instalazioa: %1$s</string>
+    <string name="pack_storage_transfer">Transferentzia: %1$s</string>
+    <string name="pack_storage_catalog">Katalogoa</string>
+    <string name="pack_storage_groups">Taldeak</string>
+    <string name="pack_storage_metadata">Metadatuak</string>
+    <string name="pack_storage_archive">Gordetako pakete-artxiboa</string>
+    <string name="pack_storage_covers">Azalak</string>
+    <string name="pack_storage_physical_total">Guztizko fisikoa</string>
+    <string name="pack_storage_personal_logical">Datu pertsonalak (zenbatespen logikoa): %1$s</string>
+    <string name="category_uninstall_keep_data">Desinstalatu, datu pertsonalak mantenduz</string>
+    <string name="category_remove_choices">Aukeratu balorazioak, oharrak, profilak eta ezarpenak berrinstalaziorako mantendu nahi dituzun. Pakete-fitxategiak eta azalak ezabatzeak gutxi gorabehera %1$s askatzen du.</string>
+    <string name="media_all">Guztiak</string>
+    <string name="personal_backup_title">Datu pertsonalen babeskopia</string>
+    <string name="personal_backup_description">Esportatu edo leheneratu balorazioak, ezarpenak eta gai pertsonalizatuak</string>
+    <string name="personal_backup_explanation">Babeskopiak zifratu gabeko JSON fitxategiak dira, datu pertsonalekin eta gai pertsonalizatuekin. Aukeratutako dokumentu-hornitzaileak gorde edo sinkroniza ditzake. Ez dute katalogorik edo azalik.</string>
+    <string name="personal_backup_scope_explanation">Ekintza hauek unean hautatutako paketea soilik erabiltzen dute. Balorazio bakoitzak bere paketearen IDa gordetzen du.</string>
+    <string name="personal_backup_scope_explanation_all">RankOfflineAll-ek ranking konbinatua partekatzen du eta prest dauden pakete guztien datuak transferitzen ditu. Balorazio bakoitzak jatorrizko paketearen IDa gordetzen du.</string>
+    <string name="personal_backup_export">Esportatu babeskopia</string>
+    <string name="personal_backup_import">Inportatu babeskopia</string>
+    <string name="personal_backup_preview_title">Datu pertsonalak inportatu?</string>
+    <string name="personal_backup_preview_body">%1$d elementu-balorazio, %2$d talde-balorazio eta %3$d paketeren ezarpen baliozkotu dira.</string>
+    <string name="personal_backup_preview_policy">Bateratzeak elementu bakoitzaren balorazio berriena mantentzen du eta emandako ezarpenak inportatzen ditu. Ordezkatzeak balorazio guztiak eta kopiaren ezarpen-eremua ordezkatzen ditu.</string>
+    <string name="personal_backup_merge">Berrienak bateratu</string>
+    <string name="personal_backup_replace">Ordeztu</string>
+    <string name="personal_backup_exported">Datu pertsonalen babeskopia esportatu da.</string>
+    <string name="personal_backup_imported">Datu pertsonalak inportatu dira.</string>
+    <string name="personal_backup_invalid">Hautatutako babeskopia baliogabea edo bateraezina da.</string>
+    <string name="personal_backup_failed">Babeskopia-eragiketak huts egin du.</string>
+    <string name="personal_backup_share">Partekatu babeskopia</string>
+    <string name="personal_backup_share_chooser">Partekatu babeskopia pertsonala</string>
+    <string name="personal_backup_working">Prozesatzen…</string>
+    <string name="personal_backup_busy">Datu pertsonalen beste eragiketa bat martxan dago.</string>
+    <string name="personal_backup_import_subtitle">Hautatu gailuko JSON fitxategi bat</string><string name="personal_backup_export_subtitle">Gorde datuak JSON fitxategi batean</string><string name="personal_backup_share_json">Partekatu JSON kopia</string>
+    <string name="ranking_share_title">Partekatu rankinga</string><string name="ranking_share_subtitle">Sortu eta partekatu ikusizko laburpena</string><string name="ranking_share_chooser">Partekatu rankingaren irudia</string><string name="ranking_share_show_images">Erakutsi irudiak</string><string name="ranking_share_show_images_description">Sartu lokalean erabilgarri dauden azalak</string><string name="ranking_share_heading">Nire %2$s Top %1$d</string><string name="ranking_share_failed">Ezin izan da rankingaren irudia sortu.</string><string name="ranking_share_empty">Baloratu gutxienez elementu bat rankingaren irudia sortzeko.</string><string name="ranking_share_preview_description">Rankingaren irudiaren aurrebista</string><string name="ranking_share_page_indicator">%1$d / %2$d txantiloia%3$s</string><string name="ranking_share_selected">, hautatuta</string>
+    <string name="ranking_share_scope_all">RankOffline</string><string name="ranking_share_scope_anime">Animea</string><string name="ranking_share_scope_manga">Manga</string><string name="ranking_share_scope_movies">Filmak</string><string name="ranking_share_scope_series">Telesailak</string><string name="ranking_share_scope_books">Liburuak</string>
+    <string name="personal_backup_replace_confirm_title">Datu pertsonalak ordeztu?</string><string name="personal_backup_replace_confirm_body">Kopiako balorazioak, puntuazio xeheak, pakete-ezarpenak eta profilak ordezten ditu. Beste paketeetako datuak ez dira ezabatzen.</string>
 </resources>

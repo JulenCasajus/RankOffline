@@ -143,4 +143,5 @@ retrieval, not remote title discovery. Personal ratings stay private.
 Provider metadata, images and logos retain independent terms. Access to an
 image URL is not evidence of redistribution permission.
 
-`RankOfflineAll` and community-pack installation belong to a later version.
+The virtual `RankOfflineAll` view is part of the 0.2.1 development scope. Arbitrary community-pack
+installation remains deferred until catalog/group identity collisions can be rejected or namespaced.

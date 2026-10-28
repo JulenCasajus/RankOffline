@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / "app/src/main/assets"
 OUTPUT = ROOT / "tools/.cache/category-packs/output"
 PREPARED_COVERS = ROOT / "tools/.cache/category-packs/prepared-covers"
+SHARE_BACKGROUNDS = ROOT / "tools/category_packs/share_backgrounds"
 INDEX_ASSET = ASSETS / "category_pack_index.json"
 FIXED_ZIP_TIME = (2026, 1, 1, 0, 0, 0)
 APP_VERSION = "0.2.0"
@@ -557,7 +558,7 @@ def pack_manifest(pack_id: str, file_specs: list[dict]) -> dict:
         {"id": field_id, "field": field, "type": kind, "order": order}
         for order, (field_id, field, kind) in enumerate(FILTERS[pack_id], 1)
     ]
-    return {
+    manifest = {
         "schemaVersion": 1,
         "packId": pack_id,
         "displayName": DISPLAY[pack_id],
@@ -588,6 +589,32 @@ def pack_manifest(pack_id: str, file_specs: list[dict]) -> dict:
         },
         "integrity": {"installedBytes": sum(item["bytes"] for item in file_specs), "files": file_specs},
     }
+    background_paths = [item["path"] for item in file_specs
+                        if item["path"].startswith("metadata/share_background.")]
+    if background_paths:
+        if len(background_paths) != 1:
+            raise ValueError(f"Expected one share background for {pack_id}")
+        manifest["presentation"] = {"shareBackground": background_paths[0]}
+    return manifest
+
+
+def optional_share_background(pack_id: str) -> list[tuple[str, bytes]]:
+    """Return validated optional artwork; absence keeps older/data-only packs fully compatible."""
+    candidates = [SHARE_BACKGROUNDS / f"{pack_id}{suffix}" for suffix in (".webp", ".png", ".jpg", ".jpeg")]
+    existing = [path for path in candidates if path.is_file()]
+    if not existing:
+        return []
+    if len(existing) != 1:
+        raise ValueError(f"Expected one share background for {pack_id}, found {existing}")
+    from prepare_pack_covers import image_extension
+    source = existing[0]
+    extension = image_extension(source, max_bytes=8 * 1024 * 1024)
+    if extension not in {".webp", ".png", ".jpg"}:
+        raise ValueError(f"Unsupported share background format: {source}")
+    if source.stat().st_size > 8 * 1024 * 1024:
+        raise ValueError(f"Share background is too large: {source}")
+    return [("metadata/share_background.webp" if extension == ".webp" else
+             f"metadata/share_background{extension}", source.read_bytes())]
 
 
 def _write_entry(target: zipfile.ZipFile, path: str, contents: bytes) -> None:
@@ -656,6 +683,9 @@ def build(require_covers: bool = False) -> dict:
             payloads.append((installed_path, payload))
             file_specs.append({"path": installed_path, "bytes": len(payload), "sha256": bytes_sha256(payload)})
         for installed_path, payload in prepared_cover_payloads(pack_id, require_covers):
+            payloads.append((installed_path, payload))
+            file_specs.append({"path": installed_path, "bytes": len(payload), "sha256": bytes_sha256(payload)})
+        for installed_path, payload in optional_share_background(pack_id):
             payloads.append((installed_path, payload))
             file_specs.append({"path": installed_path, "bytes": len(payload), "sha256": bytes_sha256(payload)})
         manifest = pack_manifest(pack_id, file_specs)

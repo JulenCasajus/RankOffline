@@ -28,9 +28,13 @@ installable through the production app today.
    credentials, insecure redirects or private network addresses.
 6. Only bundle image binaries inside `covers/` if the redistribution rights are
    documented. Metadata availability alone does not license artwork.
-7. Package only allowlisted data files, compute exact byte lengths and SHA-256
+7. A pack may optionally declare one PNG, JPEG or WebP ranking-card background through
+   `presentation.shareBackground`. Store it below `metadata/`, include it in integrity metadata,
+   keep it within the documented byte/dimension limits, and document its redistribution rights.
+   Older packs and packs without artwork use RankOffline's procedural fallback.
+8. Package only allowlisted data files, compute exact byte lengths and SHA-256
    values, then validate paths, image data and hashes.
-8. Verify offline querying, correct ordering/grouping, and preservation of personal
+9. Verify offline querying, correct ordering/grouping, and preservation of personal
    data through a non-destructive test upgrade.
 
 The current `tools/category_packs/build_category_packs.py` is a **producer for the five
@@ -51,9 +55,10 @@ The proposed community workflow is:
 A possible future server/registry would list pack metadata and signed/hashed artifacts,
 not execute publisher code on the device.
 
-A future virtual `RankOfflineAll` view is also being investigated for 0.2.1; it would
-combine the **installed READY packs** without creating a sixth pack or duplicating
-ratings. This is a roadmap proposal, not a 0.2 feature.
+The 0.2.1 development tree includes a virtual `RankOfflineAll` view that combines the
+**installed READY official packs** without creating a sixth pack or duplicating ratings.
+It does not remove the collision restriction above: arbitrary community PackIds are not
+accepted until catalog/group identities can be safely rejected or namespaced.
 
 See [PACK_FORMAT.md](PACK_FORMAT.md), [MEDIA_ARCHITECTURE.md](MEDIA_ARCHITECTURE.md),
 and [ROADMAP.md](ROADMAP.md).

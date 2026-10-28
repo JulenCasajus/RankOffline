@@ -12,9 +12,11 @@ import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -114,6 +116,71 @@ class ReadyPackReadConcurrencyTest {
             assertTrue(importResult.await().isFailure)
             assertNull(database.mediaDao().item("book:openlibrary:OL1W"))
             assertEquals("preserve", repository.loadRating(MediaType.ANIME, anime.id).notes)
+        } finally {
+            database.close()
+            queryExecutor.shutdownNow()
+            transactionExecutor.shutdownNow()
+            context.deleteDatabase(databaseName)
+        }
+    }
+
+    @Test
+    fun packPurgeQueuedDuringAnotherImportCompletesAfterTheActiveWriter() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val databaseName = "import-purge-${UUID.randomUUID()}.db"
+        val queryExecutor = Executors.newFixedThreadPool(2)
+        val transactionExecutor = Executors.newSingleThreadExecutor()
+        val database = Room.databaseBuilder(context, AnimeDatabase::class.java, databaseName)
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .setQueryExecutor(queryExecutor)
+            .setTransactionExecutor(transactionExecutor)
+            .build()
+        try {
+            val repository = GenericMediaRepository(database)
+            val manga = MediaItemEntity(
+                id = "mangadex:manga-1",
+                mediaType = MediaType.MANGA.persistedValue,
+                provider = "mangadex",
+                providerId = "manga-1",
+                title = "Manga"
+            )
+            repository.upsertItem(manga)
+            repository.saveSimpleRating(manga.id, RatingDraft(notes = "delete"), 8.0, 8.0)
+
+            val importStarted = CompletableDeferred<Unit>()
+            val releaseImport = CompletableDeferred<Unit>()
+            val import = async(Dispatchers.IO) {
+                database.withTransaction {
+                    database.mediaDao().upsertItem(
+                        MediaItemEntity(
+                            id = "book:openlibrary:OL1W",
+                            mediaType = MediaType.BOOK.persistedValue,
+                            provider = "openlibrary",
+                            providerId = "OL1W",
+                            title = "Book"
+                        )
+                    )
+                    importStarted.complete(Unit)
+                    releaseImport.await()
+                }
+            }
+            importStarted.await()
+            val purge = async(Dispatchers.IO) { repository.purgePackData(MediaType.MANGA) }
+
+            delay(100)
+            assertFalse("A second SQLite writer must wait for the active import", purge.isCompleted)
+            releaseImport.complete(Unit)
+            withTimeout(3_000L) {
+                import.await()
+                purge.await()
+            }
+
+            assertNull(database.mediaDao().item(manga.id))
+            assertNull(database.mediaDao().rating(MediaType.MANGA.toPackId().value, manga.id))
+            assertEquals(
+                "Book",
+                database.mediaDao().item("book:openlibrary:OL1W")?.title
+            )
         } finally {
             database.close()
             queryExecutor.shutdownNow()

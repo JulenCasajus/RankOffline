@@ -44,6 +44,7 @@
     <string name="covers_download_rated">Télécharger les jaquettes des éléments notés</string>
     <string name="covers_downloading_rated">Téléchargement des jaquettes…</string>
     <string name="covers_download_top">Télécharger le Top %1$d</string>
+    <string name="covers_continue_top">Continuer le Top %1$d</string>
     <string name="covers_one_per_group">Une jaquette par groupe</string>
     <string name="covers_one_per_group_description">Utiliser la jaquette du premier élément du groupe pour tous les éléments de ce groupe.</string>
     <string name="filters_title">Filtres</string><string name="filters_active">Filtres (%1$d)</string><string name="filters_clear">Effacer les filtres</string><string name="filters_all">Tous / Aucun filtre</string>
@@ -70,6 +71,9 @@
     <string name="group_entries_count">%1$d entrées</string>
     <string name="group_calculated">Calculée</string>
     <string name="sort_action">Trier</string>
+    <string name="sort_direction_ascending">Croissant</string>
+    <string name="sort_direction_descending">Décroissant</string>
+    <string name="sort_direction_accessibility">Ordre actuel : %1$s. Appuyez pour passer à %2$s.</string>
     <string name="group_derived_count">Calculée · %1$d/%2$d évaluées</string>
     <string name="group_rated_count">%1$d/%2$d évaluées</string>
     <string name="group_unrated">Non noté</string>
@@ -103,7 +107,7 @@
 <string name="about_non_affiliation">Les noms et marques identifient les sources de données. Ils n’impliquent aucune affiliation, certification ou approbation.</string><string name="about_trademark_policy">Politique des marques</string>
 <string name="score_group_title">Note du groupe</string>
 <string name="search_clear">Effacer la recherche</string>
-<string name="popularity_settings_description">Instantané de popularité et disponibilité de l’actualisation</string><string name="popularity_runtime_unavailable">La popularité provient du catalogue intégré. L’actualisation en cours d’utilisation n’est pas disponible pour ce type de média dans cette version.</string><string name="search_more_online">Rechercher plus de résultats en ligne</string><string name="search_online_results">Résultats en ligne</string><string name="search_online_loading">Recherche en ligne…</string><string name="search_online_empty">Aucun autre résultat en ligne.</string><string name="search_online_error">La recherche en ligne a échoué. Les résultats locaux restent disponibles.</string><string name="action_retry">Réessayer</string>
+<string name="popularity_settings_description">Instantané de popularité et disponibilité de l’actualisation</string><string name="popularity_runtime_unavailable">La popularité provient du catalogue intégré. L’actualisation en cours d’utilisation n’est pas disponible pour ce type de média dans cette version.</string><string name="action_retry">Réessayer</string>
 <string name="category_selector_title">Choisir une catégorie</string><string name="category_not_installed">Non téléchargée</string><string name="onboarding_welcome_title">Bienvenue dans RankOffline!</string><string name="onboarding_welcome_body">Notez et organisez vos animes, mangas, séries, films et livres à votre façon.</string><string name="onboarding_privacy">Vos notes vous appartiennent : RankOffline fonctionne localement et respecte votre vie privée.</string><string name="onboarding_choose_style">Choisissez votre style</string><string name="onboarding_change_later">Vous pourrez le modifier à tout moment dans les paramètres.</string><string name="onboarding_minimal">Minimaliste</string><string name="onboarding_minimal_description">Une expérience légère sans jaquettes.</string><string name="onboarding_with_images">Avec images</string><string name="onboarding_with_images_description">Affiche les illustrations et nécessite leur téléchargement.</string><string name="onboarding_rating_style">Style de notation</string><string name="onboarding_rating_simple">Notation simple</string><string name="onboarding_rating_simple_description">Des notes rapides et directes.</string><string name="onboarding_rating_elaborated">Notation détaillée</string><string name="onboarding_rating_elaborated_description">Évaluez en détail des catégories configurables.</string><string name="onboarding_start">Commencer</string><string name="onboarding_categories_title">Par où voulez-vous commencer ?</string><string name="onboarding_categories_subtitle">Choisissez les catalogues hors ligne. Vous pourrez les gérer plus tard dans les paramètres.</string><string name="onboarding_done">Terminer</string><string name="categories_title">Paquets</string><string name="categories_settings_description">Téléchargez et gérez les paquets.</string><string name="categories_storage_title">Données des paquets</string><string name="categories_installed_size">%1$s installés</string><string name="categories_download_progress">%1$s / %2$s</string><string name="category_included_in_app">Incluse dans cette version</string><string name="category_downloaded">Téléchargée</string><string name="category_delete">Supprimer la catégorie</string><string name="category_download">Télécharger la catégorie</string><string name="category_included_not_reclaimable">Catalogue inclus ; l’espace de l’APK n’est pas récupérable</string><string name="category_remove_catalog">Supprimer le catalogue</string><string name="category_remove_title">Supprimer le catalogue %1$s</string><string name="category_remove_confirmation">Le catalogue et les jaquettes locales seront supprimés, libérant environ %1$s. Vos notes et données personnelles seront conservées.</string><string name="category_delete_my_data">Supprimer mes données</string><string name="category_delete_personal_title">Supprimer mes données %1$s</string><string name="category_delete_personal_confirmation">Vos notes et paramètres personnels pour %1$s seront définitivement supprimés. Cette action est irréversible. Le catalogue restera installé.</string><string name="category_delete_personal_action">Supprimer définitivement</string><string name="category_download_not_configured">L’hébergement des packs n’est pas configuré dans cette version.</string><string name="category_download_complete">Catégorie téléchargée et disponible hors ligne.</string><string name="category_pack_invalid">Le pack de catégorie est invalide ou incomplet.</string><string name="category_download_unavailable">Le téléchargement de cette catégorie n’est pas disponible.</string><string name="category_catalog_removed">Catalogue supprimé. Vos notes ont été conservées.</string><string name="category_personal_data_deleted">Données personnelles de la catégorie supprimées.</string>
     <string name="settings_display_description">Apparence et affichage des images</string>
     <string name="settings_theme_title">Thème</string>
@@ -147,7 +151,7 @@
 <string name="category_phase_importing_catalog">Importation du catalogue…</string>
 <string name="category_phase_importing_groups">Préparation de la fusion…</string>
 <string name="category_phase_downloading_covers">Téléchargement des jaquettes : %1$d / %2$d</string>
-<string name="category_phase_retrying_covers">Nouvelle tentative des jaquettes : %1$d / %2$d</string>
+
 <string name="category_deleting">Suppression…</string>
 <string name="category_phase_finalizing">Finalisation…</string>
 <string name="category_pack_runtime_error">Impossible de préparer le catalogue. Touchez pour réessayer.</string>
@@ -168,7 +172,7 @@
     <string name="color_picker_hue">Teinte</string>
     <string name="loading_list">Chargement de la liste…</string>
     <string name="covers_preparing_list">Préparation de la liste des jaquettes…</string>
-    <string name="covers_retrying_failed">Nouvelle tentative des jaquettes échouées…</string>
+
     <string name="covers_operation_busy">Une opération de jaquettes est déjà active pour ce pack.</string>
     <string name="covers_progress_details_explicit">%1$d téléchargées · %2$d indisponibles · %3$d échouées</string>
     <string name="merge_book_series">Fusionner les séries de livres</string>
@@ -185,4 +189,44 @@
     <string name="book_genre_science_technology">Science et technologie</string>
     <string name="book_genre_philosophy">Philosophie</string>
     <string name="book_genre_other">Autre / Non classé</string>
+    <string name="pack_background_channel">Opérations sur les packs</string>
+    <string name="pack_background_title">Préparation du pack hors ligne</string>
+    <string name="pack_background_downloading">Téléchargement du pack…</string>
+    <string name="pack_storage_details">Détails du stockage</string>
+    <string name="pack_storage_expected">Installation prévue : %1$s</string>
+    <string name="pack_storage_transfer">Transfert : %1$s</string>
+    <string name="pack_storage_catalog">Catalogue</string>
+    <string name="pack_storage_groups">Groupes</string>
+    <string name="pack_storage_metadata">Métadonnées</string>
+    <string name="pack_storage_archive">Archive du pack conservée</string>
+    <string name="pack_storage_covers">Jaquettes</string>
+    <string name="pack_storage_physical_total">Total physique</string>
+    <string name="pack_storage_personal_logical">Données personnelles (estimation logique) : %1$s</string>
+    <string name="category_uninstall_keep_data">Désinstaller en conservant les données personnelles</string>
+    <string name="category_remove_choices">Choisissez de conserver ou non vos notes, commentaires, profils et réglages pour une réinstallation ultérieure. La suppression des fichiers et jaquettes locaux libère environ %1$s.</string>
+    <string name="media_all">Tout</string>
+    <string name="personal_backup_title">Sauvegarde des données personnelles</string>
+    <string name="personal_backup_description">Exporter ou restaurer notes, réglages et thèmes personnalisés</string>
+    <string name="personal_backup_explanation">Les sauvegardes sont des fichiers JSON non chiffrés contenant données personnelles et thèmes personnalisés. Le fournisseur de documents choisi peut les stocker ou les synchroniser. Catalogues et jaquettes ne sont jamais inclus.</string>
+    <string name="personal_backup_scope_explanation">Ces actions utilisent uniquement le paquet sélectionné. Chaque note conserve l’identifiant de son paquet.</string>
+    <string name="personal_backup_scope_explanation_all">RankOfflineAll partage le classement combiné et transfère les données de tous les paquets prêts. Chaque note conserve l’identifiant de son paquet d’origine.</string>
+    <string name="personal_backup_export">Exporter la sauvegarde</string>
+    <string name="personal_backup_import">Importer une sauvegarde</string>
+    <string name="personal_backup_preview_title">Importer les données personnelles ?</string>
+    <string name="personal_backup_preview_body">%1$d notes individuelles, %2$d notes de groupe et les réglages de %3$d packs ont été validés.</string>
+    <string name="personal_backup_preview_policy">Fusionner conserve la note la plus récente de chaque élément et importe les réglages fournis. Remplacer substitue toutes les notes et le périmètre de réglages sauvegardé.</string>
+    <string name="personal_backup_merge">Fusionner les plus récentes</string>
+    <string name="personal_backup_replace">Remplacer</string>
+    <string name="personal_backup_exported">Sauvegarde des données personnelles exportée.</string>
+    <string name="personal_backup_imported">Données personnelles importées.</string>
+    <string name="personal_backup_invalid">La sauvegarde sélectionnée est invalide ou incompatible.</string>
+    <string name="personal_backup_failed">L’opération de sauvegarde a échoué.</string>
+    <string name="personal_backup_share">Partager la sauvegarde</string>
+    <string name="personal_backup_share_chooser">Partager la sauvegarde personnelle</string>
+    <string name="personal_backup_working">Traitement en cours…</string>
+    <string name="personal_backup_busy">Une autre opération de données personnelles est déjà en cours.</string>
+    <string name="personal_backup_import_subtitle">Sélectionnez un fichier JSON sur l’appareil</string><string name="personal_backup_export_subtitle">Enregistrez vos données dans un fichier JSON</string><string name="personal_backup_share_json">Partager la sauvegarde JSON</string>
+    <string name="ranking_share_title">Partager le classement</string><string name="ranking_share_subtitle">Créer et partager un résumé visuel</string><string name="ranking_share_chooser">Partager l’image du classement</string><string name="ranking_share_show_images">Afficher les images</string><string name="ranking_share_show_images_description">Inclure les jaquettes disponibles localement</string><string name="ranking_share_heading">Mon Top %1$d %2$s</string><string name="ranking_share_failed">Impossible de créer l’image du classement.</string><string name="ranking_share_empty">Notez au moins un élément pour créer une image du classement.</string><string name="ranking_share_preview_description">Aperçu de l’image du classement</string><string name="ranking_share_page_indicator">Modèle %1$d sur %2$d%3$s</string><string name="ranking_share_selected">, sélectionné</string>
+    <string name="ranking_share_scope_all">RankOffline</string><string name="ranking_share_scope_anime">Anime</string><string name="ranking_share_scope_manga">Manga</string><string name="ranking_share_scope_movies">Films</string><string name="ranking_share_scope_series">Séries</string><string name="ranking_share_scope_books">Livres</string>
+    <string name="personal_backup_replace_confirm_title">Remplacer les données personnelles ?</string><string name="personal_backup_replace_confirm_body">Remplace les notes, scores détaillés, paramètres et profils inclus dans cette sauvegarde. Les données des autres paquets ne sont pas supprimées.</string>
 </resources>
