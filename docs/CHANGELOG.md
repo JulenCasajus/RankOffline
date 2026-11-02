@@ -2,8 +2,9 @@
 
 ## 0.2.2 integration work
 
-- Added a debug-only SAF installer that exercises the validated local pack,
-  Room import and READY path without bundling archives in the APK.
+- Added debug HTTPS package discovery and installation from a GitHub release
+  index, reusing the existing archive validation, Room import and READY path.
+- Removed the temporary additional debug launcher and file-picker activity.
 - Added separate supplied Share backgrounds for every official package and new
   default Top 7/Top 10 artwork, stored as high-quality WebP.
 - Added reproducible schema-2 package validation and the documented declarative
@@ -23,5 +24,5 @@
   strict validator, negative fixtures and conversion configurations for the
   five official catalog snapshots. Generated `.pack` files are not committed.
 
-Not included: legacy migration, remote registry, pack updates/synchronization,
-Google Play publication or definitive Share artwork.
+Not included: legacy migration, production publisher-trust registry,
+pack updates/synchronization, Google Play publication or definitive Share artwork.

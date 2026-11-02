@@ -61,29 +61,6 @@ suspend fun PackManager.downloadAndInstall(packId: PackId): PackOperationResult 
 }
 
 
-suspend fun PackManager.installLocalArchive(archive: File, expectedManifest: PackManifest): PackOperationResult =
-    packLock(expectedManifest.packId).withLock {
-        val id = expectedManifest.packId
-        if (!isCompatiblePackVersion(expectedManifest.minRankOfflineVersion, currentAppVersion))
-            return@withLock PackOperationResult.INVALID_PACK
-        alreadyInstalled(id, expectedManifest)?.let { return@withLock it }
-        runtime[id] = PackRuntimeStatus.INITIALIZING
-        tracker.set(id, PackInstallProgress(PackInstallPhase.VERIFYING))
-        try {
-            val result = installVerified(id, archive, expectedManifest)
-            runtime[id] = if (result == PackOperationResult.INSTALLED) PackRuntimeStatus.READY
-                else PackRuntimeStatus.ERROR
-            result
-        } catch (cancelled: CancellationException) {
-            runtime[id] = PackRuntimeStatus.NOT_INSTALLED
-            throw cancelled
-        } finally {
-            tracker.clear(id)
-            withContext(NonCancellable) { refresh() }
-        }
-    }
-
-
 /** A repeated installation is a no-op only for the exact same manifest. */
 internal fun PackManager.alreadyInstalled(id: PackId, expected: PackManifest): PackOperationResult? {
     if (installer.hasPendingInstallation(id) || installer.hasPendingDeletion(id))

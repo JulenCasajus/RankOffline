@@ -103,12 +103,6 @@ android {
                 add("src/resources")
             }
         }
-        getByName("debug") {
-            kotlin.directories.apply {
-                clear()
-                add("src/debug/java")
-            }
-        }
     }
 
     compileOptions {

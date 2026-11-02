@@ -13,9 +13,9 @@
 
 ## Explicitly later
 
-- Trusted pack registry/discovery and publisher identity policy.
-- Public local pack import UX. The current SAF installer is deliberately
-  debug-only; the schema-2 authoring/validation CLI exists under `scripts/`.
+- Production trusted pack registry and publisher identity policy.
+- Public manual `.pack` import UX; schema-2 authoring/validation CLI exists
+  under `scripts/`.
 - Pack updates, synchronization and v0.2.1 migrations.
 
 These items are not current features and must not be advertised as available.

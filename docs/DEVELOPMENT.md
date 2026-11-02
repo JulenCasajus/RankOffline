@@ -32,21 +32,19 @@ dynamic dependency is used.
 ./gradlew bundleRelease   # signing is optional unless upload credentials exist
 ```
 
-## Debug-only local pack installation
+## Debug package discovery and installation
 
-Debug builds contain a second launcher entry named **RankOffline pack installer
-(debug)**. It opens Android's Storage Access Framework and accepts a local
-`.pack` document. The selected document is staged in cache with a 2 GiB bound,
-validated by the runtime ZIP/manifest reader and installed through
-`PackManager.installLocalArchive`, including the Room import and READY commit.
-No pack is bundled in the APK and the tool never writes directly to
-`files/packs/`. The activity and its strings live exclusively in
-`app/src/debug/`, so they are absent from release builds.
+The debug build has a single RankOffline launcher entry. Its configurable
+`BuildConfig.PACK_INDEX_URL` points to the HTTPS distribution index in the
+GitHub prerelease, while release builds leave remote discovery disabled.
+The existing pack-management UI fetches the index and downloads selected `.pack`
+archives, verifies their size and SHA-256, and delegates to WorkManager,
+`PackInstaller`, `CatalogImporter` and the READY protocol. No `.pack` archive is
+bundled in the APK.
 
-For emulator testing, drag `build/pack-output/pack-N.pack` onto the emulator,
-open the debug installer, select the document and wait for the READY message.
-Return to RankOffline and select the newly installed pack. Reopen the main app
-after each first install to exercise persisted discovery and recovery.
+On a device, open RankOffline, use package management to refresh available
+packages, download a package and confirm READY. Restart with the device offline
+to verify that the installed catalog and personal ratings remain accessible.
 
 Room schema generation must leave reviewed JSON in `app/schemas/`. Test API 26
 and API 37, process death during WorkManager/restore, every launcher alias,
