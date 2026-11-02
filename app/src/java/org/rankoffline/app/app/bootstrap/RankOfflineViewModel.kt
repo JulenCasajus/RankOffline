@@ -32,7 +32,10 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         services.packManager, settingsRepository, viewingScope, revisions)
     internal val covers = CoverUiController(viewModelScope, services, coverRepository, ::reportError)
     internal val packController = PackUiController(application, viewModelScope, services, selection,
-        onSelected = catalog::preparePack, beforeDelete = covers::cancelAndJoin, onChanged = { id -> catalog.removePack(id); covers.invalidate(id) }, onError = ::reportError)
+        onSelected = catalog::preparePack, beforeDelete = covers::cancelAndJoin,
+        onChanged = { id -> catalog.removePack(id); covers.invalidate(id) },
+        onError = ::reportError,
+        onDiscoveryError = { reportError(it, R.string.pack_source_refresh_failed) })
     internal val ratingController = RatingUiController(viewModelScope, services.ratingRepository,
         services.groupRepository, settings, onChanged = catalog::ratingChanged,
         onError = { reportError(it, R.string.message_rating_operation_failed) })

@@ -20,6 +20,14 @@ python3 -m unittest discover -s scripts/tests -v
 
 # Compile and run the current Kotlin parsers against all generated packs
 ./scripts/validate_packs_with_kotlin.sh
+
+# Prepare byte-identical GitHub Release assets and an index with real HTTPS URLs
+python3 scripts/prepare_pack_release.py \
+  --source build/pack-output \
+  --output build/release/v0.2.2-debug.1 \
+  --base-url https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.2-debug.1 \
+  --apk app/build/outputs/apk/debug/app-debug.apk \
+  --apk-name RankOffline-v0.2.2-debug.1.apk
 ```
 
 Set `RANKOFFLINE_LEGACY_ROOT` or pass `--legacy-root` when the old project is not

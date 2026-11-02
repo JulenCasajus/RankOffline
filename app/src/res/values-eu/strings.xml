@@ -90,6 +90,7 @@
   <string name='bonus_personal_taste'>Gustu pertsonala</string>
   <string name='about_version'>%1$s bertsioa</string>
   <string name='error_initialize_local_data'>Ezin izan dira datu lokalak hasieratu.</string>
+  <string name='pack_source_refresh_failed'>Ezin izan dira paketeak eguneratu. Egiaztatu konexioa eta saiatu berriro.</string>
   <string name='score_direct_title'>Azken puntuazioa editatu</string>
   <string name='score_direct_explanation'>Sartu 0 eta 10 arteko balio bat, gehienez bi hamartarrekin.</string>
   <string name='score_direct_label'>Azken puntuazioa</string>

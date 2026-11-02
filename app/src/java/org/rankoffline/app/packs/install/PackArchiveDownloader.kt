@@ -3,7 +3,6 @@ package org.rankoffline.app
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
-import java.net.URI
 import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -18,9 +17,7 @@ fun interface PackArchiveDownloader {
 
 /** HTTPS only, explicit redirect hosts; GitHub CDN hosts are configured by the caller. */
 class HttpsPackArchiveDownloader(allowedHosts: Set<String>) : PackArchiveDownloader {
-    private val hosts = allowedHosts.map { it.lowercase() }.toSet().also {
-        require(it.isNotEmpty() && it.none { host -> host.isBlank() || '/' in host || ':' in host })
-    }
+    private val trustedHosts = TrustedHttpsHosts(allowedHosts)
 
     override suspend fun download(descriptor: PackDownloadDescriptor, destination: File,
                                   progress: (Long) -> Unit): PackOperationResult = withContext(Dispatchers.IO) {
@@ -29,7 +26,7 @@ class HttpsPackArchiveDownloader(allowedHosts: Set<String>) : PackArchiveDownloa
         try {
             while (true) {
                 currentCoroutineContext().ensureActive()
-                if (!approved(url)) return@withContext PackOperationResult.INVALID_PACK
+                if (!trustedHosts.approves(url)) return@withContext PackOperationResult.INVALID_PACK
                 val connection = (url.toURL().openConnection() as HttpURLConnection).apply {
                     instanceFollowRedirects = false
                     connectTimeout = 15_000
@@ -89,7 +86,4 @@ class HttpsPackArchiveDownloader(allowedHosts: Set<String>) : PackArchiveDownloa
         }
     }
 
-    private fun approved(uri: URI): Boolean =
-        uri.scheme.equals("https", ignoreCase = true) && uri.host?.lowercase() in hosts &&
-            uri.userInfo == null && uri.fragment == null && uri.port in listOf(-1, 443)
 }

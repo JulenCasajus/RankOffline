@@ -14,6 +14,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from packlib import PackValidationError, build_pack, validate_pack  # noqa: E402
+from prepare_pack_release import ReleasePreparationError, prepare_release  # noqa: E402
 
 
 def encoded(value: object) -> bytes:
@@ -137,6 +138,51 @@ class PackToolTests(unittest.TestCase):
             legacy_root=Path(self.temporary.name),
         )
         self.assertEqual(1, validate_pack(self.path, expected_pack_id=99)["items"])
+
+    def test_release_index_uses_the_exact_validated_archive(self) -> None:
+        make_pack(self.path, self.manifest, self.payloads)
+        validation = validate_pack(self.path, expected_pack_id=99)
+        source = Path(self.temporary.name) / "source"
+        output = Path(self.temporary.name) / "release"
+        source.mkdir()
+        archive = source / "fixture.pack"
+        self.path.replace(archive)
+        source_index = {
+            "schemaVersion": 1,
+            "generatedBy": "test",
+            "packs": [{
+                "packId": 99, "version": "fixture-1", "displayName": "Fixture",
+                "fileName": "fixture.pack", "archiveBytes": validation["archiveBytes"],
+                "archiveSha256": validation["archiveSha256"], "registryId": "fixture-99",
+                "archiveUrl": None, "manifest": self.manifest,
+            }],
+        }
+        (source / "pack-index.json").write_text(json.dumps(source_index), encoding="utf-8")
+        prepared = prepare_release(source, output, "https://example.test/releases/v1")
+        self.assertEqual(
+            "https://example.test/releases/v1/fixture.pack",
+            prepared["packs"][0]["archiveUrl"],
+        )
+        self.assertEqual(archive.read_bytes(), (output / "fixture.pack").read_bytes())
+
+    def test_release_preparation_rejects_stale_hash(self) -> None:
+        make_pack(self.path, self.manifest, self.payloads)
+        validation = validate_pack(self.path, expected_pack_id=99)
+        source = Path(self.temporary.name) / "source"
+        source.mkdir()
+        archive = source / "fixture.pack"
+        self.path.replace(archive)
+        source_index = {
+            "schemaVersion": 1, "generatedBy": "test", "packs": [{
+                "packId": 99, "version": "fixture-1", "displayName": "Fixture",
+                "fileName": "fixture.pack", "archiveBytes": validation["archiveBytes"],
+                "archiveSha256": "0" * 64, "registryId": "fixture-99",
+                "archiveUrl": None, "manifest": self.manifest,
+            }],
+        }
+        (source / "pack-index.json").write_text(json.dumps(source_index), encoding="utf-8")
+        with self.assertRaises(ReleasePreparationError):
+            prepare_release(source, Path(self.temporary.name) / "release", "https://example.test/v1")
 
 
 if __name__ == "__main__":

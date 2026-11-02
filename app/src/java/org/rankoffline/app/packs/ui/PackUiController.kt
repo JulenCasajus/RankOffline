@@ -20,7 +20,8 @@ internal class PackUiController(
     private val onSelected: (PackId, CatalogSortOrder) -> Unit,
     private val beforeDelete: suspend (PackId) -> Unit,
     private val onChanged: (PackId) -> Unit,
-    private val onError: suspend (Throwable) -> Unit
+    private val onError: suspend (Throwable) -> Unit,
+    private val onDiscoveryError: suspend (Throwable) -> Unit
 ) {
     val states: StateFlow<Map<PackId, PackState>> = services.packManager.states
     val progress: StateFlow<Map<PackId, PackInstallProgress>> = services.packManager.installProgress
@@ -91,7 +92,7 @@ internal class PackUiController(
             PackWorkScheduler.reconcilePersistentWork(context, services.packManager)
         }
         catch (cancelled: CancellationException) { throw cancelled }
-        catch (failure: Exception) { onError(failure) }
+        catch (failure: Exception) { onDiscoveryError(failure) }
     }
 
     fun install(id: PackId) = scope.launch {

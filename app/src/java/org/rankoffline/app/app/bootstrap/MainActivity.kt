@@ -8,18 +8,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import java.io.File
+import java.net.URI
 
 /** Process entry point shared by activities and WorkManager-only launches. */
 class RankOfflineApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         installDefaultShareBackgrounds()
-        RankOfflineServices.configure(PackServiceConfiguration(
-            downloader = PackArchiveDownloader { _, _, _ -> PackOperationResult.NOT_FOUND },
-            // Remote discovery is deliberately absent in v0.2.2. A future trusted registry
-            // can replace this injection without adding provider identities to the APK.
-            loadTrustedSources = { registry -> registry.replace(emptyList()) }
-        ))
+        RankOfflineServices.configure(packServiceConfiguration())
     }
 
     private fun installDefaultShareBackgrounds() {
@@ -40,6 +36,21 @@ class RankOfflineApplication : Application() {
                 }
             }
         }
+    }
+
+    private fun packServiceConfiguration(): PackServiceConfiguration {
+        val indexUrl = BuildConfig.PACK_INDEX_URL.trim().takeIf(String::isNotEmpty)
+            ?: return PackServiceConfiguration(
+                downloader = PackArchiveDownloader { _, _, _ -> PackOperationResult.NOT_FOUND },
+                loadTrustedSources = { registry -> registry.replace(emptyList()) }
+            )
+        val hosts = BuildConfig.PACK_ALLOWED_HOSTS.split(',').map(String::trim)
+            .filter(String::isNotEmpty).toSet()
+        val source = HttpsPackIndexSource(URI(indexUrl), hosts)
+        return PackServiceConfiguration(
+            downloader = HttpsPackArchiveDownloader(hosts),
+            loadTrustedSources = { registry -> registry.replace(source.load()) }
+        )
     }
 }
 

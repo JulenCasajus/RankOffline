@@ -90,6 +90,7 @@
   <string name='bonus_personal_taste'>Gusto personal</string>
   <string name='about_version'>Versión %1$s</string>
   <string name='error_initialize_local_data'>No se pudieron inicializar los datos locales.</string>
+  <string name='pack_source_refresh_failed'>No se pudieron actualizar los paquetes. Comprueba la conexión e inténtalo de nuevo.</string>
   <string name='score_direct_title'>Editar puntuación final</string>
   <string name='score_direct_explanation'>Introduce un valor de 0 a 10 con un máximo de dos decimales.</string>
   <string name='score_direct_label'>Puntuación final</string>

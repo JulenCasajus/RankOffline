@@ -50,6 +50,7 @@ SOURCES=(
   "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/manifest/PackManifestRating.kt"
   "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/manifest/PackManifestParser.kt"
   "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/model/PackModels.kt"
+  "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/model/PackSources.kt"
   "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/model/PackAttributions.kt"
   "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/model/AttributionJsonReaders.kt"
   "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/model/AttributionLegalValidator.kt"
@@ -57,6 +58,8 @@ SOURCES=(
   "$PROJECT_ROOT/app/src/java/org/rankoffline/app/catalog/model/CatalogItemFormat.kt"
   "$PROJECT_ROOT/app/src/java/org/rankoffline/app/catalog/model/CatalogGroupFormat.kt"
   "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/install/PackArchiveReader.kt"
+  "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/install/TrustedHttpsHosts.kt"
+  "$PROJECT_ROOT/app/src/java/org/rankoffline/app/packs/install/RemotePackIndex.kt"
   "$SCRIPT_DIR/kotlin-validator/ContractStubs.kt"
   "$SCRIPT_DIR/kotlin-validator/ValidatePacks.kt"
 )

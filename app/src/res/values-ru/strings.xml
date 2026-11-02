@@ -90,6 +90,7 @@
   <string name='bonus_personal_taste'>Личный вкус</string>
   <string name='about_version'>Версия %1$s</string>
   <string name='error_initialize_local_data'>Не удалось инициализировать локальные данные.</string>
+  <string name='pack_source_refresh_failed'>Не удалось обновить пакеты. Проверьте подключение и повторите попытку.</string>
   <string name='score_direct_title'>Изменить итоговую оценку</string>
   <string name='score_direct_explanation'>Введите значение от 0 до 10, не более двух знаков после запятой.</string>
   <string name='score_direct_label'>Итоговая оценка</string>

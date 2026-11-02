@@ -42,9 +42,3 @@ data class MediaGroupRepresentativeEntity(
 
 data class PackInstallRequest(val manifestJson: String, val sourceRevision: String? = null)
 
-data class PackDownloadDescriptor(
-    val archiveBytes: Long,
-    val archiveSha256: String
-) {
-    companion object { const val MAX_ARCHIVE_BYTES = 2L * 1024 * 1024 * 1024 }
-}

@@ -83,8 +83,25 @@ private fun validate(path: String): String {
     return "${manifest.packId.value}\t$items\t$groups\t$relationships\t${file.name}"
 }
 
+private fun manifestPackId(path: String): PackId {
+    lateinit var packId: PackId
+    PackArchiveReader.withVerifiedArchive(File(path), null) { request, _ ->
+        packId = PackManifestParser.parse(request.manifestJson).packId
+    }
+    return packId
+}
+
 fun main(arguments: Array<String>) {
     require(arguments.isNotEmpty()) { "Pass at least one .pack path" }
     println("packId\titems\tgroups\trelationships\tarchive")
     arguments.forEach { println(validate(it)) }
+    System.getenv("RANKOFFLINE_PACK_INDEX")?.takeIf { it.isNotBlank() }?.let { path ->
+        val hosts = setOf("github.com", "release-assets.githubusercontent.com",
+            "objects.githubusercontent.com", "github-releases.githubusercontent.com")
+        val descriptors = PackIndexParser.parse(File(path).readText(), TrustedHttpsHosts(hosts))
+        require(descriptors.map { it.packId }.toSet() == arguments.map(::manifestPackId).toSet()) {
+            "Remote index and supplied archives differ"
+        }
+        println("remoteIndex\t${descriptors.size}\t${File(path).name}")
+    }
 }

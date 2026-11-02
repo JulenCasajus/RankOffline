@@ -90,6 +90,7 @@
   <string name='bonus_personal_taste'>Persönlicher Geschmack</string>
   <string name='about_version'>Version %1$s</string>
   <string name='error_initialize_local_data'>Lokale Daten konnten nicht initialisiert werden.</string>
+  <string name='pack_source_refresh_failed'>Pakete konnten nicht aktualisiert werden. Prüfe die Verbindung und versuche es erneut.</string>
   <string name='score_direct_title'>Endwertung bearbeiten</string>
   <string name='score_direct_explanation'>Gib einen Wert von 0 bis 10 mit bis zu zwei Dezimalstellen ein.</string>
   <string name='score_direct_label'>Endwertung</string>

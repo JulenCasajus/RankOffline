@@ -84,6 +84,7 @@
   <string name='bonus_personal_taste'>个人喜好</string>
   <string name='about_version'>版本 %1$s</string>
   <string name='error_initialize_local_data'>无法初始化本地数据。</string>
+  <string name='pack_source_refresh_failed'>无法刷新软件包。请检查网络连接后重试。</string>
   <string name='score_direct_title'>编辑最终评分</string>
   <string name='score_direct_explanation'>输入 0 到 10 之间的数值，最多保留两位小数。</string>
   <string name='score_direct_label'>最终评分</string>

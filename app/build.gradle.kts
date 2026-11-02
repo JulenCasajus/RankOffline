@@ -31,6 +31,9 @@ android {
         versionCode = 9
         versionName = "0.2.2"
 
+        buildConfigField("String", "PACK_INDEX_URL", "\"\"")
+        buildConfigField("String", "PACK_ALLOWED_HOSTS", "\"\"")
+
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -53,6 +56,16 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField(
+                "String",
+                "PACK_INDEX_URL",
+                "\"https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.2-debug.1/pack-index.json\""
+            )
+            buildConfigField(
+                "String",
+                "PACK_ALLOWED_HOSTS",
+                "\"github.com,release-assets.githubusercontent.com,objects.githubusercontent.com,github-releases.githubusercontent.com\""
+            )
         }
         release {
             isMinifyEnabled = true
