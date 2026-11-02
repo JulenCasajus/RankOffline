@@ -1,0 +1,274 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<resources>
+  <string name='nav_ranking'>Nire rankinga</string>
+  <string name='nav_settings'>Ezarpenak</string>
+  <string name='no_search_results'>Ez dago emaitzarik.</string>
+  <string name='ranking_title'>NireRankinga</string>
+  <string name='no_saved_ratings'>Oraindik ez dago gordetako baloraziorik.</string>
+  <string name='sort_popularity'>Ospea</string>
+  <string name='cover_download'>Deskargatu azala</string>
+  <string name='cover_delete'>Ezabatu azala</string>
+  <string name='cover_delete_title'>Azal hau ezabatu?</string>
+  <string name='cover_delete_explanation'>Nahi duzunean berriro deskargatu ahal izango duzu.</string>
+  <string name='action_cancel'>Utzi</string>
+  <string name='action_delete'>Ezabatu</string>
+  <string name='action_continue'>Jarraitu</string>
+  <string name='action_save'>Gorde</string>
+  <string name='action_apply'>Aplikatu</string>
+  <string name='action_back'>Atzera</string>
+  <string name='rating_simple_instructions'>Aukeratu 0tik 10era bitarteko puntuazioa, 0,5eko urratsetan.</string>
+  <string name='rating_slider_accessibility'>Balorazio-graduatzailea</string>
+  <string name='rating_notes'>Oharrak</string>
+  <string name='score_title'>Puntuazioa</string>
+  <string name='score_quality'>Kalitatea: %1$s</string>
+  <string name='score_bonus_value'>%1$s: +%2$.1f</string>
+  <string name='score_activate_category'>Aktibatu</string>
+  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='bonus_range'>%1$s · +0tik +%2$.1fera</string>
+  <string name='bonus_current'>+%1$.1f</string>
+  <string name='settings_title'>Ezarpenak</string>
+  <string name='settings_general_title'>Ezarpen orokorrak</string>
+  <string name='settings_general_description'>Paketeak, gaia, ikonoa eta hizkuntza</string>
+  <string name='settings_rating_title'>Balorazio-ezarpenak</string>
+  <string name='settings_rating_description'>Kategoriak eta puntuazio-sistema</string>
+  <string name='settings_icon_title'>Ikonoa</string>
+  <string name='settings_icon_description'>Aukeratu abiarazlearen ikonoa</string>
+  <string name='settings_data_title'>Datuak</string>
+  <string name='settings_data_description'>Inportazioa, esportazioa eta babeskopia</string>
+  <string name='settings_about_title'>Informazioa</string>
+  <string name='settings_about_description'>Aplikazioari, kredituei eta lizentziei buruzko informazioa</string>
+  <string name='settings_active_pack_title'>Paketearen ezarpenak</string>
+  <string name='settings_active_pack_description'>%1$s paketearen ezarpen esklusiboak</string>
+  <string name='settings_active_pack_screen_title'>%1$s paketearen ezarpenak</string>
+  <string name='settings_donation_title'>Dohaintza</string>
+  <string name='settings_donation_description'>Lagundu RankOffline garatzen</string>
+  <string name='settings_donation_body'>
+    RankOffline doakoa eta kode irekikoa da. Dohaintza-aukerak hemen agertuko
+    dira helmuga ofizial bat dagoenean.
+  </string>
+  <string name='settings_open_item'>Ireki %1$s</string>
+  <string name='icon_content_description'>%1$s abiarazle-ikonoa</string>
+  <string name='general_display_section'>Bistaratzea</string>
+  <string name='general_sticky_score'>Puntuazio-goiburu finkoa</string>
+  <string name='general_sticky_score_description'>Mantendu puntuazioa ikusgai korritzean</string>
+  <string name='general_show_images'>Erakutsi irudiak</string>
+  <string name='language_title'>Hizkuntza</string>
+  <string name='language_description'>Aplikazioaren interfazearen hizkuntza</string>
+  <string name='language_english'>English</string>
+  <string name='language_spanish'>Español</string>
+  <string name='language_german'>Deutsch</string>
+  <string name='language_french'>Français</string>
+  <string name='language_russian'>Русский</string>
+  <string name='language_japanese'>日本語</string>
+  <string name='language_simplified_chinese'>简体中文</string>
+  <string name='language_basque'>Euskara</string>
+  <string name='language_italian'>Italiano</string>
+  <string name='covers_downloaded_count'>Deskargatutako azalak: %1$d</string>
+  <string name='covers_clear'>Ezabatu deskargatutako azalak</string>
+  <string name='covers_clear_title'>Deskargatutako azalak ezabatu?</string>
+  <string name='covers_clear_explanation'>Behar direnean berriro deskargatu ahal izango dira.</string>
+  <string name='rating_elaborate'>Balorazio landua</string>
+  <string name='rating_add_category'>Sortu kategoria</string>
+  <string name='rating_new_category_name'>Kategoria berria</string>
+  <string name='rating_new_category_description'>Zure ebaluazio-irizpide pertsonalizatua.</string>
+  <string name='category_name'>Izena</string>
+  <string name='category_description'>Deskribapena</string>
+  <string name='category_weight_percent'>%1$d%%</string>
+  <string name='category_weight_slider_accessibility'>Kategoriaren pisuaren graduatzailea</string>
+  <string name='category_color'>Kolorea</string>
+  <string name='category_color_primary'>Nagusia</string>
+  <string name='category_color_secondary'>Bigarren mailakoa</string>
+  <string name='category_color_content_description'>Aukeratu kategoriaren kolorea</string>
+  <string name='color_picker_title'>Aukeratu kolorea</string>
+  <string name='color_hex_label'>Kolore hamaseitarra (#RRGGBB)</string>
+  <string name='color_invalid'>Sartu baliozko kolore bat, adibidez #19D5E5.</string>
+  <string name='category_delete_title'>Kategoria ezabatu?</string>
+  <string name='category_delete_explanation'>
+    %1$s eta gordetako balio xehatuak ezabatuko dira. Dauden azken puntuazioak
+    eta oharrak ez dira aldatuko.
+  </string>
+  <string name='bonus_personal_taste'>Gustu pertsonala</string>
+  <string name='about_version'>%1$s bertsioa</string>
+  <string name='error_initialize_local_data'>Ezin izan dira datu lokalak hasieratu.</string>
+  <string name='score_direct_title'>Azken puntuazioa editatu</string>
+  <string name='score_direct_explanation'>Sartu 0 eta 10 arteko balio bat, gehienez bi hamartarrekin.</string>
+  <string name='score_direct_label'>Azken puntuazioa</string>
+  <string name='rating_profiles'>Profilak</string>
+  <string name='rating_mode'>Balorazio-modua</string>
+  <string name='rating_simple'>Balorazio sinplea</string>
+  <string name='rating_profiles_description'>Obra motaren araberako pisuak</string>
+  <string name='rating_categories'>Kategoriak</string>
+  <string name='rating_categories_description'>Zer baloratzen den</string>
+  <string name='rating_profile'>Balorazio-profila</string>
+  <string name='rating_create_profile'>Sortu profila</string>
+  <string name='rating_profile_name'>Profilaren izena</string>
+  <string name='rating_new_profile_name'>Profil berria</string>
+  <string name='rating_delete_profile'>Ezabatu profila</string>
+  <string name='rating_delete_profile_confirmation'>«%1$s» profila ezabatu?</string>
+  <string name='rating_last_profile_required'>Gutxienez profil bat behar da.</string>
+  <string name='rating_reset_profiles'>Berrezarri profil lehenetsiak</string>
+  <string name='rating_reset_profiles_confirmation'>
+    Profil guztiak lehenetsiekin ordezkatu? Kategoriak eta balorazioak ez dira
+    aldatuko.
+  </string>
+  <string name='rating_reset_categories'>Berrezarri kategoria lehenetsiak</string>
+  <string name='rating_reset_categories_confirmation'>
+    Kategoria guztiak lehenetsiekin ordezkatu? Profilek pisu bateragarriak
+    mantenduko dituzte.
+  </string>
+  <string name='covers_settings_title'>Azalak</string>
+  <string name='covers_settings_description'>Kudeatu hautatutako multimedia motaren lineaz kanpoko azalak.</string>
+  <string name='covers_settings_explanation'>
+    Ekintzek hautatutako multimedia motari bakarrik eragiten diote. Aurrekargak
+    baloratutako elementuen falta diren azalak deskargatzen ditu.
+  </string>
+  <string name='covers_downloading_rated'>Azalak deskargatzen…</string>
+  <string name='covers_download_top'>Deskargatu Top %1$d</string>
+  <string name='filters_title'>Iragazkiak</string>
+  <string name='filters_active'>Iragazkiak (%1$d)</string>
+  <string name='filters_clear'>Garbitu iragazkiak</string>
+  <string name='filters_all'>Guztiak / Iragazkirik gabe</string>
+  <string name='filter_search_values'>Bilatu balioak</string>
+  <string name='sort_final_score'>Azken nota</string>
+  <string name='sort_quality_score'>Kalitatea</string>
+  <string name='sort_personal_taste'>Gustu pertsonala</string>
+  <string name='sort_category_score'>Kategoriaren nota</string>
+  <string name='search_catalog_hint'>Bilatu izenburuak…</string>
+  <string name='catalog_unavailable_error'>Ezin izan da katalogoa kargatu</string>
+  <string name='group_entries_count'>%1$d sarrera</string>
+  <string name='group_rated_count'>%1$d/%2$d baloratuta</string>
+  <string name='group_rate_together'>Baloratu</string>
+  <string name='group_members'>Sarrerak</string>
+  <string name='group_draft_choice'>Hutsetik hasi edo banakako balorazioak abiapuntutzat erabili?</string>
+  <string name='group_start_fresh'>Hutsetik hasi</string>
+  <string name='group_use_member_ratings'>Banakako balorazioak erabili</string>
+  <string name='about_rankoffline_trademarks'>
+    RankOffline-ren izen, logotipo, abiarazle-ikono eta marka-irudi ofizialak ez
+    daude GPLv3 lizentziapean; ikus TRADEMARKS.md.
+  </string>
+  <string name='about_summary_multimedia'>
+    Lineaz kanpoko multimedia-katalogoa eta balorazio-aplikazioa. Balorazioak,
+    oharrak eta hobespenak zure gailuan geratzen dira.
+  </string>
+  <string name='about_source_code'>Iturburu-kodea</string>
+  <string name='about_open_source_software'>Kode irekiko softwarea</string>
+  <string name='about_legal_trademarks'>Lege-oharrak / markak</string>
+  <string name='about_software_licences'>
+    RankOfflineren iturburu-kodea GPL-3.0-only da. AndroidX, Jetpack, Kotlin eta
+    Kotlinx runtime osagai aplikagarriek Apache-2.0 erabiltzen dute.
+  </string>
+  <string name='about_non_affiliation'>
+    Hornitzaileen izenek eta markek datu-iturriak identifikatzen dituzte. Ez
+    dute afiliazio, ziurtapen edo babesik adierazten.
+  </string>
+  <string name='score_group_title'>Taldearen puntuazioa</string>
+  <string name='search_clear'>Garbitu bilaketa</string>
+  <string name='action_retry'>Saiatu berriro</string>
+  <string name='category_not_installed'>Deskargatu gabe</string>
+  <string name='onboarding_welcome_title'>Ongi etorri RankOfflinera!!</string>
+  <string name='onboarding_choose_style'>Aukeratu estiloa</string>
+  <string name='onboarding_change_later'>Ezarpenetan alda dezakezu.</string>
+  <string name='onboarding_minimal'>Minimalista</string>
+  <string name='onboarding_with_images'>Irudiekin</string>
+  <string name='onboarding_rating_simple'>Balorazio sinplea</string>
+  <string name='onboarding_rating_elaborated'>Balorazio landua</string>
+  <string name='onboarding_start'>Hasi</string>
+  <string name='onboarding_categories_title'>Nondik hasi nahi duzu?</string>
+  <string name='onboarding_categories_subtitle'>
+    Aukeratu lineaz kanpo erabili nahi dituzun katalogoak. Gero Ezarpenetan
+    kudea ditzakezu.
+  </string>
+  <string name='onboarding_done'>Eginda</string>
+  <string name='categories_title'>Paketeak</string>
+  <string name='categories_settings_description'>Deskargatu eta kudeatu paketeak</string>
+  <string name='categories_storage_title'>Paketeen datuak</string>
+  <string name='category_downloaded'>Deskargatuta</string>
+  <string name='category_download'>Deskargatu kategoria</string>
+  <string name='category_remove_catalog'>Katalogoa ezabatu</string>
+  <string name='category_remove_title'>Ezabatu %1$s katalogoa</string>
+  <string name='category_download_unavailable'>Kategoria deskargatzea ez dago erabilgarri build honetan.</string>
+  <string name='settings_display_description'>Itxura eta irudien bistaratzea</string>
+  <string name='settings_theme_title'>Gaia</string>
+  <string name='settings_theme_description'>Aukeratu aplikazioaren kolore-paleta</string>
+  <string name='theme_midnight_neon'>Gauerdiko neona</string>
+  <string name='theme_cherry_blossom'>Gereziondo-lorea</string>
+  <string name='theme_deep_ocean'>Ozeano sakona</string>
+  <string name='theme_emerald_forest'>Esmeralda-basoa</string>
+  <string name='theme_golden_sunset'>Urrezko ilunabarra</string>
+  <string name='theme_lavender_dream'>Izpiliku-ametsa</string>
+  <string name='theme_pink_explosion'>Arrosa-eztanda</string>
+  <string name='theme_create'>Sortu gaia</string>
+  <string name='theme_edit'>Editatu gaia</string>
+  <string name='theme_name'>Gaiaren izena</string>
+  <string name='theme_color_background'>Atzeko planoa</string>
+  <string name='theme_color_surface'>Gainazala</string>
+  <string name='theme_color_primary'>Nagusia</string>
+  <string name='theme_color_secondary'>Bigarren mailakoa</string>
+  <string name='theme_preview'>Gaiaren aurrebista</string>
+  <string name='theme_preview_card'>Adibide-txartela</string>
+  <string name='theme_delete'>Ezabatu gaia</string>
+  <string name='theme_delete_confirmation_title'>“%1$s” ezabatu?</string>
+  <string name='theme_delete_confirmation_body'>Gai hau betiko ezabatuko da.</string>
+  <string name='theme_reset_builtins'>Berrezarri gai lehenetsiak</string>
+  <string name='onboarding_welcome_subtitle'>
+    Zure multimedia, zure balorazioak, zure erara. Lokalean gordeta,
+    pribatutasuna kontuan hartuta.
+  </string>
+  <string name='category_purge_action'>Ezabatu paketea eta datuak</string>
+  <plurals name='categories_packs_installed'>
+    <item quantity='one'>Pakete %1$d instalatuta</item>
+    <item quantity='other'>%1$d pakete instalatuta</item>
+  </plurals>
+  <string name='category_phase_downloading'>Deskargatzen…</string>
+  <string name='category_phase_waiting_download'>Deskargatzeko zain…</string>
+  <string name='category_phase_verifying'>Packa egiaztatzen…</string>
+  <string name='category_phase_installing'>Instalatzen…</string>
+  <string name='category_phase_waiting_import'>Inportatzeko zain…</string>
+  <string name='category_phase_waiting_covers'>Azalen zain…</string>
+  <string name='category_phase_importing_catalog'>Katalogoa inportatzen…</string>
+  <string name='category_phase_downloading_covers'>Azalak deskargatzen: %1$d / %2$d</string>
+  <string name='category_deleting'>Ezabatzen…</string>
+  <string name='category_phase_finalizing'>Amaitzen…</string>
+  <string name='category_pack_runtime_error'>Ezin izan da katalogoa prestatu. Sakatu berriro saiatzeko.</string>
+  <string name='message_rating_operation_failed'>Ezin izan da balorazioa gorde. Saiatu berriro.</string>
+  <string name='icon_default_blue'>Default · Urdina</string>
+  <string name='icon_default_glow_blue'>Default Glow · Urdina</string>
+  <string name='icon_himmel_blue'>Himmel · Urdina</string>
+  <string name='icon_maomao_green'>Maomao · Berdea</string>
+  <string name='icon_makise_red'>Makise · Gorria</string>
+  <string name='icon_zenitsu_yellow'>Zenitsu · Horia</string>
+  <string name='icon_guts_black'>Guts · Beltza</string>
+  <string name='icon_killua_white'>Killua · Zuria</string>
+  <string name='nav_search'>Bilatu</string>
+  <string name='packs_empty_invitation'>Deskargatu paketeak Ezarpenetatik hasteko.</string>
+  <string name='download_pack'>Deskargatu paketea</string>
+  <string name='color_picker_saturation_value'>Saturazioa eta distira</string>
+  <string name='color_picker_hue'>Tonua</string>
+  <string name='loading_list'>Zerrenda kargatzen…</string>
+  <string name='pack_background_channel'>Pakete-eragiketak</string>
+  <string name='pack_background_title'>Lineaz kanpoko paketea prestatzen</string>
+  <string name='pack_background_downloading'>Paketea deskargatzen…</string>
+  <string name='pack_storage_details'>Biltegiratze-xehetasunak</string>
+  <string name='pack_storage_transfer'>Transferentzia: %1$s</string>
+  <string name='pack_storage_covers'>Azalak</string>
+  <string name='pack_storage_physical_total'>Guztizko fisikoa</string>
+  <string name='category_uninstall_keep_data'>Desinstalatu, datu pertsonalak mantenduz</string>
+  <string name='media_all'>Guztiak</string>
+  <string name='personal_backup_preview_title'>Datu pertsonalak inportatu?</string>
+  <string name='personal_backup_preview_body'>
+    %1$d elementu-balorazio, %2$d talde-balorazio eta %3$d paketeren ezarpen
+    baliozkotu dira.
+  </string>
+  <string name='personal_backup_preview_policy'>
+    Bateratzeak elementu bakoitzaren balorazio berriena mantentzen du eta
+    emandako ezarpenak inportatzen ditu. Ordezkatzeak balorazio guztiak eta
+    kopiaren ezarpen-eremua ordezkatzen ditu.
+  </string>
+  <string name='personal_backup_merge'>Berrienak bateratu</string>
+  <string name='personal_backup_replace'>Ordeztu</string>
+  <string name='personal_backup_failed'>Babeskopia-eragiketak huts egin du.</string>
+  <string name='ranking_share_title'>Partekatu rankinga</string>
+  <string name='ranking_share_show_images'>Erakutsi irudiak</string>
+  <string name='ranking_share_failed'>Ezin izan da rankingaren irudia sortu.</string>
+  <string name='ranking_share_empty'>Baloratu gutxienez elementu bat rankingaren irudia sortzeko.</string>
+</resources>

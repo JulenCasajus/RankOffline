@@ -1,0 +1,274 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<resources>
+  <string name='nav_ranking'>Mon classement</string>
+  <string name='nav_settings'>Paramètres</string>
+  <string name='no_search_results'>Aucun résultat.</string>
+  <string name='ranking_title'>MonClassement</string>
+  <string name='no_saved_ratings'>Aucune évaluation enregistrée.</string>
+  <string name='sort_popularity'>Popularité</string>
+  <string name='cover_download'>Télécharger la jaquette</string>
+  <string name='cover_delete'>Supprimer la jaquette</string>
+  <string name='cover_delete_title'>Supprimer cette jaquette ?</string>
+  <string name='cover_delete_explanation'>Vous pourrez la télécharger de nouveau à tout moment.</string>
+  <string name='action_cancel'>Annuler</string>
+  <string name='action_delete'>Supprimer</string>
+  <string name='action_continue'>Continuer</string>
+  <string name='action_save'>Enregistrer</string>
+  <string name='action_apply'>Appliquer</string>
+  <string name='action_back'>Retour</string>
+  <string name='rating_simple_instructions'>Choisissez une note de 0 à 10 par pas de 0,5.</string>
+  <string name='rating_slider_accessibility'>Curseur de note</string>
+  <string name='rating_notes'>Notes</string>
+  <string name='score_title'>Note</string>
+  <string name='score_quality'>Qualité : %1$s</string>
+  <string name='score_bonus_value'>%1$s : +%2$.1f</string>
+  <string name='score_activate_category'>Activer</string>
+  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='bonus_range'>%1$s · +0 à +%2$.1f</string>
+  <string name='bonus_current'>+%1$.1f</string>
+  <string name='settings_title'>Paramètres</string>
+  <string name='settings_general_title'>Paramètres généraux</string>
+  <string name='settings_general_description'>Paquets, thème, icône et langue</string>
+  <string name='settings_rating_title'>Paramètres d’évaluation</string>
+  <string name='settings_rating_description'>Catégories et système de notation</string>
+  <string name='settings_icon_title'>Icône</string>
+  <string name='settings_icon_description'>Choisir l’icône du lanceur</string>
+  <string name='settings_data_title'>Données</string>
+  <string name='settings_data_description'>Importation, exportation et sauvegarde</string>
+  <string name='settings_about_title'>Informations</string>
+  <string name='settings_about_description'>Informations, crédits et licences</string>
+  <string name='settings_active_pack_title'>Paramètres du paquet</string>
+  <string name='settings_active_pack_description'>Paramètres propres au paquet %1$s</string>
+  <string name='settings_active_pack_screen_title'>Paramètres de %1$s</string>
+  <string name='settings_donation_title'>Don</string>
+  <string name='settings_donation_description'>Soutenir le développement de RankOffline</string>
+  <string name='settings_donation_body'>
+    RankOffline est gratuit et open source. Les options de don apparaîtront ici
+    lorsqu’une destination officielle sera disponible.
+  </string>
+  <string name='settings_open_item'>Ouvrir %1$s</string>
+  <string name='icon_content_description'>Icône de lanceur %1$s</string>
+  <string name='general_display_section'>Affichage</string>
+  <string name='general_sticky_score'>En-tête de note fixe</string>
+  <string name='general_sticky_score_description'>Garder la note visible pendant le défilement</string>
+  <string name='general_show_images'>Afficher les images</string>
+  <string name='language_title'>Langue</string>
+  <string name='language_description'>Langue de l’interface</string>
+  <string name='language_english'>English</string>
+  <string name='language_spanish'>Español</string>
+  <string name='language_german'>Deutsch</string>
+  <string name='language_french'>Français</string>
+  <string name='language_russian'>Русский</string>
+  <string name='language_japanese'>日本語</string>
+  <string name='language_simplified_chinese'>简体中文</string>
+  <string name='language_basque'>Euskara</string>
+  <string name='language_italian'>Italiano</string>
+  <string name='covers_downloaded_count'>Jaquettes téléchargées : %1$d</string>
+  <string name='covers_clear'>Supprimer les jaquettes téléchargées</string>
+  <string name='covers_clear_title'>Supprimer les jaquettes téléchargées ?</string>
+  <string name='covers_clear_explanation'>Les jaquettes pourront être téléchargées de nouveau si nécessaire.</string>
+  <string name='rating_elaborate'>Évaluation détaillée</string>
+  <string name='rating_add_category'>Créer une catégorie</string>
+  <string name='rating_new_category_name'>Nouvelle catégorie</string>
+  <string name='rating_new_category_description'>Votre critère d’évaluation personnalisé.</string>
+  <string name='category_name'>Nom</string>
+  <string name='category_description'>Description</string>
+  <string name='category_weight_percent'>%1$d%%</string>
+  <string name='category_weight_slider_accessibility'>Curseur du poids de la catégorie</string>
+  <string name='category_color'>Couleur</string>
+  <string name='category_color_primary'>Primaire</string>
+  <string name='category_color_secondary'>Secondaire</string>
+  <string name='category_color_content_description'>Choisir la couleur de la catégorie</string>
+  <string name='color_picker_title'>Choisir une couleur</string>
+  <string name='color_hex_label'>Couleur hexadécimale (#RRGGBB)</string>
+  <string name='color_invalid'>Saisissez une couleur valide, par exemple #19D5E5.</string>
+  <string name='category_delete_title'>Supprimer la catégorie ?</string>
+  <string name='category_delete_explanation'>
+    %1$s et ses valeurs détaillées enregistrées seront supprimés. Les notes
+    finales et commentaires existants ne changeront pas.
+  </string>
+  <string name='bonus_personal_taste'>Goût personnel</string>
+  <string name='about_version'>Version %1$s</string>
+  <string name='error_initialize_local_data'>Impossible d’initialiser les données locales.</string>
+  <string name='score_direct_title'>Modifier la note finale</string>
+  <string name='score_direct_explanation'>Saisissez une valeur de 0 à 10 avec au maximum deux décimales.</string>
+  <string name='score_direct_label'>Note finale</string>
+  <string name='rating_profiles'>Profils</string>
+  <string name='rating_mode'>Mode d’évaluation</string>
+  <string name='rating_simple'>Évaluation simple</string>
+  <string name='rating_profiles_description'>Pondérations selon le type d’œuvre</string>
+  <string name='rating_categories'>Catégories</string>
+  <string name='rating_categories_description'>Ce qui est évalué</string>
+  <string name='rating_profile'>Profil d’évaluation</string>
+  <string name='rating_create_profile'>Créer un profil</string>
+  <string name='rating_profile_name'>Nom du profil</string>
+  <string name='rating_new_profile_name'>Nouveau profil</string>
+  <string name='rating_delete_profile'>Supprimer le profil</string>
+  <string name='rating_delete_profile_confirmation'>Supprimer le profil « %1$s » ?</string>
+  <string name='rating_last_profile_required'>Au moins un profil est requis.</string>
+  <string name='rating_reset_profiles'>Réinitialiser les profils par défaut</string>
+  <string name='rating_reset_profiles_confirmation'>
+    Remplacer tous les profils par ceux par défaut ? Les catégories et les
+    évaluations resteront inchangées.
+  </string>
+  <string name='rating_reset_categories'>Réinitialiser les catégories par défaut</string>
+  <string name='rating_reset_categories_confirmation'>
+    Remplacer toutes les catégories par celles par défaut ? Les profils
+    conserveront leurs pondérations compatibles.
+  </string>
+  <string name='covers_settings_title'>Jaquettes</string>
+  <string name='covers_settings_description'>Gérez les jaquettes hors ligne du type de média sélectionné.</string>
+  <string name='covers_settings_explanation'>
+    Les actions ne concernent que le type sélectionné. Le préchargement
+    télécharge les jaquettes manquantes des éléments notés.
+  </string>
+  <string name='covers_downloading_rated'>Téléchargement des jaquettes…</string>
+  <string name='covers_download_top'>Télécharger le Top %1$d</string>
+  <string name='filters_title'>Filtres</string>
+  <string name='filters_active'>Filtres (%1$d)</string>
+  <string name='filters_clear'>Effacer les filtres</string>
+  <string name='filters_all'>Tous / Aucun filtre</string>
+  <string name='filter_search_values'>Rechercher des valeurs</string>
+  <string name='sort_final_score'>Note finale</string>
+  <string name='sort_quality_score'>Qualité</string>
+  <string name='sort_personal_taste'>Goût personnel</string>
+  <string name='sort_category_score'>Note par catégorie</string>
+  <string name='search_catalog_hint'>Rechercher des titres…</string>
+  <string name='catalog_unavailable_error'>Impossible de charger le catalogue</string>
+  <string name='group_entries_count'>%1$d entrées</string>
+  <string name='group_rated_count'>%1$d/%2$d évaluées</string>
+  <string name='group_rate_together'>Noter</string>
+  <string name='group_members'>Épisodes et films</string>
+  <string name='group_draft_choice'>Repartir de zéro ou utiliser les notes individuelles comme point de départ ?</string>
+  <string name='group_start_fresh'>Repartir de zéro</string>
+  <string name='group_use_member_ratings'>Utiliser les notes individuelles</string>
+  <string name='about_rankoffline_trademarks'>
+    Le nom, le logo, les icônes de lancement et l’identité visuelle officiels de
+    RankOffline ne sont pas sous GPLv3 ; voir TRADEMARKS.md.
+  </string>
+  <string name='about_summary_multimedia'>
+    Catalogue multimédia et application de notation hors ligne. Vos notes,
+    commentaires et préférences restent sur votre appareil.
+  </string>
+  <string name='about_source_code'>Code source</string>
+  <string name='about_open_source_software'>Logiciels libres</string>
+  <string name='about_legal_trademarks'>Mentions légales / marques</string>
+  <string name='about_software_licences'>
+    Le code de RankOffline est sous GPL-3.0-only. Les composants runtime
+    applicables AndroidX, Jetpack, Kotlin et Kotlinx utilisent Apache-2.0.
+  </string>
+  <string name='about_non_affiliation'>
+    Les noms et marques identifient les sources de données. Ils n’impliquent
+    aucune affiliation, certification ou approbation.
+  </string>
+  <string name='score_group_title'>Note du groupe</string>
+  <string name='search_clear'>Effacer la recherche</string>
+  <string name='action_retry'>Réessayer</string>
+  <string name='category_not_installed'>Non téléchargée</string>
+  <string name='onboarding_welcome_title'>Bienvenue dans RankOffline!</string>
+  <string name='onboarding_choose_style'>Choisissez votre style</string>
+  <string name='onboarding_change_later'>Vous pourrez le modifier à tout moment dans les paramètres.</string>
+  <string name='onboarding_minimal'>Minimaliste</string>
+  <string name='onboarding_with_images'>Avec images</string>
+  <string name='onboarding_rating_simple'>Notation simple</string>
+  <string name='onboarding_rating_elaborated'>Notation détaillée</string>
+  <string name='onboarding_start'>Commencer</string>
+  <string name='onboarding_categories_title'>Par où voulez-vous commencer ?</string>
+  <string name='onboarding_categories_subtitle'>
+    Choisissez les catalogues hors ligne. Vous pourrez les gérer plus tard dans
+    les paramètres.
+  </string>
+  <string name='onboarding_done'>Terminer</string>
+  <string name='categories_title'>Paquets</string>
+  <string name='categories_settings_description'>Téléchargez et gérez les paquets</string>
+  <string name='categories_storage_title'>Données des paquets</string>
+  <string name='category_downloaded'>Téléchargée</string>
+  <string name='category_download'>Télécharger la catégorie</string>
+  <string name='category_remove_catalog'>Supprimer le catalogue</string>
+  <string name='category_remove_title'>Supprimer le catalogue %1$s</string>
+  <string name='category_download_unavailable'>Le téléchargement de cette catégorie n’est pas disponible.</string>
+  <string name='settings_display_description'>Apparence et affichage des images</string>
+  <string name='settings_theme_title'>Thème</string>
+  <string name='settings_theme_description'>Choisir la palette de couleurs de l’application</string>
+  <string name='theme_midnight_neon'>Néon nocturne</string>
+  <string name='theme_cherry_blossom'>Fleur de cerisier</string>
+  <string name='theme_deep_ocean'>Océan profond</string>
+  <string name='theme_emerald_forest'>Forêt d’émeraude</string>
+  <string name='theme_golden_sunset'>Coucher de soleil doré</string>
+  <string name='theme_lavender_dream'>Rêve de lavande</string>
+  <string name='theme_pink_explosion'>Explosion rose</string>
+  <string name='theme_create'>Créer un thème</string>
+  <string name='theme_edit'>Modifier le thème</string>
+  <string name='theme_name'>Nom du thème</string>
+  <string name='theme_color_background'>Arrière-plan</string>
+  <string name='theme_color_surface'>Surface</string>
+  <string name='theme_color_primary'>Principale</string>
+  <string name='theme_color_secondary'>Secondaire</string>
+  <string name='theme_preview'>Aperçu du thème</string>
+  <string name='theme_preview_card'>Carte d’exemple</string>
+  <string name='theme_delete'>Supprimer le thème</string>
+  <string name='theme_delete_confirmation_title'>Supprimer « %1$s » ?</string>
+  <string name='theme_delete_confirmation_body'>Ce thème sera définitivement supprimé.</string>
+  <string name='theme_reset_builtins'>Réinitialiser les thèmes par défaut</string>
+  <string name='onboarding_welcome_subtitle'>
+    Vos médias, vos notes, à votre façon. Stockés localement dans le respect de
+    votre vie privée.
+  </string>
+  <string name='category_purge_action'>Supprimer le pack et les données</string>
+  <plurals name='categories_packs_installed'>
+    <item quantity='one'>%1$d paquet installé</item>
+    <item quantity='other'>%1$d paquets installés</item>
+  </plurals>
+  <string name='category_phase_downloading'>Téléchargement…</string>
+  <string name='category_phase_waiting_download'>En attente du téléchargement…</string>
+  <string name='category_phase_verifying'>Vérification du pack…</string>
+  <string name='category_phase_installing'>Installation…</string>
+  <string name='category_phase_waiting_import'>En attente de l’importation…</string>
+  <string name='category_phase_waiting_covers'>En attente des jaquettes…</string>
+  <string name='category_phase_importing_catalog'>Importation du catalogue…</string>
+  <string name='category_phase_downloading_covers'>Téléchargement des jaquettes : %1$d / %2$d</string>
+  <string name='category_deleting'>Suppression…</string>
+  <string name='category_phase_finalizing'>Finalisation…</string>
+  <string name='category_pack_runtime_error'>Impossible de préparer le catalogue. Touchez pour réessayer.</string>
+  <string name='message_rating_operation_failed'>Impossible d’enregistrer l’évaluation. Réessayez.</string>
+  <string name='icon_default_blue'>Default · Bleu</string>
+  <string name='icon_default_glow_blue'>Default Glow · Bleu</string>
+  <string name='icon_himmel_blue'>Himmel · Bleu</string>
+  <string name='icon_maomao_green'>Maomao · Vert</string>
+  <string name='icon_makise_red'>Makise · Rouge</string>
+  <string name='icon_zenitsu_yellow'>Zenitsu · Jaune</string>
+  <string name='icon_guts_black'>Guts · Noir</string>
+  <string name='icon_killua_white'>Killua · Blanc</string>
+  <string name='nav_search'>Rechercher</string>
+  <string name='packs_empty_invitation'>Téléchargez des paquets depuis les Paramètres pour commencer.</string>
+  <string name='download_pack'>Télécharger un paquet</string>
+  <string name='color_picker_saturation_value'>Saturation et luminosité</string>
+  <string name='color_picker_hue'>Teinte</string>
+  <string name='loading_list'>Chargement de la liste…</string>
+  <string name='pack_background_channel'>Opérations sur les packs</string>
+  <string name='pack_background_title'>Préparation du pack hors ligne</string>
+  <string name='pack_background_downloading'>Téléchargement du pack…</string>
+  <string name='pack_storage_details'>Détails du stockage</string>
+  <string name='pack_storage_transfer'>Transfert : %1$s</string>
+  <string name='pack_storage_covers'>Jaquettes</string>
+  <string name='pack_storage_physical_total'>Total physique</string>
+  <string name='category_uninstall_keep_data'>Désinstaller en conservant les données personnelles</string>
+  <string name='media_all'>Tout</string>
+  <string name='personal_backup_preview_title'>Importer les données personnelles ?</string>
+  <string name='personal_backup_preview_body'>
+    %1$d notes individuelles, %2$d notes de groupe et les réglages de %3$d packs
+    ont été validés.
+  </string>
+  <string name='personal_backup_preview_policy'>
+    Fusionner conserve la note la plus récente de chaque élément et importe les
+    réglages fournis. Remplacer substitue toutes les notes et le périmètre de
+    réglages sauvegardé.
+  </string>
+  <string name='personal_backup_merge'>Fusionner les plus récentes</string>
+  <string name='personal_backup_replace'>Remplacer</string>
+  <string name='personal_backup_failed'>L’opération de sauvegarde a échoué.</string>
+  <string name='ranking_share_title'>Partager le classement</string>
+  <string name='ranking_share_show_images'>Afficher les images</string>
+  <string name='ranking_share_failed'>Impossible de créer l’image du classement.</string>
+  <string name='ranking_share_empty'>Notez au moins un élément pour créer une image du classement.</string>
+</resources>

@@ -1,63 +1,32 @@
-.gradle/
+# Android Studio / IntelliJ
 .idea/
-.run/
-.vscode/
-.kotlin/
-__pycache__/
-*.py[cod]
-local.properties
-.DS_Store
 *.iml
-*.log
-*.hprof
+.kotlin/
 
+# Gradle and build products
+.gradle/
+build/
 **/build/
-out/
-captures/
-.externalNativeBuild/
-.cxx/
+dist/
 
-# Temporary Gradle downloads
-gradle-8.9/
-gradle-download/
-
-# Local cover assets used during development
-app/src/main/assets/local_covers/*
-!app/src/main/assets/local_covers/.gitkeep
-
-# Secrets and local signing configuration
-.env
+# Local Android and signing configuration
+local.properties
+keystore.properties
 *.jks
 *.keystore
-keystore.properties
-
-# Local release/build artifacts
-dist/
-*.apk
-*.aab
-
-# Provider tooling caches and local generated output
-tools/.cache/
-tools/tmdb/output/
-tools/mangadex/output/
-
-# RankOffline local temporary files
-/app/src/main/Archive.zip
-/app/src/main/res/icon_prompt.txt
-
-# Generated pack archives and local cache
-/tools/category_packs/.cache/
-/tools/category_packs/output/
-*.pack
-
-# Local AI assistant state
-.codex/
-.codex-tmp/
-
-# Additional private configuration
-.env.*
-!.env.example
 *.p12
-*.pfx
-*.pem
-*.key
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Local pack/tool caches
+tools/.cache/
+*.pack
+__pycache__/
+*.py[cod]
+
+# Personal files
+docs/refactor-audit/

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.RankOffline" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#0A0B12</item>
+        <item name="android:navigationBarColor">#0A0B12</item>
+        <item name="android:windowSplashScreenBackground">@color/launcher_default_blue_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/rankoffline_default_blue</item>
+    </style>
+</resources>

@@ -1,0 +1,990 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "b4f85cfbfee4979ede90dfb2adae6289",
+    "entities": [
+      {
+        "tableName": "media_item",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `id` TEXT NOT NULL, `title` TEXT NOT NULL, `provider` TEXT, `provider_id` TEXT, `popularity` REAL, `popularity_rank` INTEGER, `remote_cover_ref` TEXT, `local_cover_path` TEXT, `cover_resolution_state` TEXT NOT NULL DEFAULT 'UNKNOWN', PRIMARY KEY(`pack_id`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provider",
+            "columnName": "provider",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "provider_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "popularity",
+            "columnName": "popularity",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "popularityRank",
+            "columnName": "popularity_rank",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "remoteCoverRef",
+            "columnName": "remote_cover_ref",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "localCoverPath",
+            "columnName": "local_cover_path",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "coverResolutionState",
+            "columnName": "cover_resolution_state",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'UNKNOWN'"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_media_item_pack_title",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_item_pack_title` ON `${TABLE_NAME}` (`pack_id`, `title`)"
+          },
+          {
+            "name": "idx_media_item_pack_popularity_rank",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "popularity_rank"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_item_pack_popularity_rank` ON `${TABLE_NAME}` (`pack_id`, `popularity_rank`)"
+          },
+          {
+            "name": "idx_media_item_pack_cover_state",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "cover_resolution_state"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_item_pack_cover_state` ON `${TABLE_NAME}` (`pack_id`, `cover_resolution_state`)"
+          },
+          {
+            "name": "idx_media_item_pack_provider_identity",
+            "unique": true,
+            "columnNames": [
+              "pack_id",
+              "provider",
+              "provider_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `idx_media_item_pack_provider_identity` ON `${TABLE_NAME}` (`pack_id`, `provider`, `provider_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "media_item_attribute",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `media_id` TEXT NOT NULL, `field_id` TEXT NOT NULL, `position` INTEGER NOT NULL, `value_text` TEXT, `value_number` REAL, `value_boolean` INTEGER, PRIMARY KEY(`pack_id`, `media_id`, `field_id`, `position`), FOREIGN KEY(`pack_id`, `media_id`) REFERENCES `media_item`(`pack_id`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fieldId",
+            "columnName": "field_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valueText",
+            "columnName": "value_text",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "valueNumber",
+            "columnName": "value_number",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "valueBoolean",
+            "columnName": "value_boolean",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "media_id",
+            "field_id",
+            "position"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_item_attr_text",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "field_id",
+              "value_text"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_item_attr_text` ON `${TABLE_NAME}` (`pack_id`, `field_id`, `value_text`)"
+          },
+          {
+            "name": "idx_item_attr_number",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "field_id",
+              "value_number"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_item_attr_number` ON `${TABLE_NAME}` (`pack_id`, `field_id`, `value_number`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "media_item",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pack_id",
+              "media_id"
+            ],
+            "referencedColumns": [
+              "pack_id",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "media_alias",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `media_id` TEXT NOT NULL, `title` TEXT NOT NULL, `language` TEXT, `kind` TEXT, PRIMARY KEY(`pack_id`, `media_id`, `title`), FOREIGN KEY(`pack_id`, `media_id`) REFERENCES `media_item`(`pack_id`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "language",
+            "columnName": "language",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "media_id",
+            "title"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_media_alias_pack_title",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_alias_pack_title` ON `${TABLE_NAME}` (`pack_id`, `title`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "media_item",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pack_id",
+              "media_id"
+            ],
+            "referencedColumns": [
+              "pack_id",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "media_group",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `id` TEXT NOT NULL, `group_type` TEXT NOT NULL, `display_title` TEXT NOT NULL, `provider` TEXT, `provider_group_id` TEXT, `group_popularity` REAL, `group_popularity_rank` INTEGER, `remote_cover_ref` TEXT, `local_cover_path` TEXT, `cover_resolution_state` TEXT NOT NULL DEFAULT 'UNKNOWN', PRIMARY KEY(`pack_id`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupType",
+            "columnName": "group_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayTitle",
+            "columnName": "display_title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provider",
+            "columnName": "provider",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "providerGroupId",
+            "columnName": "provider_group_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "popularity",
+            "columnName": "group_popularity",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "popularityRank",
+            "columnName": "group_popularity_rank",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "remoteCoverRef",
+            "columnName": "remote_cover_ref",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "localCoverPath",
+            "columnName": "local_cover_path",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "coverResolutionState",
+            "columnName": "cover_resolution_state",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'UNKNOWN'"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_media_group_pack_type",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "group_type"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_group_pack_type` ON `${TABLE_NAME}` (`pack_id`, `group_type`)"
+          },
+          {
+            "name": "idx_media_group_pack_cover_state",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "cover_resolution_state"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_group_pack_cover_state` ON `${TABLE_NAME}` (`pack_id`, `cover_resolution_state`)"
+          },
+          {
+            "name": "idx_media_group_pack_popularity_rank",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "group_type",
+              "group_popularity_rank"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_group_pack_popularity_rank` ON `${TABLE_NAME}` (`pack_id`, `group_type`, `group_popularity_rank`)"
+          },
+          {
+            "name": "idx_media_group_pack_provider_identity",
+            "unique": true,
+            "columnNames": [
+              "pack_id",
+              "group_type",
+              "provider",
+              "provider_group_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `idx_media_group_pack_provider_identity` ON `${TABLE_NAME}` (`pack_id`, `group_type`, `provider`, `provider_group_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "media_group_attribute",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `group_id` TEXT NOT NULL, `field_id` TEXT NOT NULL, `position` INTEGER NOT NULL, `value_text` TEXT, `value_number` REAL, `value_boolean` INTEGER, PRIMARY KEY(`pack_id`, `group_id`, `field_id`, `position`), FOREIGN KEY(`pack_id`, `group_id`) REFERENCES `media_group`(`pack_id`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "group_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fieldId",
+            "columnName": "field_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valueText",
+            "columnName": "value_text",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "valueNumber",
+            "columnName": "value_number",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "valueBoolean",
+            "columnName": "value_boolean",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "group_id",
+            "field_id",
+            "position"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_group_attr_text",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "field_id",
+              "value_text"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_group_attr_text` ON `${TABLE_NAME}` (`pack_id`, `field_id`, `value_text`)"
+          },
+          {
+            "name": "idx_group_attr_number",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "field_id",
+              "value_number"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_group_attr_number` ON `${TABLE_NAME}` (`pack_id`, `field_id`, `value_number`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "media_group",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pack_id",
+              "group_id"
+            ],
+            "referencedColumns": [
+              "pack_id",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "media_group_member",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `group_id` TEXT NOT NULL, `media_id` TEXT NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`pack_id`, `group_id`, `media_id`), FOREIGN KEY(`pack_id`, `group_id`) REFERENCES `media_group`(`pack_id`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`pack_id`, `media_id`) REFERENCES `media_item`(`pack_id`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "group_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "group_id",
+            "media_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_group_member_pack_media",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "media_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_group_member_pack_media` ON `${TABLE_NAME}` (`pack_id`, `media_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "media_group",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pack_id",
+              "group_id"
+            ],
+            "referencedColumns": [
+              "pack_id",
+              "id"
+            ]
+          },
+          {
+            "table": "media_item",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pack_id",
+              "media_id"
+            ],
+            "referencedColumns": [
+              "pack_id",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "media_group_representative",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `group_id` TEXT NOT NULL, `media_id` TEXT NOT NULL, PRIMARY KEY(`pack_id`, `group_id`), FOREIGN KEY(`pack_id`, `group_id`) REFERENCES `media_group`(`pack_id`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`pack_id`, `media_id`) REFERENCES `media_item`(`pack_id`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "group_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "group_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_group_rep_pack_media",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "media_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_group_rep_pack_media` ON `${TABLE_NAME}` (`pack_id`, `media_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "media_group",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pack_id",
+              "group_id"
+            ],
+            "referencedColumns": [
+              "pack_id",
+              "id"
+            ]
+          },
+          {
+            "table": "media_item",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pack_id",
+              "media_id"
+            ],
+            "referencedColumns": [
+              "pack_id",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "media_rating",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `media_id` TEXT NOT NULL, `additive_score` REAL NOT NULL, `quality_score` REAL, `final_score` REAL, `notes` TEXT NOT NULL, `status` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, `profile_id` TEXT, PRIMARY KEY(`pack_id`, `media_id`))",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "additiveScore",
+            "columnName": "additive_score",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityScore",
+            "columnName": "quality_score",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "finalScore",
+            "columnName": "final_score",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profileId",
+            "columnName": "profile_id",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "media_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_media_rating_pack_final",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "final_score"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_rating_pack_final` ON `${TABLE_NAME}` (`pack_id`, `final_score`)"
+          },
+          {
+            "name": "idx_media_rating_pack_updated",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "updated_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_rating_pack_updated` ON `${TABLE_NAME}` (`pack_id`, `updated_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "media_rating_score",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `media_id` TEXT NOT NULL, `category_id` TEXT NOT NULL, `score` REAL, `applicable` INTEGER NOT NULL, PRIMARY KEY(`pack_id`, `media_id`, `category_id`), FOREIGN KEY(`pack_id`, `media_id`) REFERENCES `media_rating`(`pack_id`, `media_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "category_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "score",
+            "columnName": "score",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "applicable",
+            "columnName": "applicable",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "media_id",
+            "category_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_media_rating_score_pack_category",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "category_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_media_rating_score_pack_category` ON `${TABLE_NAME}` (`pack_id`, `category_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "media_rating",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pack_id",
+              "media_id"
+            ],
+            "referencedColumns": [
+              "pack_id",
+              "media_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "media_group_rating",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `group_id` TEXT NOT NULL, `additive_score` REAL NOT NULL, `quality_score` REAL, `final_score` REAL, `notes` TEXT NOT NULL, `status` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, `profile_id` TEXT, PRIMARY KEY(`pack_id`, `group_id`))",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "group_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "additiveScore",
+            "columnName": "additive_score",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityScore",
+            "columnName": "quality_score",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "finalScore",
+            "columnName": "final_score",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profileId",
+            "columnName": "profile_id",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "group_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_group_rating_pack_final",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "final_score"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_group_rating_pack_final` ON `${TABLE_NAME}` (`pack_id`, `final_score`)"
+          },
+          {
+            "name": "idx_group_rating_pack_updated",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "updated_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_group_rating_pack_updated` ON `${TABLE_NAME}` (`pack_id`, `updated_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "media_group_rating_score",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `group_id` TEXT NOT NULL, `category_id` TEXT NOT NULL, `score` REAL, `applicable` INTEGER NOT NULL, PRIMARY KEY(`pack_id`, `group_id`, `category_id`), FOREIGN KEY(`pack_id`, `group_id`) REFERENCES `media_group_rating`(`pack_id`, `group_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "group_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "category_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "score",
+            "columnName": "score",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "applicable",
+            "columnName": "applicable",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "group_id",
+            "category_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_group_rating_score_pack_category",
+            "unique": false,
+            "columnNames": [
+              "pack_id",
+              "category_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_group_rating_score_pack_category` ON `${TABLE_NAME}` (`pack_id`, `category_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "media_group_rating",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "pack_id",
+              "group_id"
+            ],
+            "referencedColumns": [
+              "pack_id",
+              "group_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "media_catalog_metadata",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pack_id` INTEGER NOT NULL, `metadata_key` TEXT NOT NULL, `metadata_value` TEXT NOT NULL, PRIMARY KEY(`pack_id`, `metadata_key`))",
+        "fields": [
+          {
+            "fieldPath": "packId",
+            "columnName": "pack_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metadataKey",
+            "columnName": "metadata_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metadataValue",
+            "columnName": "metadata_value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pack_id",
+            "metadata_key"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b4f85cfbfee4979ede90dfb2adae6289')"
+    ]
+  }
+}

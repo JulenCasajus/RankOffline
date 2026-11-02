@@ -1,0 +1,274 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<resources>
+  <string name='nav_ranking'>Mein Ranking</string>
+  <string name='nav_settings'>Einstellungen</string>
+  <string name='no_search_results'>Keine Ergebnisse.</string>
+  <string name='ranking_title'>MeinRanking</string>
+  <string name='no_saved_ratings'>Noch keine Bewertungen gespeichert.</string>
+  <string name='sort_popularity'>Beliebtheit</string>
+  <string name='cover_download'>Cover herunterladen</string>
+  <string name='cover_delete'>Cover löschen</string>
+  <string name='cover_delete_title'>Dieses Cover löschen?</string>
+  <string name='cover_delete_explanation'>Du kannst es jederzeit erneut herunterladen.</string>
+  <string name='action_cancel'>Abbrechen</string>
+  <string name='action_delete'>Löschen</string>
+  <string name='action_continue'>Fortfahren</string>
+  <string name='action_save'>Speichern</string>
+  <string name='action_apply'>Anwenden</string>
+  <string name='action_back'>Zurück</string>
+  <string name='rating_simple_instructions'>Wähle eine Wertung von 0 bis 10 in 0,5er-Schritten.</string>
+  <string name='rating_slider_accessibility'>Bewertungsregler</string>
+  <string name='rating_notes'>Notizen</string>
+  <string name='score_title'>Wertung</string>
+  <string name='score_quality'>Qualität: %1$s</string>
+  <string name='score_bonus_value'>%1$s: +%2$.1f</string>
+  <string name='score_activate_category'>Aktivieren</string>
+  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='bonus_range'>%1$s · +0 bis +%2$.1f</string>
+  <string name='bonus_current'>+%1$.1f</string>
+  <string name='settings_title'>Einstellungen</string>
+  <string name='settings_general_title'>Allgemeine Einstellungen</string>
+  <string name='settings_general_description'>Pakete, Design, Symbol und Sprache</string>
+  <string name='settings_rating_title'>Bewertungseinstellungen</string>
+  <string name='settings_rating_description'>Kategorien und Wertungssystem</string>
+  <string name='settings_icon_title'>Symbol</string>
+  <string name='settings_icon_description'>Launcher-Symbol auswählen</string>
+  <string name='settings_data_title'>Daten</string>
+  <string name='settings_data_description'>Import, Export und Datensicherung</string>
+  <string name='settings_about_title'>Informationen</string>
+  <string name='settings_about_description'>App-Informationen, Danksagungen und Lizenzen</string>
+  <string name='settings_active_pack_title'>Paket-Einstellungen</string>
+  <string name='settings_active_pack_description'>Individuelle Einstellungen für das Paket %1$s</string>
+  <string name='settings_active_pack_screen_title'>%1$s-Einstellungen</string>
+  <string name='settings_donation_title'>Spende</string>
+  <string name='settings_donation_description'>Die Entwicklung von RankOffline unterstützen</string>
+  <string name='settings_donation_body'>
+    RankOffline ist kostenlos und quelloffen. Spendenoptionen erscheinen hier,
+    sobald ein offizielles Ziel verfügbar ist.
+  </string>
+  <string name='settings_open_item'>%1$s öffnen</string>
+  <string name='icon_content_description'>Launcher-Symbol %1$s</string>
+  <string name='general_display_section'>Anzeige</string>
+  <string name='general_sticky_score'>Fixierte Wertungsleiste</string>
+  <string name='general_sticky_score_description'>Wertung beim Scrollen sichtbar halten</string>
+  <string name='general_show_images'>Bilder anzeigen</string>
+  <string name='language_title'>Sprache</string>
+  <string name='language_description'>Sprache der App-Oberfläche</string>
+  <string name='language_english'>English</string>
+  <string name='language_spanish'>Español</string>
+  <string name='language_german'>Deutsch</string>
+  <string name='language_french'>Français</string>
+  <string name='language_russian'>Русский</string>
+  <string name='language_japanese'>日本語</string>
+  <string name='language_simplified_chinese'>简体中文</string>
+  <string name='language_basque'>Euskara</string>
+  <string name='language_italian'>Italiano</string>
+  <string name='covers_downloaded_count'>Heruntergeladene Cover: %1$d</string>
+  <string name='covers_clear'>Heruntergeladene Cover löschen</string>
+  <string name='covers_clear_title'>Heruntergeladene Cover löschen?</string>
+  <string name='covers_clear_explanation'>Die Cover können bei Bedarf erneut heruntergeladen werden.</string>
+  <string name='rating_elaborate'>Ausführliche Bewertung</string>
+  <string name='rating_add_category'>Kategorie erstellen</string>
+  <string name='rating_new_category_name'>Neue Kategorie</string>
+  <string name='rating_new_category_description'>Dein eigenes Bewertungskriterium.</string>
+  <string name='category_name'>Name</string>
+  <string name='category_description'>Beschreibung</string>
+  <string name='category_weight_percent'>%1$d%%</string>
+  <string name='category_weight_slider_accessibility'>Regler für das Kategoriegewicht</string>
+  <string name='category_color'>Farbe</string>
+  <string name='category_color_primary'>Primär</string>
+  <string name='category_color_secondary'>Sekundär</string>
+  <string name='category_color_content_description'>Kategoriefarbe auswählen</string>
+  <string name='color_picker_title'>Farbe auswählen</string>
+  <string name='color_hex_label'>Hex-Farbe (#RRGGBB)</string>
+  <string name='color_invalid'>Gib eine gültige Farbe wie #19D5E5 ein.</string>
+  <string name='category_delete_title'>Kategorie löschen?</string>
+  <string name='category_delete_explanation'>
+    %1$s und die gespeicherten Detailwerte werden gelöscht. Bestehende
+    Endwertungen und Notizen bleiben unverändert.
+  </string>
+  <string name='bonus_personal_taste'>Persönlicher Geschmack</string>
+  <string name='about_version'>Version %1$s</string>
+  <string name='error_initialize_local_data'>Lokale Daten konnten nicht initialisiert werden.</string>
+  <string name='score_direct_title'>Endwertung bearbeiten</string>
+  <string name='score_direct_explanation'>Gib einen Wert von 0 bis 10 mit bis zu zwei Dezimalstellen ein.</string>
+  <string name='score_direct_label'>Endwertung</string>
+  <string name='rating_profiles'>Profile</string>
+  <string name='rating_mode'>Bewertungsmodus</string>
+  <string name='rating_simple'>Einfache Bewertung</string>
+  <string name='rating_profiles_description'>Gewichtung nach Art des Werks</string>
+  <string name='rating_categories'>Kategorien</string>
+  <string name='rating_categories_description'>Was bewertet wird</string>
+  <string name='rating_profile'>Bewertungsprofil</string>
+  <string name='rating_create_profile'>Profil erstellen</string>
+  <string name='rating_profile_name'>Profilname</string>
+  <string name='rating_new_profile_name'>Neues Profil</string>
+  <string name='rating_delete_profile'>Profil löschen</string>
+  <string name='rating_delete_profile_confirmation'>Profil „%1$s“ löschen?</string>
+  <string name='rating_last_profile_required'>Mindestens ein Profil ist erforderlich.</string>
+  <string name='rating_reset_profiles'>Standardprofile zurücksetzen</string>
+  <string name='rating_reset_profiles_confirmation'>
+    Alle Profile durch die Standardprofile ersetzen? Kategorien und Bewertungen
+    bleiben unverändert.
+  </string>
+  <string name='rating_reset_categories'>Standardkategorien zurücksetzen</string>
+  <string name='rating_reset_categories_confirmation'>
+    Alle Kategorien durch die Standardkategorien ersetzen? Kompatible
+    Profilgewichtungen bleiben erhalten.
+  </string>
+  <string name='covers_settings_title'>Cover</string>
+  <string name='covers_settings_description'>Verwalte Offline-Cover für den ausgewählten Medientyp.</string>
+  <string name='covers_settings_explanation'>
+    Cover-Aktionen gelten nur für den ausgewählten Medientyp. Vorab geladen
+    werden fehlende Cover bewerteter Einträge.
+  </string>
+  <string name='covers_downloading_rated'>Cover werden heruntergeladen…</string>
+  <string name='covers_download_top'>Top %1$d herunterladen</string>
+  <string name='filters_title'>Filter</string>
+  <string name='filters_active'>Filter (%1$d)</string>
+  <string name='filters_clear'>Filter löschen</string>
+  <string name='filters_all'>Alle / Kein Filter</string>
+  <string name='filter_search_values'>Werte suchen</string>
+  <string name='sort_final_score'>Endwertung</string>
+  <string name='sort_quality_score'>Qualität</string>
+  <string name='sort_personal_taste'>Persönlicher Geschmack</string>
+  <string name='sort_category_score'>Kategoriewertung</string>
+  <string name='search_catalog_hint'>Titel suchen…</string>
+  <string name='catalog_unavailable_error'>Katalog konnte nicht geladen werden</string>
+  <string name='group_entries_count'>%1$d Einträge</string>
+  <string name='group_rated_count'>%1$d/%2$d bewertet</string>
+  <string name='group_rate_together'>Bewerten</string>
+  <string name='group_members'>Einträge</string>
+  <string name='group_draft_choice'>Von vorn beginnen oder Einzelbewertungen als Ausgangspunkt verwenden?</string>
+  <string name='group_start_fresh'>Von vorn beginnen</string>
+  <string name='group_use_member_ratings'>Einzelbewertungen verwenden</string>
+  <string name='about_rankoffline_trademarks'>
+    Offizieller Name, Logo, Launcher-Symbole und Markenauftritt von RankOffline
+    sind nicht unter GPLv3 lizenziert; siehe TRADEMARKS.md.
+  </string>
+  <string name='about_summary_multimedia'>
+    Offline-Medienkatalog und Bewertungs-App. Bewertungen, Notizen und
+    Einstellungen bleiben auf deinem Gerät.
+  </string>
+  <string name='about_source_code'>Quellcode</string>
+  <string name='about_open_source_software'>Open-Source-Software</string>
+  <string name='about_legal_trademarks'>Rechtliches / Marken</string>
+  <string name='about_software_licences'>
+    Der RankOffline-Quellcode ist GPL-3.0-only. Anwendbare AndroidX-, Jetpack-,
+    Kotlin- und Kotlinx-Laufzeitkomponenten verwenden Apache-2.0.
+  </string>
+  <string name='about_non_affiliation'>
+    Anbieternamen und Marken kennzeichnen Datenquellen. Sie bedeuten keine
+    Verbindung, Zertifizierung oder Empfehlung.
+  </string>
+  <string name='score_group_title'>Gruppenwertung</string>
+  <string name='search_clear'>Suche löschen</string>
+  <string name='action_retry'>Erneut versuchen</string>
+  <string name='category_not_installed'>Nicht heruntergeladen</string>
+  <string name='onboarding_welcome_title'>Willkommen bei RankOffline!</string>
+  <string name='onboarding_choose_style'>Wähle deinen Stil</string>
+  <string name='onboarding_change_later'>Du kannst ihn jederzeit in den Einstellungen ändern.</string>
+  <string name='onboarding_minimal'>Minimalistisch</string>
+  <string name='onboarding_with_images'>Mit Bildern</string>
+  <string name='onboarding_rating_simple'>Einfache Bewertung</string>
+  <string name='onboarding_rating_elaborated'>Ausführliche Bewertung</string>
+  <string name='onboarding_start'>Loslegen</string>
+  <string name='onboarding_categories_title'>Womit möchtest du beginnen?</string>
+  <string name='onboarding_categories_subtitle'>
+    Wähle die Offline-Kataloge aus. Du kannst sie später in den Einstellungen
+    verwalten.
+  </string>
+  <string name='onboarding_done'>Fertig</string>
+  <string name='categories_title'>Pakete</string>
+  <string name='categories_settings_description'>Pakete herunterladen und verwalten</string>
+  <string name='categories_storage_title'>Paketdaten</string>
+  <string name='category_downloaded'>Heruntergeladen</string>
+  <string name='category_download'>Kategorie herunterladen</string>
+  <string name='category_remove_catalog'>Katalog entfernen</string>
+  <string name='category_remove_title'>%1$s-Katalog entfernen</string>
+  <string name='category_download_unavailable'>Der Kategorie-Download ist in diesem Build nicht verfügbar.</string>
+  <string name='settings_display_description'>Darstellung und Bildanzeige</string>
+  <string name='settings_theme_title'>Design</string>
+  <string name='settings_theme_description'>Farbpalette der App auswählen</string>
+  <string name='theme_midnight_neon'>Mitternachtsneon</string>
+  <string name='theme_cherry_blossom'>Kirschblüte</string>
+  <string name='theme_deep_ocean'>Tiefsee</string>
+  <string name='theme_emerald_forest'>Smaragdwald</string>
+  <string name='theme_golden_sunset'>Goldener Sonnenuntergang</string>
+  <string name='theme_lavender_dream'>Lavendeltraum</string>
+  <string name='theme_pink_explosion'>Pinkexplosion</string>
+  <string name='theme_create'>Design erstellen</string>
+  <string name='theme_edit'>Design bearbeiten</string>
+  <string name='theme_name'>Designname</string>
+  <string name='theme_color_background'>Hintergrund</string>
+  <string name='theme_color_surface'>Oberfläche</string>
+  <string name='theme_color_primary'>Primär</string>
+  <string name='theme_color_secondary'>Sekundär</string>
+  <string name='theme_preview'>Designvorschau</string>
+  <string name='theme_preview_card'>Beispielkarte</string>
+  <string name='theme_delete'>Design löschen</string>
+  <string name='theme_delete_confirmation_title'>„%1$s“ löschen?</string>
+  <string name='theme_delete_confirmation_body'>Dieses Design wird dauerhaft entfernt.</string>
+  <string name='theme_reset_builtins'>Standarddesigns zurücksetzen</string>
+  <string name='onboarding_welcome_subtitle'>
+    Deine Medien, deine Bewertungen, deine Art. Lokal gespeichert – mit
+    Datenschutz im Blick.
+  </string>
+  <string name='category_purge_action'>Paket und Daten löschen</string>
+  <plurals name='categories_packs_installed'>
+    <item quantity='one'>%1$d Paket installiert</item>
+    <item quantity='other'>%1$d Pakete installiert</item>
+  </plurals>
+  <string name='category_phase_downloading'>Wird heruntergeladen…</string>
+  <string name='category_phase_waiting_download'>Warten auf Download…</string>
+  <string name='category_phase_verifying'>Paket wird geprüft…</string>
+  <string name='category_phase_installing'>Wird installiert…</string>
+  <string name='category_phase_waiting_import'>Warten auf Import…</string>
+  <string name='category_phase_waiting_covers'>Warten auf Cover…</string>
+  <string name='category_phase_importing_catalog'>Katalog wird importiert…</string>
+  <string name='category_phase_downloading_covers'>Cover werden heruntergeladen: %1$d / %2$d</string>
+  <string name='category_deleting'>Wird gelöscht…</string>
+  <string name='category_phase_finalizing'>Wird abgeschlossen…</string>
+  <string name='category_pack_runtime_error'>Der Katalog konnte nicht vorbereitet werden. Zum Wiederholen tippen.</string>
+  <string name='message_rating_operation_failed'>Die Bewertung konnte nicht gespeichert werden. Versuche es erneut.</string>
+  <string name='icon_default_blue'>Default · Blau</string>
+  <string name='icon_default_glow_blue'>Default Glow · Blau</string>
+  <string name='icon_himmel_blue'>Himmel · Blau</string>
+  <string name='icon_maomao_green'>Maomao · Grün</string>
+  <string name='icon_makise_red'>Makise · Rot</string>
+  <string name='icon_zenitsu_yellow'>Zenitsu · Gelb</string>
+  <string name='icon_guts_black'>Guts · Schwarz</string>
+  <string name='icon_killua_white'>Killua · Weiß</string>
+  <string name='nav_search'>Suchen</string>
+  <string name='packs_empty_invitation'>Lade Pakete in den Einstellungen herunter, um zu beginnen.</string>
+  <string name='download_pack'>Paket herunterladen</string>
+  <string name='color_picker_saturation_value'>Sättigung und Helligkeit</string>
+  <string name='color_picker_hue'>Farbton</string>
+  <string name='loading_list'>Liste wird geladen…</string>
+  <string name='pack_background_channel'>Paketvorgänge</string>
+  <string name='pack_background_title'>Offline-Paket wird vorbereitet</string>
+  <string name='pack_background_downloading'>Paket wird heruntergeladen…</string>
+  <string name='pack_storage_details'>Speicherdetails</string>
+  <string name='pack_storage_transfer'>Übertragung: %1$s</string>
+  <string name='pack_storage_covers'>Cover</string>
+  <string name='pack_storage_physical_total'>Physische Gesamtgröße</string>
+  <string name='category_uninstall_keep_data'>Deinstallieren, persönliche Daten behalten</string>
+  <string name='media_all'>Alle</string>
+  <string name='personal_backup_preview_title'>Persönliche Daten importieren?</string>
+  <string name='personal_backup_preview_body'>
+    %1$d Einzelbewertungen, %2$d Gruppenbewertungen und Einstellungen für %3$d
+    Pakete wurden geprüft.
+  </string>
+  <string name='personal_backup_preview_policy'>
+    Zusammenführen behält je Eintrag die neuere Bewertung und importiert
+    enthaltene Einstellungen. Ersetzen ersetzt alle Bewertungen und den
+    gesicherten Einstellungsumfang.
+  </string>
+  <string name='personal_backup_merge'>Neuere zusammenführen</string>
+  <string name='personal_backup_replace'>Ersetzen</string>
+  <string name='personal_backup_failed'>Der Sicherungsvorgang ist fehlgeschlagen.</string>
+  <string name='ranking_share_title'>Rangliste teilen</string>
+  <string name='ranking_share_show_images'>Bilder anzeigen</string>
+  <string name='ranking_share_failed'>Das Ranglistenbild konnte nicht erstellt werden.</string>
+  <string name='ranking_share_empty'>Bewerte mindestens einen Eintrag, um ein Ranglistenbild zu erstellen.</string>
+</resources>

@@ -1,72 +1,53 @@
-# RankOffline architecture
+# Architecture
 
-RankOffline 0.2 is a local-first Android application made of a generic Core APK and independently installed, data-only packs. The five official `PackId` values are `animes`, `mangas`, `movies`, `series`, and `books`.
+## Boundaries
 
-## Runtime layers
+`app/src/java/org/rankoffline/app/` is organized physically by domain while
+temporarily retaining the single package `org.rankoffline.app`:
 
-```text
-Compose UI
-  -> RankOfflineViewModel and domain coordinators
-  -> GenericMediaRepository / GenericMediaGroupRepository
-  -> shared Room media_* tables
-  -> verified files/packs/<pack_id>/ data
-```
+- `app/`: process bootstrap, ViewModel and shared UI.
+- `packs/`: manifest parsing, installation, storage, WorkManager and pack UI.
+- `catalog/`: format validation, Room DAOs/repositories and catalog UI.
+- `ratings/`: generic scoring configuration, persistence and editor UI.
+- `covers/`: validated URL policy, physical cover storage and rendering.
+- `share/`: Top 7/Top 10 preparation and bitmap rendering.
+- `backup/`: personal JSON schema 2 export/import.
+- `preferences/`, `theme/`, `settings/`, `onboarding/`, `legal/`, `data/`.
 
-All five official media types use the shared catalog, alias, filter, search, pagination, group, rating, ranking, and cover infrastructure. Provider-specific work is primarily release-time normalization and restricted cover URL
-resolution. Remote title discovery has been removed from the Android application. The legacy Anime repositories/tables remain only as an upgrade bridge and test surface for published 0.1.3 data; normal 0.2 catalog and rating writes use `media_*`.
+All 193 destinations in `FASE_5_TREE_MAPPING.tsv` are present. The 194th file,
+`ratings/data/RatingEntityMappers.kt`, was added during phase 6 and is retained
+in the corresponding rating-data domain. The 195th file,
+`app/ui/FloatingNavigation.kt`, centralizes the later floating-navigation UI.
+The 196th Kotlin file is the debug-only SAF pack installer under
+`app/src/debug/`; it is not part of release builds or the universal engine.
 
-## Room and user data
+Room stores catalog and personal rating rows with composite `(packId, id)`
+identity. `PackId` is a positive `Long`; zero exists only as virtual
+RankOfflineAll scope. Merge changes representation, not identity.
 
-Room owns `anime_rank.db`, currently schema **14**. The active shared tables are:
+## Runtime initialization
 
-- `media_item`, `media_genre`, `media_credit`, and `media_alias` for catalog/reference data;
-- `media_group` and `media_group_member` for precomputed provider relationships;
-- `media_rating` / `media_rating_score` for item-owned personal state;
-- `media_group_rating` / `media_group_rating_score` for explicit group-owned personal state;
-- `media_catalog_metadata` for durable import version/hash/count verification.
+`RankOfflineApplication` registers the process-wide lazy `RankOfflineServices`
+graph before a persisted worker can resolve it. The current trusted-source
+loader intentionally returns an empty registry: remote discovery is not a
+v0.2.2 feature. UI and workers share the same `PackManager`.
 
-Personal rating identity is `(pack_id, canonical_id)`. Item and group identities stay distinct. A saved simple or elaborate rating writes one canonical final score plus notes, status, profile, bonus, and any applicable category values. Room is the durable source of truth; UI revisions only trigger queries after successful persistence.
+Room writes, pack installation, recovery and optional initial cover downloads
+are coordinated through repositories and WorkManager. The app does not execute
+pack code; packages contain validated data only.
 
-Schema migrations are explicit and non-destructive. Migration 13 → 14 adds PackId ownership and moves stable Anime catalog, group, ratings, detailed scores, notes, status, profiles, and cover metadata into the common model. Conflicting legacy/common Anime ratings select one authoritative complete record by `updated_at`; ties retain the common record, and detailed scores follow the same winner. No destructive fallback is configured.
+## Generated code
 
-## Pack lifecycle
+Room uses KSP. `MediaDao`, `MediaCatalogDao`, `MediaGroupDao` and
+`PersonalDataDao` inherit SQL methods from focused interfaces; Room schema JSON
+is emitted to `app/schemas/`. `BuildConfig` is enabled only for application
+version reporting.
 
-A pack is not READY merely because files exist. Per-pack lifecycle serialization coordinates startup recovery, install, import, and purge:
+## Invariants
 
-```text
-download -> verify -> atomic file install -> import catalog
-         -> import/verify precomputed groups -> catalog READY
-         -> optional initial Top-100 cover acquisition (catalog remains usable)
-```
-
-On process restart, unchanged catalog and group hashes take the `NoChange` path. Import failures produce ERROR/retry state; partial packs never activate. Operations for different packs may proceed independently, while operations for the same PackId cannot race.
-
-Pack deletion is an explicitly destructive product action: it purges that pack's reference data, ratings, detailed scores, notes/status, pack settings, covers, cache, and files. Global language, palette, onboarding, and app-icon settings remain.
-
-## Merge and search
-
-Relationships are computed by release tooling, never by the phone. Packs contain complete group records with provider group identity, representative ID, ordered members, member count, and popularity summary. Runtime Merge only switches between indexed, SQLite-paginated queries over imported memberships. It performs no title inference, provider request, or relationship write.
-
-Offline search uses the same repository for every media type, including aliases and
-manifest-declared filters/subtitle fields. Books have a conservative precomputed
-Work-level series-group artifact; coverage is intentionally limited rather than
-inferring unverifiable relationships on the phone.
-
-## Covers
-
-Item and group covers use explicit storage identities and separate Room columns. A common UI contract observes the local path and download state; group covers read `media_group.local_cover_path`. Files are decoded off the main thread and cached in memory.
-
-Data-only pack manifests may declare constrained HTTPS cover sources, stable identities,
-and allowed hosts. Official legacy providers remain restricted fallback adapters. Anime
-can fall back to AniList/Jikan using its stable ID; Open Library candidates are tried
-in the stored order cover ID, ISBN-13, ISBN-10, edition OLID, and work OLID. Existing local covers remain usable offline. Normal browsing/startup never requires a provider
-call; optional Top-100 cover retrieval during new pack installation and user-requested Top-N
-operations may contact declared HTTPS hosts. No remote title search is performed.
-
-## Settings and themes
-
-DataStore owns global settings and PackId-namespaced media settings. Existing singular `MediaType` keys are still accepted during compatibility reads. Theme palettes persist only four source colors—background, surface, primary, and secondary. Material semantic colors are derived once per effective palette using contrast against the actual container. Old custom-theme JSON fields such as `mode` and `tertiary` are ignored safely.
-
-## Privacy and security
-
-Ratings, notes, profiles, database rows, preferences, packs, and downloaded covers remain in app-private storage. RankOffline has no account, telemetry, analytics, or remote rating storage. Packs are data only: manifests, paths, sizes, and SHA-256 are validated, traversal is rejected, and executable payload types are forbidden.
+- Physical packs: `files/packs/pack-<id>/`; personal files: `files/local/<id>/`.
+- No `pack-0` directory.
+- All results require every participating installed pack to be READY.
+- Catalog/ranking are paged; cover ownership and fallback stay centralized.
+- Personal backups never contain catalogs, covers or package archives.
+- No v0.2.1 migration is attempted.

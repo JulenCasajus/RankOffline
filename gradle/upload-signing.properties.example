@@ -1,0 +1,6 @@
+# Copy these entries to ~/.gradle/gradle.properties, or expose variables with
+# the same names in the release environment. Never commit real values.
+RANKOFFLINE_UPLOAD_STORE_FILE=/absolute/path/to/rankoffline-upload.jks
+RANKOFFLINE_UPLOAD_STORE_PASSWORD=change-me
+RANKOFFLINE_UPLOAD_KEY_ALIAS=rankoffline-upload
+RANKOFFLINE_UPLOAD_KEY_PASSWORD=change-me

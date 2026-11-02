@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">RankOfflineDev</string>
+    <string name="debug_local_pack_installer_title">RankOffline pack installer (debug)</string>
+    <string name="debug_local_pack_installer_select">Select local .pack</string>
+    <string name="debug_local_pack_installer_idle">Select a schema-2 package generated outside the APK.</string>
+    <string name="debug_local_pack_installer_working">Validating and importing…</string>
+    <string name="debug_local_pack_installer_ready">%1$s (pack %2$d) is READY.</string>
+    <string name="debug_local_pack_installer_failed">Installation failed: %1$s</string>
 </resources>

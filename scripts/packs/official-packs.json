@@ -1,0 +1,342 @@
+{
+  "common": {
+    "minRankOfflineVersion": "0.2.2",
+    "capabilities": {
+      "search": true,
+      "filters": true,
+      "covers": true,
+      "popularity": true,
+      "merge": true,
+      "ratings": true
+    },
+    "defaults": {
+      "showImages": true,
+      "stickyScoreHeader": true,
+      "mergeEnabled": false,
+      "ratingMode": "simple"
+    },
+    "rating": {
+      "categories": [
+        {
+          "id": "overall",
+          "name": "Overall",
+          "description": "General criterion supplied by the pack; users may customize it locally.",
+          "weight": 100.0,
+          "color": "#6750A4",
+          "order": 0,
+          "active": true
+        }
+      ],
+      "profiles": [
+        {
+          "id": "general",
+          "name": "General",
+          "weights": {"overall": 100.0}
+        }
+      ]
+    },
+    "adapter": {
+      "type": "legacy_schema1",
+      "scalarFields": {
+        "mediaType": "source_media_type",
+        "originalTitle": "original_title",
+        "year": "year",
+        "startDate": "start_date",
+        "format": "format",
+        "status": "status",
+        "originalLanguage": "original_language",
+        "demographic": "demographic",
+        "partNumber": "part_number"
+      },
+      "listFields": {"genres": "genre"},
+      "creditRoles": {
+        "STUDIO": "studio",
+        "AUTHOR": "author",
+        "ARTIST": "artist",
+        "DIRECTOR": "director",
+        "PRODUCTION_COMPANY": "production_company",
+        "NETWORK": "network",
+        "CREATOR": "creator"
+      },
+      "aliasOverflowFields": 3,
+      "creditOverflowFields": 4,
+      "idReplacements": {}
+    }
+  },
+  "fieldDefinitions": {
+    "source_media_type": {"id": "source_media_type", "type": "text", "multiple": false, "labels": {"en": "Source media type"}},
+    "original_title": {"id": "original_title", "type": "text", "multiple": false, "labels": {"en": "Original title"}},
+    "year": {"id": "year", "type": "integer", "multiple": false, "labels": {"en": "Year"}},
+    "start_date": {"id": "start_date", "type": "text", "multiple": false, "labels": {"en": "Start date"}},
+    "format": {"id": "format", "type": "text", "multiple": false, "labels": {"en": "Format"}},
+    "status": {"id": "status", "type": "text", "multiple": false, "labels": {"en": "Status"}},
+    "original_language": {"id": "original_language", "type": "text", "multiple": false, "labels": {"en": "Original language"}},
+    "demographic": {"id": "demographic", "type": "text", "multiple": false, "labels": {"en": "Demographic"}},
+    "part_number": {"id": "part_number", "type": "integer", "multiple": false, "labels": {"en": "Part number"}},
+    "genre": {"id": "genre", "type": "text", "multiple": true, "labels": {"en": "Genre"}},
+    "studio": {"id": "studio", "type": "text", "multiple": true, "labels": {"en": "Studio"}},
+    "author": {"id": "author", "type": "text", "multiple": true, "labels": {"en": "Author"}},
+    "artist": {"id": "artist", "type": "text", "multiple": true, "labels": {"en": "Artist"}},
+    "director": {"id": "director", "type": "text", "multiple": true, "labels": {"en": "Director"}},
+    "production_company": {"id": "production_company", "type": "text", "multiple": true, "labels": {"en": "Production company"}},
+    "network": {"id": "network", "type": "text", "multiple": true, "labels": {"en": "Network"}},
+    "creator": {"id": "creator", "type": "text", "multiple": true, "labels": {"en": "Creator"}},
+    "legacy_cover_reference": {"id": "legacy_cover_reference", "type": "text", "multiple": false, "labels": {"en": "Legacy cover reference"}},
+    "source_alias_overflow_1": {"id": "source_alias_overflow_1", "type": "text", "multiple": true, "labels": {"en": "Source alias overflow 1"}},
+    "source_alias_overflow_2": {"id": "source_alias_overflow_2", "type": "text", "multiple": true, "labels": {"en": "Source alias overflow 2"}},
+    "source_alias_overflow_3": {"id": "source_alias_overflow_3", "type": "text", "multiple": true, "labels": {"en": "Source alias overflow 3"}},
+    "source_credit_overflow_1": {"id": "source_credit_overflow_1", "type": "text", "multiple": true, "labels": {"en": "Source credit overflow 1"}},
+    "source_credit_overflow_2": {"id": "source_credit_overflow_2", "type": "text", "multiple": true, "labels": {"en": "Source credit overflow 2"}},
+    "source_credit_overflow_3": {"id": "source_credit_overflow_3", "type": "text", "multiple": true, "labels": {"en": "Source credit overflow 3"}},
+    "source_credit_overflow_4": {"id": "source_credit_overflow_4", "type": "text", "multiple": true, "labels": {"en": "Source credit overflow 4"}}
+  },
+  "packs": [
+    {
+      "packId": 1,
+      "fileName": "pack-1.pack",
+      "displayName": "Animes",
+      "version": "anime-69005e06b4a92ee6caa4c57efcb5951086a2ffaa6b8ade997276f301908b6223-v2",
+      "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Anime-v0.2.0.pack",
+      "presentation": {
+        "names": {"en": "Animes", "de": "Anime", "es": "Animes", "eu": "Animeak", "fr": "Anime", "it": "Anime", "ja": "アニメ", "ru": "Аниме", "zh-CN": "动漫"},
+        "accentColor": "#E53935"
+      },
+      "capabilities": {"covers": false},
+      "defaults": {"showImages": false},
+      "fieldIds": [
+        "source_media_type", "year", "start_date", "format", "status", "original_language", "genre", "studio",
+        "legacy_cover_reference", "source_alias_overflow_1", "source_alias_overflow_2", "source_alias_overflow_3",
+        "source_credit_overflow_1", "source_credit_overflow_2", "source_credit_overflow_3", "source_credit_overflow_4"
+      ],
+      "filters": [
+        {"id": "genre", "field": "genre", "type": "multi_select", "order": 1, "labels": {"en": "Genre"}},
+        {"id": "format", "field": "format", "type": "multi_select", "order": 2, "labels": {"en": "Format"}},
+        {"id": "year", "field": "year", "type": "range", "order": 3, "labels": {"en": "Year"}},
+        {"id": "studio", "field": "studio", "type": "multi_select", "order": 4, "labels": {"en": "Studio"}}
+      ],
+      "subtitle": ["genre", "format", "year", "studio"],
+      "merge": {"enabled": true, "strategy": "RELATION_GRAPH", "groupType": "relations", "labels": {"en": "Relations"}},
+      "coverSources": [],
+      "attribution": {
+        "publisher": {"name": "RankOffline official pack"},
+        "sources": [
+          {"id": "animeapi", "name": "AnimeAPI", "url": "https://github.com/nattadasu/animeApi", "notices": ["AnimeAPI supplies the catalog foundation and provider mapping."]},
+          {"id": "anime_offline_database", "name": "anime-offline-database", "url": "https://github.com/cedya77/anime-offline-database", "notices": ["Supplies alternative titles; derived from the manami-project database lineage."]},
+          {"id": "anilist", "name": "AniList", "url": "https://anilist.co", "notices": ["Supplies selected metadata, popularity and explicit relations. Attribution does not imply endorsement."]}
+        ],
+        "licences": [
+          {"id": "odbl_1_0", "name": "Open Database License 1.0", "url": "https://opendatacommons.org/licenses/odbl/1-0/"},
+          {"id": "dbcl_1_0", "name": "Database Contents License 1.0", "url": "https://opendatacommons.org/licenses/dbcl/1-0/"}
+        ],
+        "datasets": [
+          {"name": "RankOffline Anime catalog snapshot", "sourceIds": ["animeapi", "anime_offline_database", "anilist"], "licenceIds": ["odbl_1_0", "dbcl_1_0"], "notices": ["The legacy metadata-based cover resolver is not part of the universal v0.2.2 engine; original references are retained as data only."]}
+        ],
+        "notices": ["Provider terms and data provenance require review before public distribution."],
+        "legalFiles": []
+      },
+      "adapter": {
+        "catalogPath": "catalog/anime_catalog.jsonl.gzip",
+        "groupsPath": "groups/anime_groups.jsonl.gzip",
+        "catalogTarget": "catalog/items.jsonl.gz",
+        "groupsTarget": "groups/groups.jsonl.gz",
+        "coverReferenceMode": "preserve_as_legacy_attribute",
+        "groupType": "relations",
+        "idReplacements": {"+": "-", "~": "", "!": "", "(": "", ")": "", ",": ""},
+        "sourceMetadata": {
+          "catalog/anime_catalog.manifest.json": "metadata/source/catalog-manifest.json",
+          "groups/anime_groups.manifest.json": "metadata/source/groups-manifest.json"
+        }
+      }
+    },
+    {
+      "packId": 2,
+      "fileName": "pack-2.pack",
+      "displayName": "Mangas",
+      "version": "mangadex-2026-10-16-v2",
+      "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Manga-v0.2.0.pack",
+      "presentation": {
+        "names": {"en": "Mangas", "de": "Manga", "es": "Mangas", "eu": "Mangak", "fr": "Mangas", "it": "Manga", "ja": "漫画", "ru": "Манга", "zh-CN": "漫画"},
+        "accentColor": "#7E57C2"
+      },
+      "fieldIds": [
+        "source_media_type", "original_title", "year", "start_date", "format", "status", "original_language", "demographic", "part_number", "genre", "author", "artist",
+        "source_alias_overflow_1", "source_alias_overflow_2", "source_alias_overflow_3", "source_credit_overflow_1", "source_credit_overflow_2", "source_credit_overflow_3", "source_credit_overflow_4"
+      ],
+      "filters": [
+        {"id": "genre", "field": "genre", "type": "multi_select", "order": 1, "labels": {"en": "Genre"}},
+        {"id": "year", "field": "year", "type": "range", "order": 2, "labels": {"en": "Year"}},
+        {"id": "author", "field": "author", "type": "multi_select", "order": 3, "labels": {"en": "Author"}}
+      ],
+      "subtitle": ["genre", "year", "author"],
+      "merge": {"enabled": true, "strategy": "RELATION_GRAPH", "groupType": "variants", "labels": {"en": "Variants"}},
+      "coverSources": [
+        {"id": "mangadex_cover", "sourceId": "mangadex", "providerId": "mangadex", "urlTemplates": ["https://uploads.mangadex.org/covers/{providerId}/{reference}.512.jpg"], "allowedHosts": ["uploads.mangadex.org"]}
+      ],
+      "attribution": {
+        "publisher": {"name": "RankOffline official pack"},
+        "sources": [{"id": "mangadex", "name": "MangaDex", "url": "https://mangadex.org", "notices": ["Supplies metadata, alternative titles, tags, creator relationships, variant relations and cover references. No scanlation content is included."]}],
+        "licences": [],
+        "datasets": [{"name": "RankOffline Manga catalog snapshot", "sourceIds": ["mangadex"], "licenceIds": [], "notices": ["MangaDex terms must be reviewed before public distribution."]}],
+        "notices": ["Provider attribution does not imply endorsement."],
+        "legalFiles": []
+      },
+      "adapter": {
+        "catalogPath": "catalog/manga_catalog.jsonl.gzip",
+        "groupsPath": "groups/manga_groups.jsonl.gzip",
+        "catalogTarget": "catalog/items.jsonl.gz",
+        "groupsTarget": "groups/groups.jsonl.gz",
+        "coverReferenceMode": "preserve",
+        "groupType": "variants",
+        "sourceMetadata": {
+          "catalog/manga_catalog.manifest.json": "metadata/source/catalog-manifest.json",
+          "groups/manga_groups.manifest.json": "metadata/source/groups-manifest.json"
+        }
+      }
+    },
+    {
+      "packId": 3,
+      "fileName": "pack-3.pack",
+      "displayName": "Movies",
+      "version": "tmdb-movies-2026-10-16-v2",
+      "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Movies-v0.2.0.pack",
+      "presentation": {
+        "names": {"en": "Movies", "de": "Filme", "es": "Películas", "eu": "Filmak", "fr": "Films", "it": "Film", "ja": "映画", "ru": "Фильмы", "zh-CN": "电影"},
+        "accentColor": "#1976D2"
+      },
+      "fieldIds": [
+        "source_media_type", "original_title", "year", "start_date", "format", "status", "original_language", "demographic", "part_number", "genre", "director", "production_company",
+        "source_alias_overflow_1", "source_alias_overflow_2", "source_alias_overflow_3", "source_credit_overflow_1", "source_credit_overflow_2", "source_credit_overflow_3", "source_credit_overflow_4"
+      ],
+      "filters": [
+        {"id": "genre", "field": "genre", "type": "multi_select", "order": 1, "labels": {"en": "Genre"}},
+        {"id": "year", "field": "year", "type": "range", "order": 2, "labels": {"en": "Year"}},
+        {"id": "production_company", "field": "production_company", "type": "multi_select", "order": 3, "labels": {"en": "Production company"}}
+      ],
+      "subtitle": ["genre", "year", "production_company"],
+      "merge": {"enabled": true, "strategy": "COLLECTION_ID", "groupType": "collection", "labels": {"en": "Collection"}},
+      "coverSources": [
+        {"id": "tmdb_poster", "sourceId": "tmdb", "providerId": "tmdb", "urlTemplates": ["https://image.tmdb.org/t/p/w500/{reference}"], "allowedHosts": ["image.tmdb.org"]}
+      ],
+      "assets": [
+        {"source": "${LEGACY_ROOT}/app/src/main/res/drawable-nodpi/tmdb_primary_short_blue.png", "target": "metadata/attribution/tmdb.png"},
+        {"source": "${LEGACY_ROOT}/app/src/main/assets/legal/TMDB_LOGO_PROVENANCE.txt", "target": "metadata/legal/tmdb-logo-provenance.txt"}
+      ],
+      "attribution": {
+        "publisher": {"name": "RankOffline official pack"},
+        "sources": [{"id": "tmdb", "name": "The Movie Database (TMDB)", "url": "https://www.themoviedb.org", "logoPath": "metadata/attribution/tmdb.png", "notices": ["This product uses the TMDB API but is not endorsed or certified by TMDB."]}],
+        "licences": [],
+        "datasets": [{"name": "RankOffline Movies catalog snapshot", "sourceIds": ["tmdb"], "licenceIds": [], "notices": ["Current use is non-commercial; public or commercial distribution requires a fresh terms review."]}],
+        "notices": ["Poster references identify remotely hosted images; poster artwork is not embedded in this package."],
+        "legalFiles": ["metadata/legal/tmdb-logo-provenance.txt"]
+      },
+      "adapter": {
+        "catalogPath": "catalog/movie_catalog.jsonl.gzip",
+        "groupsPath": "groups/movie_groups.jsonl.gzip",
+        "catalogTarget": "catalog/items.jsonl.gz",
+        "groupsTarget": "groups/groups.jsonl.gz",
+        "coverReferenceMode": "strip_leading_slash",
+        "groupType": "collection",
+        "sourceMetadata": {
+          "catalog/movie_catalog.manifest.json": "metadata/source/catalog-manifest.json",
+          "groups/movie_groups.manifest.json": "metadata/source/groups-manifest.json"
+        }
+      }
+    },
+    {
+      "packId": 4,
+      "fileName": "pack-4.pack",
+      "displayName": "Series",
+      "version": "tmdb-series-2026-10-16-v2",
+      "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Series-v0.2.0.pack",
+      "presentation": {
+        "names": {"en": "Series", "de": "Serien", "es": "Series", "eu": "Telesailak", "fr": "Séries", "it": "Serie", "ja": "シリーズ", "ru": "Сериалы", "zh-CN": "剧集"},
+        "accentColor": "#00897B"
+      },
+      "defaults": {"mergeEnabled": true},
+      "fieldIds": [
+        "source_media_type", "original_title", "year", "start_date", "format", "status", "original_language", "demographic", "part_number", "genre", "network", "production_company", "creator",
+        "source_alias_overflow_1", "source_alias_overflow_2", "source_alias_overflow_3", "source_credit_overflow_1", "source_credit_overflow_2", "source_credit_overflow_3", "source_credit_overflow_4"
+      ],
+      "filters": [
+        {"id": "genre", "field": "genre", "type": "multi_select", "order": 1, "labels": {"en": "Genre"}},
+        {"id": "year", "field": "year", "type": "range", "order": 2, "labels": {"en": "Year"}},
+        {"id": "network", "field": "network", "type": "multi_select", "order": 3, "labels": {"en": "Network"}}
+      ],
+      "subtitle": ["genre", "year", "network"],
+      "merge": {"enabled": true, "strategy": "GROUP_ID", "groupType": "seasons", "labels": {"en": "Seasons"}},
+      "coverSources": [
+        {"id": "tmdb_poster", "sourceId": "tmdb", "providerId": "tmdb", "urlTemplates": ["https://image.tmdb.org/t/p/w500/{reference}"], "allowedHosts": ["image.tmdb.org"]}
+      ],
+      "assets": [
+        {"source": "${LEGACY_ROOT}/app/src/main/res/drawable-nodpi/tmdb_primary_short_blue.png", "target": "metadata/attribution/tmdb.png"},
+        {"source": "${LEGACY_ROOT}/app/src/main/assets/legal/TMDB_LOGO_PROVENANCE.txt", "target": "metadata/legal/tmdb-logo-provenance.txt"}
+      ],
+      "attribution": {
+        "publisher": {"name": "RankOffline official pack"},
+        "sources": [{"id": "tmdb", "name": "The Movie Database (TMDB)", "url": "https://www.themoviedb.org", "logoPath": "metadata/attribution/tmdb.png", "notices": ["This product uses the TMDB API but is not endorsed or certified by TMDB."]}],
+        "licences": [],
+        "datasets": [{"name": "RankOffline Series catalog snapshot", "sourceIds": ["tmdb"], "licenceIds": [], "notices": ["Current use is non-commercial; public or commercial distribution requires a fresh terms review."]}],
+        "notices": ["Poster references identify remotely hosted images; poster artwork is not embedded in this package."],
+        "legalFiles": ["metadata/legal/tmdb-logo-provenance.txt"]
+      },
+      "adapter": {
+        "catalogPath": "catalog/series_catalog.jsonl.gzip",
+        "groupsPath": "groups/series_groups.jsonl.gzip",
+        "catalogTarget": "catalog/items.jsonl.gz",
+        "groupsTarget": "groups/groups.jsonl.gz",
+        "coverReferenceMode": "strip_leading_slash",
+        "groupType": "seasons",
+        "sourceMetadata": {
+          "catalog/series_catalog.manifest.json": "metadata/source/catalog-manifest.json",
+          "groups/series_groups.manifest.json": "metadata/source/groups-manifest.json"
+        }
+      }
+    },
+    {
+      "packId": 5,
+      "fileName": "pack-5.pack",
+      "displayName": "Books",
+      "version": "openlibrary-2026-09-30-readinglog-top-50000-v2",
+      "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Books-v0.2.0.pack",
+      "presentation": {
+        "names": {"en": "Books", "de": "Bücher", "es": "Libros", "eu": "Liburuak", "fr": "Livres", "it": "Libri", "ja": "本", "ru": "Книги", "zh-CN": "图书"},
+        "accentColor": "#6D4C41"
+      },
+      "defaults": {"showImages": false},
+      "fieldIds": [
+        "source_media_type", "original_title", "year", "start_date", "format", "status", "original_language", "demographic", "part_number", "genre", "author",
+        "source_alias_overflow_1", "source_alias_overflow_2", "source_alias_overflow_3", "source_credit_overflow_1", "source_credit_overflow_2", "source_credit_overflow_3", "source_credit_overflow_4"
+      ],
+      "filters": [
+        {"id": "genre", "field": "genre", "type": "multi_select", "order": 1, "labels": {"en": "Genre"}},
+        {"id": "year", "field": "year", "type": "range", "order": 2, "labels": {"en": "Year"}},
+        {"id": "author", "field": "author", "type": "multi_select", "order": 3, "labels": {"en": "Author"}}
+      ],
+      "subtitle": ["genre", "year", "author"],
+      "merge": {"enabled": true, "strategy": "GROUP_ID", "groupType": "book_series", "labels": {"en": "Book series"}},
+      "coverSources": [
+        {"id": "openlibrary_cover", "sourceId": "openlibrary", "providerId": "openlibrary", "urlTemplates": ["https://covers.openlibrary.org/b/olid/{reference}-L.jpg?default=false"], "allowedHosts": ["covers.openlibrary.org"]}
+      ],
+      "attribution": {
+        "publisher": {"name": "RankOffline official pack"},
+        "sources": [{"id": "openlibrary", "name": "Open Library", "url": "https://openlibrary.org", "notices": ["Supplies Work metadata and author records. Cover images are fetched separately and may have different rights."]}],
+        "licences": [],
+        "datasets": [{"name": "RankOffline Books catalog snapshot", "sourceIds": ["openlibrary"], "licenceIds": [], "notices": ["Source and cover-service terms require review before public distribution."]}],
+        "notices": ["No third-party cover image is embedded in this package."],
+        "legalFiles": []
+      },
+      "adapter": {
+        "catalogPath": "catalog/book_catalog.jsonl.gzip",
+        "groupsPath": "groups/book_groups.jsonl.gzip",
+        "catalogTarget": "catalog/items.jsonl.gz",
+        "groupsTarget": "groups/groups.jsonl.gz",
+        "coverReferenceMode": "preserve",
+        "groupType": "book_series",
+        "sourceMetadata": {
+          "catalog/book_catalog.manifest.json": "metadata/source/catalog-manifest.json",
+          "groups/book_groups.manifest.json": "metadata/source/groups-manifest.json"
+        }
+      }
+    }
+  ]
+}

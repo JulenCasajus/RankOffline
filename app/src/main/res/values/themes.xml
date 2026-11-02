@@ -1,8 +1,0 @@
-<resources>
-    <style name="Theme.RankOffline" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#0A0B12</item>
-        <item name="android:navigationBarColor">#0A0B12</item>
-    </style>
-</resources>

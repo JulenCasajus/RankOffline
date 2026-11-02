@@ -1,0 +1,265 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<resources>
+  <string name='nav_ranking'>Мой рейтинг</string>
+  <string name='nav_settings'>Настройки</string>
+  <string name='no_search_results'>Ничего не найдено.</string>
+  <string name='ranking_title'>МойРейтинг</string>
+  <string name='no_saved_ratings'>Сохранённых оценок пока нет.</string>
+  <string name='sort_popularity'>Популярность</string>
+  <string name='cover_download'>Скачать обложку</string>
+  <string name='cover_delete'>Удалить обложку</string>
+  <string name='cover_delete_title'>Удалить эту обложку?</string>
+  <string name='cover_delete_explanation'>Её можно будет скачать снова в любое время.</string>
+  <string name='action_cancel'>Отмена</string>
+  <string name='action_delete'>Удалить</string>
+  <string name='action_continue'>Продолжить</string>
+  <string name='action_save'>Сохранить</string>
+  <string name='action_apply'>Применить</string>
+  <string name='action_back'>Назад</string>
+  <string name='rating_simple_instructions'>Выберите оценку от 0 до 10 с шагом 0,5.</string>
+  <string name='rating_slider_accessibility'>Ползунок оценки</string>
+  <string name='rating_notes'>Заметки</string>
+  <string name='score_title'>Итоговая оценка</string>
+  <string name='score_quality'>Качество: %1$s</string>
+  <string name='score_bonus_value'>%1$s: +%2$.1f</string>
+  <string name='score_activate_category'>Включить</string>
+  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='bonus_range'>%1$s · от +0 до +%2$.1f</string>
+  <string name='bonus_current'>+%1$.1f</string>
+  <string name='settings_title'>Настройки</string>
+  <string name='settings_general_title'>Общие настройки</string>
+  <string name='settings_general_description'>Пакеты, тема, значок и язык</string>
+  <string name='settings_rating_title'>Настройки оценивания</string>
+  <string name='settings_rating_description'>Категории и система оценок</string>
+  <string name='settings_icon_title'>Значок</string>
+  <string name='settings_icon_description'>Выбрать значок лаунчера</string>
+  <string name='settings_data_title'>Данные</string>
+  <string name='settings_data_description'>Импорт, экспорт и резервное копирование</string>
+  <string name='settings_about_title'>Информация</string>
+  <string name='settings_about_description'>Информация, благодарности и лицензии</string>
+  <string name='settings_active_pack_title'>Настройки пакета</string>
+  <string name='settings_active_pack_description'>Уникальные настройки пакета %1$s</string>
+  <string name='settings_active_pack_screen_title'>Настройки %1$s</string>
+  <string name='settings_donation_title'>Пожертвование</string>
+  <string name='settings_donation_description'>Поддержать разработку RankOffline</string>
+  <string name='settings_donation_body'>
+    RankOffline — бесплатное приложение с открытым исходным кодом. Варианты
+    пожертвования появятся здесь, когда будет доступен официальный адрес.
+  </string>
+  <string name='settings_open_item'>Открыть: %1$s</string>
+  <string name='icon_content_description'>Значок лаунчера «%1$s»</string>
+  <string name='general_display_section'>Отображение</string>
+  <string name='general_sticky_score'>Закреплённая оценка</string>
+  <string name='general_sticky_score_description'>Показывать оценку при прокрутке</string>
+  <string name='general_show_images'>Показывать изображения</string>
+  <string name='language_title'>Язык</string>
+  <string name='language_description'>Язык интерфейса приложения</string>
+  <string name='language_english'>English</string>
+  <string name='language_spanish'>Español</string>
+  <string name='language_german'>Deutsch</string>
+  <string name='language_french'>Français</string>
+  <string name='language_russian'>Русский</string>
+  <string name='language_japanese'>日本語</string>
+  <string name='language_simplified_chinese'>简体中文</string>
+  <string name='language_basque'>Euskara</string>
+  <string name='language_italian'>Italiano</string>
+  <string name='covers_downloaded_count'>Скачано обложек: %1$d</string>
+  <string name='covers_clear'>Удалить скачанные обложки</string>
+  <string name='covers_clear_title'>Удалить скачанные обложки?</string>
+  <string name='covers_clear_explanation'>При необходимости обложки можно будет скачать снова.</string>
+  <string name='rating_elaborate'>Подробная оценка</string>
+  <string name='rating_add_category'>Создать категорию</string>
+  <string name='rating_new_category_name'>Новая категория</string>
+  <string name='rating_new_category_description'>Ваш собственный критерий оценки.</string>
+  <string name='category_name'>Название</string>
+  <string name='category_description'>Описание</string>
+  <string name='category_weight_percent'>%1$d%%</string>
+  <string name='category_weight_slider_accessibility'>Ползунок веса категории</string>
+  <string name='category_color'>Цвет</string>
+  <string name='category_color_primary'>Основной</string>
+  <string name='category_color_secondary'>Вторичный</string>
+  <string name='category_color_content_description'>Выбрать цвет категории</string>
+  <string name='color_picker_title'>Выбор цвета</string>
+  <string name='color_hex_label'>HEX-цвет (#RRGGBB)</string>
+  <string name='color_invalid'>Введите корректный цвет, например #19D5E5.</string>
+  <string name='category_delete_title'>Удалить категорию?</string>
+  <string name='category_delete_explanation'>
+    Категория «%1$s» и её сохранённые подробные оценки будут удалены. Итоговые
+    оценки и заметки не изменятся.
+  </string>
+  <string name='bonus_personal_taste'>Личный вкус</string>
+  <string name='about_version'>Версия %1$s</string>
+  <string name='error_initialize_local_data'>Не удалось инициализировать локальные данные.</string>
+  <string name='score_direct_title'>Изменить итоговую оценку</string>
+  <string name='score_direct_explanation'>Введите значение от 0 до 10, не более двух знаков после запятой.</string>
+  <string name='score_direct_label'>Итоговая оценка</string>
+  <string name='rating_profiles'>Профили</string>
+  <string name='rating_mode'>Режим оценки</string>
+  <string name='rating_simple'>Простая оценка</string>
+  <string name='rating_profiles_description'>Веса для разных типов произведений</string>
+  <string name='rating_categories'>Категории</string>
+  <string name='rating_categories_description'>Что оценивается</string>
+  <string name='rating_profile'>Профиль оценки</string>
+  <string name='rating_create_profile'>Создать профиль</string>
+  <string name='rating_profile_name'>Название профиля</string>
+  <string name='rating_new_profile_name'>Новый профиль</string>
+  <string name='rating_delete_profile'>Удалить профиль</string>
+  <string name='rating_delete_profile_confirmation'>Удалить профиль «%1$s»?</string>
+  <string name='rating_last_profile_required'>Необходим хотя бы один профиль.</string>
+  <string name='rating_reset_profiles'>Сбросить стандартные профили</string>
+  <string name='rating_reset_profiles_confirmation'>Заменить все профили стандартными? Категории и оценки не изменятся.</string>
+  <string name='rating_reset_categories'>Сбросить стандартные категории</string>
+  <string name='rating_reset_categories_confirmation'>Заменить все категории стандартными? Совместимые веса профилей сохранятся.</string>
+  <string name='covers_settings_title'>Обложки</string>
+  <string name='covers_settings_description'>Управляйте офлайн-обложками выбранного типа медиа.</string>
+  <string name='covers_settings_explanation'>
+    Действия применяются только к выбранному типу медиа. Предзагрузка скачивает
+    недостающие обложки оценённых элементов.
+  </string>
+  <string name='covers_downloading_rated'>Загрузка обложек…</string>
+  <string name='covers_download_top'>Скачать топ-%1$d</string>
+  <string name='filters_title'>Фильтры</string>
+  <string name='filters_active'>Фильтры (%1$d)</string>
+  <string name='filters_clear'>Сбросить фильтры</string>
+  <string name='filters_all'>Все / Без фильтра</string>
+  <string name='filter_search_values'>Поиск значений</string>
+  <string name='sort_final_score'>Итоговая оценка</string>
+  <string name='sort_quality_score'>Качество</string>
+  <string name='sort_personal_taste'>Личные предпочтения</string>
+  <string name='sort_category_score'>Оценка категории</string>
+  <string name='search_catalog_hint'>Поиск названий…</string>
+  <string name='catalog_unavailable_error'>Не удалось загрузить каталог</string>
+  <string name='group_entries_count'>%1$d записей</string>
+  <string name='group_rated_count'>Оценено %1$d из %2$d</string>
+  <string name='group_rate_together'>Оценить</string>
+  <string name='group_members'>Произведения</string>
+  <string name='group_draft_choice'>Начать с нуля или взять индивидуальные оценки за основу?</string>
+  <string name='group_start_fresh'>Начать с нуля</string>
+  <string name='group_use_member_ratings'>Взять индивидуальные оценки</string>
+  <string name='about_rankoffline_trademarks'>
+    Официальные название, логотип, значки запуска и фирменное оформление
+    RankOffline не лицензируются по GPLv3; см. TRADEMARKS.md.
+  </string>
+  <string name='about_summary_multimedia'>
+    Офлайн-каталог медиа и приложение для оценивания. Ваши оценки, заметки и
+    настройки остаются на устройстве.
+  </string>
+  <string name='about_source_code'>Исходный код</string>
+  <string name='about_open_source_software'>Открытое ПО</string>
+  <string name='about_legal_trademarks'>Правовая информация / товарные знаки</string>
+  <string name='about_software_licences'>
+    Исходный код RankOffline имеет лицензию GPL-3.0-only. Применимые
+    runtime-компоненты AndroidX, Jetpack, Kotlin и Kotlinx используют
+    Apache-2.0.
+  </string>
+  <string name='about_non_affiliation'>
+    Названия и знаки поставщиков обозначают источники данных. Они не означают
+    аффилированность, сертификацию или одобрение.
+  </string>
+  <string name='score_group_title'>Оценка группы</string>
+  <string name='search_clear'>Очистить поиск</string>
+  <string name='action_retry'>Повторить</string>
+  <string name='category_not_installed'>Не загружена</string>
+  <string name='onboarding_welcome_title'>Добро пожаловать в RankOffline!</string>
+  <string name='onboarding_choose_style'>Выберите стиль</string>
+  <string name='onboarding_change_later'>Его всегда можно изменить в настройках.</string>
+  <string name='onboarding_minimal'>Минимализм</string>
+  <string name='onboarding_with_images'>С изображениями</string>
+  <string name='onboarding_rating_simple'>Простая оценка</string>
+  <string name='onboarding_rating_elaborated'>Подробная оценка</string>
+  <string name='onboarding_start'>Начать</string>
+  <string name='onboarding_categories_title'>С чего хотите начать?</string>
+  <string name='onboarding_categories_subtitle'>Выберите нужные офлайн-каталоги. Позже их можно изменить в настройках.</string>
+  <string name='onboarding_done'>Готово</string>
+  <string name='categories_title'>Пакеты</string>
+  <string name='categories_settings_description'>Скачивайте пакеты и управляйте ими</string>
+  <string name='categories_storage_title'>Данные пакетов</string>
+  <string name='category_downloaded'>Загружена</string>
+  <string name='category_download'>Загрузить категорию</string>
+  <string name='category_remove_catalog'>Удалить каталог</string>
+  <string name='category_remove_title'>Удалить каталог %1$s</string>
+  <string name='category_download_unavailable'>Загрузка категории недоступна в этой сборке.</string>
+  <string name='settings_display_description'>Внешний вид и отображение изображений</string>
+  <string name='settings_theme_title'>Тема</string>
+  <string name='settings_theme_description'>Выберите цветовую палитру приложения</string>
+  <string name='theme_midnight_neon'>Ночной неон</string>
+  <string name='theme_cherry_blossom'>Цветение сакуры</string>
+  <string name='theme_deep_ocean'>Глубокий океан</string>
+  <string name='theme_emerald_forest'>Изумрудный лес</string>
+  <string name='theme_golden_sunset'>Золотой закат</string>
+  <string name='theme_lavender_dream'>Лавандовая мечта</string>
+  <string name='theme_pink_explosion'>Розовый взрыв</string>
+  <string name='theme_create'>Создать тему</string>
+  <string name='theme_edit'>Изменить тему</string>
+  <string name='theme_name'>Название темы</string>
+  <string name='theme_color_background'>Фон</string>
+  <string name='theme_color_surface'>Поверхность</string>
+  <string name='theme_color_primary'>Основной</string>
+  <string name='theme_color_secondary'>Вторичный</string>
+  <string name='theme_preview'>Предпросмотр темы</string>
+  <string name='theme_preview_card'>Пример карточки</string>
+  <string name='theme_delete'>Удалить тему</string>
+  <string name='theme_delete_confirmation_title'>Удалить «%1$s»?</string>
+  <string name='theme_delete_confirmation_body'>Эта тема будет удалена навсегда.</string>
+  <string name='theme_reset_builtins'>Сбросить стандартные темы</string>
+  <string name='onboarding_welcome_subtitle'>
+    Ваши медиа, ваши оценки, ваши правила. Всё хранится локально с заботой о
+    конфиденциальности.
+  </string>
+  <string name='category_purge_action'>Удалить пакет и данные</string>
+  <plurals name='categories_packs_installed'>
+    <item quantity='one'>Установлен %1$d пакет</item>
+    <item quantity='few'>Установлено %1$d пакета</item>
+    <item quantity='many'>Установлено %1$d пакетов</item>
+    <item quantity='other'>Установлено %1$d пакета</item>
+  </plurals>
+  <string name='category_phase_downloading'>Загрузка…</string>
+  <string name='category_phase_waiting_download'>Ожидание загрузки…</string>
+  <string name='category_phase_verifying'>Проверка пакета…</string>
+  <string name='category_phase_installing'>Установка…</string>
+  <string name='category_phase_waiting_import'>Ожидание импорта…</string>
+  <string name='category_phase_waiting_covers'>Ожидание обложек…</string>
+  <string name='category_phase_importing_catalog'>Импорт каталога…</string>
+  <string name='category_phase_downloading_covers'>Загрузка обложек: %1$d / %2$d</string>
+  <string name='category_deleting'>Удаление…</string>
+  <string name='category_phase_finalizing'>Завершение…</string>
+  <string name='category_pack_runtime_error'>Не удалось подготовить каталог. Нажмите, чтобы повторить.</string>
+  <string name='message_rating_operation_failed'>Не удалось сохранить оценку. Повторите попытку.</string>
+  <string name='icon_default_blue'>Default · Синий</string>
+  <string name='icon_default_glow_blue'>Default Glow · Синий</string>
+  <string name='icon_himmel_blue'>Himmel · Синий</string>
+  <string name='icon_maomao_green'>Maomao · Зелёный</string>
+  <string name='icon_makise_red'>Makise · Красный</string>
+  <string name='icon_zenitsu_yellow'>Zenitsu · Жёлтый</string>
+  <string name='icon_guts_black'>Guts · Чёрный</string>
+  <string name='icon_killua_white'>Killua · Белый</string>
+  <string name='nav_search'>Поиск</string>
+  <string name='packs_empty_invitation'>Загрузите пакеты в настройках, чтобы начать.</string>
+  <string name='download_pack'>Скачать пакет</string>
+  <string name='color_picker_saturation_value'>Насыщенность и яркость</string>
+  <string name='color_picker_hue'>Оттенок</string>
+  <string name='loading_list'>Загрузка списка…</string>
+  <string name='pack_background_channel'>Операции с пакетами</string>
+  <string name='pack_background_title'>Подготовка офлайн-пакета</string>
+  <string name='pack_background_downloading'>Загрузка пакета…</string>
+  <string name='pack_storage_details'>Сведения о хранилище</string>
+  <string name='pack_storage_transfer'>Передача: %1$s</string>
+  <string name='pack_storage_covers'>Обложки</string>
+  <string name='pack_storage_physical_total'>Физический итог</string>
+  <string name='category_uninstall_keep_data'>Удалить пакет, сохранив личные данные</string>
+  <string name='media_all'>Все</string>
+  <string name='personal_backup_preview_title'>Импортировать личные данные?</string>
+  <string name='personal_backup_preview_body'>Проверено оценок: %1$d, оценок групп: %2$d, настроек пакетов: %3$d.</string>
+  <string name='personal_backup_preview_policy'>
+    Объединение сохраняет более новую оценку каждого элемента и импортирует
+    переданные настройки. Замена заменяет все оценки и область настроек из
+    копии.
+  </string>
+  <string name='personal_backup_merge'>Объединить новые</string>
+  <string name='personal_backup_replace'>Заменить</string>
+  <string name='personal_backup_failed'>Не удалось выполнить операцию с копией.</string>
+  <string name='ranking_share_title'>Поделиться рейтингом</string>
+  <string name='ranking_share_show_images'>Показывать изображения</string>
+  <string name='ranking_share_failed'>Не удалось создать изображение рейтинга.</string>
+  <string name='ranking_share_empty'>Оцените хотя бы один элемент, чтобы создать изображение рейтинга.</string>
+</resources>

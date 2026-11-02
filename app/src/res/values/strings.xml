@@ -1,0 +1,274 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<resources>
+  <string name='app_name' translatable='false'>RankOffline</string>
+  <string name='nav_ranking'>My ranking</string>
+  <string name='nav_settings'>Settings</string>
+  <string name='no_search_results'>No results.</string>
+  <string name='ranking_title'>MyRanking</string>
+  <string name='no_saved_ratings'>No ratings saved yet.</string>
+  <string name='sort_popularity'>Popularity</string>
+  <string name='sort_title_ascending' translatable='false'>A → Z</string>
+  <string name='cover_download'>Download cover</string>
+  <string name='cover_delete'>Delete cover</string>
+  <string name='cover_delete_title'>Delete this cover?</string>
+  <string name='cover_delete_explanation'>You can download it again whenever you want.</string>
+  <string name='action_cancel'>Cancel</string>
+  <string name='action_delete'>Delete</string>
+  <string name='action_continue'>Continue</string>
+  <string name='action_save'>Save</string>
+  <string name='action_apply'>Apply</string>
+  <string name='action_back'>Back</string>
+  <string name='rating_simple_instructions'>Choose a score from 0 to 10 in 0.5-point steps.</string>
+  <string name='rating_slider_accessibility'>Rating slider</string>
+  <string name='rating_notes'>Notes</string>
+  <string name='score_title'>Score</string>
+  <string name='score_direct_title'>Edit final score</string>
+  <string name='score_direct_explanation'>Enter a value from 0 to 10 with up to two decimal places.</string>
+  <string name='score_direct_label'>Final score</string>
+  <string name='score_quality'>Quality: %1$s</string>
+  <string name='score_bonus_value'>%1$s: +%2$.1f</string>
+  <string name='score_activate_category'>Enable</string>
+  <string name='score_not_applicable' translatable='false'>N/A</string>
+  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='bonus_range'>%1$s · +0 to +%2$.1f</string>
+  <string name='bonus_current'>+%1$.1f</string>
+  <string name='settings_title'>Settings</string>
+  <string name='settings_general_title'>General settings</string>
+  <string name='settings_general_description'>Packages, theme, icon and language</string>
+  <string name='settings_rating_title'>Rating settings</string>
+  <string name='settings_rating_description'>Categories and scoring system</string>
+  <string name='settings_icon_title'>Icon</string>
+  <string name='settings_icon_description'>Choose the launcher icon</string>
+  <string name='settings_data_title'>Data</string>
+  <string name='settings_data_description'>Import, export and backup</string>
+  <string name='settings_about_title'>Information</string>
+  <string name='settings_about_description'>App information, credits and licences</string>
+  <string name='settings_active_pack_title'>Package Settings</string>
+  <string name='settings_active_pack_description'>Unique settings for the %1$s package</string>
+  <string name='settings_active_pack_screen_title'>%1$s settings</string>
+  <string name='settings_donation_title'>Donation</string>
+  <string name='settings_donation_description'>Support RankOffline development</string>
+  <string name='settings_donation_body'>
+    RankOffline is free and open source. Donation options will appear here when
+    an official destination is available.
+  </string>
+  <string name='settings_open_item'>Open %1$s</string>
+  <string name='icon_content_description'>%1$s launcher icon</string>
+  <string name='general_display_section'>Display</string>
+  <string name='general_sticky_score'>Sticky score header</string>
+  <string name='general_sticky_score_description'>Keep the score visible while scrolling</string>
+  <string name='general_show_images'>Show images</string>
+  <string name='general_show_images_description'>Display catalog cover thumbnails</string>
+  <string name='language_title'>Language</string>
+  <string name='language_description'>App interface language</string>
+  <string name='language_english'>English</string>
+  <string name='language_spanish'>Español</string>
+  <string name='language_german'>Deutsch</string>
+  <string name='language_french'>Français</string>
+  <string name='language_russian'>Русский</string>
+  <string name='language_japanese'>日本語</string>
+  <string name='language_simplified_chinese'>简体中文</string>
+  <string name='language_basque'>Euskara</string>
+  <string name='language_italian'>Italiano</string>
+  <string name='covers_downloaded_count'>Downloaded covers: %1$d</string>
+  <string name='covers_clear'>Delete downloaded covers</string>
+  <string name='covers_clear_title'>Delete downloaded covers?</string>
+  <string name='covers_clear_explanation'>The covers can be downloaded again when needed.</string>
+  <string name='rating_elaborate'>Elaborate rating</string>
+  <string name='rating_add_category'>Create category</string>
+  <string name='rating_new_category_name'>New category</string>
+  <string name='rating_new_category_description'>Your custom evaluation criterion.</string>
+  <string name='category_name'>Name</string>
+  <string name='category_description'>Description</string>
+  <string name='category_weight_percent'>%1$d%%</string>
+  <string name='category_weight_slider_accessibility'>Category weight slider</string>
+  <string name='category_color'>Color</string>
+  <string name='category_color_primary'>Primary</string>
+  <string name='category_color_secondary'>Secondary</string>
+  <string name='category_color_content_description'>Choose category color</string>
+  <string name='color_picker_title'>Select color</string>
+  <string name='color_hex_label'>Hex color (#RRGGBB)</string>
+  <string name='color_invalid'>Enter a valid color such as #19D5E5.</string>
+  <string name='category_delete_title'>Delete category?</string>
+  <string name='category_delete_explanation'>
+    %1$s and its saved detailed values will be deleted. Existing final scores
+    and notes will not change.
+  </string>
+  <string name='bonus_personal_taste'>Personal taste</string>
+  <string name='about_version'>Version %1$s</string>
+  <string name='about_rankoffline_licence' translatable='false'>RankOffline application code: GNU General Public License v3.0 (GPL-3.0-only).</string>
+  <string name='about_rankoffline_trademarks'>
+    Official RankOffline name, logo, launcher icons and branding: not licensed
+    under GPLv3; see TRADEMARKS.md.
+  </string>
+  <string name='about_summary_multimedia'>
+    An offline media catalog and rating app. Your ratings, notes and preferences
+    stay on your device.
+  </string>
+  <string name='about_source_code'>Source code</string>
+  <string name='about_open_source_software'>Open-source software</string>
+  <string name='about_legal_trademarks'>Legal / trademarks</string>
+  <string name='about_software_licences'>
+    RankOffline application source is GPL-3.0-only. Applicable AndroidX,
+    Jetpack, Kotlin and Kotlinx runtime components use Apache-2.0.
+  </string>
+  <string name='about_non_affiliation'>
+    Provider names and marks identify data sources. They do not imply
+    affiliation, certification or endorsement.
+  </string>
+  <string name='error_initialize_local_data'>Unable to initialize local data.</string>
+  <string name='message_cover_not_found'>No cover was found for this item</string>
+  <string name='rating_profiles'>Profiles</string>
+  <string name='rating_mode'>Rating mode</string>
+  <string name='rating_simple'>Simple rating</string>
+  <string name='rating_profiles_description'>Weights for each type of work</string>
+  <string name='rating_categories'>Categories</string>
+  <string name='rating_categories_description'>What is evaluated</string>
+  <string name='rating_profile'>Rating profile</string>
+  <string name='rating_create_profile'>Create profile</string>
+  <string name='rating_profile_name'>Profile name</string>
+  <string name='rating_new_profile_name'>New profile</string>
+  <string name='rating_delete_profile'>Delete profile</string>
+  <string name='rating_delete_profile_confirmation'>Delete profile “%1$s”?</string>
+  <string name='rating_last_profile_required'>At least one profile is required.</string>
+  <string name='rating_reset_profiles'>Reset default profiles</string>
+  <string name='rating_reset_profiles_confirmation'>
+    Replace all profiles with the pack defaults? Categories and ratings will
+    not change.
+  </string>
+  <string name='rating_reset_categories'>Reset default categories</string>
+  <string name='rating_reset_categories_confirmation'>
+    Replace all categories with the pack defaults? Profiles will keep their
+    compatible weights.
+  </string>
+  <string name='covers_settings_title'>Covers</string>
+  <string name='covers_settings_description'>Manage offline covers for the selected pack.</string>
+  <string name='covers_settings_explanation'>
+    Cover actions apply only to the selected pack. Preload downloads
+    missing covers for individually rated items.
+  </string>
+  <string name='covers_downloading_rated'>Downloading covers…</string>
+  <string name='covers_download_top'>Download Top %1$d</string>
+  <string name='filters_title'>Filters</string>
+  <string name='filters_active'>Filters (%1$d)</string>
+  <string name='filters_clear'>Clear filters</string>
+  <string name='filters_all'>All / No filter</string>
+  <string name='filter_search_values'>Search values</string>
+  <string name='sort_final_score'>Final score</string>
+  <string name='sort_quality_score'>Quality</string>
+  <string name='sort_personal_taste'>Personal taste</string>
+  <string name='sort_category_score'>Category score</string>
+  <string name='search_catalog_hint'>Search titles…</string>
+  <string name='catalog_unavailable_error'>Catalog could not be loaded</string>
+  <string name='group_entries_count'>%1$d entries</string>
+  <string name='group_rated_count'>%1$d/%2$d rated</string>
+  <string name='group_rate_together'>Rate</string>
+  <string name='group_members'>Members</string>
+  <string name='group_draft_choice'>Start from scratch or use the individual ratings as a starting point?</string>
+  <string name='group_start_fresh'>Start from scratch</string>
+  <string name='group_use_member_ratings'>Use individual ratings</string>
+  <string name='score_group_title'>Group score</string>
+  <string name='search_clear'>Clear search</string>
+  <string name='action_retry'>Retry</string>
+  <string name='download_pack'>Download pack</string>
+  <string name='category_not_installed'>Not downloaded</string>
+  <string name='onboarding_welcome_title'>Welcome to RankOffline</string>
+  <string name='onboarding_choose_style'>Choose your style</string>
+  <string name='onboarding_change_later'>You can change it whenever you want in Settings.</string>
+  <string name='onboarding_minimal'>Minimal</string>
+  <string name='onboarding_with_images'>With images</string>
+  <string name='onboarding_rating_simple'>Simple rating</string>
+  <string name='onboarding_rating_elaborated'>Elaborate rating</string>
+  <string name='onboarding_start'>Get started</string>
+  <string name='onboarding_categories_title'>Where would you like to start?</string>
+  <string name='onboarding_categories_subtitle'>Choose the offline catalogs you want. You can manage them later in Settings.</string>
+  <string name='onboarding_done'>Done</string>
+  <string name='categories_title'>Packages</string>
+  <string name='categories_settings_description'>Download and manage packages</string>
+  <string name='categories_storage_title'>Package data</string>
+  <plurals name='categories_packs_installed'>
+    <item quantity='one'>%1$d package installed</item>
+    <item quantity='other'>%1$d packages installed</item>
+  </plurals>
+  <string name='category_downloaded'>Downloaded</string>
+  <string name='category_phase_downloading'>Downloading…</string>
+  <string name='category_phase_waiting_download'>Waiting to download…</string>
+  <string name='category_phase_verifying'>Verifying package…</string>
+  <string name='category_phase_installing'>Installing…</string>
+  <string name='category_phase_waiting_import'>Waiting to import…</string>
+  <string name='category_phase_waiting_covers'>Waiting for covers…</string>
+  <string name='category_phase_importing_catalog'>Importing catalog…</string>
+  <string name='category_phase_downloading_covers'>Downloading covers: %1$d / %2$d</string>
+  <string name='category_deleting'>Deleting…</string>
+  <string name='category_phase_finalizing'>Finalizing…</string>
+  <string name='category_download'>Download pack</string>
+  <string name='category_remove_catalog'>Remove catalog</string>
+  <string name='category_remove_title'>Remove %1$s catalog</string>
+  <string name='category_pack_runtime_error'>Catalog preparation failed. Tap retry.</string>
+  <string name='category_download_unavailable'>Pack download is not available in this build.</string>
+  <string name='settings_display_description'>Visual appearance and image display</string>
+  <string name='settings_group_related_entries'>Group related entries</string>
+  <string name='settings_group_related_entries_description'>Show catalog groups as a single related work when supported by the pack.</string>
+  <string name='settings_group_covers_for_items'>Use group covers for items</string>
+  <string name='settings_group_covers_for_items_description'>Prefer a group cover when an item has no dedicated cover.</string>
+  <string name='settings_theme_title'>Theme</string>
+  <string name='settings_theme_description'>Choose the app’s colour palette</string>
+  <string name='theme_midnight_neon'>Midnight Neon</string>
+  <string name='theme_cherry_blossom'>Cherry Blossom</string>
+  <string name='theme_deep_ocean'>Deep Ocean</string>
+  <string name='theme_emerald_forest'>Emerald Forest</string>
+  <string name='theme_golden_sunset'>Golden Sunset</string>
+  <string name='theme_lavender_dream'>Lavender Dream</string>
+  <string name='theme_pink_explosion'>Pink Explosion</string>
+  <string name='theme_create'>Create theme</string>
+  <string name='theme_edit'>Edit theme</string>
+  <string name='theme_name'>Theme name</string>
+  <string name='theme_color_background'>Background</string>
+  <string name='theme_color_surface'>Surface</string>
+  <string name='theme_color_primary'>Primary</string>
+  <string name='theme_color_secondary'>Secondary</string>
+  <string name='theme_preview'>Theme preview</string>
+  <string name='theme_preview_card'>Example card</string>
+  <string name='theme_delete'>Delete theme</string>
+  <string name='theme_delete_confirmation_title'>Delete “%1$s”?</string>
+  <string name='theme_delete_confirmation_body'>This theme will be permanently removed.</string>
+  <string name='theme_reset_builtins'>Reset default themes</string>
+  <string name='onboarding_welcome_subtitle'>Your media, your ratings, your way. Stored locally with privacy in mind.</string>
+  <string name='category_purge_action'>Delete pack and data</string>
+  <string name='message_rating_operation_failed'>Couldn’t save the rating. Try again.</string>
+  <string name='icon_default_blue'>Default · Blue</string>
+  <string name='icon_default_glow_blue'>Default Glow · Blue</string>
+  <string name='icon_himmel_blue'>Himmel · Blue</string>
+  <string name='icon_maomao_green'>Maomao · Green</string>
+  <string name='icon_makise_red'>Makise · Red</string>
+  <string name='icon_zenitsu_yellow'>Zenitsu · Yellow</string>
+  <string name='icon_guts_black'>Guts · Black</string>
+  <string name='icon_killua_white'>Killua · White</string>
+  <string name='nav_search'>Search</string>
+  <string name='packs_empty_invitation'>Download packs from Settings to get started.</string>
+  <string name='color_picker_saturation_value'>Saturation and brightness</string>
+  <string name='color_picker_hue'>Hue</string>
+  <string name='loading_list'>Loading list…</string>
+  <string name='pack_background_channel'>Pack operations</string>
+  <string name='pack_background_title'>Preparing offline pack</string>
+  <string name='pack_background_downloading'>Downloading pack…</string>
+  <string name='pack_storage_details'>Storage details</string>
+  <string name='pack_storage_transfer'>Transfer: %1$s</string>
+  <string name='pack_storage_covers'>Covers</string>
+  <string name='pack_storage_physical_total'>Physical total</string>
+  <string name='category_uninstall_keep_data'>Uninstall, keep personal data</string>
+  <string name='media_all'>All</string>
+  <string name='personal_backup_preview_title'>Import personal data?</string>
+  <string name='personal_backup_preview_body'>%1$d item ratings, %2$d group ratings and %3$d pack settings were validated.</string>
+  <string name='personal_backup_preview_policy'>
+    Merge keeps the newer rating for each item and imports supplied settings.
+    Replace replaces all ratings and the backed-up settings scope.
+  </string>
+  <string name='personal_backup_merge'>Merge newer</string>
+  <string name='personal_backup_replace'>Replace</string>
+  <string name='personal_backup_failed'>The backup operation failed.</string>
+  <string name='ranking_share_title'>Share ranking</string>
+  <string name='ranking_share_show_images'>Show images</string>
+  <string name='ranking_share_failed'>The ranking image could not be created.</string>
+  <string name='ranking_share_empty'>Rate at least one item to create a ranking image.</string>
+</resources>

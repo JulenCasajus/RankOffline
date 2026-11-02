@@ -1,0 +1,274 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<resources>
+  <string name='nav_ranking'>Mi ranking</string>
+  <string name='nav_settings'>Ajustes</string>
+  <string name='no_search_results'>No hay resultados.</string>
+  <string name='ranking_title'>MiRanking</string>
+  <string name='no_saved_ratings'>Todavía no hay valoraciones guardadas.</string>
+  <string name='sort_popularity'>Popularidad</string>
+  <string name='cover_download'>Descargar portada</string>
+  <string name='cover_delete'>Eliminar portada</string>
+  <string name='cover_delete_title'>¿Eliminar esta portada?</string>
+  <string name='cover_delete_explanation'>Podrás volver a descargarla cuando quieras.</string>
+  <string name='action_cancel'>Cancelar</string>
+  <string name='action_delete'>Eliminar</string>
+  <string name='action_continue'>Continuar</string>
+  <string name='action_save'>Guardar</string>
+  <string name='action_apply'>Aplicar</string>
+  <string name='action_back'>Atrás</string>
+  <string name='rating_simple_instructions'>Elige una nota de 0 a 10 en incrementos de 0,5.</string>
+  <string name='rating_slider_accessibility'>Control deslizante de valoración</string>
+  <string name='rating_notes'>Notas</string>
+  <string name='score_title'>Puntuación</string>
+  <string name='score_quality'>Calidad: %1$s</string>
+  <string name='score_bonus_value'>%1$s: +%2$.1f</string>
+  <string name='score_activate_category'>Activar</string>
+  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='bonus_range'>%1$s · +0 a +%2$.1f</string>
+  <string name='bonus_current'>+%1$.1f</string>
+  <string name='settings_title'>Ajustes</string>
+  <string name='settings_general_title'>Ajustes generales</string>
+  <string name='settings_general_description'>Paquetes, tema, icono e idioma</string>
+  <string name='settings_rating_title'>Ajustes de valoración</string>
+  <string name='settings_rating_description'>Categorías y sistema de puntuación</string>
+  <string name='settings_icon_title'>Icono</string>
+  <string name='settings_icon_description'>Elige el icono del launcher</string>
+  <string name='settings_data_title'>Datos</string>
+  <string name='settings_data_description'>Importación, exportación y copia de seguridad</string>
+  <string name='settings_about_title'>Información</string>
+  <string name='settings_about_description'>Información, créditos y licencias</string>
+  <string name='settings_active_pack_title'>Ajustes de Paquete</string>
+  <string name='settings_active_pack_description'>Ajustes únicos del paquete %1$s</string>
+  <string name='settings_active_pack_screen_title'>Ajustes de %1$s</string>
+  <string name='settings_donation_title'>Donación</string>
+  <string name='settings_donation_description'>Apoya el desarrollo de RankOffline</string>
+  <string name='settings_donation_body'>
+    RankOffline es gratuito y de código abierto. Las opciones de donación
+    aparecerán aquí cuando exista un destino oficial.
+  </string>
+  <string name='settings_open_item'>Abrir %1$s</string>
+  <string name='icon_content_description'>Icono de launcher %1$s</string>
+  <string name='general_display_section'>Visualización</string>
+  <string name='general_sticky_score'>Cabecera de puntuación fija</string>
+  <string name='general_sticky_score_description'>Mantener la puntuación visible al desplazarse</string>
+  <string name='general_show_images'>Mostrar imágenes</string>
+  <string name='language_title'>Idioma</string>
+  <string name='language_description'>Idioma de la interfaz de la aplicación</string>
+  <string name='language_english'>English</string>
+  <string name='language_spanish'>Español</string>
+  <string name='language_german'>Deutsch</string>
+  <string name='language_french'>Français</string>
+  <string name='language_russian'>Русский</string>
+  <string name='language_japanese'>日本語</string>
+  <string name='language_simplified_chinese'>简体中文</string>
+  <string name='language_basque'>Euskara</string>
+  <string name='language_italian'>Italiano</string>
+  <string name='covers_downloaded_count'>Portadas descargadas: %1$d</string>
+  <string name='covers_clear'>Eliminar portadas descargadas</string>
+  <string name='covers_clear_title'>¿Eliminar las portadas descargadas?</string>
+  <string name='covers_clear_explanation'>Las portadas podrán volver a descargarse cuando sea necesario.</string>
+  <string name='rating_elaborate'>Valoración elaborada</string>
+  <string name='rating_add_category'>Crear categoría</string>
+  <string name='rating_new_category_name'>Nueva categoría</string>
+  <string name='rating_new_category_description'>Tu criterio de evaluación personalizado.</string>
+  <string name='category_name'>Nombre</string>
+  <string name='category_description'>Descripción</string>
+  <string name='category_weight_percent'>%1$d%%</string>
+  <string name='category_weight_slider_accessibility'>Control del peso de la categoría</string>
+  <string name='category_color'>Color</string>
+  <string name='category_color_primary'>Primario</string>
+  <string name='category_color_secondary'>Secundario</string>
+  <string name='category_color_content_description'>Elegir color de la categoría</string>
+  <string name='color_picker_title'>Seleccionar color</string>
+  <string name='color_hex_label'>Color hexadecimal (#RRGGBB)</string>
+  <string name='color_invalid'>Introduce un color válido, como #19D5E5.</string>
+  <string name='category_delete_title'>¿Eliminar categoría?</string>
+  <string name='category_delete_explanation'>
+    Se eliminarán %1$s y sus valores detallados guardados. Las puntuaciones
+    finales y las notas existentes no cambiarán.
+  </string>
+  <string name='bonus_personal_taste'>Gusto personal</string>
+  <string name='about_version'>Versión %1$s</string>
+  <string name='error_initialize_local_data'>No se pudieron inicializar los datos locales.</string>
+  <string name='score_direct_title'>Editar puntuación final</string>
+  <string name='score_direct_explanation'>Introduce un valor de 0 a 10 con un máximo de dos decimales.</string>
+  <string name='score_direct_label'>Puntuación final</string>
+  <string name='rating_profiles'>Perfiles</string>
+  <string name='rating_mode'>Modo de valoración</string>
+  <string name='rating_simple'>Valoración simple</string>
+  <string name='rating_profiles_description'>Pesos según el tipo de obra</string>
+  <string name='rating_categories'>Categorías</string>
+  <string name='rating_categories_description'>Qué se evalúa</string>
+  <string name='rating_profile'>Perfil de valoración</string>
+  <string name='rating_create_profile'>Crear perfil</string>
+  <string name='rating_profile_name'>Nombre del perfil</string>
+  <string name='rating_new_profile_name'>Nuevo perfil</string>
+  <string name='rating_delete_profile'>Eliminar perfil</string>
+  <string name='rating_delete_profile_confirmation'>¿Eliminar el perfil «%1$s»?</string>
+  <string name='rating_last_profile_required'>Debe existir al menos un perfil.</string>
+  <string name='rating_reset_profiles'>Restablecer perfiles predeterminados</string>
+  <string name='rating_reset_profiles_confirmation'>
+    ¿Sustituir todos los perfiles por los predeterminados? Las categorías y
+    valoraciones no cambiarán.
+  </string>
+  <string name='rating_reset_categories'>Restablecer categorías predeterminadas</string>
+  <string name='rating_reset_categories_confirmation'>
+    ¿Sustituir todas las categorías por las predeterminadas? Los perfiles
+    conservarán los pesos compatibles.
+  </string>
+  <string name='covers_settings_title'>Portadas</string>
+  <string name='covers_settings_description'>Gestiona las portadas sin conexión del tipo de contenido seleccionado.</string>
+  <string name='covers_settings_explanation'>
+    Las acciones solo afectan al tipo seleccionado. La precarga descarga las
+    portadas que faltan de los elementos puntuados.
+  </string>
+  <string name='covers_downloading_rated'>Descargando portadas…</string>
+  <string name='covers_download_top'>Descargar Top %1$d</string>
+  <string name='filters_title'>Filtros</string>
+  <string name='filters_active'>Filtros (%1$d)</string>
+  <string name='filters_clear'>Limpiar filtros</string>
+  <string name='filters_all'>Todos / Sin filtro</string>
+  <string name='filter_search_values'>Buscar valores</string>
+  <string name='sort_final_score'>Nota final</string>
+  <string name='sort_quality_score'>Calidad</string>
+  <string name='sort_personal_taste'>Gusto personal</string>
+  <string name='sort_category_score'>Nota por categoría</string>
+  <string name='search_catalog_hint'>Buscar títulos…</string>
+  <string name='catalog_unavailable_error'>No se pudo cargar el catálogo</string>
+  <string name='group_entries_count'>%1$d entradas</string>
+  <string name='group_rated_count'>%1$d/%2$d valoradas</string>
+  <string name='group_rate_together'>Valorar</string>
+  <string name='group_members'>Entradas</string>
+  <string name='group_draft_choice'>¿Empezar desde cero o usar las valoraciones individuales como punto de partida?</string>
+  <string name='group_start_fresh'>Empezar desde cero</string>
+  <string name='group_use_member_ratings'>Usar valoraciones individuales</string>
+  <string name='about_rankoffline_trademarks'>
+    El nombre, el logotipo, los iconos de inicio y la marca oficiales de
+    RankOffline no están bajo GPLv3; consulta TRADEMARKS.md.
+  </string>
+  <string name='about_summary_multimedia'>
+    Catálogo multimedia y aplicación de valoración sin conexión. Tus
+    valoraciones, notas y preferencias permanecen en tu dispositivo.
+  </string>
+  <string name='about_source_code'>Código fuente</string>
+  <string name='about_open_source_software'>Software de código abierto</string>
+  <string name='about_legal_trademarks'>Información legal / marcas</string>
+  <string name='about_software_licences'>
+    El código de RankOffline es GPL-3.0-only. Los componentes runtime aplicables
+    de AndroidX, Jetpack, Kotlin y Kotlinx usan Apache-2.0.
+  </string>
+  <string name='about_non_affiliation'>
+    Los nombres y marcas identifican las fuentes de datos. No implican
+    afiliación, certificación ni respaldo.
+  </string>
+  <string name='score_group_title'>Puntuación del grupo</string>
+  <string name='search_clear'>Borrar búsqueda</string>
+  <string name='action_retry'>Reintentar</string>
+  <string name='category_not_installed'>No descargada</string>
+  <string name='onboarding_welcome_title'>¡Bienvenido a RankOffline!</string>
+  <string name='onboarding_choose_style'>Elige tu estilo</string>
+  <string name='onboarding_change_later'>Podrás cambiarlo cuando quieras desde Ajustes.</string>
+  <string name='onboarding_minimal'>Minimalista</string>
+  <string name='onboarding_with_images'>Con imágenes</string>
+  <string name='onboarding_rating_simple'>Valoración simple</string>
+  <string name='onboarding_rating_elaborated'>Valoración elaborada</string>
+  <string name='onboarding_start'>Empezar</string>
+  <string name='onboarding_categories_title'>¿Por dónde quieres empezar?</string>
+  <string name='onboarding_categories_subtitle'>
+    Elige los catálogos que quieras usar sin conexión. Podrás gestionarlos más
+    tarde desde Ajustes.
+  </string>
+  <string name='onboarding_done'>Listo</string>
+  <string name='categories_title'>Paquetes</string>
+  <string name='categories_settings_description'>Descarga y gestiona los paquetes</string>
+  <string name='categories_storage_title'>Datos de paquetes</string>
+  <string name='category_downloaded'>Descargada</string>
+  <string name='category_download'>Descargar categoría</string>
+  <string name='category_remove_catalog'>Eliminar catálogo</string>
+  <string name='category_remove_title'>Eliminar catálogo de %1$s</string>
+  <string name='category_download_unavailable'>La descarga de esta categoría no está disponible en esta compilación.</string>
+  <string name='settings_display_description'>Apariencia visual y visualización de imágenes</string>
+  <string name='settings_theme_title'>Tema</string>
+  <string name='settings_theme_description'>Elige la paleta de colores de la aplicación</string>
+  <string name='theme_midnight_neon'>Neón nocturno</string>
+  <string name='theme_cherry_blossom'>Flor de cerezo</string>
+  <string name='theme_deep_ocean'>Océano profundo</string>
+  <string name='theme_emerald_forest'>Bosque esmeralda</string>
+  <string name='theme_golden_sunset'>Atardecer dorado</string>
+  <string name='theme_lavender_dream'>Sueño lavanda</string>
+  <string name='theme_pink_explosion'>Explosión rosa</string>
+  <string name='theme_create'>Crear tema</string>
+  <string name='theme_edit'>Editar tema</string>
+  <string name='theme_name'>Nombre del tema</string>
+  <string name='theme_color_background'>Fondo</string>
+  <string name='theme_color_surface'>Superficie</string>
+  <string name='theme_color_primary'>Principal</string>
+  <string name='theme_color_secondary'>Secundario</string>
+  <string name='theme_preview'>Vista previa del tema</string>
+  <string name='theme_preview_card'>Tarjeta de ejemplo</string>
+  <string name='theme_delete'>Eliminar tema</string>
+  <string name='theme_delete_confirmation_title'>¿Eliminar “%1$s”?</string>
+  <string name='theme_delete_confirmation_body'>Este tema se eliminará permanentemente.</string>
+  <string name='theme_reset_builtins'>Restablecer temas predeterminados</string>
+  <string name='onboarding_welcome_subtitle'>
+    Tus contenidos, tus valoraciones, a tu manera. Guardados localmente,
+    pensando en tu privacidad.
+  </string>
+  <string name='category_purge_action'>Eliminar pack y datos</string>
+  <plurals name='categories_packs_installed'>
+    <item quantity='one'>%1$d paquete instalado</item>
+    <item quantity='other'>%1$d paquetes instalados</item>
+  </plurals>
+  <string name='category_phase_downloading'>Descargando…</string>
+  <string name='category_phase_waiting_download'>Esperando para descargar…</string>
+  <string name='category_phase_verifying'>Verificando pack…</string>
+  <string name='category_phase_installing'>Instalando…</string>
+  <string name='category_phase_waiting_import'>Esperando para importar…</string>
+  <string name='category_phase_waiting_covers'>Esperando las portadas…</string>
+  <string name='category_phase_importing_catalog'>Importando catálogo…</string>
+  <string name='category_phase_downloading_covers'>Descargando portadas: %1$d / %2$d</string>
+  <string name='category_deleting'>Eliminando…</string>
+  <string name='category_phase_finalizing'>Finalizando…</string>
+  <string name='category_pack_runtime_error'>No se pudo preparar el catálogo. Toca para reintentar.</string>
+  <string name='message_rating_operation_failed'>No se pudo guardar la valoración. Inténtalo de nuevo.</string>
+  <string name='icon_default_blue'>Default · Azul</string>
+  <string name='icon_default_glow_blue'>Default Glow · Azul</string>
+  <string name='icon_himmel_blue'>Himmel · Azul</string>
+  <string name='icon_maomao_green'>Maomao · Verde</string>
+  <string name='icon_makise_red'>Makise · Rojo</string>
+  <string name='icon_zenitsu_yellow'>Zenitsu · Amarillo</string>
+  <string name='icon_guts_black'>Guts · Negro</string>
+  <string name='icon_killua_white'>Killua · Blanco</string>
+  <string name='nav_search'>Buscar</string>
+  <string name='packs_empty_invitation'>Descarga paquetes desde Ajustes para empezar.</string>
+  <string name='download_pack'>Descargar paquete</string>
+  <string name='color_picker_saturation_value'>Saturación y brillo</string>
+  <string name='color_picker_hue'>Tono</string>
+  <string name='loading_list'>Cargando lista…</string>
+  <string name='pack_background_channel'>Operaciones de paquetes</string>
+  <string name='pack_background_title'>Preparando paquete sin conexión</string>
+  <string name='pack_background_downloading'>Descargando paquete…</string>
+  <string name='pack_storage_details'>Detalles de almacenamiento</string>
+  <string name='pack_storage_transfer'>Transferencia: %1$s</string>
+  <string name='pack_storage_covers'>Portadas</string>
+  <string name='pack_storage_physical_total'>Total físico</string>
+  <string name='category_uninstall_keep_data'>Desinstalar y conservar datos personales</string>
+  <string name='media_all'>Todo</string>
+  <string name='personal_backup_preview_title'>¿Importar datos personales?</string>
+  <string name='personal_backup_preview_body'>
+    Se validaron %1$d valoraciones individuales, %2$d de grupos y ajustes de
+    %3$d paquetes.
+  </string>
+  <string name='personal_backup_preview_policy'>
+    Fusionar conserva la valoración más reciente de cada elemento e importa los
+    ajustes incluidos. Reemplazar sustituye todas las valoraciones y el ámbito
+    de ajustes de la copia.
+  </string>
+  <string name='personal_backup_merge'>Fusionar los más recientes</string>
+  <string name='personal_backup_replace'>Reemplazar</string>
+  <string name='personal_backup_failed'>La operación de copia ha fallado.</string>
+  <string name='ranking_share_title'>Compartir ranking</string>
+  <string name='ranking_share_show_images'>Mostrar imágenes</string>
+  <string name='ranking_share_failed'>No se ha podido crear la imagen del ranking.</string>
+  <string name='ranking_share_empty'>Valora al menos un elemento para crear una imagen del ranking.</string>
+</resources>
