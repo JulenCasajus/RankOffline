@@ -22,7 +22,11 @@ import kotlinx.coroutines.sync.withLock
 internal class PackServiceConfiguration(
     val downloader: PackArchiveDownloader,
     val loadTrustedSources: suspend (PackSourceRegistry) -> Unit,
-    val currentAppVersion: String = BuildConfig.VERSION_NAME
+    // A debug build is a test variant of the corresponding stable app version.
+    // SemVer ranks 0.2.2-debug below 0.2.2, which would reject valid packs.
+    val currentAppVersion: String = if (BuildConfig.DEBUG) {
+        BuildConfig.VERSION_NAME.removeSuffix("-debug")
+    } else BuildConfig.VERSION_NAME
 )
 
 /**
