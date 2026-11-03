@@ -18,6 +18,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val ready by viewModel.ready.collectAsState()
     val scope by viewModel.viewingScope.collectAsState()
     val packs by viewModel.packStates.collectAsState()
+    val isDiscoveringPacks by viewModel.discoveringPacks.collectAsState()
     val editor by viewModel.ratingEditor.collectAsState()
     val group by viewModel.groupDetail.collectAsState()
     val list by viewModel.searchResults.collectAsState()
@@ -72,7 +73,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
-    FirstRunOnboarding(settings, packs,
+    FirstRunOnboarding(settings, packs, isDiscoveringPacks,
         onWelcomeComplete = viewModel::completeWelcome,
         onLanguageSelected = viewModel::updateLanguage,
         onThemeSelected = viewModel::updateThemePalette,

@@ -67,7 +67,11 @@ class PackBackgroundWorker(
 
             runtime.prepare(packId, action)
             val disposition = when (action) {
-                PackWorkAction.INSTALL -> manager.downloadAndInstall(packId).toWorkDisposition()
+                PackWorkAction.INSTALL -> manager.downloadAndInstall(packId).also { result ->
+                    if (result != PackOperationResult.INSTALLED) {
+                        Log.w(TAG, "pack=${packId.value} install result=$result attempt=$runAttemptCount")
+                    }
+                }.toWorkDisposition()
                 PackWorkAction.RECOVER -> if (manager.recover(packId)) {
                     PackWorkDisposition.SUCCESS
                 } else PackWorkDisposition.RETRYABLE

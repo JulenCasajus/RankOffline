@@ -172,7 +172,7 @@
   <string name='onboarding_minimal'>Minimalista</string>
   <string name='onboarding_with_images'>Irudiekin</string>
   <string name='onboarding_rating_simple'>Balorazio sinplea</string>
-  <string name='onboarding_rating_elaborated'>Balorazio landua</string>
+  <string name='onboarding_rating_elaborate'>Balorazio xehatua</string>
   <string name='onboarding_start'>Hasi</string>
   <string name='onboarding_categories_title'>Nondik hasi nahi duzu?</string>
   <string name='onboarding_categories_subtitle'>
@@ -250,7 +250,7 @@
   <string name='pack_background_title'>Lineaz kanpoko paketea prestatzen</string>
   <string name='pack_background_downloading'>Paketea deskargatzen…</string>
   <string name='pack_storage_details'>Biltegiratze-xehetasunak</string>
-  <string name='pack_storage_transfer'>Transferentzia: %1$s</string>
+  <string name='pack_storage_transfer'>Tamaina: %1$s</string>
   <string name='pack_storage_covers'>Azalak</string>
   <string name='pack_storage_physical_total'>Guztizko fisikoa</string>
   <string name='category_uninstall_keep_data'>Desinstalatu, datu pertsonalak mantenduz</string>

@@ -138,13 +138,13 @@ internal fun WelcomeStyleDialog(
                         },
                         second = { optionModifier ->
                             OnboardingOptionCard(
-                                title = stringResource(R.string.onboarding_rating_elaborated),
-                                preview = R.drawable.onboarding_rating_elaborated,
+                                title = stringResource(R.string.onboarding_rating_elaborate),
+                                preview = R.drawable.onboarding_rating_elaborate,
                                 selected = elaborateRating,
                                 onClick = { elaborateRating = true },
                                 layout = layout,
                                 modifier = optionModifier.testTag(
-                                    "onboarding_rating_elaborated"
+                                    "onboarding_rating_elaborate"
                                 )
                             )
                         }

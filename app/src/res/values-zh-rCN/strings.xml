@@ -148,7 +148,7 @@
   <string name='onboarding_minimal'>极简</string>
   <string name='onboarding_with_images'>显示图片</string>
   <string name='onboarding_rating_simple'>简单评分</string>
-  <string name='onboarding_rating_elaborated'>详细评分</string>
+  <string name='onboarding_rating_elaborate'>详细评分</string>
   <string name='onboarding_start'>开始</string>
   <string name='onboarding_categories_title'>想从哪里开始？</string>
   <string name='onboarding_categories_subtitle'>选择要离线使用的目录。之后可在设置中管理。</string>
@@ -219,7 +219,7 @@
   <string name='pack_background_title'>正在准备离线内容包</string>
   <string name='pack_background_downloading'>正在下载内容包…</string>
   <string name='pack_storage_details'>存储详情</string>
-  <string name='pack_storage_transfer'>传输大小：%1$s</string>
+  <string name='pack_storage_transfer'>大小：%1$s</string>
   <string name='pack_storage_covers'>封面</string>
   <string name='pack_storage_physical_total'>物理总量</string>
   <string name='category_uninstall_keep_data'>卸载并保留个人数据</string>

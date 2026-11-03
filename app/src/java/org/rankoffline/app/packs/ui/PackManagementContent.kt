@@ -4,6 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,13 +19,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -72,6 +77,7 @@ internal fun packManagementEntries(
 @Composable
 internal fun PackOnboardingDialog(
     packStates: Map<PackId, PackState>,
+    isDiscovering: Boolean,
     languageTag: String,
     activePackId: PackId?,
     onDiscoverPacks: () -> Unit,
@@ -83,24 +89,24 @@ internal fun PackOnboardingDialog(
     onRequestStorageDetails: (PackId) -> Unit,
     onComplete: () -> Unit
 ) {
-    // First-run screen only: resolve trusted remote pack sources on entry, never on every
-    // recomposition and never during the normal cold-start path after onboarding.
-    LaunchedEffect(Unit) { onDiscoverPacks() }
     Dialog(
         onDismissRequest = {},
         properties = DialogProperties(
             dismissOnBackPress = false,
             dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
         )
     ) {
         Surface(
             color = MaterialTheme.colorScheme.background,
-            shape = RoundedCornerShape(26.dp),
-            tonalElevation = 3.dp,
-            modifier = Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.92f)
+            shape = RectangleShape,
+            tonalElevation = 0.dp,
+            modifier = Modifier.fillMaxSize()
         ) {
-            Column(Modifier.padding(20.dp)) {
+            Column(Modifier.fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(20.dp)) {
                 Text(
                     stringResource(R.string.onboarding_categories_title),
                     fontSize = 24.sp,
@@ -114,6 +120,7 @@ internal fun PackOnboardingDialog(
                 )
                 PackManagementContent(
                     packStates = packStates,
+                    isDiscovering = isDiscovering,
                     languageTag = languageTag,
                     selectedPackId = activePackId,
                     onDiscoverPacks = onDiscoverPacks,
@@ -154,6 +161,7 @@ fun PackManagementContent(
     onPackSelected: (PackId) -> Unit,
     onRequestStorageDetails: (PackId) -> Unit,
     modifier: Modifier = Modifier,
+    isDiscovering: Boolean = false,
     selectedPackId: PackId? = null,
     languageTag: String? = null,
     footer: (@Composable () -> Unit)? = null
@@ -190,17 +198,6 @@ fun PackManagementContent(
                 }
             }
         }
-        item(key = "discover") {
-            TextButton(
-                onClick = onDiscoverPacks,
-                modifier = Modifier.fillMaxWidth().testTag("pack_discover")
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Refresh, contentDescription = null)
-                    Text(stringResource(R.string.action_retry))
-                }
-            }
-        }
         items(entries, key = { it.packId.value }) { entry ->
             PackManagementRow(
                 entry = entry,
@@ -211,6 +208,27 @@ fun PackManagementContent(
                 onRemove = { pendingRemovalId = entry.packId.value },
                 onRequestStorageDetails = { onRequestStorageDetails(entry.packId) }
             )
+        }
+        if (isDiscovering && entries.isEmpty()) {
+            item(key = "loading") {
+                Row(Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+        item(key = "discover") {
+            TextButton(
+                onClick = onDiscoverPacks,
+                enabled = !isDiscovering,
+                modifier = Modifier.fillMaxWidth().testTag("pack_discover")
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Text(stringResource(R.string.action_retry))
+                }
+            }
         }
         footer?.let { content -> item(key = "footer") { content() } }
     }

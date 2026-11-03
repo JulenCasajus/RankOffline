@@ -262,7 +262,7 @@ RankOffline/
     - res/
       - drawable/
       - drawable-nodpi/
-        - onboarding_rating_elaborated.webp
+        - onboarding_rating_elaborate.webp
         - onboarding_rating_simple.webp
         - onboarding_style_images.webp
         - onboarding_style_minimal.webp

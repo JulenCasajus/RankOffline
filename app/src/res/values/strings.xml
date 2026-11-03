@@ -179,7 +179,7 @@
   <string name='onboarding_minimal'>Minimal</string>
   <string name='onboarding_with_images'>With images</string>
   <string name='onboarding_rating_simple'>Simple rating</string>
-  <string name='onboarding_rating_elaborated'>Elaborate rating</string>
+  <string name='onboarding_rating_elaborate'>Elaborate rating</string>
   <string name='onboarding_start'>Get started</string>
   <string name='onboarding_categories_title'>Where would you like to start?</string>
   <string name='onboarding_categories_subtitle'>Choose the offline catalogs you want. You can manage them later in Settings.</string>
@@ -254,7 +254,7 @@
   <string name='pack_background_title'>Preparing offline pack</string>
   <string name='pack_background_downloading'>Downloading pack…</string>
   <string name='pack_storage_details'>Storage details</string>
-  <string name='pack_storage_transfer'>Transfer: %1$s</string>
+  <string name='pack_storage_transfer'>Size: %1$s</string>
   <string name='pack_storage_covers'>Covers</string>
   <string name='pack_storage_physical_total'>Physical total</string>
   <string name='category_uninstall_keep_data'>Uninstall, keep personal data</string>

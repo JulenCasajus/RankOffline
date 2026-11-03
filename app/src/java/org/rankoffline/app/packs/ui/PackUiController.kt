@@ -6,6 +6,7 @@ import java.io.File
 import androidx.room.withTransaction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,9 @@ internal class PackUiController(
     val viewingScope: StateFlow<ViewingScope> = selection.asStateFlow()
     private val bootstrapped = MutableStateFlow(false)
     val ready: StateFlow<Boolean> = bootstrapped.asStateFlow()
+    private val discovering = MutableStateFlow(false)
+    val discoveryInProgress: StateFlow<Boolean> = discovering.asStateFlow()
+    private var discoveryJob: Job? = null
 
     fun bootstrap(afterReady: suspend () -> Unit = {}) = scope.launch {
         try {
@@ -60,6 +64,15 @@ internal class PackUiController(
             }
             // WorkManager resumes its own persistent jobs; don't initialize it merely for a screen.
             afterReady()
+            // WorkManager survives process death; its terminal failures must also reach Compose.
+            scope.launch {
+                try { PackWorkScheduler.observePersistentWork(context, services.packManager) }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) {
+                    Log.e("RankOfflineWork", "WorkManager observation failed", failure)
+                    onError(failure)
+                }
+            }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { Log.e("RankOfflineStartup", "Initialization failed", failure); onError(failure) }
         finally { bootstrapped.value = true }
@@ -86,19 +99,23 @@ internal class PackUiController(
         catch (failure: Exception) { onError(failure) }
     }
 
-    fun discoverAvailable() = scope.launch {
-        try {
-            services.refreshAvailablePacks()
-            PackWorkScheduler.reconcilePersistentWork(context, services.packManager)
+    fun discoverAvailable() {
+        if (discoveryJob?.isActive == true) return
+        discoveryJob = scope.launch {
+            discovering.value = true
+            try {
+                services.refreshAvailablePacks()
+                PackWorkScheduler.reconcilePersistentWork(context, services.packManager)
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { onDiscoveryError(failure) }
+            finally { discovering.value = false }
         }
-        catch (cancelled: CancellationException) { throw cancelled }
-        catch (failure: Exception) { onDiscoveryError(failure) }
     }
 
     fun install(id: PackId) = scope.launch {
         try {
-            services.packManager.markQueued(id)
             PackWorkScheduler.enqueue(context, id, PackWorkAction.INSTALL)
+            services.packManager.markQueued(id)
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { onError(failure) }
     }

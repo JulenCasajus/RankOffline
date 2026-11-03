@@ -99,7 +99,7 @@
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Anime-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Animes", "de": "Anime", "es": "Animes", "eu": "Animeak", "fr": "Anime", "it": "Anime", "ja": "アニメ", "ru": "Аниме", "zh-CN": "动漫"},
-        "accentColor": "#E53935"
+        "accentColor": "#1976D2"
       },
       "capabilities": {"covers": false},
       "defaults": {"showImages": false},
@@ -201,7 +201,7 @@
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Movies-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Movies", "de": "Filme", "es": "Películas", "eu": "Filmak", "fr": "Films", "it": "Film", "ja": "映画", "ru": "Фильмы", "zh-CN": "电影"},
-        "accentColor": "#1976D2"
+        "accentColor": "#E53935"
       },
       "fieldIds": [
         "source_media_type", "original_title", "year", "start_date", "format", "status", "original_language", "demographic", "part_number", "genre", "director", "production_company",
@@ -250,7 +250,7 @@
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Series-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Series", "de": "Serien", "es": "Series", "eu": "Telesailak", "fr": "Séries", "it": "Serie", "ja": "シリーズ", "ru": "Сериалы", "zh-CN": "剧集"},
-        "accentColor": "#00897B"
+        "accentColor": "#F9A825"
       },
       "defaults": {"mergeEnabled": true},
       "fieldIds": [

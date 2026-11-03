@@ -172,7 +172,7 @@
   <string name='onboarding_minimal'>Minimalistisch</string>
   <string name='onboarding_with_images'>Mit Bildern</string>
   <string name='onboarding_rating_simple'>Einfache Bewertung</string>
-  <string name='onboarding_rating_elaborated'>Ausführliche Bewertung</string>
+  <string name='onboarding_rating_elaborate'>Detaillierte Bewertung</string>
   <string name='onboarding_start'>Loslegen</string>
   <string name='onboarding_categories_title'>Womit möchtest du beginnen?</string>
   <string name='onboarding_categories_subtitle'>
@@ -250,7 +250,7 @@
   <string name='pack_background_title'>Offline-Paket wird vorbereitet</string>
   <string name='pack_background_downloading'>Paket wird heruntergeladen…</string>
   <string name='pack_storage_details'>Speicherdetails</string>
-  <string name='pack_storage_transfer'>Übertragung: %1$s</string>
+  <string name='pack_storage_transfer'>Größe: %1$s</string>
   <string name='pack_storage_covers'>Cover</string>
   <string name='pack_storage_physical_total'>Physische Gesamtgröße</string>
   <string name='category_uninstall_keep_data'>Deinstallieren, persönliche Daten behalten</string>

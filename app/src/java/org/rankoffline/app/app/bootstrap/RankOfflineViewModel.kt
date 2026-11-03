@@ -50,6 +50,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
 
     val ready = packController.ready
     val packStates = packController.states
+    val discoveringPacks = packController.discoveryInProgress
     val packInstallProgress = packController.progress
     val packDownloadProgress = packController.aggregateProgress
     val filterOptions = catalog.filterOptions

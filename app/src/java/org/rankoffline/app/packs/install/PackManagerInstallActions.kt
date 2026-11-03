@@ -1,5 +1,6 @@
 package org.rankoffline.app
 
+import android.util.Log
 import java.io.File
 import java.io.FilterInputStream
 import java.util.UUID
@@ -13,9 +14,35 @@ import kotlinx.coroutines.withContext
 
 suspend fun PackManager.markQueued(packId: PackId) {
     val descriptor = sources.descriptor(packId) ?: return
+    if (tracker.progress.value[packId] != null) return
     tracker.set(packId, PackInstallProgress(PackInstallPhase.QUEUED,
         totalDownloadBytes = descriptor.archiveBytes))
     refresh()
+}
+
+
+/** Keep in-memory progress aligned with WorkManager, even when the Worker never starts. */
+suspend fun PackManager.reconcileQueuedInstallStates(
+    active: Set<PackId>, failed: Set<PackId>
+) {
+    active.forEach { id ->
+        if (tracker.progress.value[id] == null) markQueued(id)
+    }
+    val queued = tracker.progress.value.filterValues { it.phase == PackInstallPhase.QUEUED }.keys
+    val expired = queued - active
+    expired.forEach { id -> tracker.clear(id) }
+
+    // WorkManager may fail before PackManager.downloadAndInstall() is ever entered.
+    // Don't mistake historical failed jobs for a current failure or a successful install.
+    var changed = expired.isNotEmpty()
+    (failed - active).forEach { id ->
+        if (runtime[id] != PackRuntimeStatus.READY &&
+            runtime[id] != PackRuntimeStatus.ERROR && states.value[id]?.installed != true) {
+            runtime[id] = PackRuntimeStatus.ERROR
+            changed = true
+        }
+    }
+    if (changed) refresh()
 }
 
 
@@ -50,7 +77,8 @@ suspend fun PackManager.downloadAndInstall(packId: PackId): PackOperationResult 
     } catch (cancelled: CancellationException) {
         runtime[packId] = previous
         throw cancelled
-    } catch (_: Exception) {
+    } catch (failure: Exception) {
+        Log.e("RankOfflinePack", "Download or installation failed: pack=${packId.value}", failure)
         runtime[packId] = PackRuntimeStatus.ERROR
         PackOperationResult.STORAGE_ERROR
     } finally {
@@ -117,6 +145,7 @@ internal suspend fun PackManager.installVerified(
         }
         throw cancelled
     } catch (failure: Exception) {
+        Log.e("RankOfflinePack", "Archive installation failed: pack=${id.value}", failure)
         if (promoted && !imported) {
             val cleared = withContext(NonCancellable + Dispatchers.IO) {
                 runCatching { installer.abortInstallation(id) }.isSuccess

@@ -147,7 +147,7 @@
   <string name='onboarding_minimal'>ミニマル</string>
   <string name='onboarding_with_images'>画像あり</string>
   <string name='onboarding_rating_simple'>シンプル評価</string>
-  <string name='onboarding_rating_elaborated'>詳細評価</string>
+  <string name='onboarding_rating_elaborate'>詳細評価</string>
   <string name='onboarding_start'>始める</string>
   <string name='onboarding_categories_title'>どこから始めますか？</string>
   <string name='onboarding_categories_subtitle'>使用するオフラインカタログを選択してください。後で設定から管理できます。</string>
@@ -218,7 +218,7 @@
   <string name='pack_background_title'>オフラインパックを準備中</string>
   <string name='pack_background_downloading'>パックをダウンロード中…</string>
   <string name='pack_storage_details'>ストレージの詳細</string>
-  <string name='pack_storage_transfer'>転送量: %1$s</string>
+  <string name='pack_storage_transfer'>サイズ: %1$s</string>
   <string name='pack_storage_covers'>カバー</string>
   <string name='pack_storage_physical_total'>物理合計</string>
   <string name='category_uninstall_keep_data'>個人データを残してアンインストール</string>

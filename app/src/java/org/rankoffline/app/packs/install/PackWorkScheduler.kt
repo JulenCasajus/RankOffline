@@ -12,6 +12,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 
 /** Only schedules durable operations; never downloads or imports any pack content. */
@@ -77,27 +78,32 @@ internal object PackWorkScheduler {
     internal fun uniqueName(packId: PackId, action: PackWorkAction): String =
         "rankoffline-pack-${packId.value}-${action.name.lowercase(java.util.Locale.ROOT)}"
 
-    /**
-     * WorkInfo does not expose WorkRequest.inputData; recover PackId + action from tags.
-     * In contrast to MediaType.entries this discovers *all* queued packs, including future ones.
-     * Only INSTALL has a queued-progress API in the current PackManager; the others resume when run.
-     */
+    /** Restore work state after process recreation and after remote descriptors are loaded. */
     suspend fun reconcilePersistentWork(context: Context, manager: PackManager) =
         withContext(Dispatchers.IO) {
-            val pending = WorkManager.getInstance(context).getWorkInfosByTag(ALL_TAG).get()
-                .filter { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }
-            pending.forEach { info ->
-                val packId = info.tags.firstOrNull { it.startsWith(PACK_TAG_PREFIX) }
-                    ?.removePrefix(PACK_TAG_PREFIX)
-                    ?.let { runCatching { PackId.parse(it) }.getOrNull() }
-                    ?: return@forEach
-                val action = info.tags.firstOrNull { it.startsWith(ACTION_TAG_PREFIX) }
-                    ?.removePrefix(ACTION_TAG_PREFIX)
-                    ?.let { name -> PackWorkAction.entries.firstOrNull { it.name == name } }
-                    ?: return@forEach
-                if (action == PackWorkAction.INSTALL) manager.markQueued(packId)
-            }
+            reconcile(manager, WorkManager.getInstance(context).getWorkInfosByTag(ALL_TAG).get())
         }
+
+    /** Observe every terminal transition, including failures before downloadAndInstall starts. */
+    suspend fun observePersistentWork(context: Context, manager: PackManager) {
+        WorkManager.getInstance(context).getWorkInfosByTagFlow(ALL_TAG).collect { infos ->
+            reconcile(manager, infos)
+        }
+    }
+
+    private suspend fun reconcile(manager: PackManager, infos: List<WorkInfo>) {
+        val installs = infos.filter { it.tags.contains(actionTag(PackWorkAction.INSTALL)) }
+        val active = installs.filterNot { it.state.isFinished }.mapNotNull(::packIdFromTags).toSet()
+        val failed = installs.filter {
+            it.state == WorkInfo.State.FAILED || it.state == WorkInfo.State.CANCELLED
+        }.mapNotNull(::packIdFromTags).toSet()
+        manager.reconcileQueuedInstallStates(active, failed)
+    }
+
+    private fun packIdFromTags(info: WorkInfo): PackId? = info.tags
+        .firstOrNull { it.startsWith(PACK_TAG_PREFIX) }
+        ?.removePrefix(PACK_TAG_PREFIX)
+        ?.let { runCatching { PackId.parse(it) }.getOrNull() }
 
     private fun packTag(packId: PackId) = PACK_TAG_PREFIX + packId.value.toString()
     private fun actionTag(action: PackWorkAction) = ACTION_TAG_PREFIX + action.name

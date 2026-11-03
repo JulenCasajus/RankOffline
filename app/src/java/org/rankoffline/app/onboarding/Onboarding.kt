@@ -1,6 +1,7 @@
 package org.rankoffline.app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 
 /**
  * First-run presentation only. No filesystem, Room, WorkManager or network calls from Compose.
@@ -10,6 +11,7 @@ import androidx.compose.runtime.Composable
 fun FirstRunOnboarding(
     settings: AppSettingsState,
     packStates: Map<PackId, PackState>,
+    isDiscovering: Boolean,
     onWelcomeComplete: (showImages: Boolean, elaborateRating: Boolean) -> Unit,
     onLanguageSelected: (SupportedLanguage) -> Unit,
     onThemeSelected: (AppThemePalette) -> Unit,
@@ -22,6 +24,10 @@ fun FirstRunOnboarding(
     onRequestStorageDetails: (PackId) -> Unit,
     onOnboardingComplete: () -> Unit
 ) {
+    // Begin metadata-only discovery as soon as the first onboarding screen opens.
+    LaunchedEffect(settings.settingsLoaded, settings.hasCompletedOnboarding) {
+        if (settings.settingsLoaded && !settings.hasCompletedOnboarding) onDiscoverPacks()
+    }
     when {
         !settings.settingsLoaded -> Unit
         !settings.hasCompletedWelcome -> WelcomeStyleDialog(
@@ -32,6 +38,7 @@ fun FirstRunOnboarding(
         )
         !settings.hasCompletedOnboarding -> PackOnboardingDialog(
             packStates = packStates,
+            isDiscovering = isDiscovering,
             languageTag = settings.language.languageTag,
             activePackId = onboardingReadyPackId(settings.activePackId, packStates),
             onDiscoverPacks = onDiscoverPacks,

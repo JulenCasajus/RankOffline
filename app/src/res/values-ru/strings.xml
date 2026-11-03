@@ -167,7 +167,7 @@
   <string name='onboarding_minimal'>Минимализм</string>
   <string name='onboarding_with_images'>С изображениями</string>
   <string name='onboarding_rating_simple'>Простая оценка</string>
-  <string name='onboarding_rating_elaborated'>Подробная оценка</string>
+  <string name='onboarding_rating_elaborate'>Подробная оценка</string>
   <string name='onboarding_start'>Начать</string>
   <string name='onboarding_categories_title'>С чего хотите начать?</string>
   <string name='onboarding_categories_subtitle'>Выберите нужные офлайн-каталоги. Позже их можно изменить в настройках.</string>
@@ -244,7 +244,7 @@
   <string name='pack_background_title'>Подготовка офлайн-пакета</string>
   <string name='pack_background_downloading'>Загрузка пакета…</string>
   <string name='pack_storage_details'>Сведения о хранилище</string>
-  <string name='pack_storage_transfer'>Передача: %1$s</string>
+  <string name='pack_storage_transfer'>Размер: %1$s</string>
   <string name='pack_storage_covers'>Обложки</string>
   <string name='pack_storage_physical_total'>Физический итог</string>
   <string name='category_uninstall_keep_data'>Удалить пакет, сохранив личные данные</string>
