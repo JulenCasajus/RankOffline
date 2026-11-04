@@ -6,6 +6,7 @@
   <string name='ranking_title'>МойРейтинг</string>
   <string name='no_saved_ratings'>Сохранённых оценок пока нет.</string>
   <string name='sort_popularity'>Популярность</string>
+  <string name='sort_title_ascending'>По алфавиту</string>
   <string name='sort_direction_ascending'>По возрастанию</string>
   <string name='sort_direction_descending'>По убыванию</string>
   <string name='sort_direction_accessibility'>Текущий порядок: %1$s. Нажмите, чтобы изменить на %2$s.</string>

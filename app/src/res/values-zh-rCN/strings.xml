@@ -6,6 +6,7 @@
   <string name='ranking_title'>我的排名</string>
   <string name='no_saved_ratings'>尚未保存任何评分。</string>
   <string name='sort_popularity'>热度</string>
+  <string name='sort_title_ascending'>按字母排序</string>
   <string name='sort_direction_ascending'>升序</string>
   <string name='sort_direction_descending'>降序</string>
   <string name='sort_direction_accessibility'>当前顺序：%1$s。点按可切换为%2$s。</string>

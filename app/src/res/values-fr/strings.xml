@@ -6,6 +6,7 @@
   <string name='ranking_title'>MonClassement</string>
   <string name='no_saved_ratings'>Aucune évaluation enregistrée.</string>
   <string name='sort_popularity'>Popularité</string>
+  <string name='sort_title_ascending'>Alphabétique</string>
   <string name='sort_direction_ascending'>Croissant</string>
   <string name='sort_direction_descending'>Décroissant</string>
   <string name='sort_direction_accessibility'>Ordre actuel : %1$s. Appuyez pour passer à %2$s.</string>

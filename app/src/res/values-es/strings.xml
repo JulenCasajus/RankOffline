@@ -6,6 +6,7 @@
   <string name='ranking_title'>MiRanking</string>
   <string name='no_saved_ratings'>Todavía no hay valoraciones guardadas.</string>
   <string name='sort_popularity'>Popularidad</string>
+  <string name='sort_title_ascending'>Alfabético</string>
   <string name='sort_direction_ascending'>Ascendente</string>
   <string name='sort_direction_descending'>Descendente</string>
   <string name='sort_direction_accessibility'>Orden actual: %1$s. Toca para cambiar a %2$s.</string>

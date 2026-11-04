@@ -93,9 +93,126 @@
   "packs": [
     {
       "packId": 1,
+      "rating": {
+        "categories": [
+          {
+            "id": "writing",
+            "name": "Writing",
+            "description": "Plot, themes, pacing, highlights, beginning, ending",
+            "weight": 35,
+            "color": "#FFAA55",
+            "order": 0,
+            "active": true
+          },
+          {
+            "id": "characters",
+            "name": "Characters",
+            "description": "Main characters, supporting characters, antagonist, development, depth, charisma, dynamics",
+            "weight": 20,
+            "color": "#4FC3F7",
+            "order": 1,
+            "active": true
+          },
+          {
+            "id": "visuals",
+            "name": "Visuals",
+            "description": "Animation, art style, cinematography, backgrounds, effects, character design",
+            "weight": 20,
+            "color": "#E04BCF",
+            "order": 2,
+            "active": true
+          },
+          {
+            "id": "worldbuilding",
+            "name": "Worldbuilding",
+            "description": "Setting, lore, power system",
+            "weight": 15,
+            "color": "#81C784",
+            "order": 3,
+            "active": true
+          },
+          {
+            "id": "audio",
+            "name": "Audio",
+            "description": "OST, openings/endings, sound effects",
+            "weight": 10,
+            "color": "#EF5350",
+            "order": 4,
+            "active": true
+          }
+        ],
+        "profiles": [
+          {
+            "id": "general",
+            "name": "General",
+            "weights": {
+              "writing": 35,
+              "characters": 20,
+              "visuals": 20,
+              "worldbuilding": 15,
+              "audio": 10
+            }
+          },
+          {
+            "id": "narrative",
+            "name": "Narrative",
+            "weights": {
+              "writing": 45,
+              "characters": 25,
+              "visuals": 10,
+              "worldbuilding": 10,
+              "audio": 10
+            }
+          },
+          {
+            "id": "character_driven",
+            "name": "Character-driven",
+            "weights": {
+              "writing": 25,
+              "characters": 40,
+              "visuals": 15,
+              "worldbuilding": 10,
+              "audio": 10
+            }
+          },
+          {
+            "id": "visual_action",
+            "name": "Visual / Action",
+            "weights": {
+              "writing": 20,
+              "characters": 15,
+              "visuals": 40,
+              "worldbuilding": 15,
+              "audio": 10
+            }
+          },
+          {
+            "id": "world_adventure",
+            "name": "World / Adventure",
+            "weights": {
+              "writing": 20,
+              "characters": 20,
+              "visuals": 15,
+              "worldbuilding": 35,
+              "audio": 10
+            }
+          },
+          {
+            "id": "atmospheric",
+            "name": "Atmospheric",
+            "weights": {
+              "writing": 25,
+              "characters": 20,
+              "visuals": 20,
+              "worldbuilding": 15,
+              "audio": 20
+            }
+          }
+        ]
+      },
       "fileName": "pack-1.pack",
       "displayName": "Animes",
-      "version": "anime-69005e06b4a92ee6caa4c57efcb5951086a2ffaa6b8ade997276f301908b6223-v4",
+      "version": "anime-69005e06b4a92ee6caa4c57efcb5951086a2ffaa6b8ade997276f301908b6223-v5",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Anime-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Animes", "de": "Anime", "es": "Animes", "eu": "Animeak", "fr": "Anime", "it": "Anime", "ja": "アニメ", "ru": "Аниме", "zh-CN": "动漫"},
@@ -178,6 +295,9 @@
         "coverReferenceMode": "replace_prefix",
         "coverReferencePrefixReplacement": {"from": "anime:v1|", "to": "cover:v1|"},
         "groupType": "relations",
+        "scalarValueMaps": {
+          "format": {"SERIES": "Series", "SPECIAL": "Special", "MOVIES": "Movies", "MUSIC": "Music"}
+        },
         "idReplacements": {"+": "-", "~": "", "!": "", "(": "", ")": "", ",": ""},
         "sourceMetadata": {
           "catalog/anime_catalog.manifest.json": "metadata/source/catalog-manifest.json",
@@ -187,9 +307,101 @@
     },
     {
       "packId": 2,
+      "rating": {
+        "categories": [
+          {
+            "id": "writing",
+            "name": "Writing",
+            "description": "Plot, themes, pacing, structure, dialogue, beginning and ending.",
+            "weight": 35,
+            "color": "#FFAA55",
+            "order": 0,
+            "active": true
+          },
+          {
+            "id": "characters",
+            "name": "Characters",
+            "description": "Main and supporting characters, development, depth, charisma and dynamics.",
+            "weight": 25,
+            "color": "#4FC3F7",
+            "order": 1,
+            "active": true
+          },
+          {
+            "id": "art",
+            "name": "Art",
+            "description": "Drawing quality, art style, character design, backgrounds, panel composition, flow, visual clarity and storytelling.",
+            "weight": 25,
+            "color": "#E04BCF",
+            "order": 2,
+            "active": true
+          },
+          {
+            "id": "worldbuilding",
+            "name": "Worldbuilding",
+            "description": "Setting, lore, internal rules, systems and sense of place.",
+            "weight": 15,
+            "color": "#81C784",
+            "order": 3,
+            "active": true
+          }
+        ],
+        "profiles": [
+          {
+            "id": "general",
+            "name": "General",
+            "weights": {
+              "writing": 35,
+              "characters": 25,
+              "art": 25,
+              "worldbuilding": 15
+            }
+          },
+          {
+            "id": "narrative",
+            "name": "Narrative",
+            "weights": {
+              "writing": 50,
+              "characters": 25,
+              "art": 15,
+              "worldbuilding": 10
+            }
+          },
+          {
+            "id": "character_driven",
+            "name": "Character-driven",
+            "weights": {
+              "writing": 25,
+              "characters": 50,
+              "art": 15,
+              "worldbuilding": 10
+            }
+          },
+          {
+            "id": "art_focused",
+            "name": "Art-focused",
+            "weights": {
+              "writing": 20,
+              "characters": 20,
+              "art": 50,
+              "worldbuilding": 10
+            }
+          },
+          {
+            "id": "world_adventure",
+            "name": "World / Adventure",
+            "weights": {
+              "writing": 25,
+              "characters": 20,
+              "art": 15,
+              "worldbuilding": 40
+            }
+          }
+        ]
+      },
       "fileName": "pack-2.pack",
       "displayName": "Mangas",
-      "version": "mangadex-2026-10-16-v2",
+      "version": "mangadex-2026-10-16-v3",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Manga-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Mangas", "de": "Manga", "es": "Mangas", "eu": "Mangak", "fr": "Mangas", "it": "Manga", "ja": "漫画", "ru": "Манга", "zh-CN": "漫画"},
@@ -232,9 +444,115 @@
     },
     {
       "packId": 3,
+      "rating": {
+        "categories": [
+          {
+            "id": "writing",
+            "name": "Writing",
+            "description": "Plot, themes, dialogue, narrative construction and payoff.",
+            "weight": 35,
+            "color": "#FFAA55",
+            "order": 0,
+            "active": true
+          },
+          {
+            "id": "characters",
+            "name": "Characters",
+            "description": "Character writing, development, dynamics and charm.",
+            "weight": 25,
+            "color": "#4FC3F7",
+            "order": 1,
+            "active": true
+          },
+          {
+            "id": "visuals",
+            "name": "Visuals",
+            "description": "Cinematography, production design, effects, lighting and visual identity.",
+            "weight": 20,
+            "color": "#E04BCF",
+            "order": 2,
+            "active": true
+          },
+          {
+            "id": "staging_immersion",
+            "name": "Staging / Immersion",
+            "description": "Casting choices, performances, staging, direction, emotional impact and the film's ability to immerse and engage the viewer.",
+            "weight": 10,
+            "color": "#81C784",
+            "order": 3,
+            "active": true
+          },
+          {
+            "id": "audio",
+            "name": "Audio",
+            "description": "Soundtrack, sound effects and audiovisual integration.",
+            "weight": 10,
+            "color": "#EF5350",
+            "order": 4,
+            "active": true
+          }
+        ],
+        "profiles": [
+          {
+            "id": "general",
+            "name": "General",
+            "weights": {
+              "writing": 35,
+              "characters": 25,
+              "visuals": 20,
+              "staging_immersion": 10,
+              "audio": 10
+            }
+          },
+          {
+            "id": "narrative",
+            "name": "Narrative",
+            "weights": {
+              "writing": 40,
+              "characters": 20,
+              "visuals": 10,
+              "staging_immersion": 20,
+              "audio": 10
+            }
+          },
+          {
+            "id": "character_driven",
+            "name": "Character-driven",
+            "weights": {
+              "writing": 25,
+              "characters": 40,
+              "visuals": 10,
+              "staging_immersion": 15,
+              "audio": 10
+            }
+          },
+          {
+            "id": "visual_direction",
+            "name": "Visual",
+            "weights": {
+              "writing": 15,
+              "characters": 15,
+              "visuals": 40,
+              "staging_immersion": 15,
+              "audio": 15
+            }
+          },
+          {
+            "id": "atmospheric",
+            "name": "Atmospheric",
+            "weights": {
+              "writing": 15,
+              "characters": 15,
+              "visuals": 25,
+              "staging_immersion": 20,
+              "audio": 25
+            }
+          }
+        ]
+      },
       "fileName": "pack-3.pack",
       "displayName": "Movies",
-      "version": "tmdb-movies-2026-10-16-v2",
+      "version": "tmdb-movies-2026-10-16-v3",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Movies-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Movies", "de": "Filme", "es": "Películas", "eu": "Filmak", "fr": "Films", "it": "Film", "ja": "映画", "ru": "Фильмы", "zh-CN": "电影"},
@@ -281,9 +599,126 @@
     },
     {
       "packId": 4,
+      "rating": {
+        "categories": [
+          {
+            "id": "writing",
+            "name": "Writing",
+            "description": "Plot, themes, dialogue, pacing, season structure and narrative payoff.",
+            "weight": 35,
+            "color": "#FFAA55",
+            "order": 0,
+            "active": true
+          },
+          {
+            "id": "characters",
+            "name": "Characters",
+            "description": "Main and supporting characters, development, depth, charisma and dynamics.",
+            "weight": 25,
+            "color": "#4FC3F7",
+            "order": 1,
+            "active": true
+          },
+          {
+            "id": "visuals",
+            "name": "Visuals",
+            "description": "Cinematography, production design, effects, lighting and visual execution.",
+            "weight": 10,
+            "color": "#E04BCF",
+            "order": 2,
+            "active": true
+          },
+          {
+            "id": "worldbuilding",
+            "name": "Worldbuilding",
+            "description": "Setting, lore, internal rules and continuity where applicable.",
+            "weight": 20,
+            "color": "#81C784",
+            "order": 3,
+            "active": true
+          },
+          {
+            "id": "audio",
+            "name": "Audio",
+            "description": "Music, sound design, mixing and use of audio.",
+            "weight": 10,
+            "color": "#EF5350",
+            "order": 4,
+            "active": true
+          }
+        ],
+        "profiles": [
+          {
+            "id": "general",
+            "name": "General",
+            "weights": {
+              "writing": 35,
+              "characters": 25,
+              "visuals": 10,
+              "worldbuilding": 20,
+              "audio": 10
+            }
+          },
+          {
+            "id": "narrative",
+            "name": "Narrative",
+            "weights": {
+              "writing": 50,
+              "characters": 15,
+              "visuals": 10,
+              "worldbuilding": 15,
+              "audio": 10
+            }
+          },
+          {
+            "id": "character_driven",
+            "name": "Character-driven",
+            "weights": {
+              "writing": 20,
+              "characters": 50,
+              "visuals": 10,
+              "worldbuilding": 10,
+              "audio": 10
+            }
+          },
+          {
+            "id": "visual_direction",
+            "name": "Visual",
+            "weights": {
+              "writing": 20,
+              "characters": 15,
+              "visuals": 40,
+              "worldbuilding": 10,
+              "audio": 15
+            }
+          },
+          {
+            "id": "world_adventure",
+            "name": "World / Adventure",
+            "weights": {
+              "writing": 20,
+              "characters": 20,
+              "visuals": 10,
+              "worldbuilding": 40,
+              "audio": 10
+            }
+          },
+          {
+            "id": "atmospheric",
+            "name": "Atmospheric",
+            "weights": {
+              "writing": 20,
+              "characters": 20,
+              "visuals": 25,
+              "worldbuilding": 10,
+              "audio": 25
+            }
+          }
+        ]
+      },
       "fileName": "pack-4.pack",
       "displayName": "Series",
-      "version": "tmdb-series-2026-10-16-v2",
+      "version": "tmdb-series-2026-10-16-v3",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Series-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Series", "de": "Serien", "es": "Series", "eu": "Telesailak", "fr": "Séries", "it": "Serie", "ja": "シリーズ", "ru": "Сериалы", "zh-CN": "剧集"},
@@ -331,9 +766,126 @@
     },
     {
       "packId": 5,
+      "rating": {
+        "categories": [
+          {
+            "id": "writing",
+            "name": "Writing",
+            "description": "Plot, themes, ideas, dialogue, narrative construction and ending.",
+            "weight": 35,
+            "color": "#FFAA55",
+            "order": 0,
+            "active": true
+          },
+          {
+            "id": "characters",
+            "name": "Characters",
+            "description": "Main and supporting characters, development, depth and relationships.",
+            "weight": 25,
+            "color": "#4FC3F7",
+            "order": 1,
+            "active": true
+          },
+          {
+            "id": "prose",
+            "name": "Prose / Style",
+            "description": "Language, voice, readability, imagery and stylistic execution.",
+            "weight": 15,
+            "color": "#E04BCF",
+            "order": 2,
+            "active": true
+          },
+          {
+            "id": "worldbuilding",
+            "name": "Worldbuilding",
+            "description": "Setting, lore, internal coherence and sense of place where applicable.",
+            "weight": 15,
+            "color": "#81C784",
+            "order": 3,
+            "active": true
+          },
+          {
+            "id": "structure",
+            "name": "Pacing / Structure",
+            "description": "Narrative rhythm, chapter/section structure, progression and organization.",
+            "weight": 10,
+            "color": "#EF5350",
+            "order": 4,
+            "active": true
+          }
+        ],
+        "profiles": [
+          {
+            "id": "general",
+            "name": "General",
+            "weights": {
+              "writing": 35,
+              "characters": 25,
+              "prose": 15,
+              "worldbuilding": 15,
+              "structure": 10
+            }
+          },
+          {
+            "id": "narrative",
+            "name": "Narrative",
+            "weights": {
+              "writing": 45,
+              "characters": 20,
+              "prose": 15,
+              "worldbuilding": 10,
+              "structure": 10
+            }
+          },
+          {
+            "id": "character_driven",
+            "name": "Character-driven",
+            "weights": {
+              "writing": 25,
+              "characters": 40,
+              "prose": 15,
+              "worldbuilding": 10,
+              "structure": 10
+            }
+          },
+          {
+            "id": "prose_style",
+            "name": "Prose / Style",
+            "weights": {
+              "writing": 20,
+              "characters": 10,
+              "prose": 45,
+              "worldbuilding": 10,
+              "structure": 15
+            }
+          },
+          {
+            "id": "world_adventure",
+            "name": "World / Adventure",
+            "weights": {
+              "writing": 20,
+              "characters": 15,
+              "prose": 15,
+              "worldbuilding": 40,
+              "structure": 10
+            }
+          },
+          {
+            "id": "atmospheric",
+            "name": "Atmospheric",
+            "weights": {
+              "writing": 20,
+              "characters": 20,
+              "prose": 20,
+              "worldbuilding": 20,
+              "structure": 20
+            }
+          }
+        ]
+      },
       "fileName": "pack-5.pack",
       "displayName": "Books",
-      "version": "openlibrary-2026-09-30-readinglog-top-50000-v2",
+      "version": "openlibrary-2026-09-30-readinglog-top-50000-v3",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Books-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Books", "de": "Bücher", "es": "Libros", "eu": "Liburuak", "fr": "Livres", "it": "Libri", "ja": "本", "ru": "Книги", "zh-CN": "图书"},

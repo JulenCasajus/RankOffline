@@ -10,7 +10,7 @@
   <string name='sort_direction_ascending'>Ascending</string>
   <string name='sort_direction_descending'>Descending</string>
   <string name='sort_direction_accessibility'>Current order: %1$s. Tap to change to %2$s.</string>
-  <string name='sort_title_ascending' translatable='false'>A → Z</string>
+  <string name='sort_title_ascending'>Alphabetical</string>
   <string name='cover_download'>Download cover</string>
   <string name='cover_delete'>Delete cover</string>
   <string name='cover_delete_title'>Delete this cover?</string>
@@ -212,8 +212,6 @@
   <string name='category_pack_runtime_error'>Catalog preparation failed. Tap retry.</string>
   <string name='category_download_unavailable'>Pack download is not available in this build.</string>
   <string name='settings_display_description'>Visual appearance and image display</string>
-  <string name='settings_group_related_entries'>Group related entries</string>
-  <string name='settings_group_related_entries_description'>Show catalog groups as a single related work when supported by the pack.</string>
   <string name='settings_group_covers_for_items'>Use group covers for items</string>
   <string name='settings_group_covers_for_items_description'>Prefer a group cover when an item has no dedicated cover.</string>
   <string name='settings_theme_title'>Theme</string>

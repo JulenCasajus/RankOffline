@@ -30,6 +30,7 @@ android {
         targetSdk = 37
         versionCode = 9
         versionName = "0.2.2"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "PACK_INDEX_URL", "\"\"")
         buildConfigField("String", "PACK_ALLOWED_HOSTS", "\"\"")
@@ -88,7 +89,7 @@ android {
             manifest.srcFile("src/AndroidManifest.xml")
             kotlin.directories.apply {
                 clear()
-                add("src/java")
+                add("src")
             }
             res.directories.apply {
                 clear()
@@ -104,7 +105,18 @@ android {
             }
         }
         getByName("test") {
-            kotlin.directories.add("test/java")
+            kotlin.directories.apply {
+                clear()
+                add("tests/unit")
+                add("tests/fixtures")
+            }
+        }
+        getByName("androidTest") {
+            kotlin.directories.apply {
+                clear()
+                add("tests/instrumented")
+                add("tests/fixtures")
+            }
         }
     }
 
@@ -158,5 +170,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
+    testImplementation(libs.json.jvm)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     ksp(libs.androidx.room.compiler)
 }

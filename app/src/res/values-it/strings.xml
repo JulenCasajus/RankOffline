@@ -6,6 +6,7 @@
   <string name='ranking_title'>LaMiaClassifica</string>
   <string name='no_saved_ratings'>Non ci sono ancora valutazioni salvate.</string>
   <string name='sort_popularity'>Popolarità</string>
+  <string name='sort_title_ascending'>Alfabetico</string>
   <string name='sort_direction_ascending'>Crescente</string>
   <string name='sort_direction_descending'>Decrescente</string>
   <string name='sort_direction_accessibility'>Ordine attuale: %1$s. Tocca per passare a %2$s.</string>

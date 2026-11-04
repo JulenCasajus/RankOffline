@@ -187,7 +187,7 @@ def convert_legacy_archive(archive_path: Path, config: dict, staging: Path) -> t
                 for source_key, field_id in scalar_fields.items():
                     value = record.get(source_key)
                     if value is not None:
-                        attributes[field_id] = value
+                        attributes[field_id] = adapter.get("scalarValueMaps", {}).get(source_key, {}).get(value, value)
                 for source_key, field_id in list_fields.items():
                     values = record.get(source_key) or []
                     if not isinstance(values, list):

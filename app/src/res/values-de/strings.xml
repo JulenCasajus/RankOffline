@@ -6,6 +6,7 @@
   <string name='ranking_title'>MeinRanking</string>
   <string name='no_saved_ratings'>Noch keine Bewertungen gespeichert.</string>
   <string name='sort_popularity'>Beliebtheit</string>
+  <string name='sort_title_ascending'>Alphabetisch</string>
   <string name='sort_direction_ascending'>Aufsteigend</string>
   <string name='sort_direction_descending'>Absteigend</string>
   <string name='sort_direction_accessibility'>Aktuelle Reihenfolge: %1$s. Tippen, um zu %2$s zu wechseln.</string>

@@ -6,6 +6,7 @@
   <string name='ranking_title'>NireRankinga</string>
   <string name='no_saved_ratings'>Oraindik ez dago gordetako baloraziorik.</string>
   <string name='sort_popularity'>Ospea</string>
+  <string name='sort_title_ascending'>Alfabetikoa</string>
   <string name='sort_direction_ascending'>Goranzkoa</string>
   <string name='sort_direction_descending'>Beheranzkoa</string>
   <string name='sort_direction_accessibility'>Uneko ordena: %1$s. Sakatu %2$s ordenara aldatzeko.</string>

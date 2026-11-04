@@ -6,6 +6,7 @@
   <string name='ranking_title'>マイランキング</string>
   <string name='no_saved_ratings'>保存された評価はまだありません。</string>
   <string name='sort_popularity'>人気</string>
+  <string name='sort_title_ascending'>アルファベット順</string>
   <string name='sort_direction_ascending'>昇順</string>
   <string name='sort_direction_descending'>降順</string>
   <string name='sort_direction_accessibility'>現在の順序: %1$s。タップして%2$sに変更します。</string>
