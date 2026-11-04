@@ -18,8 +18,11 @@ data class PackInstallProgress(
     val phase: PackInstallPhase,
     val downloadedBytes: Long = 0,
     val totalDownloadBytes: Long = 0,
-    val coverAvailable: Int = 0,
-    val coverTarget: Int = 0
+    val coverDownloaded: Int = 0,
+    val coverTarget: Int = 0,
+    val coverProcessed: Int = 0,
+    val coverNotFound: Int = 0,
+    val coverErrors: Int = 0
 ) {
     val downloadFraction: Float get() = if (totalDownloadBytes <= 0) 0f else
         (downloadedBytes.toDouble() / totalDownloadBytes).coerceIn(0.0, 1.0).toFloat()

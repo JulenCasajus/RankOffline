@@ -325,7 +325,7 @@ def _validate_manifest(manifest: dict, archive: zipfile.ZipFile) -> tuple[dict[s
     if not isinstance(manifest["coverSources"], list) or len(manifest["coverSources"]) > 64:
         _fail("Too many cover sources")
     for source in manifest["coverSources"]:
-        _exact_keys(source, {"id", "sourceId", "providerId", "urlTemplates", "allowedHosts"}, "cover source")
+        _exact_keys(source, {"id", "sourceId", "providerId", "urlTemplates", "allowedHosts", "metadataRequest"}, "cover source")
         source_id = source.get("id")
         if not isinstance(source_id, str) or not FIELD_ID.fullmatch(source_id) or source_id in cover_source_ids or source.get("sourceId") not in source_ids:
             _fail(f"Invalid cover source: {source_id}")
@@ -337,9 +337,53 @@ def _validate_manifest(manifest: dict, archive: zipfile.ZipFile) -> tuple[dict[s
         if not 1 <= len(hosts) <= 16 or len(hosts) != len(set(host.lower() for host in hosts)):
             _fail(f"Invalid host list for cover source {source_id}")
         normalized_hosts = {urlparse(_https_url(f"https://{host}/", "cover host")).hostname for host in hosts}
+        metadata = source.get("metadataRequest")
+        if metadata is not None:
+            if not isinstance(metadata, dict):
+                _fail(f"Invalid metadata request for {source_id}")
+            _exact_keys(metadata, {"referenceKey", "method", "urlTemplate", "bodyTemplate",
+                                   "imageJsonPaths", "requestIntervalMillis"}, "metadata request")
+            reference_key = metadata.get("referenceKey")
+            method = metadata.get("method")
+            url_template = metadata.get("urlTemplate")
+            body_template = metadata.get("bodyTemplate")
+            paths = metadata.get("imageJsonPaths")
+            interval = metadata.get("requestIntervalMillis")
+            if not isinstance(reference_key, str) or not FIELD_ID.fullmatch(reference_key):
+                _fail(f"Invalid metadata reference key for {source_id}")
+            if method not in ("GET", "POST_JSON") or not isinstance(url_template, str):
+                _fail(f"Invalid metadata request method or URL for {source_id}")
+            substituted_url = url_template.replace("{reference}", "1")
+            if "{" in substituted_url or "}" in substituted_url:
+                _fail(f"Unsupported metadata URL placeholder for {source_id}")
+            authority = url_template.removeprefix("https://").split("/", 1)[0].split("?", 1)[0]
+            if "{" in authority or "}" in authority:
+                _fail(f"Dynamic metadata host for {source_id}")
+            parsed_metadata_url = urlparse(_https_url(substituted_url, "metadata request URL"))
+            if parsed_metadata_url.fragment:
+                _fail(f"Metadata request URL has a fragment for {source_id}")
+            if (method == "POST_JSON") != isinstance(body_template, str):
+                _fail(f"Invalid metadata request body for {source_id}")
+            if isinstance(body_template, str):
+                if "{reference}" not in body_template or len(body_template) > 8192:
+                    _fail(f"Invalid metadata JSON body template for {source_id}")
+                try:
+                    json.loads(body_template.replace("{reference}", "1"))
+                except json.JSONDecodeError as error:
+                    raise PackValidationError(f"Invalid metadata JSON body for {source_id}") from error
+            if "{reference}" not in url_template and not isinstance(body_template, str):
+                _fail(f"Metadata request does not use its reference for {source_id}")
+            if (not isinstance(paths, list) or not 1 <= len(paths) <= 8 or
+                    len(paths) != len(set(paths)) or
+                    not all(isinstance(path, str) and re.fullmatch(
+                        r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*", path
+                    ) for path in paths)):
+                _fail(f"Invalid metadata image paths for {source_id}")
+            if type(interval) is not int or not 250 <= interval <= 60_000:
+                _fail(f"Invalid metadata request interval for {source_id}")
         templates = source.get("urlTemplates", [])
-        if not 1 <= len(templates) <= 8:
-            _fail(f"Invalid URL templates for {source_id}")
+        if not isinstance(templates, list) or len(templates) > 8 or (not templates) == (metadata is None):
+            _fail(f"Invalid URL templates or metadata request for {source_id}")
         for template in templates:
             substituted = template.replace("{reference}", "fixture").replace("{providerId}", "fixture")
             if "{" in substituted or "}" in substituted:
@@ -472,7 +516,22 @@ def _validate_cover_ref(record: dict, manifest: dict, context: str) -> None:
                 _fail(f"Unapproved explicit cover URL in {context}")
     else:
         provider = record.get("provider")
-        matches = [source for source in sources if source.get("providerId") == provider]
+        if reference.startswith("cover:v1|"):
+            values: dict[str, str] = {}
+            for token in reference.removeprefix("cover:v1|").split("|"):
+                key, separator, value = token.partition("=")
+                if (not separator or not FIELD_ID.fullmatch(key) or
+                        not re.fullmatch(r"[1-9][0-9]*", value) or key in values):
+                    _fail(f"Invalid metadata cover reference in {context}")
+                values[key] = value
+            matches = [source for source in sources if source.get("providerId") == provider and
+                       isinstance(source.get("metadataRequest"), dict) and
+                       source["metadataRequest"].get("referenceKey") in values]
+            if not matches:
+                _fail(f"Metadata cover reference has no declared source in {context}")
+            return
+        matches = [source for source in sources if source.get("providerId") == provider and
+                   source.get("metadataRequest") is None]
         if len(matches) != 1:
             _fail(f"Plain cover reference has no unique source in {context}")
         if "/" in reference or "\\" in reference:

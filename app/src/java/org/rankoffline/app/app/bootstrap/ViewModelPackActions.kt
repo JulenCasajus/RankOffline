@@ -34,7 +34,10 @@ fun RankOfflineViewModel.purgePack(id: PackId) = packController.purge(id)
 fun RankOfflineViewModel.observePackPersonalStorage(id: PackId) = packController.personalStorage(id)
 
 
-fun RankOfflineViewModel.refreshPackStatistics(id: PackId, fields: Set<PackSummaryField> = PackSummaryField.entries.toSet()) =
+fun RankOfflineViewModel.refreshPackStatistics(
+    id: PackId,
+    fields: Set<PackSummaryField> = setOf(PackSummaryField.INSTALLED_BYTES, PackSummaryField.COVER_BYTES)
+) =
     viewModelScope.launch { try { packController.statistics(id, fields) }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { reportError(failure) } }

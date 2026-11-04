@@ -7,8 +7,9 @@
 - Removed the temporary additional debug launcher and file-picker activity.
 - Added separate supplied Share backgrounds for every official package and new
   default Top 7/Top 10 artwork, stored as high-quality WebP.
-- Added reproducible schema-2 package validation and the documented declarative
-  Anime cover-source proposal.
+- Added reproducible schema-2 package validation and bounded declarative cover
+  metadata requests; the Anime package declares AniList/Jikan without provider
+  branches in Kotlin.
 
 ## 0.2.2 — unreleased
 

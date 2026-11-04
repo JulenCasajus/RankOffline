@@ -115,7 +115,7 @@ internal class PackUiController(
     fun install(id: PackId) = scope.launch {
         try {
             PackWorkScheduler.enqueue(context, id, PackWorkAction.INSTALL)
-            services.packManager.markQueued(id)
+            // The WorkManager observer sets QUEUED once the request is persisted.
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { onError(failure) }
     }

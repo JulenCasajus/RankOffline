@@ -6,6 +6,9 @@
   <string name='ranking_title'>LaMiaClassifica</string>
   <string name='no_saved_ratings'>Non ci sono ancora valutazioni salvate.</string>
   <string name='sort_popularity'>Popolarità</string>
+  <string name='sort_direction_ascending'>Crescente</string>
+  <string name='sort_direction_descending'>Decrescente</string>
+  <string name='sort_direction_accessibility'>Ordine attuale: %1$s. Tocca per passare a %2$s.</string>
   <string name='cover_download'>Scarica copertina</string>
   <string name='cover_delete'>Elimina copertina</string>
   <string name='cover_delete_title'>Eliminare questa copertina?</string>
@@ -221,12 +224,13 @@
     <item quantity='other'>%1$d pacchetti installati</item>
   </plurals>
   <string name='category_phase_downloading'>Download…</string>
+  <string name='category_phase_downloading_progress'>Download… %1$.2f/%2$.2f MB</string>
   <string name='category_phase_waiting_download'>In attesa del download…</string>
   <string name='category_phase_verifying'>Verifica del pack…</string>
   <string name='category_phase_installing'>Installazione…</string>
   <string name='category_phase_waiting_import'>In attesa dell’importazione…</string>
   <string name='category_phase_waiting_covers'>In attesa delle copertine…</string>
-  <string name='category_phase_importing_catalog'>Importazione catalogo…</string>
+  <string name='category_phase_importing_catalog'>Importazione catalogo… Potrebbe richiedere un po’ di tempo.</string>
   <string name='category_phase_downloading_covers'>Download copertine: %1$d / %2$d</string>
   <string name='category_deleting'>Eliminazione…</string>
   <string name='category_phase_finalizing'>Finalizzazione…</string>
@@ -272,4 +276,5 @@
   <string name='ranking_share_show_images'>Mostra immagini</string>
   <string name='ranking_share_failed'>Impossibile creare l’immagine della classifica.</string>
   <string name='ranking_share_empty'>Valuta almeno un elemento per creare un’immagine della classifica.</string>
+  <string name="covers_batch_outcomes">%1$d scaricate · %2$d non trovate · %3$d errori</string>
 </resources>

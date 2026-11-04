@@ -5,9 +5,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -52,20 +58,42 @@ internal fun RankingScreen(
                 "Merge",
                 state.filters.activeCount, { filtersOpen = true },
                 rankingSortLabel(state.sortOrder, state.ratingCategoryId, categories),
-                { sortOpen = true }, onSortDirection)
-            Box { DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+                !state.descending, { sortOpen = true }, onSortDirection) {
+              RankOfflinePopupMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
                 RankingSortOrder.entries.filterNot { it == RankingSortOrder.CATEGORY_SCORE }.forEach { order ->
-                    DropdownMenuItem(text = { Text(order.localizedLabel()) }, onClick = {
-                        sortOpen = false; onSort(order)
-                    })
+                    RankOfflinePopupMenuItem(label = order.localizedLabel(),
+                        selected = state.sortOrder == order, onClick = {
+                            sortOpen = false; onSort(order)
+                        }, leadingContent = {
+                            Icon(when (order) {
+                                RankingSortOrder.FINAL_SCORE -> Icons.Default.Star
+                                RankingSortOrder.QUALITY_SCORE -> Icons.Default.AutoAwesome
+                                RankingSortOrder.PERSONAL_TASTE -> Icons.Default.Favorite
+                                RankingSortOrder.CATEGORY_SCORE -> Icons.Default.Category
+                            }, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 12.dp).size(20.dp))
+                        })
                 }
-                HorizontalDivider()
-                categories.forEach { category ->
-                    DropdownMenuItem(text = { Text(localizedCategoryName(category)) }, onClick = {
-                        sortOpen = false; onCategory(category.id)
-                    })
+                if (categories.isNotEmpty()) {
+                    HorizontalDivider()
+                    Text(stringResource(R.string.sort_category_score),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+                    categories.forEach { category ->
+                        RankOfflinePopupMenuItem(label = localizedCategoryName(category),
+                            selected = state.sortOrder == RankingSortOrder.CATEGORY_SCORE &&
+                                state.ratingCategoryId == category.id,
+                            onClick = { sortOpen = false; onCategory(category.id) },
+                            leadingContent = {
+                                Icon(Icons.Default.Category, contentDescription = null,
+                                    tint = ratingCategoryMenuColor(category.color),
+                                    modifier = Modifier.padding(end = 12.dp).size(20.dp))
+                            })
+                    }
                 }
-            } }
+              }
+            }
         }
         if (showImages && entries.isNotEmpty()) {
             item(key = "ranking-podium") {
@@ -91,4 +119,11 @@ internal fun RankingScreen(
     if (filtersOpen) CatalogFiltersDialog(activeManifest ?: sharedFilterManifest(installedManifests), state.filters, filterOptions,
         onDismiss = { filtersOpen = false }, onApply = { onFilters(it); filtersOpen = false },
         onLoadOptions = onLoadFilterOptions)
+}
+
+@Composable
+private fun ratingCategoryMenuColor(value: String): Color = try {
+    Color(android.graphics.Color.parseColor(value))
+} catch (_: IllegalArgumentException) {
+    MaterialTheme.colorScheme.primary
 }

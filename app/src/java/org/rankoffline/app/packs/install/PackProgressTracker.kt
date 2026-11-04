@@ -35,10 +35,13 @@ internal class PackProgressTracker(
         onChange(packId, _progress.value[packId])
     }
 
-    fun covers(packId: PackId, available: Int, target: Int) = synchronized(monitor) {
-        require(available >= 0 && target >= 0)
+    fun covers(packId: PackId, progress: CoverDownloadProgress) = synchronized(monitor) {
         val previous = _progress.value[packId] ?: return@synchronized
-        val value = previous.copy(coverAvailable = available, coverTarget = target)
+        val value = previous.copy(
+            coverDownloaded = progress.downloaded, coverTarget = progress.target,
+            coverProcessed = progress.processed, coverNotFound = progress.unavailable,
+            coverErrors = progress.errors
+        )
         _progress.value = _progress.value + (packId to value)
         onChange(packId, value)
     }

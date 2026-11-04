@@ -99,6 +99,52 @@ class PackToolTests(unittest.TestCase):
         with self.assertRaises(PackValidationError):
             validate_pack(self.path)
 
+    def test_declarative_metadata_cover_source_is_accepted(self) -> None:
+        item = encoded({
+            "id": "item:1", "title": "Item", "provider": "fixture_provider",
+            "remoteCoverRef": "cover:v1|remote_id=42",
+        }) + b"\n"
+        payloads = {"catalog/items.jsonl.gz": gzip.compress(item, compresslevel=9, mtime=0)}
+        manifest = base_manifest(payloads)
+        manifest["capabilities"]["covers"] = True
+        manifest["attribution"]["sources"] = [{
+            "id": "fixture_source", "name": "Fixture source", "url": "https://example.test",
+            "notices": [],
+        }]
+        manifest["coverSources"] = [{
+            "id": "fixture_metadata", "sourceId": "fixture_source",
+            "providerId": "fixture_provider", "urlTemplates": [],
+            "allowedHosts": ["images.example.test"],
+            "metadataRequest": {
+                "referenceKey": "remote_id", "method": "GET",
+                "urlTemplate": "https://api.example.test/items/{reference}",
+                "imageJsonPaths": ["data.image"], "requestIntervalMillis": 1000,
+            },
+        }]
+        make_pack(self.path, manifest, payloads)
+        self.assertEqual(1, validate_pack(self.path)["items"])
+
+    def test_dynamic_metadata_host_is_rejected(self) -> None:
+        manifest = copy.deepcopy(self.manifest)
+        manifest["capabilities"]["covers"] = True
+        manifest["attribution"]["sources"] = [{
+            "id": "fixture_source", "name": "Fixture source", "url": "https://example.test",
+            "notices": [],
+        }]
+        manifest["coverSources"] = [{
+            "id": "fixture_metadata", "sourceId": "fixture_source",
+            "providerId": "fixture_provider", "urlTemplates": [],
+            "allowedHosts": ["images.example.test"],
+            "metadataRequest": {
+                "referenceKey": "remote_id", "method": "GET",
+                "urlTemplate": "https://{reference}.example.test/items",
+                "imageJsonPaths": ["data.image"], "requestIntervalMillis": 1000,
+            },
+        }]
+        make_pack(self.path, manifest, self.payloads)
+        with self.assertRaises(PackValidationError):
+            validate_pack(self.path)
+
     def test_missing_group_member_is_rejected(self) -> None:
         group = encoded({
             "id": "group:1",

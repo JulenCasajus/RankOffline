@@ -7,6 +7,9 @@
   <string name='ranking_title'>MyRanking</string>
   <string name='no_saved_ratings'>No ratings saved yet.</string>
   <string name='sort_popularity'>Popularity</string>
+  <string name='sort_direction_ascending'>Ascending</string>
+  <string name='sort_direction_descending'>Descending</string>
+  <string name='sort_direction_accessibility'>Current order: %1$s. Tap to change to %2$s.</string>
   <string name='sort_title_ascending' translatable='false'>A → Z</string>
   <string name='cover_download'>Download cover</string>
   <string name='cover_delete'>Delete cover</string>
@@ -193,12 +196,13 @@
   </plurals>
   <string name='category_downloaded'>Downloaded</string>
   <string name='category_phase_downloading'>Downloading…</string>
+  <string name='category_phase_downloading_progress'>Downloading… %1$.2f/%2$.2f MB</string>
   <string name='category_phase_waiting_download'>Waiting to download…</string>
   <string name='category_phase_verifying'>Verifying package…</string>
   <string name='category_phase_installing'>Installing…</string>
   <string name='category_phase_waiting_import'>Waiting to import…</string>
   <string name='category_phase_waiting_covers'>Waiting for covers…</string>
-  <string name='category_phase_importing_catalog'>Importing catalog…</string>
+  <string name='category_phase_importing_catalog'>Importing catalog… This might take a while.</string>
   <string name='category_phase_downloading_covers'>Downloading covers: %1$d / %2$d</string>
   <string name='category_deleting'>Deleting…</string>
   <string name='category_phase_finalizing'>Finalizing…</string>
@@ -272,4 +276,5 @@
   <string name='ranking_share_show_images'>Show images</string>
   <string name='ranking_share_failed'>The ranking image could not be created.</string>
   <string name='ranking_share_empty'>Rate at least one item to create a ranking image.</string>
+  <string name="covers_batch_outcomes">%1$d downloaded · %2$d not found · %3$d errors</string>
 </resources>

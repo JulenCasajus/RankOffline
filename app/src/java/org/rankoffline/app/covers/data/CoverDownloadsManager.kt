@@ -88,23 +88,27 @@ class CoverDownloadsManager internal constructor(
                 require(raw.all { it.packId == packId }) { "Entries belong to different packs" }
                 val entries = raw.distinct()
                 val outcomes = LinkedHashMap<CatalogEntryKey, CoverDownloadResult>(entries.size)
-                publish(snapshot(packId, CoverDownloadStatus.DOWNLOADING_COVERS, entries.size, 0, outcomes), onProgress)
+                val exhausted = HashSet<CatalogEntryKey>()
+                publish(coverProgressSnapshot(packId, CoverDownloadStatus.DOWNLOADING_COVERS,
+                    entries.size, outcomes, exhausted), onProgress)
 
-                var processed = 0
                 for (pass in 0 until DOWNLOAD_PASSES) {
                     val pending = if (pass == 0) entries
-                        else entries.filter { outcomes[it]?.isRetryable() == true }
+                        else entries.filter { outcomes[it].isRetryableCoverResult() }
                     if (pending.isEmpty()) break
                     val status = if (pass == 0) CoverDownloadStatus.DOWNLOADING_COVERS
                         else CoverDownloadStatus.RETRYING_COVERS
-                    publish(snapshot(packId, status, entries.size, processed, outcomes), onProgress)
+                    publish(coverProgressSnapshot(packId, status, entries.size, outcomes, exhausted), onProgress)
                     for (batch in pending.chunked(BATCH_SIZES[pass])) {
                         downloadBatch(batch).forEach { (key, result) -> outcomes[key] = result }
-                        if (pass == 0) processed += batch.size
-                        publish(snapshot(packId, status, entries.size, processed, outcomes), onProgress)
+                        if (pass == DOWNLOAD_PASSES - 1) {
+                            batch.filter { outcomes[it].isRetryableCoverResult() }.forEach(exhausted::add)
+                        }
+                        publish(coverProgressSnapshot(packId, status, entries.size, outcomes, exhausted), onProgress)
                     }
                 }
-                snapshot(packId, CoverDownloadStatus.COMPLETED, entries.size, processed, outcomes)
+                coverProgressSnapshot(packId, CoverDownloadStatus.COMPLETED,
+                    entries.size, outcomes, exhausted)
                     .also {
                         publish(it, onProgress)
                         runCatching { onBatchFinished(packId, it) }
@@ -140,23 +144,6 @@ class CoverDownloadsManager internal constructor(
         }.awaitAll()
     }
 
-    private fun snapshot(
-        packId: PackId,
-        status: CoverDownloadStatus,
-        target: Int,
-        processed: Int,
-        outcomes: Map<CatalogEntryKey, CoverDownloadResult>
-    ): CoverDownloadProgress = CoverDownloadProgress(
-        packId = packId,
-        status = status,
-        target = target,
-        processed = processed,
-        existing = outcomes.values.count { it == CoverDownloadResult.AlreadyAvailable },
-        downloaded = outcomes.values.count { it == CoverDownloadResult.Downloaded },
-        unavailable = outcomes.values.count { it == CoverDownloadResult.NotFound },
-        errors = outcomes.values.count { it.isRetryable() }
-    )
-
     private fun terminal(packId: PackId, status: CoverDownloadStatus): CoverDownloadProgress =
         (_progressByPack.value[packId] ?: CoverDownloadProgress(packId = packId)).copy(status = status)
 
@@ -168,11 +155,6 @@ class CoverDownloadsManager internal constructor(
         callback(value)
     }
 
-    private fun CoverDownloadResult?.isRetryable(): Boolean =
-        this == CoverDownloadResult.AlreadyInProgress ||
-            this == CoverDownloadResult.NetworkError ||
-            this == CoverDownloadResult.TemporaryError
-
     private companion object {
         // Per-pass request batch widths. The scheduler imposes a separate global network cap.
         const val DOWNLOAD_PASSES = 3
@@ -182,4 +164,30 @@ class CoverDownloadsManager internal constructor(
         const val MAX_ENTRIES = 5_000
         const val TAG = "RankOfflineCover"
     }
+}
+
+internal fun CoverDownloadResult?.isRetryableCoverResult(): Boolean =
+    this == CoverDownloadResult.AlreadyInProgress ||
+        this == CoverDownloadResult.NetworkError ||
+        this == CoverDownloadResult.TemporaryError
+
+internal fun coverProgressSnapshot(
+    packId: PackId,
+    status: CoverDownloadStatus,
+    target: Int,
+    outcomes: Map<CatalogEntryKey, CoverDownloadResult>,
+    exhausted: Set<CatalogEntryKey>
+): CoverDownloadProgress {
+    // Only the third unsuccessful attempt counts as an error. Each key is counted once.
+    val finalErrors = exhausted.count { outcomes[it].isRetryableCoverResult() }
+    return CoverDownloadProgress(
+        packId = packId,
+        status = status,
+        target = target,
+        processed = outcomes.values.count { !it.isRetryableCoverResult() } + finalErrors,
+        existing = outcomes.values.count { it == CoverDownloadResult.AlreadyAvailable },
+        downloaded = outcomes.values.count { it == CoverDownloadResult.Downloaded },
+        unavailable = outcomes.values.count { it == CoverDownloadResult.NotFound },
+        errors = finalErrors
+    )
 }

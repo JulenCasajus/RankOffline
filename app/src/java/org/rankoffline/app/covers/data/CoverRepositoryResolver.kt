@@ -19,60 +19,37 @@ suspend fun CoverRepository.topPopularVisibleCoverKeys(
     require(limit in 1..5_000)
     val manifest = manifestProvider(packId)?.takeIf { it.packId == packId }
         ?: return@withContext emptyList()
-    val groupSourceCache = HashMap<CatalogEntryKey, CatalogEntryKey?>()
+    // Read at most one bounded page of popular identities at a time.
+    // Group/member fallback and remote resolution happen only during download.
+    val merged = mergeEnabled && manifest.capabilities.merge && manifest.merge.enabled
+    if (!merged) {
+        return@withContext collectDistinctCoverKeys(
+            limit = limit,
+            loadPage = { offset, count -> catalogItems.topPopularCoverItemsPage(packId.value, count, offset) },
+            sourceKeys = { rows ->
+                val preferred = if (useGroupCoversForItems) {
+                    catalogGroups.preferredCoverGroups(packId.value, rows.map { it.id })
+                        .associate { it.mediaId to it.groupId }
+                } else emptyMap()
+                rows.map { item -> preferred[item.id]?.let { groupId ->
+                    CatalogEntryKey(packId, groupId, CatalogEntryKind.GROUP)
+                } ?: CatalogEntryKey(packId, item.id, CatalogEntryKind.ITEM) }
+            }
+        )
+    }
     collectDistinctCoverKeys(
         limit = limit,
         loadPage = { offset, count ->
-            catalogItems.visibleEntries(CatalogQueries.catalog(
-                manifest, SearchUiState(sortOrder = CatalogSortOrder.POPULARITY),
-                mergeEnabled, count, offset
-            ))
+            catalogItems.visibleEntries(CatalogQueries.popularCovers(manifest, count, offset))
         },
-        sourceKeys = { rows ->
-            val preferred = if (useGroupCoversForItems) {
-                rows.asSequence().filter { it.entryKind == "ITEM" }.map { it.id }.distinct()
-                    .toList().chunked(400).flatMap { ids ->
-                        catalogGroups.preferredCoverGroups(packId.value, ids)
-                    }.associate { it.mediaId to it.groupId }
-            } else emptyMap()
-            rows.map { row ->
-                val logicalKey = when (row.entryKind) {
-                    "GROUP" -> CatalogEntryKey(packId, row.id, CatalogEntryKind.GROUP)
-                    "ITEM" -> preferred[row.id]?.let {
-                        CatalogEntryKey(packId, it, CatalogEntryKind.GROUP)
-                    } ?: CatalogEntryKey(packId, row.id, CatalogEntryKind.ITEM)
-                    else -> error("Invalid entry kind: ${row.entryKind}")
-                }
-                if (logicalKey.kind == CatalogEntryKind.GROUP) {
-                    if (groupSourceCache.containsKey(logicalKey)) groupSourceCache[logicalKey]
-                    else bestGroupSourceKey(logicalKey).also { groupSourceCache[logicalKey] = it }
-                } else logicalKey
-            }
-        }
+        sourceKeys = { rows -> rows.map { row ->
+            CatalogEntryKey(packId, row.id, when (row.entryKind) {
+                "GROUP" -> CatalogEntryKind.GROUP
+                "ITEM" -> CatalogEntryKind.ITEM
+                else -> error("Invalid entry kind: ${row.entryKind}")
+            })
+        } }
     )
-}
-
-
-/** No duplicate bytes: group source only when its OWN file or source exists.
- * Otherwise the first valid local member, then the first member with a usable source. */
-internal suspend fun CoverRepository.bestGroupSourceKey(groupKey: CatalogEntryKey): CatalogEntryKey? {
-    val group = records.load(groupKey) ?: return null
-    if (validLocal(groupKey, group.remoteRef, group.localPath) ||
-        (group.remoteRef?.startsWith("covers/") == true &&
-            declaredCover(groupKey.packId, group.remoteRef)
-                ?.let(CoverImageFiles::isValid) == true)) return groupKey
-    // A dedicated downloadable group cover outranks an already cached representative.
-    if (group.state != CoverResolutionState.NOT_FOUND.name && group.candidates.isNotEmpty())
-        return groupKey
-    // No dedicated source, or it was definitively unavailable: reuse the first valid member.
-    val fallback = fallbackKeys(groupKey)
-    val availableItem = fallback.firstOrNull { itemKey ->
-        val item = catalogItems.item(itemKey.packId.value, itemKey.id)
-        item != null && validItemCoverPath(itemKey, item.remoteCoverRef,
-            item.localCoverPath) != null
-    }
-    if (availableItem != null) return availableItem
-    return fallback.firstOrNull()
 }
 
 

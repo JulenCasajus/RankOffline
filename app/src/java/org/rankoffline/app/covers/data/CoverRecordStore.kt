@@ -8,7 +8,8 @@ internal data class CoverRecord(
     val remoteRef: String?,
     val localPath: String?,
     val state: String,
-    val candidates: List<java.net.URI>
+    val candidates: List<java.net.URI>,
+    val metadataCandidates: List<CoverMetadataCandidate> = emptyList()
 )
 
 /** Room adapter. Differences between item and relation storage do not leak to the downloader. */
@@ -20,20 +21,22 @@ internal class CoverRecordStore(
     suspend fun load(key: CatalogEntryKey): CoverRecord? = when (key.kind) {
         CatalogEntryKind.ITEM -> items.item(key.packId.value, key.id)?.let { entity ->
             CoverRecord(key, entity.remoteCoverRef, entity.localCoverPath,
-                entity.coverResolutionState, provider.resolveCandidates(entity.toDomain()))
+                entity.coverResolutionState, provider.resolveCandidates(entity.toDomain()),
+                provider.metadataCandidates(entity.toDomain()))
         }
         CatalogEntryKind.GROUP -> groups.group(key.packId.value, key.id)?.let { entity ->
             // Deliberately NO representative candidates here. Downloading those under
             // GROUP would create a second physical image in covers/groups/.
             val candidates = provider.resolveCandidates(entity.toDomain())
             CoverRecord(key, entity.remoteCoverRef, entity.localCoverPath,
-                entity.coverResolutionState, candidates)
+                entity.coverResolutionState, candidates, provider.metadataCandidates(entity.toDomain()))
         }
     }
 
 
     fun hasRemoteSource(item: MediaItemEntity): Boolean =
-        provider.resolveCandidates(item.toDomain()).isNotEmpty()
+        provider.resolveCandidates(item.toDomain()).isNotEmpty() ||
+            provider.metadataCandidates(item.toDomain()).isNotEmpty()
 
     suspend fun fallbackItems(groupKey: CatalogEntryKey): List<MediaItemEntity> {
         require(groupKey.kind == CatalogEntryKind.GROUP)

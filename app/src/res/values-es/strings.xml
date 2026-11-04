@@ -6,6 +6,9 @@
   <string name='ranking_title'>MiRanking</string>
   <string name='no_saved_ratings'>Todavía no hay valoraciones guardadas.</string>
   <string name='sort_popularity'>Popularidad</string>
+  <string name='sort_direction_ascending'>Ascendente</string>
+  <string name='sort_direction_descending'>Descendente</string>
+  <string name='sort_direction_accessibility'>Orden actual: %1$s. Toca para cambiar a %2$s.</string>
   <string name='cover_download'>Descargar portada</string>
   <string name='cover_delete'>Eliminar portada</string>
   <string name='cover_delete_title'>¿Eliminar esta portada?</string>
@@ -221,12 +224,13 @@
     <item quantity='other'>%1$d paquetes instalados</item>
   </plurals>
   <string name='category_phase_downloading'>Descargando…</string>
+  <string name='category_phase_downloading_progress'>Descargando… %1$.2f/%2$.2f MB</string>
   <string name='category_phase_waiting_download'>Esperando para descargar…</string>
   <string name='category_phase_verifying'>Verificando pack…</string>
   <string name='category_phase_installing'>Instalando…</string>
   <string name='category_phase_waiting_import'>Esperando para importar…</string>
   <string name='category_phase_waiting_covers'>Esperando las portadas…</string>
-  <string name='category_phase_importing_catalog'>Importando catálogo…</string>
+  <string name='category_phase_importing_catalog'>Importando catálogo… Esto puede tardar un rato.</string>
   <string name='category_phase_downloading_covers'>Descargando portadas: %1$d / %2$d</string>
   <string name='category_deleting'>Eliminando…</string>
   <string name='category_phase_finalizing'>Finalizando…</string>
@@ -272,4 +276,5 @@
   <string name='ranking_share_show_images'>Mostrar imágenes</string>
   <string name='ranking_share_failed'>No se ha podido crear la imagen del ranking.</string>
   <string name='ranking_share_empty'>Valora al menos un elemento para crear una imagen del ranking.</string>
+  <string name="covers_batch_outcomes">%1$d descargadas · %2$d no encontradas · %3$d errores</string>
 </resources>

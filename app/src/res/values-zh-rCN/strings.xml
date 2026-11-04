@@ -6,6 +6,9 @@
   <string name='ranking_title'>我的排名</string>
   <string name='no_saved_ratings'>尚未保存任何评分。</string>
   <string name='sort_popularity'>热度</string>
+  <string name='sort_direction_ascending'>升序</string>
+  <string name='sort_direction_descending'>降序</string>
+  <string name='sort_direction_accessibility'>当前顺序：%1$s。点按可切换为%2$s。</string>
   <string name='cover_download'>下载封面</string>
   <string name='cover_delete'>删除封面</string>
   <string name='cover_delete_title'>删除此封面？</string>
@@ -190,12 +193,13 @@
     <item quantity='other'>已安装 %1$d 个内容包</item>
   </plurals>
   <string name='category_phase_downloading'>正在下载…</string>
+  <string name='category_phase_downloading_progress'>正在下载… %1$.2f/%2$.2f MB</string>
   <string name='category_phase_waiting_download'>等待下载…</string>
   <string name='category_phase_verifying'>正在验证内容包…</string>
   <string name='category_phase_installing'>正在安装…</string>
   <string name='category_phase_waiting_import'>等待导入…</string>
   <string name='category_phase_waiting_covers'>等待封面…</string>
-  <string name='category_phase_importing_catalog'>正在导入目录…</string>
+  <string name='category_phase_importing_catalog'>正在导入目录… 这可能需要一些时间。</string>
   <string name='category_phase_downloading_covers'>正在下载封面：%1$d / %2$d</string>
   <string name='category_deleting'>正在删除…</string>
   <string name='category_phase_finalizing'>正在完成…</string>
@@ -234,4 +238,5 @@
   <string name='ranking_share_show_images'>显示图片</string>
   <string name='ranking_share_failed'>无法创建排名图片。</string>
   <string name='ranking_share_empty'>请至少为一个条目评分以创建排名图片。</string>
+  <string name="covers_batch_outcomes">%1$d 已下载 · %2$d 未找到 · %3$d 错误</string>
 </resources>

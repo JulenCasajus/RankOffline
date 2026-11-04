@@ -16,13 +16,6 @@ fun RankOfflineViewModel.setCatalogSortOrder(value: CatalogSortOrder) {
 }
 
 
-fun RankOfflineViewModel.setCatalogSortCriterion(value: CatalogSortOrder) = setCatalogSortOrder(
-    value.withReversed(activeSearchState.value.sortOrder.isReversed))
-
-
-fun RankOfflineViewModel.toggleCatalogSortDirection() = setCatalogSortOrder(activeSearchState.value.sortOrder.inverted())
-
-
 fun RankOfflineViewModel.setCatalogFilters(value: CatalogFilters) = catalog.searchFilters(value)
 
 

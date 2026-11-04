@@ -1,8 +1,13 @@
 package org.rankoffline.app
 
 import java.net.URI
+import java.net.Inet4Address
+import java.net.Inet6Address
+import java.net.InetAddress
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /** RFC 3986 percent-encoding for one untrusted template variable (path or query value). */
@@ -61,6 +66,46 @@ internal fun isSafeHttpsUri(uri: URI, hosts: Set<String>?): Boolean {
     return true
 }
 
+/** DNS defense used immediately before either metadata or image network I/O. */
+internal fun resolvesToPublicAddresses(host: String): Boolean =
+    InetAddress.getAllByName(host).takeIf { it.isNotEmpty() }?.all { address ->
+        !address.isAnyLocalAddress && !address.isLoopbackAddress &&
+            !address.isLinkLocalAddress && !address.isSiteLocalAddress &&
+            !address.isMulticastAddress && when (address) {
+                is Inet4Address -> {
+                    val bytes = address.address.map { it.toInt() and 255 }
+                    val a = bytes[0]
+                    val b = bytes[1]
+                    a in 1..223 && !(a == 100 && b in 64..127) &&
+                        !(a == 192 && b == 0) && !(a == 198 && b in 18..19) &&
+                        !(a == 192 && b == 0 && bytes[2] == 2) &&
+                        !(a == 198 && b == 51 && bytes[2] == 100) &&
+                        !(a == 203 && b == 0 && bytes[2] == 113)
+                }
+                is Inet6Address -> {
+                    val bytes = address.address.map { it.toInt() and 255 }
+                    !(bytes[0] and 0xfe == 0xfc) &&
+                        !(bytes[0] == 0x20 && bytes[1] == 0x01 &&
+                            bytes[2] == 0x0d && bytes[3] == 0xb8) &&
+                        bytes[0] in 0x20..0x3f
+                }
+                else -> false
+            }
+    } == true
+
+/** Parses either Retry-After seconds or its RFC 1123 date form, with a cooperative safety bound. */
+internal fun retryAfterDelayMillis(value: String?, nowMillis: Long = System.currentTimeMillis()): Long? {
+    val raw = value?.trim()?.takeIf(String::isNotEmpty) ?: return null
+    val delay = raw.toLongOrNull()?.takeIf { it >= 0L }?.let { seconds ->
+        if (seconds > MAX_RETRY_AFTER_MILLIS / 1_000L) MAX_RETRY_AFTER_MILLIS
+        else seconds * 1_000L
+    } ?: runCatching {
+        ZonedDateTime.parse(raw, DateTimeFormatter.RFC_1123_DATE_TIME)
+            .toInstant().toEpochMilli().minus(nowMillis)
+    }.getOrNull()?.coerceAtLeast(0L)
+    return delay?.coerceAtMost(MAX_RETRY_AFTER_MILLIS)
+}
+
 private fun decodePercent(value: String): String? = runCatching {
     URLDecoder.decode(value.replace("+", "%2B"), StandardCharsets.UTF_8)
 }.getOrNull()
@@ -73,3 +118,4 @@ private val ENCODED_PATH_SEPARATOR = Regex("%(?:2[fF]|5[cC])")
 private val ENCODED_TRAVERSAL = Regex("%(?:2[eE]|2[fF]|5[cC])")
 
 private val ENCODED_CONTROLS = Regex("%(?:0[0-9a-fA-F]|1[0-9a-fA-F]|7[fF])")
+private const val MAX_RETRY_AFTER_MILLIS = 60_000L

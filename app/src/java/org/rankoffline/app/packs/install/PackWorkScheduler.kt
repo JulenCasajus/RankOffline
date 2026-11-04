@@ -10,6 +10,7 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
@@ -52,9 +53,10 @@ internal object PackWorkScheduler {
         val manager = WorkManager.getInstance(context)
         val installChain = manager.getWorkInfosForUniqueWork(uniqueName(packId, PackWorkAction.INSTALL)).get()
         val separate = manager.getWorkInfosForUniqueWork(uniqueName(packId, PackWorkAction.INITIAL_COVERS)).get()
-        (installChain + separate)
+        val active = (installChain + separate)
             .filter { it.tags.contains(actionTag(PackWorkAction.INITIAL_COVERS)) && !it.state.isFinished }
-            .forEach { manager.cancelWorkById(it.id) }
+            .distinctBy { it.id }
+        active.forEach { manager.cancelWorkById(it.id).result.get() }
     }
 
     fun request(packId: PackId, action: PackWorkAction): OneTimeWorkRequest =
@@ -78,25 +80,32 @@ internal object PackWorkScheduler {
     internal fun uniqueName(packId: PackId, action: PackWorkAction): String =
         "rankoffline-pack-${packId.value}-${action.name.lowercase(java.util.Locale.ROOT)}"
 
-    /** Restore work state after process recreation and after remote descriptors are loaded. */
+    /** Restore ongoing work only: terminal records may belong to previous attempts. */
     suspend fun reconcilePersistentWork(context: Context, manager: PackManager) =
         withContext(Dispatchers.IO) {
-            reconcile(manager, WorkManager.getInstance(context).getWorkInfosByTag(ALL_TAG).get())
+            reconcile(manager, WorkManager.getInstance(context).getWorkInfosByTag(ALL_TAG).get(), emptySet())
         }
 
-    /** Observe every terminal transition, including failures before downloadAndInstall starts. */
+    /** Observe real transitions rather than replaying historical FAILED/CANCELLED jobs. */
     suspend fun observePersistentWork(context: Context, manager: PackManager) {
+        var previouslyActive = emptySet<UUID>()
         WorkManager.getInstance(context).getWorkInfosByTagFlow(ALL_TAG).collect { infos ->
-            reconcile(manager, infos)
+            val installs = infos.filter { it.tags.contains(actionTag(PackWorkAction.INSTALL)) }
+            val newlyFailed = installs.filter { info ->
+                info.id in previouslyActive &&
+                    (info.state == WorkInfo.State.FAILED || info.state == WorkInfo.State.CANCELLED)
+            }.map { it.id }.toSet()
+            reconcile(manager, infos, newlyFailed)
+            previouslyActive = installs.filterNot { it.state.isFinished }.map { it.id }.toSet()
         }
     }
 
-    private suspend fun reconcile(manager: PackManager, infos: List<WorkInfo>) {
+    private suspend fun reconcile(
+        manager: PackManager, infos: List<WorkInfo>, newlyFailed: Set<UUID>
+    ) {
         val installs = infos.filter { it.tags.contains(actionTag(PackWorkAction.INSTALL)) }
         val active = installs.filterNot { it.state.isFinished }.mapNotNull(::packIdFromTags).toSet()
-        val failed = installs.filter {
-            it.state == WorkInfo.State.FAILED || it.state == WorkInfo.State.CANCELLED
-        }.mapNotNull(::packIdFromTags).toSet()
+        val failed = installs.filter { it.id in newlyFailed }.mapNotNull(::packIdFromTags).toSet()
         manager.reconcileQueuedInstallStates(active, failed)
     }
 

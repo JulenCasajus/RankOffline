@@ -66,7 +66,7 @@ None of the following rows is considered passed until observed on the emulator.
 | Search | Primary titles and known aliases resolve; clearing the query restores paging. |
 | Filters | Every declared filter returns data and combines correctly with search/sort. |
 | Merge/groups | Declared groups only, valid representative fallback and no cross-pack identity substitution. |
-| Covers | Manga/Movies/Series/Books download through declared HTTPS hosts; Anime intentionally shows no remote covers pending the approved mapping proposal. |
+| Covers | All packs download through declared HTTPS hosts; Anime tries its pack-declared AniList source before the Jikan fallback and respects cancellation/rate limits. |
 | Ratings | Simple/elaborate ratings and notes persist across restart; note/status-only edits preserve scores, profile, bonus and categories. |
 | RankOfflineAll | Available only with participating packs READY; paging has no omissions/duplicates; Merge preference remains independent. |
 | Share | Top 7 is 1080×1920, Top 10 is 1920×1080, correct package background is used, and All uses the supplied default backgrounds. |
@@ -75,8 +75,8 @@ None of the following rows is considered passed until observed on the emulator.
 ## Remaining release gates
 
 - Complete the Android Studio/Room/emulator matrix above.
-- Review and approve the declarative Anime cover mapping described in
-  `ANIME_COVER_SOURCE_PROPOSAL.md`; no runtime provider logic is authorized.
+- Review and approve the declarative Anime source terms and live fallback tests
+  described in `ANIME_COVER_SOURCE_PROPOSAL.md`; no provider-specific Kotlin is present.
 - Confirm documentary publication rights for launcher, onboarding, podium and
   all supplied Share artwork.
 - Verify that each uploaded GitHub asset and the published distribution index

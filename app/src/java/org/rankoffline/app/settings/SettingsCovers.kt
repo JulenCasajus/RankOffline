@@ -45,12 +45,22 @@ internal fun CoversSettingsScreen(
                                 Text(stringResource(R.string.covers_download_top, count))
                             }
                         }
-                        if (progress.target > 0 || progress.isActive) {
-                            Text("${progress.status.name}: ${progress.processed}/${progress.target}",
+                        if (progress.target > 0) {
+                            Text("${progress.processed}/${progress.target}",
                                 modifier = Modifier.padding(top = 8.dp))
                             LinearProgressIndicator(
-                                progress = { if (progress.target <= 0) 0f else
-                                    (progress.processed.toFloat() / progress.target).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+                                progress = { (progress.processed.toFloat() / progress.target).coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth())
+                        } else if (progress.isActive) {
+                            Text(stringResource(R.string.category_phase_waiting_covers),
+                                modifier = Modifier.padding(top = 8.dp))
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        if (progress.target > 0) {
+                            Text(stringResource(R.string.covers_batch_outcomes,
+                                progress.downloaded, progress.unavailable, progress.errors),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall)
                         }
                         if (progress.isActive) TextButton(onClick = onCancel) {
                             Text(stringResource(R.string.action_cancel))

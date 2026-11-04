@@ -6,6 +6,9 @@
   <string name='ranking_title'>MonClassement</string>
   <string name='no_saved_ratings'>Aucune évaluation enregistrée.</string>
   <string name='sort_popularity'>Popularité</string>
+  <string name='sort_direction_ascending'>Croissant</string>
+  <string name='sort_direction_descending'>Décroissant</string>
+  <string name='sort_direction_accessibility'>Ordre actuel : %1$s. Appuyez pour passer à %2$s.</string>
   <string name='cover_download'>Télécharger la jaquette</string>
   <string name='cover_delete'>Supprimer la jaquette</string>
   <string name='cover_delete_title'>Supprimer cette jaquette ?</string>
@@ -221,12 +224,13 @@
     <item quantity='other'>%1$d paquets installés</item>
   </plurals>
   <string name='category_phase_downloading'>Téléchargement…</string>
+  <string name='category_phase_downloading_progress'>Téléchargement… %1$.2f/%2$.2f Mo</string>
   <string name='category_phase_waiting_download'>En attente du téléchargement…</string>
   <string name='category_phase_verifying'>Vérification du pack…</string>
   <string name='category_phase_installing'>Installation…</string>
   <string name='category_phase_waiting_import'>En attente de l’importation…</string>
   <string name='category_phase_waiting_covers'>En attente des jaquettes…</string>
-  <string name='category_phase_importing_catalog'>Importation du catalogue…</string>
+  <string name='category_phase_importing_catalog'>Importation du catalogue… Cela peut prendre un moment.</string>
   <string name='category_phase_downloading_covers'>Téléchargement des jaquettes : %1$d / %2$d</string>
   <string name='category_deleting'>Suppression…</string>
   <string name='category_phase_finalizing'>Finalisation…</string>
@@ -272,4 +276,5 @@
   <string name='ranking_share_show_images'>Afficher les images</string>
   <string name='ranking_share_failed'>Impossible de créer l’image du classement.</string>
   <string name='ranking_share_empty'>Notez au moins un élément pour créer une image du classement.</string>
+  <string name="covers_batch_outcomes">%1$d téléchargées · %2$d introuvables · %3$d erreurs</string>
 </resources>

@@ -19,6 +19,9 @@ A valid custom pack must:
 - contain only data/resources declared and hashed by `manifest.json`;
 - use generic catalog/group format 2 records without a repeated `packId`;
 - declare cover hosts/templates and all provider/dataset attribution itself;
+- when an ID must first be resolved by an API, use a bounded
+  `metadataRequest` plus a `cover:v1|key=positive_id` reference; never add a
+  provider-specific Kotlin resolver;
 - keep optional Top 7 and Top 10 backgrounds separate;
 - include no code, nested archives, unsafe paths or cleartext URLs;
 - satisfy the parser limits and cross-reference checks.

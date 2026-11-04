@@ -3,6 +3,7 @@ package org.rankoffline.app
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
+import java.net.URI
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -65,21 +66,27 @@ suspend fun CoverRepository.downloadCover(key: CatalogEntryKey): CoverDownloadRe
             }
         }
 
-        if (record.candidates.isEmpty()) return@withContext notFoundIfCurrent(record, generation)
+        if (record.candidates.isEmpty() && record.metadataCandidates.isEmpty()) {
+            val missing = notFoundIfCurrent(record, generation)
+            return@withContext if (key.kind == CatalogEntryKind.GROUP &&
+                missing == CoverDownloadResult.NotFound)
+                downloadGroupFallback(key, generation, record) else missing
+        }
         if (!(stagingRoot.isDirectory || stagingRoot.mkdirs()) ||
             Files.isSymbolicLink(stagingRoot.toPath())) return@withContext CoverDownloadResult.TemporaryError
-        temporary = File.createTempFile("cover-", ".part", stagingRoot)
-        var networkFailure = false
-        var temporaryFailure = false
-        for (uri in record.candidates) {
-            temporary.delete()
-            when (downloader.download(uri, temporary)) {
+        val staging = File.createTempFile("cover-", ".part", stagingRoot)
+        temporary = staging
+        val result = progressiveCoverDownload(
+            directCandidates = record.candidates,
+            metadataCandidates = record.metadataCandidates,
+            resolveMetadata = DeclarativeCoverMetadataResolver::resolve
+        ) { uri ->
+            staging.delete()
+            when (downloader.download(uri, staging)) {
                 CoverTransferResult.DOWNLOADED -> {
-                    if (!CoverImageFiles.isValid(temporary)) {
-                        temporaryFailure = true
-                        continue
-                    }
-                    return@withContext PackCoverWriteLocks.withPackLock(key.packId) {
+                    if (!CoverImageFiles.isValid(staging)) {
+                        CoverDownloadResult.TemporaryError
+                    } else PackCoverWriteLocks.withPackLock(key.packId) {
                         val latest = records.load(key) ?: return@withPackLock CoverDownloadResult.NotFound
                         if (!sameVersion(record, latest) ||
                             generation != generation(key.packId).get() || !packInstalled(key.packId)) {
@@ -98,7 +105,7 @@ suspend fun CoverRepository.downloadCover(key: CatalogEntryKey): CoverDownloadRe
                         if (!(parent.isDirectory || parent.mkdirs())) {
                             return@withPackLock CoverDownloadResult.TemporaryError
                         }
-                        CoverImageFiles.promote(temporary, destination)
+                        CoverImageFiles.promote(staging, destination)
                         if (records.updateIfCurrent(latest, destination.absolutePath,
                                 CoverResolutionState.AVAILABLE)) CoverDownloadResult.Downloaded
                         else {
@@ -107,20 +114,17 @@ suspend fun CoverRepository.downloadCover(key: CatalogEntryKey): CoverDownloadRe
                         }
                     }
                 }
-                CoverTransferResult.NOT_FOUND -> Unit
-                CoverTransferResult.NETWORK_ERROR -> networkFailure = true
-                CoverTransferResult.TEMPORARY_ERROR -> temporaryFailure = true
+                CoverTransferResult.NOT_FOUND -> CoverDownloadResult.NotFound
+                CoverTransferResult.NETWORK_ERROR -> CoverDownloadResult.NetworkError
+                CoverTransferResult.TEMPORARY_ERROR -> CoverDownloadResult.TemporaryError
             }
         }
-        when {
-            networkFailure -> CoverDownloadResult.NetworkError
-            temporaryFailure -> CoverDownloadResult.TemporaryError
-            else -> {
-                val missing = notFoundIfCurrent(record, generation)
-                if (key.kind == CatalogEntryKind.GROUP && missing == CoverDownloadResult.NotFound)
-                    downloadGroupFallback(key, generation, record)
-                else missing
-            }
+        if (result != CoverDownloadResult.NotFound) return@withContext result
+        val missing = notFoundIfCurrent(record, generation)
+        if (key.kind == CatalogEntryKind.GROUP && missing == CoverDownloadResult.NotFound) {
+            downloadGroupFallback(key, generation, record)
+        } else {
+            missing
         }
     } catch (cancelled: CancellationException) {
         throw cancelled
@@ -132,6 +136,44 @@ suspend fun CoverRepository.downloadCover(key: CatalogEntryKey): CoverDownloadRe
         temporary?.delete()
         state.value = CoverDownloadState.IDLE
         CoverRepository.inProgress.remove(key)
+    }
+}
+
+/** Resolves each metadata source only after every candidate from the previous source failed. */
+internal suspend fun <T> progressiveCoverDownload(
+    directCandidates: List<URI>,
+    metadataCandidates: List<T>,
+    resolveMetadata: suspend (T) -> CoverMetadataResolution,
+    downloadCandidate: suspend (URI) -> CoverDownloadResult
+): CoverDownloadResult {
+    val seen = linkedSetOf<URI>()
+    var networkFailure = false
+    var temporaryFailure = false
+    for (index in -1 until metadataCandidates.size) {
+        val resolution = if (index < 0) CoverMetadataResolution(directCandidates)
+            else resolveMetadata(metadataCandidates[index])
+        when (resolution.failure) {
+            CoverDownloadResult.NetworkError -> networkFailure = true
+            CoverDownloadResult.TemporaryError,
+            CoverDownloadResult.AlreadyInProgress -> temporaryFailure = true
+            else -> Unit
+        }
+        for (uri in resolution.candidates) {
+            if (!seen.add(uri)) continue
+            when (val result = downloadCandidate(uri)) {
+                CoverDownloadResult.Downloaded,
+                CoverDownloadResult.AlreadyAvailable -> return result
+                CoverDownloadResult.NetworkError -> networkFailure = true
+                CoverDownloadResult.TemporaryError,
+                CoverDownloadResult.AlreadyInProgress -> temporaryFailure = true
+                CoverDownloadResult.NotFound -> Unit
+            }
+        }
+    }
+    return when {
+        networkFailure -> CoverDownloadResult.NetworkError
+        temporaryFailure -> CoverDownloadResult.TemporaryError
+        else -> CoverDownloadResult.NotFound
     }
 }
 

@@ -6,8 +6,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -53,14 +55,27 @@ internal fun CatalogScreen(
             "Merge",
             state.filters.activeCount,
             { filtersOpen = true }, state.sortOrder.criterionLabel(),
-            { sortOpen = true }, { onSort(state.sortOrder.inverted()) })
-        Box { DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+            state.sortOrder.isReversed,
+            { sortOpen = true }, { onSort(state.sortOrder.inverted()) }) {
+          RankOfflinePopupMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
             catalogSortCriteria(activeManifest?.capabilities?.popularity != false).forEach { option ->
-                DropdownMenuItem(text = { Text(option.criterionLabel()) }, onClick = {
-                    sortOpen = false; onSort(option.withReversed(state.sortOrder.isReversed))
-                })
+                RankOfflinePopupMenuItem(
+                    label = option.criterionLabel(),
+                    selected = state.sortOrder.withReversed(false) == option,
+                    onClick = {
+                        sortOpen = false
+                        onSort(option.withReversed(state.sortOrder.isReversed))
+                    },
+                    leadingContent = {
+                        Icon(if (option == CatalogSortOrder.POPULARITY) {
+                            Icons.AutoMirrored.Filled.TrendingUp
+                        } else Icons.Default.SortByAlpha, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 12.dp).size(20.dp))
+                    })
             }
-        } }
+          }
+        }
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(value = state.query, onValueChange = onQuery,
             modifier = Modifier.fillMaxWidth(), singleLine = true,
@@ -89,24 +104,4 @@ internal fun CatalogScreen(
     if (filtersOpen) CatalogFiltersDialog(activeManifest ?: sharedFilterManifest(installedManifests), state.filters, filterOptions,
         onDismiss = { filtersOpen = false },
         onApply = { onFilters(it); filtersOpen = false }, onLoadOptions = onLoadFilterOptions)
-}
-
-@Composable
-internal fun CatalogActions(canMerge: Boolean, merge: Boolean, onMerge: (Boolean) -> Unit,
-    mergeLabel: String, activeFilters: Int, onFilters: () -> Unit, sortLabel: String,
-    onSort: () -> Unit, onDirection: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (canMerge) FilterChip(selected = merge, onClick = { onMerge(!merge) },
-            label = { Text(mergeLabel, maxLines = 1) })
-        OutlinedButton(onClick = onFilters, modifier = Modifier.weight(1f)) {
-            Text(if (activeFilters > 0) stringResource(R.string.filters_active, activeFilters)
-                else stringResource(R.string.filters_title), maxLines = 1)
-        }
-        OutlinedButton(onClick = onSort, modifier = Modifier.weight(1f)) {
-            Text(sortLabel, maxLines = 1)
-        }
-        OutlinedButton(onClick = onDirection) {
-            Text("↕")
-        }
-    }
 }

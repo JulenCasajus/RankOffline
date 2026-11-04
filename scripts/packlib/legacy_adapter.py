@@ -98,7 +98,8 @@ def _convert_credits(source: list, mappings: dict[str, str], attributes: dict,
     report["creditOverflowEntries"] += len(overflow)
 
 
-def _cover_reference(value: object, mode: str, attributes: dict, report: dict) -> str | None:
+def _cover_reference(value: object, mode: str, attributes: dict, report: dict,
+                     replacement: dict | None = None) -> str | None:
     if value is None:
         return None
     if not isinstance(value, str):
@@ -108,6 +109,18 @@ def _cover_reference(value: object, mode: str, attributes: dict, report: dict) -
     if mode == "strip_leading_slash":
         converted = value[1:] if value.startswith("/") else value
         report["coverReferencesNormalized"] += int(converted != value)
+        return converted
+    if mode == "replace_prefix":
+        if not isinstance(replacement, dict) or set(replacement) != {"from", "to"}:
+            raise ConversionError("replace_prefix requires an exact from/to declaration")
+        source = replacement["from"]
+        target = replacement["to"]
+        if not isinstance(source, str) or not source or not isinstance(target, str):
+            raise ConversionError("Invalid cover reference prefix replacement")
+        if not value.startswith(source):
+            raise ConversionError(f"Cover reference does not start with {source!r}")
+        converted = target + value[len(source):]
+        report["coverReferencesNormalized"] += 1
         return converted
     if mode == "preserve_as_legacy_attribute":
         attributes["legacy_cover_reference"] = value
@@ -194,7 +207,8 @@ def convert_legacy_archive(archive_path: Path, config: dict, staging: Path) -> t
                 aliases = _convert_aliases(record.get("aliases") or [], attributes,
                                            report, alias_overflow_limit)
                 remote_ref = _cover_reference(record.get("remoteCoverRef"),
-                                              adapter["coverReferenceMode"], attributes, report)
+                                              adapter["coverReferenceMode"], attributes, report,
+                                              adapter.get("coverReferencePrefixReplacement"))
                 converted = {
                     "id": item_id,
                     "title": title,
@@ -225,7 +239,8 @@ def convert_legacy_archive(archive_path: Path, config: dict, staging: Path) -> t
                     report["groupPositionsReindexed"] += int(member.get("position") != position)
                 group_attributes: dict[str, object] = {}
                 remote_ref = _cover_reference(record.get("remoteCoverRef"),
-                                              adapter["coverReferenceMode"], group_attributes, report)
+                                              adapter["coverReferenceMode"], group_attributes, report,
+                                              adapter.get("coverReferencePrefixReplacement"))
                 if group_attributes:
                     raise ConversionError("Current schema cannot preserve a legacy-only group cover reference")
                 title = record.get("displayTitle")

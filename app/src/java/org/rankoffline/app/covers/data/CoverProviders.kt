@@ -20,7 +20,11 @@ fun interface CoverProvider {
 class DeclarativePackCoverProvider(
     private val manifestProvider: (PackId) -> PackManifest?
 ) : CoverProvider {
-    fun hasDeclaredSources(packId: PackId): Boolean = manifestFor(packId)?.coverSources?.isNotEmpty() == true
+    internal fun metadataCandidates(item: MediaItem): List<CoverMetadataCandidate> =
+        metadataCandidates(item.packId, item.provider, item.remoteCoverRef)
+
+    internal fun metadataCandidates(group: MediaGroup): List<CoverMetadataCandidate> =
+        metadataCandidates(group.packId, group.provider, group.remoteCoverRef)
 
     override fun resolve(item: MediaItem): URI? = resolveCandidates(item).firstOrNull()
 
@@ -32,8 +36,6 @@ class DeclarativePackCoverProvider(
     )
 
     /** A group uses exactly the same declaration rules as an ordinary item. */
-    fun resolve(group: MediaGroup): URI? = resolveCandidates(group).firstOrNull()
-
     fun resolveCandidates(group: MediaGroup): List<URI> = resolveCandidates(
         packId = group.packId,
         provider = group.provider,
@@ -54,6 +56,7 @@ class DeclarativePackCoverProvider(
         val ref = reference?.takeIf { it.isNotBlank() && it.length <= MAX_REFERENCE_LENGTH }
             ?: return emptyList()
         if (ref.startsWith("covers/")) return emptyList() // A bundled cover is a local resource.
+        if (ref.startsWith("cover:v1|")) return emptyList() // Metadata references are resolved separately.
 
         if (ref.startsWith("{")) {
             // A malformed structured reference must not fall back to being a template parameter.
@@ -81,9 +84,25 @@ class DeclarativePackCoverProvider(
 
         // Plain references require a UNIQUE source for this provider. Otherwise
         // the record must explicitly select a coverSources.id with structured JSON.
-        val sources = manifest.coverSources.filter { it.providerId == provider }
+        val sources = manifest.coverSources.filter {
+            it.providerId == provider && it.metadataRequest == null
+        }
         if (sources.size != 1) return emptyList()
         return fromTemplates(sources.single(), ref, providerId)
+    }
+
+    private fun metadataCandidates(
+        packId: PackId,
+        provider: String?,
+        reference: String?
+    ): List<CoverMetadataCandidate> {
+        val manifest = manifestFor(packId) ?: return emptyList()
+        val values = parseMetadataReference(reference) ?: return emptyList()
+        return manifest.coverSources.mapNotNull { source ->
+            val request = source.metadataRequest ?: return@mapNotNull null
+            val identity = values[request.referenceKey] ?: return@mapNotNull null
+            source.takeIf { it.providerId == provider }?.let { CoverMetadataCandidate(it, identity) }
+        }
     }
 
     private fun fromTemplates(

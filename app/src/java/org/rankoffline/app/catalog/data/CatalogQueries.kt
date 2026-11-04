@@ -22,6 +22,45 @@ internal object CatalogQueries {
         catalogSort = state.sortOrder
     )
 
+    /** Top cover identities only: no rating joins, group-count projections or files. */
+    fun popularCovers(manifest: PackManifest, limit: Int, offset: Int): SupportSQLiteQuery {
+        require(limit in 1..5_000 && offset >= 0 && offset <= Int.MAX_VALUE - limit)
+        val sql = """
+            WITH visible AS (
+                SELECT i.pack_id, i.id, 'ITEM' AS entry_kind, i.title,
+                    i.popularity, i.popularity_rank
+                FROM media_item i
+                WHERE i.pack_id = ? AND NOT EXISTS (
+                    SELECT 1 FROM media_group_member m
+                    WHERE m.pack_id = i.pack_id AND m.media_id = i.id
+                )
+                UNION ALL
+                SELECT g.pack_id, g.id, 'GROUP' AS entry_kind,
+                    g.display_title AS title,
+                    COALESCE(g.group_popularity, (
+                        SELECT MAX(i.popularity) FROM media_group_member m
+                        JOIN media_item i ON i.pack_id=m.pack_id AND i.id=m.media_id
+                        WHERE m.pack_id=g.pack_id AND m.group_id=g.id
+                    )) AS popularity,
+                    COALESCE(g.group_popularity_rank, (
+                        SELECT MIN(i.popularity_rank) FROM media_group_member m
+                        JOIN media_item i ON i.pack_id=m.pack_id AND i.id=m.media_id
+                        WHERE m.pack_id=g.pack_id AND m.group_id=g.id
+                    )) AS popularity_rank
+                FROM media_group g WHERE g.pack_id = ?
+            )
+            SELECT pack_id, id, entry_kind, NULL AS final_score,
+                NULL AS quality_score, NULL AS additive_score,
+                NULL AS category_score, 0 AS member_count,
+                0 AS rated_count, 0 AS has_explicit_score
+            FROM visible
+            ORDER BY ${catalogOrder(CatalogSortOrder.POPULARITY)},
+                pack_id ASC, entry_kind ASC, id ASC
+            LIMIT ? OFFSET ?
+        """.trimIndent()
+        return SimpleSQLiteQuery(sql, arrayOf<Any>(manifest.packId.value, manifest.packId.value, limit, offset))
+    }
+
     fun ranking(
         manifest: PackManifest,
         state: RankingUiState,

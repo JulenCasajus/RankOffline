@@ -6,6 +6,9 @@
   <string name='ranking_title'>MeinRanking</string>
   <string name='no_saved_ratings'>Noch keine Bewertungen gespeichert.</string>
   <string name='sort_popularity'>Beliebtheit</string>
+  <string name='sort_direction_ascending'>Aufsteigend</string>
+  <string name='sort_direction_descending'>Absteigend</string>
+  <string name='sort_direction_accessibility'>Aktuelle Reihenfolge: %1$s. Tippen, um zu %2$s zu wechseln.</string>
   <string name='cover_download'>Cover herunterladen</string>
   <string name='cover_delete'>Cover löschen</string>
   <string name='cover_delete_title'>Dieses Cover löschen?</string>
@@ -221,12 +224,13 @@
     <item quantity='other'>%1$d Pakete installiert</item>
   </plurals>
   <string name='category_phase_downloading'>Wird heruntergeladen…</string>
+  <string name='category_phase_downloading_progress'>Wird heruntergeladen… %1$.2f/%2$.2f MB</string>
   <string name='category_phase_waiting_download'>Warten auf Download…</string>
   <string name='category_phase_verifying'>Paket wird geprüft…</string>
   <string name='category_phase_installing'>Wird installiert…</string>
   <string name='category_phase_waiting_import'>Warten auf Import…</string>
   <string name='category_phase_waiting_covers'>Warten auf Cover…</string>
-  <string name='category_phase_importing_catalog'>Katalog wird importiert…</string>
+  <string name='category_phase_importing_catalog'>Katalog wird importiert… Das kann etwas dauern.</string>
   <string name='category_phase_downloading_covers'>Cover werden heruntergeladen: %1$d / %2$d</string>
   <string name='category_deleting'>Wird gelöscht…</string>
   <string name='category_phase_finalizing'>Wird abgeschlossen…</string>
@@ -272,4 +276,5 @@
   <string name='ranking_share_show_images'>Bilder anzeigen</string>
   <string name='ranking_share_failed'>Das Ranglistenbild konnte nicht erstellt werden.</string>
   <string name='ranking_share_empty'>Bewerte mindestens einen Eintrag, um ein Ranglistenbild zu erstellen.</string>
+  <string name="covers_batch_outcomes">%1$d heruntergeladen · %2$d nicht gefunden · %3$d Fehler</string>
 </resources>

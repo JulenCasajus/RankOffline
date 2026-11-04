@@ -168,9 +168,9 @@ Las agrupaciones pertenecen al paquete y usan IDs estables. Una obra puede perte
 
 ### 4.5 Proveedores, referencias de portadas y redes
 
-**[EXISTENTE v1]** `coverSources` incluye `id`, `providerId`, `urlTemplates`, `allowedHosts` y campos de atribución. Las URLs de portada son plantillas HTTPS con variables controladas (`{reference}` y `{providerId}`), y hosts permitidos.
+**[IMPLEMENTADO v0.2.2]** `coverSources` incluye `id`, `sourceId`, `providerId`, `urlTemplates`, `allowedHosts` y un `metadataRequest` opcional. Cada fuente declara exactamente plantillas directas o una consulta de metadatos. `sourceId` referencia `attribution.sources`.
 
-**[PROPUESTO v2]** Los `coverSources` apuntarán con `sourceId` a una fuente declarada en `attribution.sources`, evitando repetir el nombre o enlace legal en dos lugares. La descarga de portadas debe someterse a límites, validación del destino y coordinación de red; los metadatos remotos **nunca permiten ejecutar peticiones arbitrarias**.
+Las plantillas directas admiten únicamente `{reference}` y `{providerId}` sobre un host HTTPS fijo. Un `metadataRequest` está limitado a `GET` o `POST_JSON`, URL HTTPS de host fijo, cuerpo JSON acotado, clave numérica de referencia, rutas JSON ordenadas para localizar la imagen e intervalo entre peticiones. Las URLs resultantes siguen limitadas por `allowedHosts` y por el descargador común; el paquete no aporta código ni cabeceras arbitrarias.
 
 **[PENDIENTE]** Política definitiva de redirecciones, IP privadas/DNS rebinding, tamaños, tipos MIME, número de imágenes, caché y renovación de fuentes. Descargar o mostrar una portada no significa que el APK pueda atribuirse su licencia.
 
@@ -293,7 +293,7 @@ Ejemplo de línea JSONL (aquí formateado en varias líneas para legibilidad):
 - El manifiesto debe validar estructura, IDs, cardinalidad, rangos y opciones declaradas. El importador rechaza atributos desconocidos, tipos erróneos, duplicados o datos desmesurados. `integer` se limita al rango de enteros representables exactamente por `Double` mientras Room almacene `value_number` como `Double?`.
 - `aliases` sustituye la necesidad de columnas como `originalTitle`; los restantes metadatos de contenido (año, formato, autor, estudio, género, etc.) son **atributos definidos por el paquete**.
 - La integridad SHA-256, tamaño y versión del catálogo se declaran en el **manifiesto principal del `.pack`**, no en un `MediaCatalogManifest` duplicado.
-- `remoteCoverRef` es una referencia opaca, **no una URL arbitraria que se deba visitar**. **PENDIENTE:** definir cómo identifica cada obra su `coverSourceId` cuando el paquete declara varias fuentes de portadas, y adaptar Room si hace falta.
+- `remoteCoverRef` es una referencia opaca, **no una URL arbitraria que se deba visitar**. Una referencia directa usa una única fuente por `provider`, o la forma JSON estructurada con `sourceId`. Las consultas declarativas usan `cover:v1|clave=id` y se prueban en el orden de `coverSources`; no requieren otra columna Room.
 - **NO IMPLEMENTADO END-TO-END:** el `MediaCatalogFormat.kt` v2 ha sido redactado, pero `PackArchitecture.kt`, los importadores, DAOs, la herramienta de construcción de packs y las pruebas siguen sin migrarse.
 
 ## 6. Registro remoto de paquetes [DECIDIDO como arquitectura; contrato PENDIENTE]
@@ -353,7 +353,7 @@ Los cinco paquetes oficiales iniciales serán entradas normales del registro. Un
 | P-08 | Reglas de compatibilidad ante campos desconocidos | **PENDIENTE** | Rechazar o degradar de forma documentada. |
 | P-09 | Política de retención y atribución de portadas conservadas sin `.pack` | **PENDIENTE** | Conservar atribución si se mantiene material protegido; no perder datos personales. |
 | P-10 | Reglas de publicación para proveedores que exigen logo/avisos específicos | **PENDIENTE** | No deducir cumplimiento legal solo de la presencia de `logoPath`. |
-| P-11 | Relación de `remoteCoverRef` con múltiples `coverSources` | **PENDIENTE** | Definir `coverSourceId` por registro y persistencia si corresponde. |
+| P-11 | Relación de `remoteCoverRef` con múltiples `coverSources` | **RESUELTO v0.2.2** | JSON estructurado para fuente directa; `cover:v1|clave=id` y orden del manifiesto para metadatos. |
 
 ## 10. Plan de integración por componentes
 

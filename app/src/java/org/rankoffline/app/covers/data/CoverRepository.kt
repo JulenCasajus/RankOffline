@@ -5,6 +5,8 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -79,9 +81,9 @@ class CoverRepository(
 }
 
 /** Used only by explicit Top-X jobs, never by list rendering or app startup.
- * Each candidate source is counted once, so shared group representatives do not
- * consume multiple slots. A missing cover may still fail to download: X is the
- * number of distinct images ATTEMPTED, not a guarantee of X successful files. */
+ * Each visible entry/group is counted once; no expensive fallback lookup is
+ * needed before downloads start. Missing sources count as NOT_FOUND, while
+ * retryable failures count only after all attempts are exhausted. */
 internal suspend fun <T> collectDistinctCoverKeys(
     limit: Int,
     pageSize: Int = 250,
@@ -92,9 +94,11 @@ internal suspend fun <T> collectDistinctCoverKeys(
     val distinct = LinkedHashSet<CatalogEntryKey>(limit)
     var offset = 0
     while (distinct.size < limit) {
+        currentCoroutineContext().ensureActive()
         val count = minOf(pageSize, Int.MAX_VALUE - offset)
         if (count == 0) break
         val rows = loadPage(offset, count)
+        currentCoroutineContext().ensureActive()
         if (rows.isEmpty()) break
         val keys = sourceKeys(rows)
         require(keys.size == rows.size) { "Cover source selection must preserve ordering" }

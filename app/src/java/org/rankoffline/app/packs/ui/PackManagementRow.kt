@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,7 +49,11 @@ private fun packStatusText(state: PackState): String {
     val progress = state.progress
     return when (progress?.phase) {
         PackInstallPhase.QUEUED -> stringResource(R.string.category_phase_waiting_download)
-        PackInstallPhase.DOWNLOADING -> stringResource(R.string.category_phase_downloading)
+        PackInstallPhase.DOWNLOADING -> stringResource(
+            R.string.category_phase_downloading_progress,
+            progress.downloadedBytes / 1_000_000.0,
+            progress.totalDownloadBytes / 1_000_000.0
+        )
         PackInstallPhase.VERIFYING -> stringResource(R.string.category_phase_verifying)
         PackInstallPhase.INSTALLING -> stringResource(R.string.category_phase_installing)
         PackInstallPhase.WAITING_IMPORT -> stringResource(R.string.category_phase_waiting_import)
@@ -57,11 +62,14 @@ private fun packStatusText(state: PackState): String {
         PackInstallPhase.WAITING_COVERS -> stringResource(R.string.category_phase_waiting_covers)
         PackInstallPhase.DOWNLOADING_COVERS -> stringResource(
             R.string.category_phase_downloading_covers,
-            progress.coverAvailable,
+            progress.coverProcessed,
             progress.coverTarget
         )
         null -> when (state.status) {
-            PackRuntimeStatus.READY -> stringResource(R.string.category_downloaded)
+            PackRuntimeStatus.READY -> stringResource(R.string.category_downloaded) +
+                if (state.storage.current) {
+                    " · " + Formatter.formatFileSize(LocalContext.current, state.storage.installedBytes)
+                } else ""
             PackRuntimeStatus.FILES_INSTALLED,
             PackRuntimeStatus.INITIALIZING -> stringResource(R.string.category_phase_waiting_import)
             PackRuntimeStatus.DELETING -> stringResource(R.string.category_deleting)
@@ -103,6 +111,15 @@ internal fun PackManagementRow(
                         text = packStatusText(state), fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    state.progress?.takeIf { it.phase == PackInstallPhase.DOWNLOADING_COVERS }
+                        ?.let { progress ->
+                            Text(
+                                text = stringResource(R.string.covers_batch_outcomes,
+                                    progress.coverDownloaded, progress.coverNotFound, progress.coverErrors),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     if (state.archiveDownloadBytes != null && !state.installed && state.progress == null) {
                         Text(
                             text = stringResource(
@@ -123,7 +140,8 @@ internal fun PackManagementRow(
                         if (expanded && !state.storage.current) onRequestStorageDetails()
                     }) {
                         Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = stringResource(R.string.pack_storage_details))
+                            contentDescription = stringResource(R.string.pack_storage_details),
+                            modifier = Modifier.offset(x = 6.dp))
                     }
                 }
                 when {
@@ -158,7 +176,7 @@ internal fun PackManagementRow(
                     PackInstallPhase.DOWNLOADING_COVERS -> LinearProgressIndicator(
                         progress = {
                             if (progress.coverTarget <= 0) 0f
-                            else (progress.coverAvailable.toFloat() / progress.coverTarget).coerceIn(0f, 1f)
+                            else (progress.coverProcessed.toFloat() / progress.coverTarget).coerceIn(0f, 1f)
                         },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = accent
                     )

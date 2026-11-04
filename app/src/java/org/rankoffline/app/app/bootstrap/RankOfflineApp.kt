@@ -28,10 +28,15 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val searchState by viewModel.activeSearchState.collectAsState()
     val rankingState by viewModel.activeRankingState.collectAsState()
     val filtersByPack by viewModel.filterOptions.collectAsState()
-    val combinedOptions = remember(filtersByPack, scope) {
+    val readyManifests = remember(packs) {
+        packs.values.filter { it.available }.mapNotNull { it.manifest }
+    }
+    val combinedOptions = remember(filtersByPack, scope, readyManifests) {
         when (val currentScope = scope) {
             is ViewingScope.Pack -> filtersByPack[currentScope.packId].orEmpty()
-            ViewingScope.All -> filtersByPack.values.flatMap { it.entries }
+            ViewingScope.All -> readyManifests.flatMap { manifest ->
+                filtersByPack[manifest.packId].orEmpty().entries
+            }
                 .groupBy({ it.key }, { it.value })
                 .mapValues { (_, lists) -> lists.flatten().distinct() }
         }
@@ -41,7 +46,6 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val snackbar = remember { SnackbarHostState() }
     var tab by rememberSaveable { mutableStateOf<AppTab?>(null) }
     val activeTab = tab ?: settings.lastTab
-    val readyManifests = remember(packs) { packs.values.filter { it.available }.mapNotNull { it.manifest } }
     val activePackId = (scope as? ViewingScope.Pack)?.packId
     val activeManifest = activePackId?.let { id -> readyManifests.firstOrNull { it.packId == id } }
     val allSelected = scope == ViewingScope.All

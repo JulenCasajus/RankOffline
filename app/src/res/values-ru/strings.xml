@@ -6,6 +6,9 @@
   <string name='ranking_title'>МойРейтинг</string>
   <string name='no_saved_ratings'>Сохранённых оценок пока нет.</string>
   <string name='sort_popularity'>Популярность</string>
+  <string name='sort_direction_ascending'>По возрастанию</string>
+  <string name='sort_direction_descending'>По убыванию</string>
+  <string name='sort_direction_accessibility'>Текущий порядок: %1$s. Нажмите, чтобы изменить на %2$s.</string>
   <string name='cover_download'>Скачать обложку</string>
   <string name='cover_delete'>Удалить обложку</string>
   <string name='cover_delete_title'>Удалить эту обложку?</string>
@@ -215,12 +218,13 @@
     <item quantity='other'>Установлено %1$d пакета</item>
   </plurals>
   <string name='category_phase_downloading'>Загрузка…</string>
+  <string name='category_phase_downloading_progress'>Загрузка… %1$.2f/%2$.2f МБ</string>
   <string name='category_phase_waiting_download'>Ожидание загрузки…</string>
   <string name='category_phase_verifying'>Проверка пакета…</string>
   <string name='category_phase_installing'>Установка…</string>
   <string name='category_phase_waiting_import'>Ожидание импорта…</string>
   <string name='category_phase_waiting_covers'>Ожидание обложек…</string>
-  <string name='category_phase_importing_catalog'>Импорт каталога…</string>
+  <string name='category_phase_importing_catalog'>Импорт каталога… Это может занять некоторое время.</string>
   <string name='category_phase_downloading_covers'>Загрузка обложек: %1$d / %2$d</string>
   <string name='category_deleting'>Удаление…</string>
   <string name='category_phase_finalizing'>Завершение…</string>
@@ -263,4 +267,5 @@
   <string name='ranking_share_show_images'>Показывать изображения</string>
   <string name='ranking_share_failed'>Не удалось создать изображение рейтинга.</string>
   <string name='ranking_share_empty'>Оцените хотя бы один элемент, чтобы создать изображение рейтинга.</string>
+  <string name="covers_batch_outcomes">%1$d загружено · %2$d не найдено · %3$d ошибок</string>
 </resources>

@@ -59,6 +59,14 @@ interface ItemCoverDao {
         LIMIT :limit""")
     suspend fun topPopularCoverItems(packId: Long, limit: Int): List<MediaItemEntity>
 
+    /** Paged lightweight top-cover selection; avoids the full catalog/group projection. */
+    @Query("""SELECT * FROM media_item WHERE pack_id = :packId
+        ORDER BY CASE WHEN popularity_rank IS NULL AND popularity IS NULL THEN 1 ELSE 0 END,
+          CASE WHEN popularity_rank IS NULL THEN 1 ELSE 0 END,
+          popularity_rank ASC, popularity DESC, title COLLATE NOCASE ASC, id ASC
+        LIMIT :limit OFFSET :offset""")
+    suspend fun topPopularCoverItemsPage(packId: Long, limit: Int, offset: Int): List<MediaItemEntity>
+
 
     @Query("SELECT COUNT(*) FROM media_item WHERE pack_id = :packId AND cover_resolution_state = 'NOT_FOUND'")
     suspend fun notFoundCoverCount(packId: Long): Long

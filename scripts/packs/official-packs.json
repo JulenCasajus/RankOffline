@@ -95,14 +95,14 @@
       "packId": 1,
       "fileName": "pack-1.pack",
       "displayName": "Animes",
-      "version": "anime-69005e06b4a92ee6caa4c57efcb5951086a2ffaa6b8ade997276f301908b6223-v2",
+      "version": "anime-69005e06b4a92ee6caa4c57efcb5951086a2ffaa6b8ade997276f301908b6223-v4",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Anime-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Animes", "de": "Anime", "es": "Animes", "eu": "Animeak", "fr": "Anime", "it": "Anime", "ja": "アニメ", "ru": "Аниме", "zh-CN": "动漫"},
         "accentColor": "#1976D2"
       },
-      "capabilities": {"covers": false},
-      "defaults": {"showImages": false},
+      "capabilities": {"covers": true},
+      "defaults": {"showImages": true},
       "fieldIds": [
         "source_media_type", "year", "start_date", "format", "status", "original_language", "genre", "studio",
         "legacy_cover_reference", "source_alias_overflow_1", "source_alias_overflow_2", "source_alias_overflow_3",
@@ -116,20 +116,56 @@
       ],
       "subtitle": ["genre", "format", "year", "studio"],
       "merge": {"enabled": true, "strategy": "RELATION_GRAPH", "groupType": "relations", "labels": {"en": "Relations"}},
-      "coverSources": [],
+      "coverSources": [
+        {
+          "id": "anilist_metadata",
+          "sourceId": "anilist",
+          "providerId": "anime_offline_database",
+          "urlTemplates": [],
+          "metadataRequest": {
+            "referenceKey": "anilist",
+            "method": "POST_JSON",
+            "urlTemplate": "https://graphql.anilist.co",
+            "bodyTemplate": "{\"query\":\"query ($id: Int) { Media(id: $id, type: ANIME) { coverImage { extraLarge large medium } } }\",\"variables\":{\"id\":{reference}}}",
+            "imageJsonPaths": ["data.Media.coverImage.extraLarge", "data.Media.coverImage.large", "data.Media.coverImage.medium"],
+            "requestIntervalMillis": 2100
+          },
+          "allowedHosts": [
+            "s1.anilist.co", "s2.anilist.co", "s3.anilist.co",
+            "s4.anilist.co", "s5.anilist.co", "s6.anilist.co",
+            "s7.anilist.co", "s8.anilist.co", "s9.anilist.co",
+            "cdn.anilist.co"
+          ]
+        },
+        {
+          "id": "jikan_metadata",
+          "sourceId": "jikan",
+          "providerId": "anime_offline_database",
+          "urlTemplates": [],
+          "metadataRequest": {
+            "referenceKey": "mal",
+            "method": "GET",
+            "urlTemplate": "https://api.jikan.moe/v4/anime/{reference}",
+            "imageJsonPaths": ["data.images.jpg.large_image_url", "data.images.jpg.image_url"],
+            "requestIntervalMillis": 1100
+          },
+          "allowedHosts": ["cdn.myanimelist.net"]
+        }
+      ],
       "attribution": {
         "publisher": {"name": "RankOffline official pack"},
         "sources": [
           {"id": "animeapi", "name": "AnimeAPI", "url": "https://github.com/nattadasu/animeApi", "notices": ["AnimeAPI supplies the catalog foundation and provider mapping."]},
           {"id": "anime_offline_database", "name": "anime-offline-database", "url": "https://github.com/cedya77/anime-offline-database", "notices": ["Supplies alternative titles; derived from the manami-project database lineage."]},
-          {"id": "anilist", "name": "AniList", "url": "https://anilist.co", "notices": ["Supplies selected metadata, popularity and explicit relations. Attribution does not imply endorsement."]}
+          {"id": "anilist", "name": "AniList", "url": "https://anilist.co", "notices": ["Supplies selected metadata, popularity and explicit relations. Attribution does not imply endorsement."]},
+          {"id": "jikan", "name": "Jikan API", "url": "https://jikan.moe", "notices": ["Fallback metadata service for MyAnimeList image references."]}
         ],
         "licences": [
           {"id": "odbl_1_0", "name": "Open Database License 1.0", "url": "https://opendatacommons.org/licenses/odbl/1-0/"},
           {"id": "dbcl_1_0", "name": "Database Contents License 1.0", "url": "https://opendatacommons.org/licenses/dbcl/1-0/"}
         ],
         "datasets": [
-          {"name": "RankOffline Anime catalog snapshot", "sourceIds": ["animeapi", "anime_offline_database", "anilist"], "licenceIds": ["odbl_1_0", "dbcl_1_0"], "notices": ["The legacy metadata-based cover resolver is not part of the universal v0.2.2 engine; original references are retained as data only."]}
+          {"name": "RankOffline Anime catalog snapshot", "sourceIds": ["animeapi", "anime_offline_database", "anilist", "jikan"], "licenceIds": ["odbl_1_0", "dbcl_1_0"], "notices": ["Optional cover downloads resolve legacy AniList / MyAnimeList identifiers via pack-declared AniList and Jikan metadata endpoints."]}
         ],
         "notices": ["Provider terms and data provenance require review before public distribution."],
         "legalFiles": []
@@ -139,7 +175,8 @@
         "groupsPath": "groups/anime_groups.jsonl.gzip",
         "catalogTarget": "catalog/items.jsonl.gz",
         "groupsTarget": "groups/groups.jsonl.gz",
-        "coverReferenceMode": "preserve_as_legacy_attribute",
+        "coverReferenceMode": "replace_prefix",
+        "coverReferencePrefixReplacement": {"from": "anime:v1|", "to": "cover:v1|"},
         "groupType": "relations",
         "idReplacements": {"+": "-", "~": "", "!": "", "(": "", ")": "", ",": ""},
         "sourceMetadata": {

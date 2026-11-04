@@ -1,57 +1,41 @@
-# Declarative Anime cover proposal
+# Declarative Anime cover sources
 
-## Current evidence
+## Implemented v0.2.2 contract
 
-The Anime source contains 32,209 legacy references such as
-`anime:v1|anilist=142051|mal=51478`: 30,741 include a MAL identity and 22,557
-include an AniList identity. These values are identifiers, not image URLs or
-stable CDN paths. The current universal resolver intentionally performs no
-provider API lookup; it accepts only manifest templates or a structured cover
-reference containing already resolved HTTPS URLs.
+The recovered Anime catalog contains 32,209 remote references. Generation
+converts their historical `anime:v1|...` prefix to the generic, versioned form
+`cover:v1|anilist=142051|mal=51478`; IDs and relations are otherwise unchanged.
 
-Consequently, neither an AniList nor a MAL image URL can be derived safely from
-the current catalog alone. Reintroducing the old provider-specific resolver in
-the APK would violate the universal-engine boundary and is not proposed.
+The APK contains no Anime, AniList or Jikan branch. Each metadata lookup is a
+strict `coverSources[].metadataRequest` recipe declared by the pack:
 
-## Proposed data-only solution
+- a reference key present in `cover:v1` data;
+- `GET` or `POST_JSON`, one fixed HTTPS host and a bounded body template;
+- ordered JSON paths from which image URLs may be read;
+- a request interval and an explicit allow-list of image hosts.
 
-Resolve cover URLs at pack-generation time from a separate, versioned mapping
-input whose provenance and redistribution terms have been reviewed. The Anime
-adapter would translate each available mapping into the existing structured
-reference syntax:
+The official Anime pack declares AniList first and Jikan second. RankOffline
+resolves one recipe at a time, downloads the returned image through the normal
+secure cover downloader, and uses Jikan only when the AniList route does not
+produce a usable image. HTTP 401/403/408/425/429 and server failures remain
+retryable; 404/410 is a missing candidate, not a network error. Cancellation,
+image-size/type validation and the three download passes are shared with every
+other pack.
 
-```json
-{
-  "schemaVersion": 1,
-  "sourceId": "anime_cover_mapping",
-  "identity": "mal:51478",
-  "urls": ["https://approved-image-host.example/path/image.jpg"]
-}
-```
+AniList is conservatively spaced at 2.1 seconds while its documented degraded
+limit is 30 requests/minute. Jikan is spaced at 1.1 seconds, below its published
+60 requests/minute limit. `Retry-After` can extend the delay. These are external
+policies and must be reviewed before a public release.
 
-The manifest would declare `anime_cover_mapping` in `coverSources`, constrain
-every URL with an explicit HTTPS `allowedHosts` list, connect it to an
-`attribution.sources` entry and enable the existing `covers` capability. The
-runtime then uses `DeclarativePackCoverProvider` unchanged. The mapping input,
-its retrieval tool and its cache stay in the pack-building layer, never in the
-APK.
+## Security boundaries
 
-## Acceptance requirements before implementation
+The manifest parser and independent Python validator reject dynamic hosts,
+cleartext URLs, unsupported placeholders/methods, malformed JSON bodies,
+unbounded response paths and undeclared image hosts. Responses are limited to
+64 KiB. The recipe cannot add headers, execute code, choose filesystem paths or
+bypass the existing image downloader.
 
-1. Select an authoritative source that supplies direct, stable image URLs or a
-   redistributable URL mapping for both current and future catalog snapshots.
-2. Record provider terms, attribution, rate limits, snapshot date and mapping
-   checksum; verify that storing/distributing URLs is permitted.
-3. Use only the hosts explicitly declared in the pack and reject redirects to
-   other hosts through the existing downloader policy.
-4. Preserve item IDs and group relations; missing mappings remain missing
-   covers rather than being matched approximately by title.
-5. Prefer one physical downloaded image per logical source. Group fallback
-   continues to borrow the representative image without copying it.
-6. Validate a deliberately malformed host, URL, identity and oversized
-   fallback list with both Python and Kotlin validators.
-7. Compare mapping coverage and failed-download rate before enabling
-   `capabilities.covers` for the official Anime pack.
-
-No mapping provider has been approved and no Anime cover behavior is changed in
-v0.2.2 by this document.
+The package still requires real-device/emulator checks for provider outages,
+rate limiting, cancellation latency and image-host redirects. Provider terms
+and redistribution/attribution wording also require owner review before public
+distribution.

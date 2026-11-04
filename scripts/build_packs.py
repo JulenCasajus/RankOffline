@@ -92,7 +92,29 @@ def main() -> int:
             "archiveUrl": None,
             "manifest": built["manifest"],
         })
-    if len(configs) == 5:
+    if args.pack and (output / "pack-index.json").is_file():
+        existing = json.loads((output / "pack-index.json").read_text(encoding="utf-8"))
+        if set(existing) != {"schemaVersion", "generatedBy", "packs"} or existing["schemaVersion"] != 1:
+            raise ValueError("Existing pack index cannot be updated safely")
+        replacements = {entry["packId"]: entry for entry in index_entries}
+        merged = []
+        for entry in existing["packs"]:
+            pack_id = entry["packId"]
+            if pack_id in replacements:
+                merged.append(replacements.pop(pack_id))
+                continue
+            archive = output / entry["fileName"]
+            validation = validate_pack(archive, expected_pack_id=pack_id)
+            if (validation["archiveBytes"] != entry["archiveBytes"] or
+                    validation["archiveSha256"] != entry["archiveSha256"] or
+                    validation["version"] != entry["version"]):
+                raise ValueError(f"Existing pack index is stale for {entry['fileName']}")
+            validations.append(validation)
+            merged.append(entry)
+        if replacements:
+            raise ValueError("Selected pack is missing from the existing index")
+        index_entries = sorted(merged, key=lambda entry: entry["packId"])
+    if len(index_entries) == 5:
         (output / "pack-index.json").write_bytes(canonical_json({
             "schemaVersion": 1,
             "generatedBy": "RankOffline schema-2 pack tools",
@@ -102,7 +124,7 @@ def main() -> int:
         "schemaVersion": 1,
         "kotlinContractValidation": "pending",
         "validator": "python-schema2-contract",
-        "packs": validations,
+        "packs": sorted(validations, key=lambda entry: entry["packId"]),
         "conversions": [entry["conversion"] for entry in builds],
     }, newline=True))
     return 0

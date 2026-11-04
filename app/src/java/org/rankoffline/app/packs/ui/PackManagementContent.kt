@@ -1,5 +1,6 @@
 package org.rankoffline.app
 
+import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -172,7 +175,17 @@ fun PackManagementContent(
     val entries = remember(packStates, effectiveLanguage) {
         packManagementEntries(packStates, effectiveLanguage)
     }
-    val installedCount = entries.count { it.state.installed }
+    val installed = entries.filter { it.state.installed }
+    val installedCount = installed.size
+    val measurableIds = installed.filter { it.state.progress == null }.map { it.packId }
+    LaunchedEffect(measurableIds) {
+        installed.filter { it.packId in measurableIds && !it.state.storage.current }
+            .forEach { onRequestStorageDetails(it.packId) }
+    }
+    val context = LocalContext.current
+    val totalSize = if (installed.all { it.state.storage.current }) {
+        Formatter.formatFileSize(context, installed.sumOf { it.state.storage.installedBytes })
+    } else "—"
     var pendingRemovalId by rememberSaveable { mutableStateOf<Long?>(null) }
     val pendingRemoval = entries.firstOrNull { it.packId.value == pendingRemovalId }
 
@@ -191,7 +204,7 @@ fun PackManagementContent(
                     Text(
                         pluralStringResource(
                             R.plurals.categories_packs_installed, installedCount, installedCount
-                        ),
+                        ) + " · " + totalSize,
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

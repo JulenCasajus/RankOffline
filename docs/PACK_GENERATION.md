@@ -106,14 +106,14 @@ performs these explicit operations:
 - 13 Anime source IDs containing characters forbidden by the runtime regex are
   deterministically canonicalized, with every old/new pair recorded inside
   `metadata/conversion-report.json`;
-- the old Anime `anime:v1|...` references required provider-specific API code
-  removed from the universal engine. They are preserved in
-  `legacy_cover_reference`, while Anime cover capability is disabled. No direct
-  image URLs are invented.
+- old Anime `anime:v1|...` references are converted without changing their IDs
+  to generic `cover:v1|...` references. The pack declares ordered, bounded
+  AniList/Jikan `metadataRequest` recipes; the universal engine contains no
+  provider- or category-specific branch;
 
-The last two points are functional limitations, not hidden compatibility. Full
-Anime covers and search/filter semantics for overflow values require either
-new provider-approved direct source data or an explicit future engine contract.
+Overflow values remain audit data rather than extra searchable/filterable
+values. Anime cover availability depends on the two external services and is
+therefore verified separately from deterministic package generation.
 
 ## Validation levels
 
@@ -147,8 +147,8 @@ Before attaching these files to an APK debug release on GitHub, the owner must:
 
 - complete the Kotlin/emulator validation above;
 - review current provider/dataset/logo terms and all attribution wording;
-- decide whether Anime's disabled cover capability is acceptable or replace its
-  legacy references with approved direct image references;
+- review the Anime pack's declarative AniList/Jikan use, current provider terms,
+  fallback behavior and rate-limit settings;
 - publish the exact immutable files, then insert their real HTTPS URLs into a
   distribution index without changing bytes/hashes;
 - verify GitHub release filenames, byte counts and SHA-256 after upload;

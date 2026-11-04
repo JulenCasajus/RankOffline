@@ -76,7 +76,7 @@ data class CoverDownloadProgress(
 
     /** Counts only verified local files, not attempts or failed downloads. */
     val available: Int get() = (existing.toLong() + downloaded).coerceIn(0L, target.coerceAtLeast(0).toLong()).toInt()
-    val fraction: Float get() = if (target <= 0) 0f else available.toFloat() / target
+    val fraction: Float get() = if (target <= 0) 0f else (processed.toFloat() / target).coerceIn(0f, 1f)
 }
 
 fun CoverDownloadProgress.shouldClearAfterLeavingSettings(): Boolean = status.isTerminal

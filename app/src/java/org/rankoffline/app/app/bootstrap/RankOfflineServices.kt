@@ -200,8 +200,10 @@ internal class RankOfflineServices private constructor(
     ): LocalPackSummary? = packManager.refreshSummary(packId, fields)
 
     /** Explicitly cancel optional initial cover Work. Cancellation is not remembered. */
-    suspend fun cancelInitialCoverDownloads(packId: PackId) =
+    suspend fun cancelInitialCoverDownloads(packId: PackId) {
         PackWorkScheduler.cancelInitialCovers(appContext, packId)
+        packManager.clearCancelledInitialCoverProgress(packId)
+    }
 
     /** Fetch trusted network metadata on explicit discovery or on worker INSTALL, not every cold start. */
     suspend fun refreshAvailablePacks() {
@@ -237,9 +239,8 @@ internal class RankOfflineServices private constructor(
         val defaultMerge = state.manifest?.defaults?.mergeEnabled == true
         val result = packManager.acquireInitialCovers(packId, INITIAL_COVER_COUNT) { update ->
             coverDownloadsManager.downloadTop(packId, INITIAL_COVER_COUNT,
-                mergeEnabled = defaultMerge, useGroupCoversForItems = false) { value ->
-                update(value.existing + value.downloaded, value.target)
-            }
+                mergeEnabled = defaultMerge, useGroupCoversForItems = false,
+                onProgress = update)
         }
         // Nonfatal image failures do NOT fail an otherwise valid installation or leave
         // a persisted PARTIAL/PENDING flag. User may request another download later.

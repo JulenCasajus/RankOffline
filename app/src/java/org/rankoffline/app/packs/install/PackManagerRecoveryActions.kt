@@ -86,19 +86,30 @@ suspend fun PackManager.delete(packId: PackId): Boolean = packLock(packId).withL
 suspend fun PackManager.acquireInitialCovers(
     packId: PackId,
     target: Int,
-    acquire: suspend (progress: (Int, Int) -> Unit) -> CoverDownloadProgress
+    acquire: suspend (progress: (CoverDownloadProgress) -> Unit) -> CoverDownloadProgress
 ): CoverDownloadProgress = packLock(packId).withLock {
     require(target in 1..5_000)
     check(installer.installedDirectory(packId) != null && runtime[packId] == PackRuntimeStatus.READY)
-    tracker.phase(packId, PackInstallPhase.DOWNLOADING_COVERS)
+    // Selection precedes any network transfer; never display a misleading 0/0.
+    tracker.phase(packId, PackInstallPhase.WAITING_COVERS)
     try {
-        acquire { ready, total -> tracker.covers(packId, ready, total) }
+        acquire { progress ->
+            if (progress.target > 0) tracker.phase(packId, PackInstallPhase.DOWNLOADING_COVERS)
+            tracker.covers(packId, progress)
+        }
     } finally {
         tracker.clear(packId)
         // Individual cover operations already invalidated their precise fields.
     }
 }
 
+
+/** Clear the temporary indicator after WorkManager accepts cancellation of initial covers. */
+internal fun PackManager.clearCancelledInitialCoverProgress(packId: PackId) {
+    if (tracker.progress.value[packId]?.phase in setOf(
+            PackInstallPhase.WAITING_COVERS, PackInstallPhase.DOWNLOADING_COVERS
+        )) tracker.clear(packId)
+}
 
 internal fun PackManager.discoverIds(): Set<PackId> = packRoot.listFiles().orEmpty().mapNotNull { file ->
     val value = when {

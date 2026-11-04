@@ -4,16 +4,15 @@ import java.io.File
 import java.io.IOException
 import java.net.ConnectException
 import java.net.HttpURLConnection
-import java.net.Inet4Address
-import java.net.Inet6Address
-import java.net.InetAddress
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.URI
 import java.net.UnknownHostException
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
@@ -21,9 +20,8 @@ enum class CoverTransferResult { DOWNLOADED, NOT_FOUND, NETWORK_ERROR, TEMPORARY
 
 internal fun coverTransferFailureForHttpStatus(status: Int): CoverTransferResult? = when {
     status in 200..299 -> null
-    status == 408 || status == 425 || status == 429 || status in 500..599 ->
-        CoverTransferResult.TEMPORARY_ERROR
-    else -> CoverTransferResult.NOT_FOUND
+    status == 404 || status == 410 -> CoverTransferResult.NOT_FOUND
+    else -> CoverTransferResult.TEMPORARY_ERROR
 }
 
 fun interface CoverDownloader {
@@ -40,16 +38,20 @@ class SecureCoverDownloader : CoverDownloader {
         withContext(Dispatchers.IO) {
             val host = remoteUri.host?.lowercase()
                 ?.takeIf { isSafeHttpsUri(remoteUri, setOf(it)) }
-                ?: return@withContext CoverTransferResult.NOT_FOUND
+                ?: return@withContext CoverTransferResult.TEMPORARY_ERROR
             var current = remoteUri
             var redirects = 0
             try {
                 while (true) {
                     currentCoroutineContext().ensureActive()
+                    val wait = retryAfterUntil.get() - System.currentTimeMillis()
+                    if (wait > 0L) delay(wait)
                     if (!isSafeHttpsUri(current, setOf(host))) {
-                        return@withContext CoverTransferResult.NOT_FOUND
+                        return@withContext CoverTransferResult.TEMPORARY_ERROR
                     }
-                    if (!isPublicHost(host)) return@withContext CoverTransferResult.NOT_FOUND
+                    if (!resolvesToPublicAddresses(host)) {
+                        return@withContext CoverTransferResult.TEMPORARY_ERROR
+                    }
 
                     val connection = (current.toURL().openConnection() as HttpURLConnection).apply {
                         instanceFollowRedirects = false
@@ -61,18 +63,26 @@ class SecureCoverDownloader : CoverDownloader {
                     try {
                         val status = connection.responseCode
                         if (status in REDIRECT_STATUSES) {
-                            if (redirects++ >= 3) return@withContext CoverTransferResult.NOT_FOUND
+                            if (redirects++ >= 3) return@withContext CoverTransferResult.TEMPORARY_ERROR
                             val location = connection.getHeaderField("Location")
-                                ?: return@withContext CoverTransferResult.NOT_FOUND
+                                ?: return@withContext CoverTransferResult.TEMPORARY_ERROR
                             current = runCatching { current.resolve(location) }.getOrNull()
-                                ?: return@withContext CoverTransferResult.NOT_FOUND
+                                ?: return@withContext CoverTransferResult.TEMPORARY_ERROR
                             continue
+                        }
+                        if (status == 429 || status == 503) {
+                            val delayMillis = retryAfterDelayMillis(
+                                connection.getHeaderField("Retry-After")
+                            ) ?: 2_000L
+                            retryAfterUntil.updateAndGet { previous ->
+                                maxOf(previous, System.currentTimeMillis() + delayMillis)
+                            }
                         }
                         coverTransferFailureForHttpStatus(status)?.let { return@withContext it }
                         val contentType = connection.contentType.orEmpty().substringBefore(';').trim()
                         if (!contentType.startsWith("image/", ignoreCase = true) ||
                             connection.contentLengthLong > CoverImageFiles.MAX_BYTES
-                        ) return@withContext CoverTransferResult.NOT_FOUND
+                        ) return@withContext CoverTransferResult.TEMPORARY_ERROR
 
                         connection.inputStream.use { input ->
                             destination.outputStream().buffered().use { output ->
@@ -84,7 +94,7 @@ class SecureCoverDownloader : CoverDownloader {
                                     if (read < 0) break
                                     total += read
                                     if (total > CoverImageFiles.MAX_BYTES) {
-                                        return@withContext CoverTransferResult.NOT_FOUND
+                                        return@withContext CoverTransferResult.TEMPORARY_ERROR
                                     }
                                     output.write(buffer, 0, read)
                                 }
@@ -107,34 +117,8 @@ class SecureCoverDownloader : CoverDownloader {
             }
         }
 
-    private fun isPublicHost(host: String): Boolean =
-        InetAddress.getAllByName(host).takeIf { it.isNotEmpty() }?.all { address ->
-            !address.isAnyLocalAddress && !address.isLoopbackAddress &&
-                !address.isLinkLocalAddress && !address.isSiteLocalAddress &&
-                !address.isMulticastAddress && when (address) {
-                    is Inet4Address -> {
-                        val bytes = address.address.map { it.toInt() and 255 }
-                        val a = bytes[0]
-                        val b = bytes[1]
-                        a in 1..223 && !(a == 100 && b in 64..127) &&
-                            !(a == 192 && b == 0) && !(a == 198 && b in 18..19) &&
-                            !(a == 192 && b == 0 && bytes[2] == 2) &&
-                            !(a == 198 && b == 51 && bytes[2] == 100) &&
-                            !(a == 203 && b == 0 && bytes[2] == 113)
-                    }
-                    is Inet6Address -> {
-                        val bytes = address.address.map { it.toInt() and 255 }
-                        // Reject ULA, documentation, unassigned and transition addresses.
-                        !(bytes[0] and 0xfe == 0xfc) &&
-                            !(bytes[0] == 0x20 && bytes[1] == 0x01 &&
-                                bytes[2] == 0x0d && bytes[3] == 0xb8) &&
-                            bytes[0] in 0x20..0x3f
-                    }
-                    else -> false
-                }
-        } == true
-
     private companion object {
         val REDIRECT_STATUSES = setOf(301, 302, 303, 307, 308)
+        val retryAfterUntil = AtomicLong(0L)
     }
 }

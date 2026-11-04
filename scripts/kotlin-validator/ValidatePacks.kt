@@ -84,11 +84,11 @@ private fun validate(path: String): String {
 }
 
 private fun manifestPackId(path: String): PackId {
-    lateinit var packId: PackId
+    var packId: PackId? = null
     PackArchiveReader.withVerifiedArchive(File(path), null) { request, _ ->
         packId = PackManifestParser.parse(request.manifestJson).packId
     }
-    return packId
+    return requireNotNull(packId)
 }
 
 fun main(arguments: Array<String>) {

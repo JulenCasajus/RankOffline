@@ -15,8 +15,8 @@ while IFS= read -r -d '' file; do
 done < <(find "$kotlin_root" -type f -name '*.kt' -print0)
 
 count="$(find "$kotlin_root" -type f -name '*.kt' | wc -l | tr -d ' ')"
-if [[ "$count" != "197" ]]; then
-    printf 'Expected 197 Kotlin files across all source sets, found %s\n' "$count" >&2
+if [[ "$count" != "199" ]]; then
+    printf 'Expected 199 Kotlin files across all source sets, found %s\n' "$count" >&2
     failed=1
 fi
 

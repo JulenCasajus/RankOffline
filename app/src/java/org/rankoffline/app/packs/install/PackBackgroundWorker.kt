@@ -50,7 +50,7 @@ class PackBackgroundWorker(
                     .distinctUntilChangedBy { progress ->
                         Triple(progress?.phase,
                             ((progress?.downloadFraction ?: 0f) * 100f).toInt(),
-                            progress?.coverAvailable)
+                            progress?.coverDownloaded)
                     }
                     .collect { progress ->
                         if (progress == null) return@collect
@@ -58,7 +58,7 @@ class PackBackgroundWorker(
                             .putString("phase", progress.phase.name)
                             .putLong("completed", progress.downloadedBytes)
                             .putLong("total", progress.totalDownloadBytes)
-                            .putInt("cover_available", progress.coverAvailable)
+                            .putInt("cover_downloaded", progress.coverDownloaded)
                             .putInt("cover_target", progress.coverTarget)
                             .build())
                         setForeground(notification.create(packId, action, packName(), progress))

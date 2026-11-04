@@ -86,7 +86,18 @@ data class PackCoverSource(
     val sourceId: String,
     val providerId: String?,
     val urlTemplates: List<String>,
-    val allowedHosts: Set<String>
+    val allowedHosts: Set<String>,
+    /** Optional data-only metadata lookup; no provider or category logic lives in the APK. */
+    val metadataRequest: PackCoverMetadataRequest? = null
+)
+
+data class PackCoverMetadataRequest(
+    val referenceKey: String,
+    val method: String,
+    val urlTemplate: String,
+    val bodyTemplate: String?,
+    val imageJsonPaths: List<String>,
+    val requestIntervalMillis: Long
 )
 
 data class PackCapabilities(

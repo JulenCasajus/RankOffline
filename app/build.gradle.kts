@@ -103,6 +103,9 @@ android {
                 add("src/resources")
             }
         }
+        getByName("test") {
+            kotlin.directories.add("test/java")
+        }
     }
 
     compileOptions {
@@ -154,5 +157,6 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    testImplementation(libs.junit)
     ksp(libs.androidx.room.compiler)
 }

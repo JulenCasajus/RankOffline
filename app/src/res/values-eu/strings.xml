@@ -6,6 +6,9 @@
   <string name='ranking_title'>NireRankinga</string>
   <string name='no_saved_ratings'>Oraindik ez dago gordetako baloraziorik.</string>
   <string name='sort_popularity'>Ospea</string>
+  <string name='sort_direction_ascending'>Goranzkoa</string>
+  <string name='sort_direction_descending'>Beheranzkoa</string>
+  <string name='sort_direction_accessibility'>Uneko ordena: %1$s. Sakatu %2$s ordenara aldatzeko.</string>
   <string name='cover_download'>Deskargatu azala</string>
   <string name='cover_delete'>Ezabatu azala</string>
   <string name='cover_delete_title'>Azal hau ezabatu?</string>
@@ -221,12 +224,13 @@
     <item quantity='other'>%1$d pakete instalatuta</item>
   </plurals>
   <string name='category_phase_downloading'>Deskargatzen…</string>
+  <string name='category_phase_downloading_progress'>Deskargatzen… %1$.2f/%2$.2f MB</string>
   <string name='category_phase_waiting_download'>Deskargatzeko zain…</string>
   <string name='category_phase_verifying'>Packa egiaztatzen…</string>
   <string name='category_phase_installing'>Instalatzen…</string>
   <string name='category_phase_waiting_import'>Inportatzeko zain…</string>
   <string name='category_phase_waiting_covers'>Azalen zain…</string>
-  <string name='category_phase_importing_catalog'>Katalogoa inportatzen…</string>
+  <string name='category_phase_importing_catalog'>Katalogoa inportatzen… Baliteke pixka bat luzatzea.</string>
   <string name='category_phase_downloading_covers'>Azalak deskargatzen: %1$d / %2$d</string>
   <string name='category_deleting'>Ezabatzen…</string>
   <string name='category_phase_finalizing'>Amaitzen…</string>
@@ -272,4 +276,5 @@
   <string name='ranking_share_show_images'>Erakutsi irudiak</string>
   <string name='ranking_share_failed'>Ezin izan da rankingaren irudia sortu.</string>
   <string name='ranking_share_empty'>Baloratu gutxienez elementu bat rankingaren irudia sortzeko.</string>
+  <string name="covers_batch_outcomes">%1$d deskargatuta · %2$d aurkitu gabe · %3$d errore</string>
 </resources>

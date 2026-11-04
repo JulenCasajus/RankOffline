@@ -62,18 +62,30 @@ internal object CatalogPayloadReader {
                 }
                 onLine(text, lineNumber)
             }
+            val chunk = ByteArray(DEFAULT_BUFFER_SIZE)
             while (true) {
                 currentCoroutineContext().ensureActive()
-                val byte = try { buffered.read() }
+                val count = try { buffered.read(chunk) }
                 catch (error: java.io.IOException) { throw CatalogImportException("Corrupted catalog stream: ${spec.path}", error) }
-                if (byte == -1) break
-                totalExpanded++
+                if (count == -1) break
+                totalExpanded = Math.addExact(totalExpanded, count.toLong())
                 require(totalExpanded <= MAX_EXPANDED_BYTES) { "Catalog exceeds expanded-byte limit" }
-                if (byte == '\n'.code) acceptLine()
-                else {
-                    require(pending.size() < MAX_LINE_BYTES) { "Oversized JSONL record in ${spec.path}" }
-                    pending.write(byte)
+                var start = 0
+                for (index in 0 until count) {
+                    if (chunk[index] != '\n'.code.toByte()) continue
+                    val length = index - start
+                    require(pending.size() + length <= MAX_LINE_BYTES) {
+                        "Oversized JSONL record in ${spec.path}"
+                    }
+                    pending.write(chunk, start, length)
+                    acceptLine()
+                    start = index + 1
                 }
+                val remaining = count - start
+                require(pending.size() + remaining <= MAX_LINE_BYTES) {
+                    "Oversized JSONL record in ${spec.path}"
+                }
+                pending.write(chunk, start, remaining)
             }
             if (pending.size() > 0) acceptLine()
             require(!requireRecords || lineNumber > 0) { "Empty catalog payload: ${spec.path}" }

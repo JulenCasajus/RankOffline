@@ -48,3 +48,13 @@ the numeric `packId`.
 
 The maintained commands and conversion limitations are documented in
 [PACK_GENERATION.md](PACK_GENERATION.md).
+
+## Remote covers
+
+A source declares either ordered HTTPS `urlTemplates` or one bounded
+`metadataRequest`. Metadata-backed records use
+`cover:v1|reference_key=positive_id` and may contain several keys so sources can
+be tried in manifest order. A metadata recipe is data, not executable provider
+code: it is limited to GET/POST JSON, a fixed HTTPS host, ordered JSON response
+paths, request spacing and approved image hosts. The resulting image still
+passes through the ordinary size, MIME, content and storage checks.
