@@ -1,8 +1,8 @@
 package org.rankoffline.app
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -10,7 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import java.math.BigDecimal
 
@@ -23,9 +28,10 @@ internal fun RatingScoreHeader(base: Double?, bonus: Double, final: Double?, con
             Column {
                 Text(stringResource(if (group) R.string.score_group_title else R.string.score_title),
                     style = MaterialTheme.typography.titleLarge)
-                Text(stringResource(R.string.score_quality, base?.toString() ?: "—"))
+                Text(stringResource(R.string.score_quality, base?.let(::formatScoreForDisplay) ?: "—"))
                 val bonusConfig = config.additiveBonus
-                Text(stringResource(R.string.score_bonus_value, localizedBonusName(bonusConfig), bonus),
+                Text(stringResource(R.string.score_bonus_value, localizedBonusName(bonusConfig),
+                    formatScoreForDisplay(bonus)),
                     color = MaterialTheme.colorScheme.secondary)
             }
             ScoreValueBadge(final, onEdit)
@@ -37,21 +43,38 @@ internal fun RatingScoreHeader(base: Double?, bonus: Double, final: Double?, con
 internal fun RatingProfileSelector(profiles: List<RatingProfile>, selected: RatingProfile,
     onSelect: (RatingProfile) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
-        Text(localizedProfileName(selected), modifier = Modifier.weight(1f))
-        Icon(Icons.Default.ArrowDropDown, null)
-    }
-    if (open) AlertDialog(onDismissRequest = { open = false },
-        title = { Text(stringResource(R.string.rating_profile)) },
-        text = { LazyColumn(Modifier.heightIn(max = 400.dp)) {
-            items(profiles, key = { it.id }) { profile ->
-                TextButton(onClick = { onSelect(profile); open = false }, modifier = Modifier.fillMaxWidth()) {
-                    Text(localizedProfileName(profile))
+    Box(Modifier.fillMaxWidth()) {
+        Card(colors = CardDefaults.cardColors(containerColor = Panel),
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth().testTag("rating_profile_selector")) {
+            Row(Modifier.fillMaxWidth().clickable(role = Role.Button) { open = true }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.rating_profile),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    Text(localizedProfileName(selected), fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis)
                 }
+                Icon(Icons.Default.ArrowDropDown,
+                    contentDescription = stringResource(R.string.rating_profile),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        } }, confirmButton = { TextButton(onClick = { open = false }) {
-            Text(stringResource(R.string.action_cancel))
-        } })
+        }
+        RankOfflinePopupMenu(expanded = open, onDismissRequest = { open = false },
+            modifier = Modifier.widthIn(min = 240.dp, max = 360.dp)
+                .testTag("rating_profile_list")) {
+            profiles.forEach { profile ->
+                RankOfflinePopupMenuItem(label = localizedProfileName(profile),
+                    selected = profile.id == selected.id,
+                    onClick = { onSelect(profile); open = false },
+                    modifier = Modifier.testTag("rating_profile_${profile.id}"))
+            }
+        }
+    }
 }
 
 @Composable
@@ -68,9 +91,10 @@ internal fun RatingCategorySlider(category: RatingCategory, score: Double?, onCh
             }
             Text(localizedCategoryDescription(category), style = MaterialTheme.typography.bodySmall)
             if (score != null) {
-                Text(stringResource(R.string.score_out_of_ten, score))
+                Text(stringResource(R.string.score_out_of_ten, formatScoreForDisplay(score)))
                 DiscreteSlider(score, { onChange(it) }, RATING_MIN, RATING_MAX, RATING_STEP,
-                    localizedCategoryName(category), stringResource(R.string.score_out_of_ten, score))
+                    localizedCategoryName(category), stringResource(R.string.score_out_of_ten,
+                        formatScoreForDisplay(score)))
             }
         }
     }
@@ -82,7 +106,8 @@ internal fun RatingBonusSlider(bonus: AdditiveBonus, value: Double, onChange: (D
         Column(Modifier.padding(16.dp)) {
             Text(stringResource(R.string.bonus_range, localizedBonusName(bonus), bonus.maxValue))
             DiscreteSlider(value, onChange, BONUS_MIN, bonus.maxValue, BONUS_STEP,
-                localizedBonusName(bonus), stringResource(R.string.bonus_current, value))
+                localizedBonusName(bonus), stringResource(R.string.bonus_current,
+                    formatScoreForDisplay(value)))
         }
     }
 }

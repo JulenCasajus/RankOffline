@@ -109,7 +109,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         GroupDetailScreen(current, settings, covers, bitmapCache,
             subtitleFields = readyManifests.firstOrNull {
                 it.packId == current.group.packId
-            }?.subtitle.orEmpty(),
+            }?.subtitleDefinitions().orEmpty(),
             onBack = viewModel::closeGroup,
             onRate = { fromMembers ->
                 val candidate = ranked.firstOrNull { it.key == current.group.key }

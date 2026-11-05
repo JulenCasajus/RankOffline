@@ -90,7 +90,12 @@ class CatalogImporter(
         if (isCurrent(packId, fingerprint)) return null
 
         val sqlite = database.openHelper.writableDatabase
-        timings.freshCatalog = dao.itemCount(packId) == 0L
+        // A previous uninstall normally clears these together. A zero item count alone
+        // cannot prove that interrupted cleanup left no group or metadata rows behind.
+        timings.freshCatalog = dao.itemCount(packId) == 0L &&
+            database.mediaGroupDao().groupCountForPack(packId) == 0L &&
+            dao.metadata(packId, METADATA_FINGERPRINT) == null &&
+            dao.metadata(packId, "group_manifest_sha256") == null
         val stage = "catalog_seen_${UUID.randomUUID().toString().replace("-", "")}" // generated, never user input
         sqlite.execSQL("CREATE TEMP TABLE `$stage` (id TEXT NOT NULL PRIMARY KEY, " +
             "provider TEXT, provider_id TEXT, UNIQUE(provider, provider_id))")

@@ -1,5 +1,10 @@
 package org.rankoffline.app
 
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
@@ -8,6 +13,26 @@ import org.junit.Test
 
 class RatingRulesTest {
     private val definition = TestFixtures.ratingDefinition()
+
+    @Test fun displayedScoresTruncateToTwoLocalizedDecimals() {
+        assertEquals("7.60", formatScoreForDisplay(7.600000005, Locale.US))
+        assertEquals("7.60", formatScoreForDisplay(7.609, Locale.US))
+        assertEquals("7,60", formatScoreForDisplay(7.609, Locale.GERMANY))
+    }
+
+    @Test fun editedDraftCanBeSavedAcrossActivityRecreation() {
+        val draft = RatingDraft(
+            categoryScores = mapOf("writing" to 8.5, "visuals" to null),
+            additiveScore = 0.4, notes = "Unsent", profileId = "general"
+        )
+        val bytes = ByteArrayOutputStream().also { stream ->
+            ObjectOutputStream(stream).use { it.writeObject(draft) }
+        }.toByteArray()
+        val restored = ObjectInputStream(ByteArrayInputStream(bytes)).use {
+            it.readObject() as RatingDraft
+        }
+        assertEquals(draft, restored)
+    }
 
     @Test fun weightedScoreRenormalizesOnlyApplicableCategories() {
         val result = ScoreCalculator.calculate(mapOf("writing" to 8.0, "visuals" to null), 0.5,

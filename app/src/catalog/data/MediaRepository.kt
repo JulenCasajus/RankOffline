@@ -1,6 +1,5 @@
 package org.rankoffline.app
 
-import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -19,16 +18,14 @@ class MediaRepository(
 
     suspend fun item(key: CatalogEntryKey): MediaItem? = withContext(Dispatchers.IO) {
         require(key.kind == CatalogEntryKind.ITEM)
-        database.withTransaction {
-            val pack = key.packId.value
-            val entity = items.item(pack, key.id) ?: return@withTransaction null
-            entity.toDomain(
-                rating = items.rating(pack, key.id),
-                attributes = items.itemAttributes(pack, listOf(key.id)),
-                aliases = items.aliases(pack, listOf(key.id))
-            ).copy(preferredCoverGroupId = groups.preferredCoverGroups(pack, listOf(key.id))
-                .firstOrNull()?.groupId)
-        }
+        val pack = key.packId.value
+        val entity = items.item(pack, key.id) ?: return@withContext null
+        entity.toDomain(
+            rating = items.rating(pack, key.id),
+            attributes = items.itemAttributes(pack, listOf(key.id)),
+            aliases = items.aliases(pack, listOf(key.id))
+        ).copy(preferredCoverGroupId = groups.preferredCoverGroups(pack, listOf(key.id))
+            .firstOrNull()?.groupId)
     }
 
     /** Merge changes only the returned projection, not memberships or persisted catalog data. */
@@ -39,11 +36,9 @@ class MediaRepository(
         limit: Int = 200,
         offset: Int = 0
     ): List<MediaListEntry> = withContext(Dispatchers.IO) {
-        database.withTransaction {
-            val normalized = state.forManifest(manifest)
-            val rows = items.visibleEntries(CatalogQueries.catalog(manifest, normalized, mergeEnabled, limit, offset))
-            materialize(manifest.packId, rows, normalized.query)
-        }
+        val normalized = state.forManifest(manifest)
+        val rows = items.visibleEntries(CatalogQueries.catalog(manifest, normalized, mergeEnabled, limit, offset))
+        materialize(manifest.packId, rows, normalized.query)
     }
 
     suspend fun ranking(
@@ -53,11 +48,9 @@ class MediaRepository(
         limit: Int = 5000,
         offset: Int = 0
     ): List<MediaListEntry> = withContext(Dispatchers.IO) {
-        database.withTransaction {
-            val normalized = state.forManifest(manifest)
-            val rows = items.visibleEntries(CatalogQueries.ranking(manifest, normalized, mergeEnabled, limit, offset))
-            materialize(manifest.packId, rows)
-        }
+        val normalized = state.forManifest(manifest)
+        val rows = items.visibleEntries(CatalogQueries.ranking(manifest, normalized, mergeEnabled, limit, offset))
+        materialize(manifest.packId, rows)
     }
 
     /** Field/filter IDs come from the manifest, not from a category-specific enum. */

@@ -48,7 +48,7 @@ data class RatingDraft(
     val finalScore: Double? = null,
     val qualityScore: Double? = null,
     val profileId: String? = null
-) {
+) : java.io.Serializable {
     /** Explicit editor initialization, never applied automatically to existing user ratings. */
     fun withDefaultCategoryScores(config: RatingSystemConfig): RatingDraft =
         if (categoryScores.isNotEmpty()) this else

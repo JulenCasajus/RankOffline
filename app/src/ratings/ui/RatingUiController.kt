@@ -23,6 +23,7 @@ internal class RatingUiController(
     private val detailState = MutableStateFlow<MediaGroupDetail?>(null)
     val groupDetail: StateFlow<MediaGroupDetail?> = detailState.asStateFlow()
     private var openJob: Job? = null
+    private var saveJob: Job? = null
 
     fun open(entry: MediaListEntry, fromMembers: Boolean = false) {
         openJob?.cancel()
@@ -62,15 +63,14 @@ internal class RatingUiController(
 
     private fun mutate(label: String, action: suspend (CatalogEntryKey) -> Unit) {
         val target = editorState.value ?: return
-        scope.launch {
+        if (saveJob?.isActive == true) return
+        saveJob = scope.launch {
             try {
                 action(target.key)
                 // Reload from the single Room source of truth; no optimistic duplicate scores.
                 val persisted = ratings.loadRating(target.key)
-                if (editorState.value?.key == target.key) {
-                    editorState.value = target.copy(draft = persisted)
-                }
                 onChanged(target.key, persisted)
+                if (editorState.value?.key == target.key) editorState.value = null
                 if (detailState.value?.group?.key == target.key) detailState.value = groups.detail(target.key)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) {

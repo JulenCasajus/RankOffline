@@ -43,8 +43,8 @@ internal data class CoverFrame(
 
 /**
  * Shared observation and off-main-thread decoding for thumbnail and full-screen viewer.
- * A null snapshot means Room has NOT replied yet. Once it replies, UNKNOWN != NOT_FOUND.
- * No extra persistent state, extra Room queries or "ObservedCoverPath" state machine.
+ * A null snapshot means the first database read has not replied yet. Once it replies,
+ * UNKNOWN != NOT_FOUND. No extra persistent state or cover cache is created.
  */
 @Composable
 internal fun rememberCoverFrame(
@@ -175,10 +175,20 @@ internal fun MediaCover(
     allowDownload: Boolean = true
 ) {
     val displayKey = entry.displayCoverKey(settings)
+    // The paged row already carries this item's local path. Reuse a decoded
+    // thumbnail immediately while Room emits its validated cover snapshot.
+    val initialSnapshot = when (entry) {
+        is MediaListEntry.Item -> entry.value.localCoverPath.takeIf { displayKey == entry.key }
+        is MediaListEntry.Group -> entry.value.localCoverPath
+    }?.takeIf { path ->
+        val identity = CoverStorageIdentity(displayKey.packId, displayKey.id, displayKey.kind).cacheIdentity()
+        bitmapCache.cachedBitmap(identity, path) != null
+    }?.let { CoverSnapshot(it, CoverResolutionState.AVAILABLE) }
     MediaCover(
         key = displayKey, title = entry.title, coverRepository = coverRepository,
         bitmapCache = bitmapCache, modifier = modifier, showImages = showImages,
         allowDownload = allowDownload,
+        initialSnapshot = initialSnapshot,
         onDownloadRequested = { onDownloadRequested(displayKey) },
         onCoverClick = { onCoverClick(displayKey) }
     )

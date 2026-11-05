@@ -45,15 +45,15 @@ internal suspend fun awaitPersistentPackDownloadTurn(context: Context, sequence:
     }
 }
 
-private fun WorkInfo.blocksArchiveSequence(sequence: Long): Boolean {
+internal fun WorkInfo.blocksArchiveSequence(sequence: Long): Boolean {
     if (state.isFinished || tags.none { it.endsWith(":INSTALL") }) return false
+    val phase = progress.getString("phase")
+    if (phase != null && phase != PackInstallPhase.QUEUED.name &&
+        phase != PackInstallPhase.DOWNLOADING.name) return false
     val other = tags.firstNotNullOfOrNull { tag ->
         tag.removePrefix(SEQUENCE_TAG_PREFIX).takeIf { tag.startsWith(SEQUENCE_TAG_PREFIX) }?.toLongOrNull()
     } ?: return true
-    if (other >= sequence) return false
-    val phase = progress.getString("phase")
-    return phase == null || phase == PackInstallPhase.QUEUED.name ||
-        phase == PackInstallPhase.DOWNLOADING.name
+    return other < sequence
 }
 
 internal interface PackWorkerRuntime {

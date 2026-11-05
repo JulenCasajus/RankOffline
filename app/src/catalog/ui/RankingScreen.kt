@@ -41,7 +41,7 @@ internal fun RankingScreen(
     var filtersOpen by remember { mutableStateOf(false) }
     var sortOpen by remember { mutableStateOf(false) }
     val subtitleFields = remember(installedManifests) {
-        installedManifests.associate { it.packId to it.subtitle }
+        installedManifests.associate { it.packId to it.subtitleDefinitions() }
     }
     LaunchedEffect(listState, entries.size, page.hasMore, page.loadingMore) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }

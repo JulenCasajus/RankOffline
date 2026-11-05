@@ -26,7 +26,11 @@ internal object CatalogQueries {
     fun popularCovers(manifest: PackManifest, limit: Int, offset: Int): SupportSQLiteQuery {
         require(limit in 1..5_000 && offset >= 0 && offset <= Int.MAX_VALUE - limit)
         val sql = """
-            WITH visible AS (
+            SELECT pack_id, id, entry_kind, NULL AS final_score,
+                NULL AS quality_score, NULL AS additive_score,
+                NULL AS category_score, 0 AS member_count,
+                0 AS rated_count, 0 AS has_explicit_score
+            FROM (
                 SELECT i.pack_id, i.id, 'ITEM' AS entry_kind, i.title,
                     i.popularity, i.popularity_rank
                 FROM media_item i
@@ -48,12 +52,7 @@ internal object CatalogQueries {
                         WHERE m.pack_id=g.pack_id AND m.group_id=g.id
                     )) AS popularity_rank
                 FROM media_group g WHERE g.pack_id = ?
-            )
-            SELECT pack_id, id, entry_kind, NULL AS final_score,
-                NULL AS quality_score, NULL AS additive_score,
-                NULL AS category_score, 0 AS member_count,
-                0 AS rated_count, 0 AS has_explicit_score
-            FROM visible
+            ) visible
             ORDER BY ${catalogOrder(CatalogSortOrder.POPULARITY)},
                 pack_id ASC, entry_kind ASC, id ASC
             LIMIT ? OFFSET ?
@@ -150,7 +149,7 @@ internal object CatalogQueries {
         args += offset
         require(args.size <= 900) { "Too many SQLite parameters for a catalog query" }
         return SimpleSQLiteQuery(
-            "WITH visible AS ($sql) SELECT v.pack_id, v.id, v.entry_kind, v.final_score, " +
+            "SELECT v.pack_id, v.id, v.entry_kind, v.final_score, " +
                 "v.quality_score, v.additive_score, v.category_score, " +
                 "CASE WHEN v.entry_kind='GROUP' THEN " +
                 "(SELECT COUNT(*) FROM media_group_member m WHERE m.pack_id=v.pack_id AND m.group_id=v.id) " +
@@ -163,7 +162,7 @@ internal object CatalogQueries {
                 "CASE WHEN v.entry_kind='GROUP' THEN EXISTS(SELECT 1 FROM media_group_rating gr " +
                 "WHERE gr.pack_id=v.pack_id AND gr.group_id=v.id AND gr.final_score IS NOT NULL) " +
                 "ELSE 0 END AS has_explicit_score " +
-                "FROM visible v " +
+                "FROM ($sql) v " +
                 (if (ranking == null) "" else "WHERE ${rankingMetricColumn(ranking)} IS NOT NULL ") +
                 "ORDER BY $order, v.pack_id ASC, v.entry_kind ASC, v.id ASC LIMIT ? OFFSET ?",
             args.toTypedArray()

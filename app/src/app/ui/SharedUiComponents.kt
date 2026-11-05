@@ -19,6 +19,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.text.NumberFormat
 
 /** Keep these theme aliases in exactly one file: used by other existing components. */
 internal val Bg: Color @Composable get() = MaterialTheme.colorScheme.background
@@ -59,11 +62,21 @@ internal fun ScoreValueBadge(score: Double?, onClick: (() -> Unit)? = null) {
     val background = score?.let(::scoreColor) ?: MaterialTheme.colorScheme.surfaceVariant
     Surface(onClick = { onClick?.invoke() }, enabled = onClick != null,
         shape = RoundedCornerShape(12.dp), color = background) {
-        Text(score?.let { String.format(Locale.getDefault(), "%.2f", it) } ?: "—",
+        Text(score?.let(::formatScoreForDisplay) ?: "—",
             color = bestContentColor(background),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
     }
+}
+
+/** Presentation only: never change the precision used for persistence or ranking. */
+internal fun formatScoreForDisplay(value: Double, locale: Locale = Locale.getDefault()): String {
+    if (!value.isFinite()) return "—"
+    return NumberFormat.getNumberInstance(locale).apply {
+        minimumFractionDigits = 2
+        maximumFractionDigits = 2
+        roundingMode = RoundingMode.DOWN
+    }.format(BigDecimal.valueOf(value))
 }
 
 /** Shared slider between RatingScreen and SettingsRatingProfiles: no second implementation. */

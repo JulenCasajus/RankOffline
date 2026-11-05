@@ -12,7 +12,7 @@ class PackManifestContractTest {
         val manifest = TestFixtures.manifest()
         assertEquals(2, manifest.schemaVersion)
         assertEquals(PackId(11), manifest.packId)
-        assertEquals(listOf("genre"), manifest.filters.map { it.id })
+        assertEquals(listOf("genre", "year"), manifest.filters.map { it.id })
         assertEquals("fixture_cover", manifest.coverSources.single().id)
     }
 

@@ -8,6 +8,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** Cover jobs are never started by startup or merely changing tabs. */
@@ -27,10 +28,9 @@ internal class CoverUiController(
             val reuse = services.settingsRepository.state.value.mediaSettings[key.packId]
                 ?.useGroupCoversForItems == true
             val displayKey = services.mediaCoverRepository.displayedCoverKey(key, reuse)
-            services.mediaCoverRepository.downloadCover(displayKey)
+            services.downloadCover(displayKey)
             services.refreshPackStatistics(key.packId,
                 setOf(PackSummaryField.AVAILABLE_COVER_COUNT))
-            bitmapCache.invalidateAll()
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { onError(failure) }
     }
@@ -66,14 +66,15 @@ internal class CoverUiController(
             val reuse = services.settingsRepository.state.value.mediaSettings[key.packId]
                 ?.useGroupCoversForItems == true
             val displayKey = services.mediaCoverRepository.displayedCoverKey(key, reuse)
+            val oldPath = services.mediaCoverRepository.observeCover(displayKey).first().localPath
             success = services.mediaCoverRepository.removeLocalCover(displayKey)
             if (success) services.refreshPackStatistics(key.packId,
                 setOf(PackSummaryField.AVAILABLE_COVER_COUNT))
+            if (success && oldPath != null) bitmapCache.invalidate(displayKey.coverCacheIdentity(), oldPath)
         }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { onError(failure) }
         finally {
-            if (success) bitmapCache.invalidateAll()
             finished(success)
         }
     }
@@ -92,3 +93,6 @@ internal class CoverUiController(
         bitmapCache.invalidateAll()
     }
 }
+
+private fun CatalogEntryKey.coverCacheIdentity(): String =
+    CoverStorageIdentity(packId, id, kind).cacheIdentity()

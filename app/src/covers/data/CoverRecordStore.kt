@@ -1,6 +1,8 @@
 package org.rankoffline.app
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 
 /** Only the cover columns needed by the download coordinator. */
 internal data class CoverRecord(
@@ -45,13 +47,30 @@ internal class CoverRecordStore(
 
     fun observeFallbackItems(groupKey: CatalogEntryKey): Flow<List<MediaItemEntity>> {
         require(groupKey.kind == CatalogEntryKind.GROUP)
-        return groups.observeCoverCandidateItems(groupKey.packId.value, groupKey.id)
+        // Room's invalidation subscription can wait for an unrelated import writer.
+        // An indexed read gives an already READY group's cover immediately.
+        return flow {
+            emit(groups.coverCandidateItems(groupKey.packId.value, groupKey.id))
+            emitAll(groups.observeCoverCandidateItems(groupKey.packId.value, groupKey.id))
+        }
     }
 
-    /** Observes both persisted columns in one Room query, for items and groups. */
-    fun observeSnapshot(key: CatalogEntryKey): Flow<CoverSnapshotRow?> = when (key.kind) {
-        CatalogEntryKind.ITEM -> items.observeCoverSnapshot(key.packId.value, key.id)
-        CatalogEntryKind.GROUP -> groups.observeCoverSnapshot(key.packId.value, key.id)
+    /** Reads the initial cover state immediately, then observes Room invalidations. */
+    fun observeSnapshot(key: CatalogEntryKey): Flow<CoverSnapshotRow?> = flow {
+        when (key.kind) {
+            CatalogEntryKind.ITEM -> {
+                emit(items.item(key.packId.value, key.id)?.let {
+                    CoverSnapshotRow(it.localCoverPath, it.coverResolutionState, it.remoteCoverRef)
+                })
+                emitAll(items.observeCoverSnapshot(key.packId.value, key.id))
+            }
+            CatalogEntryKind.GROUP -> {
+                emit(groups.group(key.packId.value, key.id)?.let {
+                    CoverSnapshotRow(it.localCoverPath, it.coverResolutionState, it.remoteCoverRef)
+                })
+                emitAll(groups.observeCoverSnapshot(key.packId.value, key.id))
+            }
+        }
     }
 
     fun observePaths(packId: PackId): Pair<Flow<List<String>>, Flow<List<String>>> =

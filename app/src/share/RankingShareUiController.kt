@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
-import java.text.NumberFormat
 import java.util.Locale
 
 /** Sharing is explicitly user-triggered. No ranking materialization on cold start. */
@@ -63,12 +62,10 @@ internal class RankingShareUiController(
                 val paths = imageKeys.values.distinct().associateWith { key ->
                     services.mediaCoverRepository.observeCover(key).first().localPath
                 }
-                val number = NumberFormat.getNumberInstance(Locale.getDefault()).apply {
-                    minimumFractionDigits = 1; maximumFractionDigits = 2
-                }
                 dataState.value = RankingShareData(selected, entries.map { entry ->
                     RankingShareItem(entry.packId, entry.id, entry.title,
-                        number.format(requireNotNull(entry.finalScore)), paths[imageKeys.getValue(entry.key)])
+                        formatScoreForDisplay(requireNotNull(entry.finalScore), Locale.getDefault()),
+                        paths[imageKeys.getValue(entry.key)])
                 }, topSevenBackground = services.rankingShareExporter.backgroundFor(selected, RankingShareTemplate.TOP_SEVEN),
                     topTenBackground = services.rankingShareExporter.backgroundFor(selected, RankingShareTemplate.TOP_TEN),
                     loading = false)

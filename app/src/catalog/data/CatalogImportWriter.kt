@@ -2,6 +2,7 @@ package org.rankoffline.app
 
 import android.database.sqlite.SQLiteConstraintException
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteStatement
 
 /** Room writes for catalog-only values. Personal ratings and local cover state are untouched. */
 internal class CatalogImportWriter(
@@ -14,6 +15,7 @@ internal class CatalogImportWriter(
     private val markStatement = sqlite.compileStatement(
         "INSERT INTO `$stage`(id, provider, provider_id) VALUES(?, ?, ?)"
     )
+    private val fullBatchStatements = mutableMapOf<String, SupportSQLiteStatement>()
 
     fun markSeen(item: MediaItemEntity, file: String, line: Long) {
         try {
@@ -86,7 +88,10 @@ internal class CatalogImportWriter(
         )
     }
 
-    fun close() = markStatement.close()
+    fun close() {
+        markStatement.close()
+        fullBatchStatements.values.forEach(SupportSQLiteStatement::close)
+    }
 
     fun deleteMissing() {
         if (freshCatalog) return
@@ -102,12 +107,34 @@ internal class CatalogImportWriter(
     private fun insertRows(table: String, columns: List<String>, values: List<List<Any?>>) {
         if (values.isEmpty()) return
         require(values.all { it.size == columns.size }) { "Invalid $table row width" }
-        values.chunked(MAX_SQL_BIND_ARGUMENTS / columns.size).forEach { chunk ->
+        val fullSize = MAX_SQL_BIND_ARGUMENTS / columns.size
+        values.chunked(fullSize).forEach { chunk ->
             val row = List(columns.size) { "?" }.joinToString(prefix = "(", postfix = ")")
             val sql = "INSERT INTO `$table`(" + columns.joinToString(",") { "`$it`" } +
                 ") VALUES " + List(chunk.size) { row }.joinToString(",")
-            sqlite.execSQL(sql, chunk.flatten().map { if (it is Boolean) if (it) 1L else 0L else it }
-                .toTypedArray())
+            val reusable = chunk.size == fullSize
+            val statement = if (reusable) fullBatchStatements.getOrPut(table) {
+                sqlite.compileStatement(sql)
+            } else sqlite.compileStatement(sql)
+            try {
+                statement.clearBindings()
+                var index = 1
+                chunk.forEach { record -> record.forEach { value ->
+                    when (value) {
+                        null -> statement.bindNull(index)
+                        is String -> statement.bindString(index, value)
+                        is Int -> statement.bindLong(index, value.toLong())
+                        is Long -> statement.bindLong(index, value)
+                        is Double -> statement.bindDouble(index, value)
+                        is Boolean -> statement.bindLong(index, if (value) 1L else 0L)
+                        else -> error("Unsupported $table value type: ${value::class.java.name}")
+                    }
+                    index++
+                } }
+                statement.executeInsert()
+            } finally {
+                if (!reusable) statement.close()
+            }
         }
     }
 

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -35,13 +36,13 @@ internal fun RatingScreen(
         ?: profiles.profiles.firstOrNull()
         ?: RatingProfile("general", "General", emptyMap())
     val identity = editor.key
-    var selectedProfileId by remember(identity, draft.profileId) { mutableStateOf(selected.id) }
+    var selectedProfileId by rememberSaveable(identity) { mutableStateOf(selected.id) }
     val profile = profiles.profiles.firstOrNull { it.id == selectedProfileId } ?: selected
     val config = if (profiles.profiles.isEmpty()) configuration else configuration.withProfile(profile)
-    var current by remember(identity, draft) {
+    var current by rememberSaveable(identity) {
         mutableStateOf(if (elaborate) draft.withDefaultCategoryScores(config) else draft)
     }
-    var simpleQuality by remember(identity, draft.qualityScore, draft.finalScore) {
+    var simpleQuality by rememberSaveable(identity) {
         mutableDoubleStateOf(snapRatingValue(
             draft.qualityScore ?: draft.finalScore?.minus(draft.additiveScore) ?: 5.0) ?: 5.0)
     }
@@ -49,13 +50,13 @@ internal fun RatingScreen(
     // Editing notes/status must never erase such a manual score.
     val initialCalculated = if (elaborate) current.calculatedFinalScore(config)
         else finalScoreFromQuality(simpleQuality, current.additiveScore)
-    var manualOverride by remember(identity, draft) {
+    var manualOverride by rememberSaveable(identity) {
         mutableStateOf(draft.finalScore?.takeIf { saved ->
             initialCalculated == null || kotlin.math.abs(saved - initialCalculated) > 0.0001
         })
     }
-    var scoringChanged by remember(identity, draft) { mutableStateOf(false) }
-    var showDirect by remember(identity) { mutableStateOf(false) }
+    var scoringChanged by rememberSaveable(identity) { mutableStateOf(false) }
+    var showDirect by rememberSaveable(identity) { mutableStateOf(false) }
     val base = if (elaborate) current.baseScore(config) else simpleQuality
     val calculated = manualOverride ?: if (elaborate) current.calculatedFinalScore(config)
         else finalScoreFromQuality(simpleQuality, current.additiveScore)
@@ -82,14 +83,16 @@ internal fun RatingScreen(
                 Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
                     Column(Modifier.padding(16.dp)) {
                         Text(stringResource(R.string.rating_simple_instructions))
-                        Text(stringResource(R.string.score_out_of_ten, simpleQuality),
+                        Text(stringResource(R.string.score_out_of_ten,
+                            formatScoreForDisplay(simpleQuality)),
                             style = MaterialTheme.typography.headlineSmall)
                         DiscreteSlider(simpleQuality, {
                             simpleQuality = it; manualOverride = null; scoringChanged = true
                         },
                             RATING_MIN, RATING_MAX, RATING_STEP,
                             stringResource(R.string.rating_slider_accessibility),
-                            stringResource(R.string.score_out_of_ten, simpleQuality))
+                            stringResource(R.string.score_out_of_ten,
+                                formatScoreForDisplay(simpleQuality)))
                     }
                 }
             }

@@ -1,5 +1,8 @@
 package org.rankoffline.app
 
+import androidx.work.Data
+import androidx.work.WorkInfo
+import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -12,6 +15,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PackOperationSchedulerTest {
+    @Test fun archiveTurnIgnoresEarlierImportEvenForLegacyWork() {
+        val importing = WorkInfo(UUID.randomUUID(), WorkInfo.State.RUNNING,
+            setOf("rankoffline-pack-action:INSTALL"),
+            progress = Data.Builder().putString("phase", PackInstallPhase.IMPORTING.name).build())
+        val downloading = WorkInfo(UUID.randomUUID(), WorkInfo.State.RUNNING,
+            setOf("rankoffline-pack-action:INSTALL"),
+            progress = Data.Builder().putString("phase", PackInstallPhase.DOWNLOADING.name).build())
+        val later = WorkInfo(UUID.randomUUID(), WorkInfo.State.RUNNING,
+            setOf("rankoffline-pack-action:INSTALL", packInstallSequenceTag(5)),
+            progress = Data.Builder().putString("phase", PackInstallPhase.DOWNLOADING.name).build())
+
+        assertFalse(importing.blocksArchiveSequence(4))
+        assertTrue(downloading.blocksArchiveSequence(4))
+        assertFalse(later.blocksArchiveSequence(4))
+    }
+
     @Test fun archiveTransfersAreFifoAndExclusive() = runBlocking {
         val scheduler = PackOperationScheduler()
         val firstEntered = CompletableDeferred<Unit>()

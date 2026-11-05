@@ -193,11 +193,9 @@ internal class RankOfflineServices private constructor(
         return true
     }
 
-    /** UI Storage screen only; no eager count or filesystem traversal during startup. */
-    suspend fun refreshPackStatistics(
-        packId: PackId,
-        fields: Set<PackSummaryField> = PackSummaryField.entries.toSet()
-    ): LocalPackSummary? = packManager.refreshSummary(packId, fields)
+    /** Manual cover requests obey the same archive priority as Top-N batches. */
+    suspend fun downloadCover(key: CatalogEntryKey): CoverDownloadResult =
+        sharedPackScheduler.withCoverTransfer { mediaCoverRepository.downloadCover(key) }
 
     /** Explicitly cancel optional initial cover Work. Cancellation is not remembered. */
     suspend fun cancelInitialCoverDownloads(packId: PackId) {
@@ -214,7 +212,15 @@ internal class RankOfflineServices private constructor(
     /** Worker entry point: no Activity or in-memory UI must have run first. */
     override suspend fun prepare(packId: PackId, action: PackWorkAction) {
         when (action) {
-            PackWorkAction.INSTALL -> refreshAvailablePacks()
+            PackWorkAction.INSTALL -> {
+                // One index fetch can hydrate every descriptor needed by concurrent workers.
+                sourceLoadLock.withLock {
+                    if (packSources.descriptor(packId) == null) {
+                        configuration.loadTrustedSources(packSources)
+                    }
+                }
+                packManager.refresh()
+            }
             PackWorkAction.RECOVER -> packManager.refresh()
             PackWorkAction.INITIAL_COVERS -> {
                 packManager.refresh()

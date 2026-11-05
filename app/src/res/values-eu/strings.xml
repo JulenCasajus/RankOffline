@@ -25,11 +25,11 @@
   <string name='rating_notes'>Oharrak</string>
   <string name='score_title'>Puntuazioa</string>
   <string name='score_quality'>Kalitatea: %1$s</string>
-  <string name='score_bonus_value'>%1$s: +%2$.1f</string>
+  <string name='score_bonus_value'>%1$s: +%2$s</string>
   <string name='score_activate_category'>Aktibatu</string>
-  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='score_out_of_ten'>%1$s / 10</string>
   <string name='bonus_range'>%1$s · +0tik +%2$.1fera</string>
-  <string name='bonus_current'>+%1$.1f</string>
+  <string name='bonus_current'>+%1$s</string>
   <string name='settings_title'>Ezarpenak</string>
   <string name='settings_general_title'>Ezarpen orokorrak</string>
   <string name='settings_general_description'>Paketeak, gaia, ikonoa eta hizkuntza</string>
@@ -278,4 +278,8 @@
   <string name='ranking_share_failed'>Ezin izan da rankingaren irudia sortu.</string>
   <string name='ranking_share_empty'>Baloratu gutxienez elementu bat rankingaren irudia sortzeko.</string>
   <string name="covers_batch_outcomes">%1$d deskargatuta · %2$d aurkitu gabe · %3$d errore</string>
+  <plurals name="subtitle_values_of_field">
+    <item quantity="one">%1$d balio · %2$s</item>
+    <item quantity="other">%1$d balio · %2$s</item>
+  </plurals>
 </resources>

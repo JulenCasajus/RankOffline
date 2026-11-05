@@ -29,12 +29,12 @@
   <string name='score_direct_explanation'>Enter a value from 0 to 10 with up to two decimal places.</string>
   <string name='score_direct_label'>Final score</string>
   <string name='score_quality'>Quality: %1$s</string>
-  <string name='score_bonus_value'>%1$s: +%2$.1f</string>
+  <string name='score_bonus_value'>%1$s: +%2$s</string>
   <string name='score_activate_category'>Enable</string>
   <string name='score_not_applicable' translatable='false'>N/A</string>
-  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='score_out_of_ten'>%1$s / 10</string>
   <string name='bonus_range'>%1$s · +0 to +%2$.1f</string>
-  <string name='bonus_current'>+%1$.1f</string>
+  <string name='bonus_current'>+%1$s</string>
   <string name='settings_title'>Settings</string>
   <string name='settings_general_title'>General settings</string>
   <string name='settings_general_description'>Packages, theme, icon and language</string>
@@ -275,4 +275,8 @@
   <string name='ranking_share_failed'>The ranking image could not be created.</string>
   <string name='ranking_share_empty'>Rate at least one item to create a ranking image.</string>
   <string name="covers_batch_outcomes">%1$d downloaded · %2$d not found · %3$d errors</string>
+  <plurals name="subtitle_values_of_field">
+    <item quantity="one">%1$d value · %2$s</item>
+    <item quantity="other">%1$d values · %2$s</item>
+  </plurals>
 </resources>

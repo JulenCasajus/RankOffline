@@ -1,6 +1,7 @@
 package org.rankoffline.app
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -29,8 +30,8 @@ internal fun CatalogFiltersDialog(
     val definitions = manifest?.filters?.sortedWith(compareBy({ it.order }, { it.id })).orEmpty()
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.filters_title)) },
         text = {
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 510.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (definitions.isEmpty()) item { Text(stringResource(R.string.filters_all)) }
                 items(definitions, key = { it.id }) { definition ->
                     val field = manifest?.fields?.firstOrNull { it.id == definition.field }
@@ -43,7 +44,6 @@ internal fun CatalogFiltersDialog(
                             ?: field.labels[languageTag.substringBefore('-')]
                             ?: field.labels["en"] ?: definition.id
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(title, style = MaterialTheme.typography.titleSmall)
                             when (definition.type) {
                                 PackFilterType.MULTI_SELECT -> when (field.type) {
                                     CatalogFieldType.BOOLEAN -> {
@@ -71,6 +71,7 @@ internal fun CatalogFiltersDialog(
                                 }
                                 PackFilterType.RANGE -> when (field.type) {
                                     CatalogFieldType.DATE -> {
+                                        Text(title, style = MaterialTheme.typography.titleSmall)
                                         val range = selected as? CatalogFilterValue.DateRange
                                         var from by remember(definition.id, range?.from) { mutableStateOf(range?.from.orEmpty()) }
                                         var to by remember(definition.id, range?.to) { mutableStateOf(range?.to.orEmpty()) }
@@ -80,6 +81,7 @@ internal fun CatalogFiltersDialog(
                                             label = { Text("To (YYYY-MM-DD)") }, singleLine = true)
                                     }
                                     else -> {
+                                        Text(title, style = MaterialTheme.typography.titleSmall)
                                         val range = selected as? CatalogFilterValue.Range
                                         var from by remember(definition.id, range?.min) { mutableStateOf(range?.min?.toString().orEmpty()) }
                                         var to by remember(definition.id, range?.max) { mutableStateOf(range?.max?.toString().orEmpty()) }
@@ -130,9 +132,15 @@ private fun FilterMultiChoice(options: List<String>, selected: Set<String>, titl
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     placeholder = { Text(stringResource(R.string.filter_search_values)) })
-                LazyColumn(Modifier.heightIn(max = 350.dp)) {
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+                    item { TextButton(onClick = { onSelected(emptySet()) },
+                        modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.filters_all))
+                    } }
                     items(filtered, key = { it }) { option ->
-                        Row(Modifier.fillMaxWidth()) {
+                        Row(Modifier.fillMaxWidth().clickable {
+                            onSelected(if (option in selected) selected - option else selected + option)
+                        }) {
                             Checkbox(option in selected, onCheckedChange = { checked ->
                                 onSelected(if (checked) selected + option else selected - option)
                             })

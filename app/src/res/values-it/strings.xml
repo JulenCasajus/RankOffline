@@ -25,11 +25,11 @@
   <string name='rating_notes'>Note</string>
   <string name='score_title'>Punteggio</string>
   <string name='score_quality'>Qualità: %1$s</string>
-  <string name='score_bonus_value'>%1$s: +%2$.1f</string>
+  <string name='score_bonus_value'>%1$s: +%2$s</string>
   <string name='score_activate_category'>Attiva</string>
-  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='score_out_of_ten'>%1$s / 10</string>
   <string name='bonus_range'>%1$s · da +0 a +%2$.1f</string>
-  <string name='bonus_current'>+%1$.1f</string>
+  <string name='bonus_current'>+%1$s</string>
   <string name='settings_title'>Impostazioni</string>
   <string name='settings_general_title'>Impostazioni generali</string>
   <string name='settings_general_description'>Pacchetti, tema, icona e lingua</string>
@@ -278,4 +278,8 @@
   <string name='ranking_share_failed'>Impossibile creare l’immagine della classifica.</string>
   <string name='ranking_share_empty'>Valuta almeno un elemento per creare un’immagine della classifica.</string>
   <string name="covers_batch_outcomes">%1$d scaricate · %2$d non trovate · %3$d errori</string>
+  <plurals name="subtitle_values_of_field">
+    <item quantity="one">%1$d valore · %2$s</item>
+    <item quantity="other">%1$d valori · %2$s</item>
+  </plurals>
 </resources>

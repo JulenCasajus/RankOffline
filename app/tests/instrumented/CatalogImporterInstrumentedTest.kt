@@ -99,6 +99,26 @@ class CatalogImporterInstrumentedTest {
         assertEquals(listOf("one"), dramaFrom2020.map { it.id })
     }
 
+    @Test fun uninstallAndReinstallKeepRatingsWithoutDuplicatingCatalogDetails() = runBlocking {
+        val manifest = installCatalog(listOf(
+            """{"id":"one","title":"One","attributes":{"genre":["drama"]},"aliases":[{"title":"Alias"}]}"""
+        ))
+        val importer = CatalogImporter(database)
+        importer.importIfNeeded(manifest, root)
+        val rating = MediaRatingEntity(11, "one", 0.5, 7.0, 7.5, "Keep", "done", 1)
+        database.mediaDao().upsertRating(rating)
+
+        database.mediaCatalogDao().deleteCatalogReferenceData(11)
+        assertEquals(0L, database.mediaCatalogDao().itemCount(11))
+        assertEquals(rating, database.mediaDao().rating(11, "one"))
+
+        importer.importIfNeeded(manifest, root)
+        assertEquals(1L, database.mediaCatalogDao().itemCount(11))
+        assertEquals(listOf("drama"), database.mediaDao().textFilterOptions(11, "genre"))
+        assertEquals(listOf("Alias"), database.mediaDao().aliases(11, listOf("one")).map { it.title })
+        assertEquals(rating, database.mediaDao().rating(11, "one"))
+    }
+
     private fun installCatalog(lines: List<String>): PackManifest {
         val bytes = (lines.joinToString("\n") + "\n").toByteArray()
         val manifestText = TestFixtures.manifestJson(catalog = bytes)

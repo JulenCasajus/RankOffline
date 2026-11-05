@@ -17,22 +17,20 @@ class RatingRepository(
 
     /** Null means no explicit rating. A notes-only rating is NOT null. */
     suspend fun ratingDraftOrNull(key: CatalogEntryKey): RatingDraft? = withContext(Dispatchers.IO) {
-        database.withTransaction { explicitDraft(key) }
+        explicitDraft(key)
     }
 
     /** Optional group-member average is an editor suggestion; never saved automatically. */
     suspend fun loadRating(key: CatalogEntryKey, fromMembers: Boolean = false): RatingDraft =
         withContext(Dispatchers.IO) {
-            database.withTransaction {
-                explicitDraft(key) ?: if (fromMembers && key.kind == CatalogEntryKind.GROUP &&
-                    groups.group(key.packId.value, key.id) != null
-                ) {
-                    deriveMediaGroupRating(
-                        groups.ratedMemberRatings(key.packId.value, key.id),
-                        groups.ratedMemberScores(key.packId.value, key.id)
-                    ).asDraft()
-                } else RatingDraft()
-            }
+            explicitDraft(key) ?: if (fromMembers && key.kind == CatalogEntryKind.GROUP &&
+                groups.group(key.packId.value, key.id) != null
+            ) {
+                deriveMediaGroupRating(
+                    groups.ratedMemberRatings(key.packId.value, key.id),
+                    groups.ratedMemberScores(key.packId.value, key.id)
+                ).asDraft()
+            } else RatingDraft()
         }
 
     suspend fun ratingScores(key: CatalogEntryKey): List<CategoryScore> = withContext(Dispatchers.IO) {

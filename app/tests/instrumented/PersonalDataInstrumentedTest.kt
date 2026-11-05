@@ -69,9 +69,9 @@ class PersonalDataInstrumentedTest {
             ), groupRatings = emptyList(), groupRatingScores = emptyList()
         ), replace = false)
 
-        assertEquals(20, database.mediaDao().rating(1, "newer-local")?.updatedAt)
+        assertEquals(20L, database.mediaDao().rating(1, "newer-local")?.updatedAt)
         assertEquals(9.0, database.mediaDao().ratingScores(1, "newer-local").single().score)
-        assertEquals(30, database.mediaDao().rating(1, "older-local")?.updatedAt)
+        assertEquals(30L, database.mediaDao().rating(1, "older-local")?.updatedAt)
         assertEquals(8.0, database.mediaDao().ratingScores(1, "older-local").single().score)
     }
 

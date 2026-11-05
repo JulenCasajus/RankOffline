@@ -25,11 +25,11 @@
   <string name='rating_notes'>Notizen</string>
   <string name='score_title'>Wertung</string>
   <string name='score_quality'>Qualität: %1$s</string>
-  <string name='score_bonus_value'>%1$s: +%2$.1f</string>
+  <string name='score_bonus_value'>%1$s: +%2$s</string>
   <string name='score_activate_category'>Aktivieren</string>
-  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='score_out_of_ten'>%1$s / 10</string>
   <string name='bonus_range'>%1$s · +0 bis +%2$.1f</string>
-  <string name='bonus_current'>+%1$.1f</string>
+  <string name='bonus_current'>+%1$s</string>
   <string name='settings_title'>Einstellungen</string>
   <string name='settings_general_title'>Allgemeine Einstellungen</string>
   <string name='settings_general_description'>Pakete, Design, Symbol und Sprache</string>
@@ -278,4 +278,8 @@
   <string name='ranking_share_failed'>Das Ranglistenbild konnte nicht erstellt werden.</string>
   <string name='ranking_share_empty'>Bewerte mindestens einen Eintrag, um ein Ranglistenbild zu erstellen.</string>
   <string name="covers_batch_outcomes">%1$d heruntergeladen · %2$d nicht gefunden · %3$d Fehler</string>
+  <plurals name="subtitle_values_of_field">
+    <item quantity="one">%1$d Wert · %2$s</item>
+    <item quantity="other">%1$d Werte · %2$s</item>
+  </plurals>
 </resources>

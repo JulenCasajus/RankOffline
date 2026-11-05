@@ -16,7 +16,7 @@ import androidx.compose.ui.res.stringResource
 internal fun GroupDetailScreen(
     detail: MediaGroupDetail, settings: AppSettingsState,
     covers: CoverRepository, cache: CoverBitmapCache,
-    subtitleFields: List<String> = emptyList(),
+    subtitleFields: List<PackFieldDefinition> = emptyList(),
     onBack: () -> Unit, onRate: (fromMembers: Boolean) -> Unit,
     onMember: (MediaItem) -> Unit, onCoverDownload: (CatalogEntryKey) -> Unit,
     onCoverOpen: (MediaListEntry) -> Unit

@@ -72,7 +72,26 @@ class CatalogStateTest {
             "studio" to listOf(CatalogAttributeValue.Text("Studio"))
         )))
 
-        assertEquals("Drama · Mystery · 2024.0 · Studio",
-            entry.subtitleText(listOf("genre", "year", "studio")))
+        val fields = listOf(
+            PackFieldDefinition("genre", CatalogFieldType.CHOICE, true, mapOf("en" to "Genre"), emptySet()),
+            PackFieldDefinition("year", CatalogFieldType.INTEGER, false, mapOf("en" to "Year"), emptySet()),
+            PackFieldDefinition("studio", CatalogFieldType.TEXT, false, mapOf("en" to "Studio"), emptySet())
+        )
+        assertEquals("Drama · Mystery · 2024 · Studio", entry.subtitleText(fields))
+        assertEquals(listOf("Drama", "Mystery"), entry.subtitleParts(fields, "en").first().values)
+        assertEquals(false, entry.subtitleParts(fields, "en").first().compact)
+    }
+
+    @Test fun longMultiValueSubtitleIsCompactWithoutLosingDistinctValues() {
+        val field = PackFieldDefinition("genre", CatalogFieldType.TEXT, true,
+            mapOf("en" to "Genre", "es" to "Género"), emptySet())
+        val entry = MediaListEntry.Item(MediaItem(PackId(1), "item", "Item", attributes = mapOf(
+            "genre" to listOf("Action", "Drama", "Fantasy", "Mystery", "Action")
+                .map(CatalogAttributeValue::Text)
+        )))
+        val part = entry.subtitleParts(listOf(field), "es").single()
+        assertEquals("Género", part.label)
+        assertEquals(listOf("Action", "Drama", "Fantasy", "Mystery"), part.values)
+        assertEquals(true, part.compact)
     }
 }

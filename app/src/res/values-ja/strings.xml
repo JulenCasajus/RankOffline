@@ -25,11 +25,11 @@
   <string name='rating_notes'>メモ</string>
   <string name='score_title'>スコア</string>
   <string name='score_quality'>完成度：%1$s</string>
-  <string name='score_bonus_value'>%1$s：+%2$.1f</string>
+  <string name='score_bonus_value'>%1$s：+%2$s</string>
   <string name='score_activate_category'>有効にする</string>
-  <string name='score_out_of_ten'>%1$.1f / 10</string>
+  <string name='score_out_of_ten'>%1$s / 10</string>
   <string name='bonus_range'>%1$s · +0～+%2$.1f</string>
-  <string name='bonus_current'>+%1$.1f</string>
+  <string name='bonus_current'>+%1$s</string>
   <string name='settings_title'>設定</string>
   <string name='settings_general_title'>一般設定</string>
   <string name='settings_general_description'>パッケージ、テーマ、アイコン、言語</string>
@@ -239,4 +239,7 @@
   <string name='ranking_share_failed'>ランキング画像を作成できませんでした。</string>
   <string name='ranking_share_empty'>ランキング画像を作成するには1件以上評価してください。</string>
   <string name="covers_batch_outcomes">%1$d件ダウンロード · %2$d件見つからず · %3$d件エラー</string>
+  <plurals name="subtitle_values_of_field">
+    <item quantity="other">%2$s · %1$d件</item>
+  </plurals>
 </resources>

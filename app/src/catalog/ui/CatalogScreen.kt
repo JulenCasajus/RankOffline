@@ -40,7 +40,7 @@ internal fun CatalogScreen(
     val merge = if (all) settings.allViewSettings.mergeEnabled else settings.activeMediaSettings?.mergeEnabled == true
     val showImages = if (all) settings.allViewSettings.showImages else settings.showImages
     val subtitleFields = remember(installedManifests) {
-        installedManifests.associate { it.packId to it.subtitle }
+        installedManifests.associate { it.packId to it.subtitleDefinitions() }
     }
     LaunchedEffect(listState, entries.size, page.hasMore, page.loadingMore) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }

@@ -72,17 +72,16 @@ interface MediaGroupDao : GroupQueryDao, GroupRelationDao, GroupImportDao, Group
 
 /** Shared indexed SQL for on-demand group fallback and its reactive UI observation. */
 internal const val GROUP_COVER_CANDIDATES_SQL = """
-    WITH candidate_refs AS (
-        SELECT media_id, 1 AS priority, position FROM media_group_member
-            WHERE pack_id=:packId AND group_id=:groupId
-        UNION ALL
-        SELECT media_id, 0 AS priority, -1 AS position FROM media_group_representative
-            WHERE pack_id=:packId AND group_id=:groupId
-    ), candidates AS (
+    SELECT i.* FROM (
         SELECT media_id, MIN(priority) AS priority, MIN(position) AS position
-        FROM candidate_refs GROUP BY media_id
-    )
-    SELECT i.* FROM candidates c
+        FROM (
+            SELECT media_id, 1 AS priority, position FROM media_group_member
+                WHERE pack_id=:packId AND group_id=:groupId
+            UNION ALL
+            SELECT media_id, 0 AS priority, -1 AS position FROM media_group_representative
+                WHERE pack_id=:packId AND group_id=:groupId
+        ) candidate_refs GROUP BY media_id
+    ) c
     CROSS JOIN media_item i
     WHERE i.pack_id=:packId AND i.id=c.media_id
     ORDER BY c.priority, c.position, i.id
