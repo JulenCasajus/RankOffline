@@ -38,18 +38,17 @@ class CoverDownloadsManager internal constructor(
 
     /**
      * Initial batch passes manifest.defaults.mergeEnabled and reuse=false.
-     * User-requested batches can additionally reuse group covers when viewing separate items.
+     * Merge determines whether visible identities are groups or individual items.
      */
     suspend fun downloadTop(
         packId: PackId,
         limit: Int,
         mergeEnabled: Boolean,
-        useGroupCoversForItems: Boolean = false,
         onProgress: (CoverDownloadProgress) -> Unit = {}
     ): CoverDownloadProgress = execute(packId, onProgress) {
         require(limit in 1..MAX_ENTRIES) { "Invalid download limit" }
         publish(CoverDownloadProgress(packId, CoverDownloadStatus.PREPARING_COVER_LIST), onProgress)
-        repository.topPopularVisibleCoverKeys(packId, limit, mergeEnabled, useGroupCoversForItems)
+        repository.topPopularVisibleCoverKeys(packId, limit, mergeEnabled)
     }
 
     /** Downloads covers for the requested entries; groups can have their own independent covers. */

@@ -1,7 +1,5 @@
 package org.rankoffline.app
 
-import kotlinx.coroutines.flow.flow
-
 internal fun CatalogUiController.nextSearchPage() { moreSearch.tryEmit(Unit) }
 
 
@@ -15,6 +13,7 @@ internal fun CatalogUiController.searchFilters(value: CatalogFilters) = editSear
 
 
 internal fun CatalogUiController.editSearch(update: (SearchUiState) -> SearchUiState) {
+    stopPreload()
     when (val selected = viewingScope.value) {
         ViewingScope.All -> allSearch.value = update(allSearch.value)
         is ViewingScope.Pack -> searchByPack.value = searchByPack.value +
@@ -24,6 +23,8 @@ internal fun CatalogUiController.editSearch(update: (SearchUiState) -> SearchUiS
 
 
 internal fun CatalogUiController.preparePack(packId: PackId, sortOrder: CatalogSortOrder) {
+    stopPreload()
+    session.touch(packId)
     if (packId !in searchByPack.value) searchByPack.value = searchByPack.value +
         (packId to SearchUiState(sortOrder = sortOrder))
 }

@@ -21,43 +21,6 @@ sealed interface ViewingScope {
     }
 }
 
-/** Combined views contain only explicitly selected packs; Merge changes presentation only. */
-internal data class AllCatalogRequest(
-    val packIds: List<PackId>,
-    val state: SearchUiState,
-    val mergeByPack: Map<PackId, Boolean>,
-    val revisionToken: Long
-)
-
-internal data class AllRankingRequest(
-    val packIds: List<PackId>,
-    val state: RankingUiState,
-    val mergeByPack: Map<PackId, Boolean>,
-    val revisionToken: Long
-)
-
-internal data class CatalogRequest(
-    val packId: PackId,
-    val query: String,
-    val sort: CatalogSortOrder,
-    val filters: CatalogFilters,
-    /** Only the list representation; never changes the pack's group relationships. */
-    val merge: Boolean,
-    val catalogRevision: Long,
-    val ratingRevision: Long
-)
-
-internal data class RankingRequest(
-    val packId: PackId,
-    val filters: CatalogFilters,
-    val sort: RankingSortOrder,
-    val descending: Boolean,
-    val ratingCategoryId: String?,
-    val merge: Boolean,
-    val catalogRevision: Long,
-    val ratingRevision: Long
-)
-
 /** A page may belong to a pack or RankOfflineAll; null means no request yet. */
 data class SearchPageState(
     val scope: ViewingScope? = null,
@@ -112,47 +75,8 @@ internal fun SearchPageState.visibleItemsFor(
 internal fun RankingResultState.visibleItemsFor(activeScope: ViewingScope): List<MediaListEntry> =
     if (scope == activeScope && !loading) items else emptyList()
 
-/** Preserve successful results during a refresh, without retaining stale alias titles. */
-internal fun retainedSearchPageState(
-    previous: SearchPageState,
-    scope: ViewingScope,
-    query: String
-): SearchPageState {
-    if (previous.scope != scope || previous.loadingInitial || previous.failed) {
-        return SearchPageState(scope = scope, query = query, hasMore = false)
-    }
-    return previous.copy(
-        query = query,
-        items = if (previous.query == query) previous.items
-            else previous.items.map(MediaListEntry::withCanonicalSearchTitle),
-        loadingInitial = false,
-        loadingMore = false,
-        failed = false
-    )
-}
-
-internal fun retainedRankingResultState(
-    previous: RankingResultState,
-    scope: ViewingScope
-): RankingResultState =
-    if (previous.scope == scope && !previous.loading && !previous.failed) {
-        previous.copy(failed = false)
-    } else RankingResultState(scope = scope)
-
 internal const val INITIAL_SEARCH_PAGE_SIZE = 200
 internal const val NEXT_SEARCH_PAGE_SIZE = 50
-
-internal data class ActiveSearchSnapshot(
-    val packId: PackId,
-    val state: SearchUiState,
-    val merge: Boolean
-)
-
-internal data class ActiveRankingSnapshot(
-    val packId: PackId,
-    val state: RankingUiState,
-    val merge: Boolean
-)
 
 /** Lazy per-pack revisions; inactive packs and purely visual updates do not invalidate others. */
 internal class MediaRevisionTracker {

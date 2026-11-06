@@ -163,10 +163,3 @@ object AttributionUrlPolicy {
     fun displayHost(url: String): String? =
         url.takeIf(::isSafeExternalHttpsUrl)?.let { URI(it).host.lowercase(Locale.ROOT) }
 }
-
-/** View model for the dynamic About screen; supplied by the installed PackRegistry. */
-data class PackAttributionSection(
-    val packId: PackId,
-    val packDisplayName: String,
-    val attributions: PackAttributions
-)

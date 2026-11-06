@@ -55,17 +55,15 @@ internal class RankingShareUiController(
                     services.mediaRepository.ranking(manifest, filter,
                         enabled && manifest.capabilities.merge, limit = 10)
                 }.sortedWith(rankingComparator(filter)).filter { it.finalScore != null }.take(10)
-                val currentSettings = services.settingsRepository.state.value
-                val imageKeys = entries.associate { it.key to it.displayCoverKey(currentSettings) }
                 // A GROUP resolves its dedicated cover first, then a valid representative file.
                 // Do not duplicate physical files to prepare a PNG.
-                val paths = imageKeys.values.distinct().associateWith { key ->
+                val paths = entries.map { it.key }.distinct().associateWith { key ->
                     services.mediaCoverRepository.observeCover(key).first().localPath
                 }
                 dataState.value = RankingShareData(selected, entries.map { entry ->
                     RankingShareItem(entry.packId, entry.id, entry.title,
                         formatScoreForDisplay(requireNotNull(entry.finalScore), Locale.getDefault()),
-                        paths[imageKeys.getValue(entry.key)])
+                        paths[entry.key])
                 }, topSevenBackground = services.rankingShareExporter.backgroundFor(selected, RankingShareTemplate.TOP_SEVEN),
                     topTenBackground = services.rankingShareExporter.backgroundFor(selected, RankingShareTemplate.TOP_TEN),
                     loading = false)

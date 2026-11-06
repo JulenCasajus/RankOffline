@@ -12,7 +12,7 @@ is uninstalled.
 The format includes:
 
 - global All/view/theme/language/icon/last-scope preferences when global;
-- per-pack preferences including `useGroupCoversForItems`;
+- per-pack presentation preferences;
 - per-pack rating definitions and profiles;
 - item and group scores, notes, status, profile and category values.
 

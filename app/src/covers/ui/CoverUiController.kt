@@ -25,10 +25,7 @@ internal class CoverUiController(
 
     fun download(key: CatalogEntryKey) = scope.launch {
         try {
-            val reuse = services.settingsRepository.state.value.mediaSettings[key.packId]
-                ?.useGroupCoversForItems == true
-            val displayKey = services.mediaCoverRepository.displayedCoverKey(key, reuse)
-            services.downloadCover(displayKey)
+            services.downloadCover(key)
             services.refreshPackStatistics(key.packId,
                 setOf(PackSummaryField.AVAILABLE_COVER_COUNT))
         } catch (cancelled: CancellationException) { throw cancelled }
@@ -42,8 +39,7 @@ internal class CoverUiController(
                 services.settingsRepository.ensurePackSettingsLoaded(packId)
                 val settings = services.settingsRepository.state.value.mediaSettings[packId]
                 services.coverDownloadsManager.downloadTop(packId, limit,
-                    mergeEnabled = settings?.mergeEnabled == true,
-                    useGroupCoversForItems = settings?.useGroupCoversForItems == true)
+                    mergeEnabled = settings?.mergeEnabled == true)
                 services.refreshPackStatistics(packId,
                     setOf(PackSummaryField.AVAILABLE_COVER_COUNT))
             }
@@ -63,14 +59,11 @@ internal class CoverUiController(
     fun delete(key: CatalogEntryKey, finished: (Boolean) -> Unit = {}) = scope.launch {
         var success = false
         try {
-            val reuse = services.settingsRepository.state.value.mediaSettings[key.packId]
-                ?.useGroupCoversForItems == true
-            val displayKey = services.mediaCoverRepository.displayedCoverKey(key, reuse)
-            val oldPath = services.mediaCoverRepository.observeCover(displayKey).first().localPath
-            success = services.mediaCoverRepository.removeLocalCover(displayKey)
+            val oldPath = services.mediaCoverRepository.observeCover(key).first().localPath
+            success = services.mediaCoverRepository.removeLocalCover(key)
             if (success) services.refreshPackStatistics(key.packId,
                 setOf(PackSummaryField.AVAILABLE_COVER_COUNT))
-            if (success && oldPath != null) bitmapCache.invalidate(displayKey.coverCacheIdentity(), oldPath)
+            if (success && oldPath != null) bitmapCache.invalidate(key.coverCacheIdentity(), oldPath)
         }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { onError(failure) }

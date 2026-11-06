@@ -9,21 +9,24 @@ internal class CatalogImportWriter(
     private val dao: MediaCatalogDao,
     private val sqlite: SupportSQLiteDatabase,
     private val packId: Long,
-    private val stage: String,
+    private val stage: String?,
     private val freshCatalog: Boolean
 ) {
-    private val markStatement = sqlite.compileStatement(
-        "INSERT INTO `$stage`(id, provider, provider_id) VALUES(?, ?, ?)"
-    )
+    private val markStatement = stage?.let {
+        sqlite.compileStatement("INSERT INTO `$it`(id, provider, provider_id) VALUES(?, ?, ?)")
+    }
     private val fullBatchStatements = mutableMapOf<String, SupportSQLiteStatement>()
 
     fun markSeen(item: MediaItemEntity, file: String, line: Long) {
+        // Fresh installs insert every row into media_item; its primary and provider-identity
+        // constraints already reject duplicates inside the same atomic transaction.
+        val mark = markStatement ?: return
         try {
-            markStatement.clearBindings()
-            markStatement.bindString(1, item.id)
-            if (item.provider == null) markStatement.bindNull(2) else markStatement.bindString(2, item.provider)
-            if (item.providerId == null) markStatement.bindNull(3) else markStatement.bindString(3, item.providerId)
-            markStatement.executeInsert()
+            mark.clearBindings()
+            mark.bindString(1, item.id)
+            if (item.provider == null) mark.bindNull(2) else mark.bindString(2, item.provider)
+            if (item.providerId == null) mark.bindNull(3) else mark.bindString(3, item.providerId)
+            mark.executeInsert()
         } catch (error: SQLiteConstraintException) {
             throw CatalogImportException("Duplicate catalog ID or provider identity at $file:$line", error)
         }
@@ -31,11 +34,11 @@ internal class CatalogImportWriter(
 
     suspend fun upsert(rows: List<MediaCatalogItemRows>) {
         if (freshCatalog) {
-            insertRows("media_item", ITEM_COLUMNS, rows.map { itemValues(it.item) })
+            insertRows("media_item", ITEM_COLUMNS, rows.map { it.item }, ::bindItem)
             insertRows("media_item_attribute", ATTRIBUTE_COLUMNS,
-                rows.flatMap { it.attributes }.map(::attributeValues))
+                rows.flatMap { it.attributes }, ::bindAttribute)
             insertRows("media_alias", ALIAS_COLUMNS,
-                rows.flatMap { it.aliases }.map(::aliasValues))
+                rows.flatMap { it.aliases }, ::bindAlias)
             return
         }
         val ids = rows.map { it.item.id }
@@ -89,29 +92,30 @@ internal class CatalogImportWriter(
     }
 
     fun close() {
-        markStatement.close()
+        markStatement?.close()
         fullBatchStatements.values.forEach(SupportSQLiteStatement::close)
     }
 
     fun deleteMissing() {
         if (freshCatalog) return
+        val seenTable = requireNotNull(stage)
         // Composite identity: a refresh of one pack cannot delete another pack's items.
         // This cascades reference attributes and memberships but not detached personal ratings.
         sqlite.execSQL(
             "DELETE FROM media_item WHERE pack_id = ? " +
-                "AND NOT EXISTS (SELECT 1 FROM `$stage` WHERE `$stage`.id = media_item.id)",
+                "AND NOT EXISTS (SELECT 1 FROM `$seenTable` WHERE `$seenTable`.id = media_item.id)",
             arrayOf(packId)
         )
     }
 
-    private fun insertRows(table: String, columns: List<String>, values: List<List<Any?>>) {
+    private fun <T> insertRows(table: String, columns: List<String>, values: List<T>,
+                               bind: (SupportSQLiteStatement, Int, T) -> Unit) {
         if (values.isEmpty()) return
-        require(values.all { it.size == columns.size }) { "Invalid $table row width" }
         val fullSize = MAX_SQL_BIND_ARGUMENTS / columns.size
+        val row = List(columns.size) { "?" }.joinToString(prefix = "(", postfix = ")")
+        val prefix = "INSERT INTO `$table`(" + columns.joinToString(",") { "`$it`" } + ") VALUES "
         values.chunked(fullSize).forEach { chunk ->
-            val row = List(columns.size) { "?" }.joinToString(prefix = "(", postfix = ")")
-            val sql = "INSERT INTO `$table`(" + columns.joinToString(",") { "`$it`" } +
-                ") VALUES " + List(chunk.size) { row }.joinToString(",")
+            val sql = prefix + List(chunk.size) { row }.joinToString(",")
             val reusable = chunk.size == fullSize
             val statement = if (reusable) fullBatchStatements.getOrPut(table) {
                 sqlite.compileStatement(sql)
@@ -119,35 +123,60 @@ internal class CatalogImportWriter(
             try {
                 statement.clearBindings()
                 var index = 1
-                chunk.forEach { record -> record.forEach { value ->
-                    when (value) {
-                        null -> statement.bindNull(index)
-                        is String -> statement.bindString(index, value)
-                        is Int -> statement.bindLong(index, value.toLong())
-                        is Long -> statement.bindLong(index, value)
-                        is Double -> statement.bindDouble(index, value)
-                        is Boolean -> statement.bindLong(index, if (value) 1L else 0L)
-                        else -> error("Unsupported $table value type: ${value::class.java.name}")
-                    }
-                    index++
-                } }
-                statement.executeInsert()
+                chunk.forEach { record ->
+                    bind(statement, index, record)
+                    index += columns.size
+                }
+                try { statement.executeInsert() }
+                catch (error: SQLiteConstraintException) {
+                    throw CatalogImportException("Catalog constraint violation in $table", error)
+                }
             } finally {
                 if (!reusable) statement.close()
             }
         }
     }
 
-    private fun itemValues(value: MediaItemEntity): List<Any?> = listOf(
-        value.packId, value.id, value.title, value.provider, value.providerId, value.popularity,
-        value.popularityRank, value.remoteCoverRef, value.localCoverPath, value.coverResolutionState)
+    private fun bindItem(sql: SupportSQLiteStatement, i: Int, value: MediaItemEntity) {
+        sql.bindLong(i, value.packId)
+        sql.bindString(i + 1, value.id)
+        sql.bindString(i + 2, value.title)
+        sql.bindTextOrNull(i + 3, value.provider)
+        sql.bindTextOrNull(i + 4, value.providerId)
+        sql.bindDoubleOrNull(i + 5, value.popularity)
+        if (value.popularityRank == null) sql.bindNull(i + 6)
+        else sql.bindLong(i + 6, value.popularityRank.toLong())
+        sql.bindTextOrNull(i + 7, value.remoteCoverRef)
+        sql.bindTextOrNull(i + 8, value.localCoverPath)
+        sql.bindString(i + 9, value.coverResolutionState)
+    }
 
-    private fun attributeValues(value: MediaItemAttributeEntity): List<Any?> = listOf(
-        value.packId, value.mediaId, value.fieldId, value.position, value.valueText,
-        value.valueNumber, value.valueBoolean)
+    private fun bindAttribute(sql: SupportSQLiteStatement, i: Int, value: MediaItemAttributeEntity) {
+        sql.bindLong(i, value.packId)
+        sql.bindString(i + 1, value.mediaId)
+        sql.bindString(i + 2, value.fieldId)
+        sql.bindLong(i + 3, value.position.toLong())
+        sql.bindTextOrNull(i + 4, value.valueText)
+        sql.bindDoubleOrNull(i + 5, value.valueNumber)
+        if (value.valueBoolean == null) sql.bindNull(i + 6)
+        else sql.bindLong(i + 6, if (value.valueBoolean) 1L else 0L)
+    }
 
-    private fun aliasValues(value: MediaAliasEntity): List<Any?> = listOf(
-        value.packId, value.mediaId, value.title, value.language, value.kind)
+    private fun bindAlias(sql: SupportSQLiteStatement, i: Int, value: MediaAliasEntity) {
+        sql.bindLong(i, value.packId)
+        sql.bindString(i + 1, value.mediaId)
+        sql.bindString(i + 2, value.title)
+        sql.bindTextOrNull(i + 3, value.language)
+        sql.bindTextOrNull(i + 4, value.kind)
+    }
+
+    private fun SupportSQLiteStatement.bindTextOrNull(index: Int, value: String?) {
+        if (value == null) bindNull(index) else bindString(index, value)
+    }
+
+    private fun SupportSQLiteStatement.bindDoubleOrNull(index: Int, value: Double?) {
+        if (value == null) bindNull(index) else bindDouble(index, value)
+    }
 
     private companion object {
         const val MAX_SQL_BIND_ARGUMENTS = 900

@@ -31,6 +31,7 @@ class SettingsRepository internal constructor(
     internal val ratingFiles = LocalRatingConfigurationStore(context)
     internal var localRatings = emptyMap<PackId, PackRatingDefinition>()
     internal val activePackKey = longPreferencesKey("active_pack_id")
+    internal val recentPackKey = stringPreferencesKey("recent_pack_ids")
     internal val lastTabKey = stringPreferencesKey("last_tab")
     internal val lastViewingScopeKey = longPreferencesKey("last_viewing_scope")
     internal val allViewKey = stringPreferencesKey("all_view_settings")
@@ -50,6 +51,7 @@ class SettingsRepository internal constructor(
     internal var manifests = emptyMap<PackId, PackManifest>()
     internal val _state = MutableStateFlow(AppSettingsState())
     val state: StateFlow<AppSettingsState> = _state.asStateFlow()
+    internal val recentPackIds = MutableStateFlow<List<PackId>>(emptyList())
 
     internal fun currentCatalogSortOrders(): Map<PackId, CatalogSortOrder> =
         manifests.keys.associateWith { personal[it]?.catalogSortOrder ?: CatalogSortOrder.POPULARITY }
@@ -79,7 +81,6 @@ class SettingsRepository internal constructor(
             showImages = welcomeImages ?: original.showImages,
             stickyScore = original.stickyScore,
             mergeEnabled = original.mergeEnabled,
-            useGroupCoversForItems = original.useGroupCoversForItems,
             elaborateRatingEnabled = if (manifest.capabilities.ratings) {
                 welcomeElaborate ?: original.elaborateRatingEnabled
             } else false,

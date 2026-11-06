@@ -1,8 +1,7 @@
 package org.rankoffline.app
 
-import kotlinx.coroutines.flow.flow
-
 internal fun CatalogUiController.removePack(packId: PackId) {
+    session.remove(packId)
     filterOptionsState.value = filterOptionsState.value - packId
     searchByPack.value = searchByPack.value - packId
     rankingByPack.value = rankingByPack.value - packId

@@ -55,9 +55,12 @@ RankOffline/
                 - SharedUiComponents.kt
                 - UserMessage.kt
             - backup/
+              - PersonalBackupCodec.kt
               - PersonalBackupMappers.kt
               - PersonalBackupReadDao.kt
+              - PersonalBackupTransfer.kt
               - PersonalBackupUiController.kt
+              - PersonalBackupValidation.kt
               - PersonalBackupWriteDao.kt
               - PersonalDataBackup.kt
               - PersonalDataBackupManager.kt
@@ -183,13 +186,14 @@ RankOffline/
                 - AttributionJsonReaders.kt
                 - AttributionLegalValidator.kt
                 - PackAttributions.kt
+                - PackId.kt
                 - PackManagementModels.kt
                 - PackModels.kt
                 - PackPreferencesState.kt
+                - PackPresentationModels.kt
                 - PackSources.kt
                 - PackVersionCompatibility.kt
               - storage/
-                - PackCoverStatusStore.kt
                 - PackInstalledResources.kt
                 - PackMetrics.kt
                 - PackStorageInspector.kt
@@ -415,11 +419,17 @@ RankOffline/
     - common.py
     - legacy_adapter.py
     - validator.py
+    - validator_attribution.py
+    - validator_common.py
+    - validator_manifest.py
+    - validator_records.py
   - packs/
     - official-packs.json
   - record_kotlin_pack_validation.py
   - tests/
-    - test_pack_tools.py
+    - pack_fixtures.py
+    - test_pack_build_release.py
+    - test_pack_validation.py
   - update_project_tree.rb
   - validate_pack.py
   - validate_packs_with_kotlin.sh

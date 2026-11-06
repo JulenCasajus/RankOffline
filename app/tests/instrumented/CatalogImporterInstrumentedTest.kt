@@ -60,6 +60,33 @@ class CatalogImporterInstrumentedTest {
         assertEquals(null, database.mediaCatalogDao().metadata(11, CatalogImporter.METADATA_FINGERPRINT))
     }
 
+    @Test fun duplicateIdentityOnFreshImportRollsBackAllRows() = runBlocking {
+        val manifest = installCatalog(listOf(
+            """{"id":"one","title":"One","provider":"source","providerId":"42"}""",
+            """{"id":"two","title":"Two","provider":"source","providerId":"42"}"""
+        ))
+
+        val error = runCatching { CatalogImporter(database, 400).importIfNeeded(manifest, root) }
+            .exceptionOrNull()
+
+        assertTrue(error is CatalogImportException)
+        assertEquals(0L, database.mediaCatalogDao().itemCount(11))
+        assertEquals(null, database.mediaCatalogDao().metadata(11, CatalogImporter.METADATA_FINGERPRINT))
+    }
+
+    @Test fun duplicateItemIdOnFreshImportRollsBackAllRows() = runBlocking {
+        val manifest = installCatalog(listOf(
+            """{"id":"same","title":"One"}""",
+            """{"id":"same","title":"Two"}"""
+        ))
+
+        val error = runCatching { CatalogImporter(database, 1).importIfNeeded(manifest, root) }
+            .exceptionOrNull()
+
+        assertTrue(error is CatalogImportException)
+        assertEquals(0L, database.mediaCatalogDao().itemCount(11))
+    }
+
     @Test fun refreshedCatalogRemovesMissingItemButKeepsItsPersonalRating() = runBlocking {
         var manifest = installCatalog(listOf(
             """{"id":"keep","title":"Keep"}""",

@@ -50,6 +50,8 @@ SOURCES=(
   "$PROJECT_ROOT/app/src/packs/manifest/PackManifestRating.kt"
   "$PROJECT_ROOT/app/src/packs/manifest/PackManifestParser.kt"
   "$PROJECT_ROOT/app/src/packs/model/PackModels.kt"
+  "$PROJECT_ROOT/app/src/packs/model/PackId.kt"
+  "$PROJECT_ROOT/app/src/packs/model/PackPresentationModels.kt"
   "$PROJECT_ROOT/app/src/packs/model/PackSources.kt"
   "$PROJECT_ROOT/app/src/packs/model/PackAttributions.kt"
   "$PROJECT_ROOT/app/src/packs/model/AttributionJsonReaders.kt"

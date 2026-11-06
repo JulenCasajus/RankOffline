@@ -117,7 +117,7 @@ internal fun RankingScreen(
                 onCoverDownload = onDownloadCover, onCoverOpen = { onOpenCover(entry) })
         }
         if (entries.isEmpty()) item { Text(stringResource(if (page.result.failed) R.string.catalog_unavailable_error
-            else if (page.result.loading) R.string.loading_list else R.string.no_saved_ratings),
+            else if (page.result.scope != scope || page.result.loading) R.string.loading_list else R.string.no_saved_ratings),
             modifier = Modifier.padding(16.dp)) }
         if (page.loadingMore) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
     }

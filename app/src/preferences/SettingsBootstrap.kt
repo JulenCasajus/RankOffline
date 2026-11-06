@@ -31,6 +31,10 @@ suspend fun SettingsRepository.loadInitialState() = lock.withLock {
     } else null
     val preferredPack = prefs[activePackKey]
         ?.let { runCatching { PackId(it) }.getOrNull() }
+    val storedRecent = prefs[recentPackKey].orEmpty().split(',')
+        .mapNotNull { runCatching { PackId.parse(it) }.getOrNull() }
+    recentPackIds.value = preferredPack?.let { recentPackOrder(it, storedRecent) }
+        ?: storedRecent.distinct().take(5)
     val language = SupportedLanguage.fromLanguageTag(prefs[languageKey])
     _state.value = AppSettingsState(
         activePackId = preferredPack,

@@ -2,6 +2,7 @@ package org.rankoffline.app
 
 import android.app.Application
 import android.util.Log
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
@@ -30,6 +31,20 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     val coverRepository = CoverBitmapCache()
     internal val catalog = CatalogUiController(viewModelScope, services.mediaRepository,
         services.packManager, settingsRepository, viewingScope, revisions)
+    private val allSearchScroll = LazyListState()
+    private val allRankingScroll = LazyListState()
+
+    fun searchListState(scope: ViewingScope): LazyListState = when (scope) {
+        ViewingScope.All -> allSearchScroll
+        is ViewingScope.Pack -> catalog.session.searchScroll(scope.packId)
+    }
+
+    fun rankingListState(scope: ViewingScope): LazyListState = when (scope) {
+        ViewingScope.All -> allRankingScroll
+        is ViewingScope.Pack -> catalog.session.rankingScroll(scope.packId)
+    }
+
+    fun preloadRecentCatalogs() = catalog.preloadRecentPacks()
     internal val covers = CoverUiController(viewModelScope, services, coverRepository, ::reportError)
     internal val packController = PackUiController(application, viewModelScope, services, selection,
         onSelected = catalog::preparePack, beforeDelete = covers::cancelAndJoin,
@@ -55,10 +70,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     val packDownloadProgress = packController.aggregateProgress
     val filterOptions = catalog.filterOptions
     val searchPageState = catalog.searchPageState
-    val searchResults = catalog.searchResults
     internal val rankingPage = catalog.rankingPage
-    val rankingResultState = catalog.rankingResultState
-    val ranking = catalog.ranking
     val activeSearchState = catalog.activeSearchState
     val activeRankingState = catalog.activeRankingState
     val coverDownloadProgress by lazy { covers.progress }

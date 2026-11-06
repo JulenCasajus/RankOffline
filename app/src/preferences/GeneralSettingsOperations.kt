@@ -67,7 +67,6 @@ suspend fun SettingsRepository.applyImportedPersonalSettings(
             stickyScore = item.stickyScore,
             elaborateRatingEnabled = item.elaborateRatingEnabled,
             mergeEnabled = item.mergeEnabled,
-            useGroupCoversForItems = item.useGroupCoversForItems,
             catalogSortOrder = importedSortOrders[id]
         )
     }

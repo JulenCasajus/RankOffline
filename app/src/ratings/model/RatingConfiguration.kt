@@ -57,9 +57,7 @@ data class MediaSettings(
     val ratingProfiles: RatingProfilesConfig,
     val mergeEnabled: Boolean,
     val showImages: Boolean = false,
-    val stickyScore: Boolean = true,
-    /** Visual-only, independent of mergeEnabled; does not change item identities. */
-    val useGroupCoversForItems: Boolean = false
+    val stickyScore: Boolean = true
 )
 
 @Serializable

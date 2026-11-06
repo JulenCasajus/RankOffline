@@ -18,10 +18,9 @@ class SettingsAndWorkContractTest {
     @Test fun personalPreferencesOverrideOnlyTheirOwnPackSettings() {
         val manifest = TestFixtures.manifest(11, merge = true)
         val settings = manifest.resolveSettings(PersonalPackPreferences(
-            showImages = false, mergeEnabled = false, useGroupCoversForItems = true))
+            showImages = false, mergeEnabled = false))
         assertFalse(settings.showImages)
         assertFalse(settings.mergeEnabled)
-        assertTrue(settings.useGroupCoversForItems)
     }
 
     @Test fun mergeCannotBeEnabledWhenManifestDisablesIt() {

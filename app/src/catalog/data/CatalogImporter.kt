@@ -96,8 +96,11 @@ class CatalogImporter(
             database.mediaGroupDao().groupCountForPack(packId) == 0L &&
             dao.metadata(packId, METADATA_FINGERPRINT) == null &&
             dao.metadata(packId, "group_manifest_sha256") == null
-        val stage = "catalog_seen_${UUID.randomUUID().toString().replace("-", "")}" // generated, never user input
-        sqlite.execSQL("CREATE TEMP TABLE `$stage` (id TEXT NOT NULL PRIMARY KEY, " +
+        // Only reconciliation needs a complete seen-ID table. On a fresh install,
+        // media_item itself enforces both unique identities and there are no old rows to delete.
+        val stage = if (timings.freshCatalog) null else
+            "catalog_seen_${UUID.randomUUID().toString().replace("-", "")}" // generated, never user input
+        if (stage != null) sqlite.execSQL("CREATE TEMP TABLE `$stage` (id TEXT NOT NULL PRIMARY KEY, " +
             "provider TEXT, provider_id TEXT, UNIQUE(provider, provider_id))")
         try {
             val writer = CatalogImportWriter(dao, sqlite, packId, stage, timings.freshCatalog)
@@ -149,7 +152,7 @@ class CatalogImporter(
                 return total
             } finally { writer.close() }
         } finally {
-            sqlite.execSQL("DROP TABLE IF EXISTS `$stage`")
+            if (stage != null) sqlite.execSQL("DROP TABLE IF EXISTS `$stage`")
         }
     }
 

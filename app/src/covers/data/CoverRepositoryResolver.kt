@@ -2,7 +2,6 @@ package org.rankoffline.app
 
 import java.io.File
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /** Top N DIFFERENT physical image identities, not the first N catalog rows.
@@ -13,8 +12,7 @@ import kotlinx.coroutines.withContext
 suspend fun CoverRepository.topPopularVisibleCoverKeys(
     packId: PackId,
     limit: Int,
-    mergeEnabled: Boolean,
-    useGroupCoversForItems: Boolean
+    mergeEnabled: Boolean
 ): List<CatalogEntryKey> = withContext(Dispatchers.IO) {
     require(limit in 1..5_000)
     val manifest = manifestProvider(packId)?.takeIf { it.packId == packId }
@@ -26,15 +24,9 @@ suspend fun CoverRepository.topPopularVisibleCoverKeys(
         return@withContext collectDistinctCoverKeys(
             limit = limit,
             loadPage = { offset, count -> catalogItems.topPopularCoverItemsPage(packId.value, count, offset) },
-            sourceKeys = { rows ->
-                val preferred = if (useGroupCoversForItems) {
-                    catalogGroups.preferredCoverGroups(packId.value, rows.map { it.id })
-                        .associate { it.mediaId to it.groupId }
-                } else emptyMap()
-                rows.map { item -> preferred[item.id]?.let { groupId ->
-                    CatalogEntryKey(packId, groupId, CatalogEntryKind.GROUP)
-                } ?: CatalogEntryKey(packId, item.id, CatalogEntryKind.ITEM) }
-            }
+            sourceKeys = { rows -> rows.map { item ->
+                CatalogEntryKey(packId, item.id, CatalogEntryKind.ITEM)
+            } }
         )
     }
     collectDistinctCoverKeys(
@@ -80,16 +72,6 @@ internal fun CoverRepository.validItemCoverPath(key: CatalogEntryKey, ref: Strin
         declaredCover(key.packId, ref)?.takeIf(CoverImageFiles::isValid)?.absolutePath
     else null
 }
-
-
-/** User-requested single image: redirect grouped item images without touching their own cover state. */
-suspend fun CoverRepository.displayedCoverKey(key: CatalogEntryKey, useGroupCoversForItems: Boolean): CatalogEntryKey =
-    withContext(Dispatchers.IO) {
-        if (!useGroupCoversForItems || key.kind != CatalogEntryKind.ITEM) return@withContext key
-        val groupId = catalogGroups.preferredCoverGroups(key.packId.value, listOf(key.id))
-            .firstOrNull()?.groupId ?: return@withContext key
-        CatalogEntryKey(key.packId, groupId, CatalogEntryKind.GROUP)
-    }
 
 
 internal fun CoverRepository.declaredCover(packId: PackId, reference: String?): File? {

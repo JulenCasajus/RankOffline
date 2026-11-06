@@ -15,15 +15,6 @@ data class CoverStorageIdentity(
 enum class CoverResolutionState { UNKNOWN, AVAILABLE, NOT_FOUND }
 enum class CoverDownloadState { IDLE, DOWNLOADING }
 
-enum class PopularCoverBatch(val count: Int) {
-    TOP_100(100), TOP_500(500), TOP_1000(1000), TOP_5000(5000)
-}
-
-enum class CoverTapAction { DOWNLOAD, OPEN_VIEWER }
-
-fun coverTapAction(localCoverPath: String?): CoverTapAction =
-    if (localCoverPath.isNullOrBlank()) CoverTapAction.DOWNLOAD else CoverTapAction.OPEN_VIEWER
-
 sealed interface CoverDownloadResult {
     data object Downloaded : CoverDownloadResult
     data object AlreadyAvailable : CoverDownloadResult

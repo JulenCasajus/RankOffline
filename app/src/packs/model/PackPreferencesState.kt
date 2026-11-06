@@ -8,8 +8,6 @@ internal data class PersonalPackPreferences(
     val showImages: Boolean? = null,
     val stickyScore: Boolean? = null,
     val mergeEnabled: Boolean? = null,
-    /** Individual items may borrow a group image, without merging catalog entries. */
-    val useGroupCoversForItems: Boolean? = null,
     val elaborateRatingEnabled: Boolean? = null,
     val catalogSortOrder: CatalogSortOrder? = null
 )
@@ -26,7 +24,6 @@ internal fun PackManifest.resolveSettings(
         ratingConfig = definition?.config ?: RatingSystemConfig(emptyList()),
         ratingProfiles = definition?.profiles ?: RatingProfilesConfig(emptyList()),
         mergeEnabled = (personal.mergeEnabled ?: defaults.mergeEnabled) && merge.enabled,
-        useGroupCoversForItems = personal.useGroupCoversForItems ?: false,
         showImages = personal.showImages ?: defaults.showImages,
         stickyScore = personal.stickyScore ?: defaults.stickyScoreHeader
     )
@@ -69,7 +66,6 @@ data class AppSettingsState(
     val ratingProfiles: RatingProfilesConfig get() = activeMediaSettings?.ratingProfiles
         ?: RatingProfilesConfig(emptyList())
     val mergeEnabled: Boolean get() = activeMediaSettings?.mergeEnabled ?: false
-    val useGroupCoversForItems: Boolean get() = activeMediaSettings?.useGroupCoversForItems ?: false
     val themePalette: AppThemePalette
         get() = (themeSelection as? ThemeSelection.BuiltIn)?.palette ?: AppThemePalette.MIDNIGHT_NEON
     val activePalette: AppPalette get() = themeSelection.resolve(customPalettes, builtInPaletteOverrides)

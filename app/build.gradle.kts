@@ -28,7 +28,7 @@ android {
         applicationId = "org.rankoffline.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 9
+        versionCode = 10
         versionName = "0.2.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -56,11 +56,11 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
+            versionNameSuffix = "-debug.3"
             buildConfigField(
                 "String",
                 "PACK_INDEX_URL",
-                "\"https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.2-debug.2/pack-index.json\""
+                "\"https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.2-debug.3/pack-index.json\""
             )
             buildConfigField(
                 "String",

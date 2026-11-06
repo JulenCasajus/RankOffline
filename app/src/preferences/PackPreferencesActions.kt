@@ -16,11 +16,6 @@ internal fun PreferencesUiController.merge(value: Boolean, all: Boolean) = run {
 }
 
 
-internal fun PreferencesUiController.useGroupCoversForItems(value: Boolean) = run {
-    settings.updateUseGroupCoversForItems(value)
-}
-
-
 internal fun PreferencesUiController.elaborateRating(value: Boolean) = run { settings.updateElaborateRatingEnabled(value) }
 
 

@@ -245,7 +245,7 @@ internal class RankOfflineServices private constructor(
         val defaultMerge = state.manifest?.defaults?.mergeEnabled == true
         val result = packManager.acquireInitialCovers(packId, INITIAL_COVER_COUNT) { update ->
             coverDownloadsManager.downloadTop(packId, INITIAL_COVER_COUNT,
-                mergeEnabled = defaultMerge, useGroupCoversForItems = false,
+                mergeEnabled = defaultMerge,
                 onProgress = update)
         }
         refreshPackStatistics(packId, setOf(PackSummaryField.AVAILABLE_COVER_COUNT))

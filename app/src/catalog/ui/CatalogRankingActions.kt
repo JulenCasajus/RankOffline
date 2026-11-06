@@ -1,7 +1,5 @@
 package org.rankoffline.app
 
-import kotlinx.coroutines.flow.flow
-
 internal fun CatalogUiController.nextRankingPage() { moreRanking.tryEmit(Unit) }
 
 
@@ -22,6 +20,7 @@ internal fun CatalogUiController.toggleRankingDirection() = editRanking { it.cop
 
 
 internal fun CatalogUiController.editRanking(update: (RankingUiState) -> RankingUiState) {
+    stopPreload()
     when (val selected = viewingScope.value) {
         ViewingScope.All -> allRanking.value = update(allRanking.value)
         is ViewingScope.Pack -> rankingByPack.value = rankingByPack.value +

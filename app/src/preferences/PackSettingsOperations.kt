@@ -8,12 +8,29 @@ import kotlinx.coroutines.sync.withLock
 suspend fun SettingsRepository.updateActivePack(value: PackId) = lock.withLock {
     require(value in manifests) { "Pack not installed: $value" }
     loadPackLocked(value)
-    if (_state.value.activePackId != value) {
-        context.dataStore.edit { it[activePackKey] = value.value }
+    val recent = recentPackOrder(value, recentPackIds.value)
+    if (_state.value.activePackId != value || recent != recentPackIds.value) {
+        context.dataStore.edit {
+            it[activePackKey] = value.value
+            it[recentPackKey] = recent.joinToString(",") { id -> id.value.toString() }
+        }
     }
+    recentPackIds.value = recent
     _state.value = _state.value.copy(activePackId = value).refreshPackSettings().copy(
         catalogSortOrders = currentCatalogSortOrders()
     )
+}
+
+internal fun recentPackOrder(active: PackId, previous: List<PackId>): List<PackId> =
+    (listOf(active) + previous).distinct().take(5)
+
+suspend fun SettingsRepository.removeRecentPack(value: PackId) = lock.withLock {
+    val recent = recentPackIds.value - value
+    if (recent.size == recentPackIds.value.size) return@withLock
+    context.dataStore.edit {
+        it[recentPackKey] = recent.joinToString(",") { id -> id.value.toString() }
+    }
+    recentPackIds.value = recent
 }
 
 
@@ -36,11 +53,6 @@ suspend fun SettingsRepository.updateShowImages(value: Boolean) = changeActive {
 
 
 suspend fun SettingsRepository.updateStickyScore(value: Boolean) = changeActive { it.copy(stickyScore = value) }
-
-
-suspend fun SettingsRepository.updateUseGroupCoversForItems(value: Boolean) = changeActive {
-    it.copy(useGroupCoversForItems = value)
-}
 
 
 suspend fun SettingsRepository.updateMergeEnabled(value: Boolean) = changeActive {

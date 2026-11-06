@@ -7,10 +7,12 @@ import kotlinx.coroutines.launch
 fun RankOfflineViewModel.updateLastTab(value: AppTab) = preferences.lastTab(value)
 
 
-fun RankOfflineViewModel.updateActivePack(value: PackId) = packController.choosePack(value)
+fun RankOfflineViewModel.updateActivePack(value: PackId) =
+    packController.choosePack(value).also { catalog.stopPreload() }
 
 
-fun RankOfflineViewModel.selectAllPacks() = packController.chooseAll()
+fun RankOfflineViewModel.selectAllPacks() =
+    packController.chooseAll().also { catalog.stopPreload() }
 
 
 fun RankOfflineViewModel.refreshAvailablePacks() = packController.discoverAvailable()

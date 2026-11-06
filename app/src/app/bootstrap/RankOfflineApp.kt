@@ -1,7 +1,6 @@
 package org.rankoffline.app
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -21,12 +20,14 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val isDiscoveringPacks by viewModel.discoveringPacks.collectAsState()
     val editor by viewModel.ratingEditor.collectAsState()
     val group by viewModel.groupDetail.collectAsState()
-    val list by viewModel.searchResults.collectAsState()
     val searchPage by viewModel.searchPageState.collectAsState()
-    val ranked by viewModel.ranking.collectAsState()
     val rankingPage by viewModel.rankingPage.collectAsState()
     val searchState by viewModel.activeSearchState.collectAsState()
     val rankingState by viewModel.activeRankingState.collectAsState()
+    val searchByPack by viewModel.catalog.searchByPack.collectAsState()
+    val rankingByPack by viewModel.catalog.rankingByPack.collectAsState()
+    val recentPackIds by viewModel.settingsRepository.recentPackIds.collectAsState()
+    val ratingOverrides by viewModel.catalog.ratingDisplayOverrides.collectAsState()
     val filtersByPack by viewModel.filterOptions.collectAsState()
     val readyManifests = remember(packs) {
         packs.values.filter { it.available }.mapNotNull { it.manifest }
@@ -47,6 +48,20 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     var tab by rememberSaveable { mutableStateOf<AppTab?>(null) }
     val activeTab = tab ?: settings.lastTab
     val activePackId = (scope as? ViewingScope.Pack)?.packId
+    val visibleSearchState = activePackId?.let { searchByPack[it] }
+        ?: searchState
+    val visibleRankingState = activePackId?.let { rankingByPack[it] }
+        ?: rankingState
+    val visibleSearchPage = if (searchPage.scope == scope &&
+        searchPage.query == visibleSearchState.query) searchPage
+        else activePackId?.let(viewModel.catalog::cachedSearchPage) ?: SearchPageState(scope = scope)
+    val visibleRankingPage = if (rankingPage.result.scope == scope) rankingPage
+        else activePackId?.let(viewModel.catalog::cachedRankingPage) ?: CatalogUiController.RankingPage()
+    val visibleSearchItems = visibleSearchPage.visibleItemsFor(scope,
+        ratingOverrides, visibleSearchState.query)
+    val visibleRankingItems = applyRatingOverrides(
+        visibleRankingPage.result.visibleItemsFor(scope),
+        ratingOverrides)
     val activeManifest = activePackId?.let { id -> readyManifests.firstOrNull { it.packId == id } }
     val allSelected = scope == ViewingScope.All
     val allAvailable = readyManifests.size >= 2
@@ -56,24 +71,35 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val services = remember(viewModel) { RankOfflineServices.get(viewModel.getApplication<android.app.Application>()) }
     val covers = remember(services) { services.mediaCoverRepository }
     val bitmapCache = viewModel.coverRepository
-    // Remember independently for each pack. The lists are created lazily as packs are opened.
-    val searchScroll = remember { mutableMapOf<String, LazyListState>() }
-    val rankingScroll = remember { mutableMapOf<String, LazyListState>() }
-    val listKey = activePackId?.value?.toString() ?: "__all__"
-    val catalogListState = remember(listKey) { searchScroll.getOrPut(listKey) { LazyListState() } }
-    val rankingListState = remember(listKey) { rankingScroll.getOrPut(listKey) { LazyListState() } }
+    val catalogListState = viewModel.searchListState(scope)
+    val rankingListState = viewModel.rankingListState(scope)
 
     LaunchedEffect(viewModel, context) { viewModel.messages.collect { snackbar.showSnackbar(it.resolve(context)) } }
-    LaunchedEffect(activeTab) {
+    LaunchedEffect(activeTab, scope) {
+        val selectedPack = scope as? ViewingScope.Pack
+        if (selectedPack != null && when (activeTab) {
+            AppTab.SEARCH -> viewModel.catalog.cachedSearchPage(selectedPack.packId) == null
+            AppTab.RANKING -> viewModel.catalog.cachedRankingPage(selectedPack.packId) == null
+            AppTab.SETTINGS -> false
+        }) viewModel.catalog.stopPreload()
         viewModel.activateCatalogTab(activeTab)
         if (ready && settings.lastTab != activeTab) viewModel.updateLastTab(activeTab)
     }
-    LaunchedEffect(listKey, searchState.query, searchState.filters, searchState.sortOrder) {
-        catalogListState.scrollToItem(0)
-    }
-    LaunchedEffect(listKey, rankingState.filters, rankingState.sortOrder,
-        rankingState.descending, rankingState.ratingCategoryId) {
-        rankingListState.scrollToItem(0)
+    LaunchedEffect(activeTab, scope, recentPackIds, packs,
+        searchPage.items.size, rankingPage.result.items.size,
+        searchPage.loadingInitial, rankingPage.result.loading) {
+        val searchReady = searchPage.scope == scope && !searchPage.loadingInitial &&
+            !searchPage.failed && activePackId?.let(viewModel.catalog::cachedSearchPage) != null
+        val rankingReady = rankingPage.result.scope == scope &&
+            !rankingPage.result.loading && !rankingPage.result.failed &&
+            activePackId?.let(viewModel.catalog::cachedRankingPage) != null
+        val visible = when (activeTab) {
+            AppTab.SEARCH -> searchReady
+            AppTab.RANKING -> rankingReady
+            AppTab.SETTINGS -> searchReady || rankingReady
+        }
+        if (packs.values.any { it.installed && !it.available }) viewModel.catalog.stopPreload()
+        else if (visible && scope is ViewingScope.Pack) viewModel.preloadRecentCatalogs()
     }
 
     if (!ready || !settings.settingsLoaded) {
@@ -112,7 +138,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
             }?.subtitleDefinitions().orEmpty(),
             onBack = viewModel::closeGroup,
             onRate = { fromMembers ->
-                val candidate = ranked.firstOrNull { it.key == current.group.key }
+                val candidate = visibleRankingItems.firstOrNull { it.key == current.group.key }
                     ?: MediaListEntry.Group(current.group, current.explicitRating?.finalScore,
                         current.explicitRating?.qualityScore, current.explicitRating?.additiveScore,
                         null, current.members.size, current.derivedRating.ratedCount,
@@ -152,14 +178,23 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                 when (activeTab) {
                 AppTab.SEARCH -> if (readyManifests.isEmpty())
                     EmptyPackScreen(stringResource(R.string.app_name), readyManifests, openManagement)
-                else CatalogScreen(list, searchPage, searchState, catalogListState,
+                else CatalogScreen(visibleSearchItems, visibleSearchPage, visibleSearchState, catalogListState,
                     settings, activeManifest, readyManifests, scope,
                     filterOptions = combinedOptions,
                     coverRepository = covers, bitmapCache = bitmapCache,
                     onPack = viewModel::updateActivePack, onAll = viewModel::selectAllPacks,
-                    onManage = openManagement, onQuery = viewModel::setSearchQuery,
-                    onSort = viewModel::setCatalogSortOrder,
-                    onFilters = viewModel::setCatalogFilters,
+                    onManage = openManagement, onQuery = {
+                        viewModel.setSearchQuery(it)
+                        coroutines.launch { catalogListState.scrollToItem(0) }
+                    },
+                    onSort = {
+                        viewModel.setCatalogSortOrder(it)
+                        coroutines.launch { catalogListState.scrollToItem(0) }
+                    },
+                    onFilters = {
+                        viewModel.setCatalogFilters(it)
+                        coroutines.launch { catalogListState.scrollToItem(0) }
+                    },
                     onLoadFilterOptions = {
                         if (allSelected) readyManifests.forEach { viewModel.refreshFilterOptions(it.packId) }
                         else activePackId?.let(viewModel::refreshFilterOptions)
@@ -172,14 +207,26 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                 )
                 AppTab.RANKING -> if (readyManifests.isEmpty())
                     EmptyPackScreen(stringResource(R.string.ranking_title), readyManifests, openManagement)
-                else RankingScreen(ranked, rankingPage, rankingState, rankingListState,
+                else RankingScreen(visibleRankingItems, visibleRankingPage, visibleRankingState, rankingListState,
                     settings, activeManifest, readyManifests, scope,
                     filterOptions = combinedOptions,
                     coverRepository = covers, bitmapCache = bitmapCache,
                     onPack = viewModel::updateActivePack, onAll = viewModel::selectAllPacks,
-                    onManage = openManagement, onFilters = viewModel::setRankingFilters,
-                    onSort = viewModel::setRankingSortOrder, onSortDirection = viewModel::toggleRankingSortDirection,
-                    onCategory = viewModel::setRankingCategory,
+                    onManage = openManagement, onFilters = {
+                        viewModel.setRankingFilters(it)
+                        coroutines.launch { rankingListState.scrollToItem(0) }
+                    },
+                    onSort = {
+                        viewModel.setRankingSortOrder(it)
+                        coroutines.launch { rankingListState.scrollToItem(0) }
+                    }, onSortDirection = {
+                        viewModel.toggleRankingSortDirection()
+                        coroutines.launch { rankingListState.scrollToItem(0) }
+                    },
+                    onCategory = {
+                        viewModel.setRankingCategory(it)
+                        coroutines.launch { rankingListState.scrollToItem(0) }
+                    },
                     onLoadFilterOptions = {
                         if (allSelected) readyManifests.forEach { viewModel.refreshFilterOptions(it.packId) }
                         else activePackId?.let(viewModel::refreshFilterOptions)

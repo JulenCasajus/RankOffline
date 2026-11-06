@@ -16,7 +16,6 @@ fun RankOfflineViewModel.updateStickyScore(value: Boolean) = preferences.stickyS
 fun RankOfflineViewModel.updateMergeEnabled(value: Boolean) = preferences.merge(value, viewingScope.value == ViewingScope.All)
 
 
-fun RankOfflineViewModel.updateUseGroupCoversForItems(value: Boolean) = preferences.useGroupCoversForItems(value)
 
 
 fun RankOfflineViewModel.updateElaborateRatingEnabled(value: Boolean) = preferences.elaborateRating(value)

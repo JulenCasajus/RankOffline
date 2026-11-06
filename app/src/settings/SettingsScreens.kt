@@ -96,7 +96,6 @@ internal fun SettingsScreen(
             settings, allSelected,
             onStickyScoreChange = viewModel::updateStickyScore,
             onShowImagesChange = viewModel::updateShowImages,
-            onGroupCoversChange = viewModel::updateUseGroupCoversForItems,
             onBack = goBack
         )
         SettingsDestination.THEME -> ThemeSettingsScreen(

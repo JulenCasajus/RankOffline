@@ -1,7 +1,6 @@
 package org.rankoffline.app
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -114,13 +113,15 @@ private fun FilterMultiChoice(options: List<String>, selected: Set<String>, titl
     OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f), horizontalAlignment = androidx.compose.ui.Alignment.Start) {
             Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-            Text(selected.takeIf { it.isNotEmpty() }?.joinToString() ?: stringResource(R.string.filters_all),
+            Text(options.filter { it in selected }.takeIf { it.isNotEmpty() }?.joinToString()
+                ?: stringResource(R.string.filters_all),
                 maxLines = 1)
         }
         Icon(Icons.Default.ArrowDropDown, contentDescription = null)
     }
     if (expanded) {
-        var query by remember { mutableStateOf("") }
+        var query by remember(title) { mutableStateOf("") }
+        var pending by remember(title) { mutableStateOf(selected) }
         val filtered = remember(options, query) {
             val term = query.trim()
             if (term.isEmpty()) options else options.filter { it.contains(term, ignoreCase = true) }
@@ -133,23 +134,21 @@ private fun FilterMultiChoice(options: List<String>, selected: Set<String>, titl
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     placeholder = { Text(stringResource(R.string.filter_search_values)) })
                 LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
-                    item { TextButton(onClick = { onSelected(emptySet()) },
+                    item { TextButton(onClick = { pending = emptySet() },
                         modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.filters_all))
                     } }
                     items(filtered, key = { it }) { option ->
-                        Row(Modifier.fillMaxWidth().clickable {
-                            onSelected(if (option in selected) selected - option else selected + option)
-                        }) {
-                            Checkbox(option in selected, onCheckedChange = { checked ->
-                                onSelected(if (checked) selected + option else selected - option)
-                            })
-                            Text(option, modifier = Modifier.padding(top = 12.dp))
+                        TextButton(onClick = {
+                            pending = if (option in pending) pending - option else pending + option
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Text(option, modifier = Modifier.weight(1f))
+                            Checkbox(option in pending, onCheckedChange = null)
                         }
                     }
                 }
             } },
-            confirmButton = { TextButton(onClick = { expanded = false }) {
+            confirmButton = { TextButton(onClick = { onSelected(pending); expanded = false }) {
                 Text(stringResource(R.string.action_apply))
             } },
             dismissButton = { TextButton(onClick = { expanded = false }) {

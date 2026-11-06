@@ -160,7 +160,7 @@ internal fun CoverPlaceholder(
 
 /**
  * Preferred entry-level API for new catalog/ranking cards. The callbacks receive the
- * ACTUAL cover key, which may be a GROUP; rating click handlers must still use entry.key.
+ * Visible entry key; rating click handlers use the same entry identity.
  */
 @Composable
 internal fun MediaCover(
@@ -174,7 +174,7 @@ internal fun MediaCover(
     showImages: Boolean = settings.mediaSettings[entry.packId]?.showImages == true,
     allowDownload: Boolean = true
 ) {
-    val displayKey = entry.displayCoverKey(settings)
+    val displayKey = entry.key
     // The paged row already carries this item's local path. Reuse a decoded
     // thumbnail immediately while Room emits its validated cover snapshot.
     val initialSnapshot = when (entry) {

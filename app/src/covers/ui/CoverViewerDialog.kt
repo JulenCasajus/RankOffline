@@ -228,7 +228,7 @@ internal fun CoverViewerDialog(
     }
 }
 
-/** Viewer for a visible entry. The selected visual image may be a shared GROUP cover. */
+/** Viewer for a visible item or group. Group fallback is resolved by CoverRepository. */
 @Composable
 internal fun CoverViewerDialog(
     entry: MediaListEntry,
@@ -241,7 +241,7 @@ internal fun CoverViewerDialog(
     onGroupDetails: (() -> Unit)? = null,
     onDownloadRequested: ((CatalogEntryKey) -> Unit)? = null
 ) {
-    val imageKey = entry.displayCoverKey(settings)
+    val imageKey = entry.key
     val memberCount = (entry as? MediaListEntry.Group)?.memberCount
     CoverViewerDialog(
         key = imageKey, title = entry.title, coverRepository = coverRepository,

@@ -257,7 +257,7 @@ internal fun ActivePackSettingsScreen(
 internal fun DisplaySettingsScreen(
     settings: AppSettingsState, allSelected: Boolean,
     onStickyScoreChange: (Boolean) -> Unit, onShowImagesChange: (Boolean) -> Unit,
-    onGroupCoversChange: (Boolean) -> Unit, onBack: () -> Unit
+    onBack: () -> Unit
 ) {
     SettingsSubscreen(stringResource(R.string.general_display_section), onBack) {
         LazyColumn(
@@ -276,13 +276,6 @@ internal fun DisplaySettingsScreen(
                     stringResource(R.string.general_show_images_description),
                     if (allSelected) settings.allViewSettings.showImages else settings.showImages,
                     onShowImagesChange)
-            }
-            if (!allSelected) {
-                item { SettingsSwitchRow(
-                    stringResource(R.string.settings_group_covers_for_items),
-                    stringResource(R.string.settings_group_covers_for_items_description),
-                    settings.useGroupCoversForItems, onGroupCoversChange
-                ) }
             }
         }
     }

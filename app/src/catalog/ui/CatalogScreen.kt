@@ -102,7 +102,7 @@ internal fun CatalogScreen(
             }
             if (entries.isEmpty()) item { Text(
                 stringResource(if (page.failed) R.string.catalog_unavailable_error else
-                    if (page.loadingInitial) R.string.loading_list else R.string.no_search_results),
+                    if (page.scope != scope || page.loadingInitial) R.string.loading_list else R.string.no_search_results),
                 modifier = Modifier.padding(16.dp)) }
             if (page.loadingMore) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         }

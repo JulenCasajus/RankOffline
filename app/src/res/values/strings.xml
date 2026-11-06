@@ -212,8 +212,6 @@
   <string name='category_pack_runtime_error'>Catalog preparation failed. Tap retry.</string>
   <string name='category_download_unavailable'>Pack download is not available in this build.</string>
   <string name='settings_display_description'>Visual appearance and image display</string>
-  <string name='settings_group_covers_for_items'>Use group covers for items</string>
-  <string name='settings_group_covers_for_items_description'>Prefer a group cover when an item has no dedicated cover.</string>
   <string name='settings_theme_title'>Theme</string>
   <string name='settings_theme_description'>Choose the app’s colour palette</string>
   <string name='theme_midnight_neon'>Midnight Neon</string>

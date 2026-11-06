@@ -30,28 +30,7 @@ fun CatalogSortOrder.withReversed(reversed: Boolean): CatalogSortOrder = when (t
 
 fun CatalogSortOrder.inverted(): CatalogSortOrder = withReversed(!isReversed)
 
-data class CatalogAttributeSort(val fieldId: String, val descending: Boolean = false) {
-    init {
-        require(fieldId.isNotBlank()) { "Sort field ID must not be blank" }
-    }
-}
-
 enum class RankingSortOrder { FINAL_SCORE, QUALITY_SCORE, PERSONAL_TASTE, CATEGORY_SCORE }
-
-data class RatingScores(
-    val finalScore: Double? = null,
-    val qualityScore: Double? = null,
-    val additiveScore: Double? = null,
-    val categoryScore: Double? = null
-) {
-    fun displayScore(sortOrder: RankingSortOrder): Double? = when (sortOrder) {
-        RankingSortOrder.FINAL_SCORE -> finalScore
-        RankingSortOrder.QUALITY_SCORE -> qualityScore
-        RankingSortOrder.PERSONAL_TASTE -> additiveScore?.times(10.0)
-        RankingSortOrder.CATEGORY_SCORE -> categoryScore
-    }?.takeIf { it.isFinite() && it in RATING_MIN..RATING_MAX }
-}
-
 /** Attribute values in a pack: meaning, type, cardinality and allowed values come from its manifest. */
 sealed interface CatalogAttributeValue {
     data class Text(val value: String) : CatalogAttributeValue

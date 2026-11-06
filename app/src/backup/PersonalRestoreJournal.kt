@@ -117,12 +117,10 @@ internal class PersonalLocalBackupFiles(context: Context) {
 
 internal fun PersonalPackPreferences.toBackup() = BackupPackPreferences(
     showImages = showImages, stickyScore = stickyScore, mergeEnabled = mergeEnabled,
-    useGroupCoversForItems = useGroupCoversForItems,
     elaborateRatingEnabled = elaborateRatingEnabled, catalogSortOrder = catalogSortOrder
 )
 internal fun BackupPackPreferences.toPersonal() = PersonalPackPreferences(
     showImages = showImages, stickyScore = stickyScore, mergeEnabled = mergeEnabled,
-    useGroupCoversForItems = useGroupCoversForItems,
     elaborateRatingEnabled = elaborateRatingEnabled, catalogSortOrder = catalogSortOrder
 )
 

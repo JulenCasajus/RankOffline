@@ -2,7 +2,7 @@
 
 ## Boundaries
 
-`app/src/java/org/rankoffline/app/` is organized physically by domain while
+`app/src/` is organized physically by domain while
 temporarily retaining the single package `org.rankoffline.app`:
 
 - `app/`: process bootstrap, ViewModel and shared UI.
@@ -14,10 +14,6 @@ temporarily retaining the single package `org.rankoffline.app`:
 - `backup/`: personal JSON schema 2 export/import.
 - `preferences/`, `theme/`, `settings/`, `onboarding/`, `legal/`, `data/`.
 
-All 193 destinations in `FASE_5_TREE_MAPPING.tsv` are present. The 194th file,
-`ratings/data/RatingEntityMappers.kt`, was added during phase 6 and is retained
-in the corresponding rating-data domain. The 195th file,
-`app/ui/FloatingNavigation.kt`, centralizes the later floating-navigation UI.
 The application has a single launcher experience in debug and release variants.
 
 Room stores catalog and personal rating rows with composite `(packId, id)`
@@ -34,6 +30,24 @@ no remote source. UI and workers share the same `PackManager`.
 Room writes, pack installation, recovery and optional initial cover downloads
 are coordinated through repositories and WorkManager. The app does not execute
 pack code; packages contain validated data only.
+
+## Catalog session
+
+The ViewModel retains pages actually visited for up to five physical packs in
+access order. Search and MyRanking have separate page and scroll states. A
+single tab retains at most 1,200 rows per pack; if the user pages farther, the
+current screen remains visible, but returning to it may require a fresh query.
+RankOfflineAll is loaded only on demand and is excluded from background
+preloading. On startup, only the active pack's first page is required for the
+visible screen. After that page appears, at most four other READY recent packs
+are preloaded sequentially with 200 Search and 200 ranking rows each. This
+never downloads images or triggers imports. Only the five recent pack IDs are
+stored in DataStore; pages, scroll positions and decoded thumbnails stay in
+process memory. A visible uncached page or an incomplete installation pauses
+background preloading. Changing the active pack or recent-pack order replans
+the remaining work; completed pages remain cached, while an interrupted Room
+query starts again when that pack is still eligible. Switching between Search,
+MyRanking and Settings does not itself discard completed preload work.
 
 ## Generated code
 
