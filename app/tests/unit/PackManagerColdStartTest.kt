@@ -2,8 +2,13 @@ package org.rankoffline.app
 
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.net.URI
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -52,6 +57,41 @@ class PackManagerColdStartTest {
 
         assertEquals(PackRuntimeStatus.FILES_INSTALLED,
             manager.states.value.getValue(PackId(11)).status)
+    }
+
+    @Test fun deletionRemainsVisibleUntilFilesAreGoneThenRestoresDownloadAction() = runBlocking {
+        val id = PackId(11)
+        val root = temporary.newFolder("deleting")
+        installCommittedPack(root)
+        val cleaning = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val sources = PackSourceRegistry().apply { replace(listOf(PackDownloadDescriptor(
+            TestFixtures.manifest(), URI("https://example.com/pack.pack"), 1,
+            "0".repeat(64), "fixture"
+        ))) }
+        val manager = PackManager(root, temporary.newFolder(), sources,
+            PackArchiveDownloader { _, _, _ -> PackOperationResult.NETWORK_ERROR },
+            object : PackCatalogSynchronizer {
+                override suspend fun sync(manifest: PackManifest, installedDirectory: File) = Unit
+                override suspend fun isCurrentFast(manifest: PackManifest,
+                    installedDirectory: File) = true
+            }, PackCatalogCleaner { cleaning.complete(Unit); release.await() }, "0.2.2")
+        manager.refresh()
+        manager.markDeleting(id)
+        val deletion = async { manager.delete(id) }
+        try {
+            withTimeout(5_000) { cleaning.await() }
+            manager.refresh() // Files still exist; refresh must not restore READY.
+            val pending = manager.states.value.getValue(id)
+            assertEquals(PackRuntimeStatus.DELETING, pending.status)
+            assertFalse(pending.canDownload)
+            assertFalse(pending.canDelete)
+        } finally { release.complete(Unit) }
+        assertTrue(withTimeout(5_000) { deletion.await() })
+        val removed = manager.states.value.getValue(id)
+        assertEquals(PackRuntimeStatus.NOT_INSTALLED, removed.status)
+        assertFalse(removed.installed)
+        assertTrue(removed.canDownload)
     }
 
     private fun installCommittedPack(root: File) {

@@ -39,7 +39,7 @@ import org.junit.runner.RunWith
 class InitialCoverResumeInstrumentedTest {
     @Test fun initialCoversResumeBeforeAnotherPackFinishesImporting() = runScenario(false)
 
-    @Test fun initialCoversKeepReceivingHttpWhileImportHoldsRoomWriter() = runScenario(true)
+    @Test fun initialCoversStallAfterInFlightHttpWhileImportHoldsRoomWriter() = runScenario(true)
 
     @Test fun failedArchiveReleasesInitialCovers() = runScenario(false, failArchive = true)
 
@@ -121,8 +121,10 @@ class InitialCoverResumeInstrumentedTest {
         val repository = CoverRepository(isolated, database,
             manifestProvider = { id -> TestFixtures.manifest(id.value) },
             downloader = CoverDownloader { _, destination ->
-                if (attempts.incrementAndGet() > 3) coverGate.await()
+                val attempt = attempts.incrementAndGet()
+                if (attempt > 3) coverGate.await()
                 scheduler.withCoverTransfer {
+                    if (holdRoomWriter && attempt > 3) importStarted.await()
                     destination.writeBytes(imageBytes)
                     httpCompleted.incrementAndGet()
                     CoverTransferResult.DOWNLOADED
@@ -186,6 +188,17 @@ class InitialCoverResumeInstrumentedTest {
             if (!failArchive && !cancelArchive) withTimeout(20_000) { importStarted.await() }
             if (holdRoomWriter) {
                 withTimeout(20_000) { while (httpCompleted.get() < 10) delay(10) }
+                // HTTP can run briefly, but all workers eventually wait for the same
+                // SQLite writer. This is not sustained cover-download progress.
+                delay(400)
+                val stalledAt = httpCompleted.get()
+                val committedAt = covers.progressByPack.value[idA]?.downloaded
+                delay(400)
+                assertEquals(stalledAt, httpCompleted.get())
+                assertTrue("A bounded batch must stall before all images are committed",
+                    stalledAt < keys.size)
+                assertEquals("Completed covers stop advancing behind Room's writer",
+                    committedAt, covers.progressByPack.value[idA]?.downloaded)
                 assertFalse("B import must still hold Room while A downloads", importRelease.isCompleted)
                 assertEquals("A awaits the Room writer before promoting all images", 0L, coversFinishedAt.get())
                 Log.i(TAG, "archiveReleased=${archiveReleasedAt.get()} importRoomHeld=true " +

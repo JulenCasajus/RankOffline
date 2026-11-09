@@ -112,9 +112,15 @@ internal object PackWorkScheduler {
         manager: PackManager, infos: List<WorkInfo>, newlyFailed: Set<UUID>
     ) {
         val installs = infos.filter { it.tags.contains(actionTag(PackWorkAction.INSTALL)) }
-        val active = installs.filterNot { it.state.isFinished }.mapNotNull(::packIdFromTags).toSet()
+        // A RUNNING install can be finishing its import after PackManager clears its
+        // progress. Recreating QUEUED there briefly shows "Waiting to download".
+        val queued = installs.filter { info ->
+            info.state == WorkInfo.State.ENQUEUED || info.state == WorkInfo.State.BLOCKED ||
+                (info.state == WorkInfo.State.RUNNING &&
+                    info.progress.getString("phase") == PackInstallPhase.QUEUED.name)
+        }.mapNotNull(::packIdFromTags).toSet()
         val failed = installs.filter { it.id in newlyFailed }.mapNotNull(::packIdFromTags).toSet()
-        manager.reconcileQueuedInstallStates(active, failed)
+        manager.reconcileQueuedInstallStates(queued, failed)
     }
 
     private fun packIdFromTags(info: WorkInfo): PackId? = info.tags

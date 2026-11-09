@@ -241,7 +241,7 @@
   <string name='ranking_share_empty'>请至少为一个条目评分以创建排名图片。</string>
   <string name="covers_batch_outcomes">%1$d 已下载 · %2$d 未找到 · %3$d 错误</string>
   <plurals name="subtitle_values_of_field">
-    <item quantity="other">%2$s · %1$d项</item>
+    <item quantity="other">%2$s (%1$d)</item>
   </plurals>
   <string name="filter_match_any_description">OR · 任一</string>
   <string name="filter_match_all_description">AND · 全部</string>

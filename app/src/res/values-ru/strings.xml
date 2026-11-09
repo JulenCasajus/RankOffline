@@ -269,10 +269,10 @@
   <string name='ranking_share_empty'>Оцените хотя бы один элемент, чтобы создать изображение рейтинга.</string>
   <string name="covers_batch_outcomes">%1$d загружено · %2$d не найдено · %3$d ошибок</string>
   <plurals name="subtitle_values_of_field">
-    <item quantity="one">%1$d значение · %2$s</item>
-    <item quantity="few">%1$d значения · %2$s</item>
-    <item quantity="many">%1$d значений · %2$s</item>
-    <item quantity="other">%1$d значения · %2$s</item>
+    <item quantity="one">%2$s (%1$d)</item>
+    <item quantity="few">%2$s (%1$d)</item>
+    <item quantity="many">%2$s (%1$d)</item>
+    <item quantity="other">%2$s (%1$d)</item>
   </plurals>
   <string name="filter_match_any_description">OR · любое</string>
   <string name="filter_match_all_description">AND · все</string>

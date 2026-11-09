@@ -11,7 +11,6 @@ import java.net.UnknownHostException
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
 import android.util.Log
-import android.os.SystemClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -61,15 +60,8 @@ class SecureCoverDownloader internal constructor(
                         return@withContext CoverTransferResult.TEMPORARY_ERROR
                     }
 
-                    val requestedAt = SystemClock.elapsedRealtime()
-                    val sample = traceCounter.incrementAndGet()
-                    val trace = BuildConfig.DEBUG && (sample <= 10L || sample % 50L == 0L)
-                    val attempt = if (scheduler == null) requestOnce(current, host, retryGate, destination, trace)
-                        else scheduler.withCoverTransfer {
-                            if (trace) Log.d("RankOfflineCoverTimeline",
-                                "host=$host phase=image-slot-acquired waitMs=${SystemClock.elapsedRealtime() - requestedAt}")
-                            requestOnce(current, host, retryGate, destination, trace)
-                        }
+                    val attempt = if (scheduler == null) requestOnce(current, host, retryGate, destination)
+                        else scheduler.withCoverTransfer { requestOnce(current, host, retryGate, destination) }
                     if (attempt.redirect != null) {
                         if (redirects++ >= 3) {
                             CoverFailureDiagnostics.record(host, "redirect-limit")
@@ -95,11 +87,8 @@ class SecureCoverDownloader internal constructor(
 
     /** Each reservation covers one HTTPS response, never provider cooldown or Room writes. */
     private suspend fun requestOnce(
-        uri: URI, host: String, retryGate: AtomicLong, destination: File, trace: Boolean
+        uri: URI, host: String, retryGate: AtomicLong, destination: File
     ): CoverHttpAttempt {
-        val started = SystemClock.elapsedRealtime()
-        var responseStatus = 0
-        var transferred = 0L
         val connection = (uri.toURL().openConnection() as HttpURLConnection).apply {
             instanceFollowRedirects = false
             connectTimeout = 10_000
@@ -109,7 +98,6 @@ class SecureCoverDownloader internal constructor(
         }
         try {
             val status = connection.responseCode
-            responseStatus = status
             if (status in REDIRECT_STATUSES) {
                 val location = connection.getHeaderField("Location")
                     ?: return CoverHttpAttempt(result = CoverTransferResult.TEMPORARY_ERROR)
@@ -140,7 +128,6 @@ class SecureCoverDownloader internal constructor(
                         val read = input.read(buffer)
                         if (read < 0) break
                         total += read
-                        transferred += read
                         if (total > CoverImageFiles.MAX_BYTES) {
                             CoverFailureDiagnostics.record(host, "oversized-image")
                             return CoverHttpAttempt(result = CoverTransferResult.TEMPORARY_ERROR)
@@ -152,8 +139,6 @@ class SecureCoverDownloader internal constructor(
             return CoverHttpAttempt(result = CoverTransferResult.DOWNLOADED)
         } finally {
             connection.disconnect()
-            if (trace) Log.d("RankOfflineCoverTimeline", "host=$host phase=image-http-finished " +
-                "status=$responseStatus bytes=$transferred durationMs=${SystemClock.elapsedRealtime() - started}")
         }
     }
 
@@ -165,7 +150,6 @@ class SecureCoverDownloader internal constructor(
     private companion object {
         val REDIRECT_STATUSES = setOf(301, 302, 303, 307, 308)
         val retryAfterByHost = ConcurrentHashMap<String, AtomicLong>()
-        val traceCounter = AtomicLong()
     }
 }
 

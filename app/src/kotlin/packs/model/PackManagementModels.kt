@@ -7,7 +7,7 @@ enum class PackRuntimeStatus {
 
 enum class PackInstallPhase {
     QUEUED, DOWNLOADING, VERIFYING, INSTALLING, WAITING_IMPORT, IMPORTING,
-    FINALIZING, WAITING_COVERS, DOWNLOADING_COVERS
+    FINALIZING, DOWNLOADING_COVERS
 }
 
 enum class PackOperationResult {

@@ -26,10 +26,10 @@ suspend fun PackManager.refresh() = refreshMutex.withLock {
         val ready = installed.mapNotNull { (id, definition) ->
             val knownReady = runtime[id] == PackRuntimeStatus.READY && id !in changed
             val directory = installer.installedDirectory(id)
-            val current = knownReady || (directory != null &&
+            val current = runtime[id] != PackRuntimeStatus.DELETING && (knownReady || (directory != null &&
                 !installer.hasPendingInstallation(id) && !installer.hasPendingDeletion(id) &&
                 isCompatiblePackVersion(definition.manifest.minRankOfflineVersion, currentAppVersion) &&
-                synchronizer.isCurrentFast(definition.manifest, directory))
+                synchronizer.isCurrentFast(definition.manifest, directory)))
             id.takeIf { current }
         }.toSet()
         ready.forEach { runtime[it] = PackRuntimeStatus.READY }

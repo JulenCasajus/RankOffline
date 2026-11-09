@@ -1,6 +1,7 @@
 package org.rankoffline.app
 
 import android.content.Context
+import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import androidx.room.Room
@@ -20,6 +21,39 @@ import org.junit.runner.RunWith
 /** Optional real-archive regression; put two verified .pack files in externalFilesDir for this test. */
 @RunWith(AndroidJUnit4::class)
 class RealPackImportInstrumentedTest {
+    @Test fun compareMangaOuterBatchSizesWithoutChangingTheImporter() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        assumeTrue("Run only on an isolated emulator", Build.HARDWARE.startsWith("ranchu") ||
+            Build.HARDWARE.startsWith("goldfish"))
+        val archive = File(context.getExternalFilesDir(null), "rankoffline-test-pack-b.pack")
+        assumeTrue("Verified Manga fixture required", archive.isFile)
+        val root = File(context.cacheDir, "real-manga-batch-test")
+        root.deleteRecursively()
+        check(root.mkdirs())
+        try {
+            val (manifest, directory) = install(PackInstaller(root), archive)
+            for (size in listOf(400, 500)) {
+                val databaseName = "real-manga-batch-$size.db"
+                context.deleteDatabase(databaseName)
+                val database = Room.databaseBuilder(context, RankOfflineDatabase::class.java,
+                    databaseName).setJournalMode(
+                    androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING).build()
+                try {
+                    val started = SystemClock.elapsedRealtime()
+                    val result = withTimeout(300_000) {
+                        CatalogImporter(database, batchSize = size).importIfNeeded(manifest, directory)
+                    }
+                    Log.i("RankOfflineBatchBenchmark", "pack=${manifest.packId.value} batch=$size " +
+                        "totalMs=${SystemClock.elapsedRealtime() - started} result=$result")
+                    assertTrue(result is CatalogImportResult.Imported)
+                } finally {
+                    database.close()
+                    context.deleteDatabase(databaseName)
+                }
+            }
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun archiveDigestReadCostOnEmulator() { runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val input = requireNotNull(context.getExternalFilesDir(null))

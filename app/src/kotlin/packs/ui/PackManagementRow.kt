@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 /** UI-only phase mapping; no status persistence or duplicate job state. */
 @Composable
 private fun packStatusText(state: PackState): String {
+    if (state.status == PackRuntimeStatus.DELETING) return stringResource(R.string.category_deleting)
     val progress = state.progress
     return when (progress?.phase) {
         PackInstallPhase.QUEUED -> stringResource(R.string.category_phase_waiting_download)
@@ -58,8 +59,7 @@ private fun packStatusText(state: PackState): String {
         PackInstallPhase.INSTALLING -> stringResource(R.string.category_phase_installing)
         PackInstallPhase.WAITING_IMPORT -> stringResource(R.string.category_phase_waiting_import)
         PackInstallPhase.IMPORTING -> stringResource(R.string.category_phase_importing_catalog)
-        PackInstallPhase.FINALIZING -> stringResource(R.string.category_phase_finalizing)
-        PackInstallPhase.WAITING_COVERS -> stringResource(R.string.category_phase_waiting_covers)
+        PackInstallPhase.FINALIZING -> stringResource(R.string.category_phase_importing_catalog)
         PackInstallPhase.DOWNLOADING_COVERS -> stringResource(
             R.string.category_phase_downloading_covers,
             progress.coverProcessed,
@@ -111,7 +111,8 @@ internal fun PackManagementRow(
                         text = packStatusText(state), fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    state.progress?.takeIf { it.phase == PackInstallPhase.DOWNLOADING_COVERS }
+                    state.progress?.takeIf { state.status != PackRuntimeStatus.DELETING &&
+                        it.phase == PackInstallPhase.DOWNLOADING_COVERS }
                         ?.let { progress ->
                             Text(
                                 text = stringResource(R.string.covers_batch_outcomes,
@@ -120,7 +121,8 @@ internal fun PackManagementRow(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    if (state.archiveDownloadBytes != null && !state.installed && state.progress == null) {
+                    if (state.archiveDownloadBytes != null && !state.installed &&
+                        state.progress == null && state.status != PackRuntimeStatus.DELETING) {
                         Text(
                             text = stringResource(
                                 R.string.pack_storage_transfer,
@@ -134,7 +136,8 @@ internal fun PackManagementRow(
                     Icon(Icons.Default.CheckCircle, null, tint = accent,
                         modifier = Modifier.size(22.dp).testTag("pack_selected_${entry.packId.value}"))
                 }
-                if (state.installed && state.progress == null) {
+                if (state.installed && state.progress == null &&
+                    state.status != PackRuntimeStatus.DELETING) {
                     IconButton(onClick = {
                         expanded = !expanded
                         if (expanded && !state.storage.current) onRequestStorageDetails()
@@ -145,8 +148,10 @@ internal fun PackManagementRow(
                     }
                 }
                 when {
-                    state.progress?.phase == PackInstallPhase.WAITING_COVERS ||
-                        state.progress?.phase == PackInstallPhase.DOWNLOADING_COVERS ->
+                    state.status == PackRuntimeStatus.DELETING -> Icon(Icons.Default.Lock,
+                        contentDescription = stringResource(R.string.category_download_unavailable),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    state.progress?.phase == PackInstallPhase.DOWNLOADING_COVERS ->
                         IconButton(onClick = onCancelInitialCovers) {
                             Icon(Icons.Default.Close,
                                 contentDescription = stringResource(R.string.action_cancel), tint = accent)
@@ -167,7 +172,7 @@ internal fun PackManagementRow(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            state.progress?.let { progress ->
+            state.progress?.takeUnless { state.status == PackRuntimeStatus.DELETING }?.let { progress ->
                 when (progress.phase) {
                     PackInstallPhase.DOWNLOADING -> LinearProgressIndicator(
                         progress = { progress.downloadFraction },
@@ -184,10 +189,11 @@ internal fun PackManagementRow(
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = accent)
                 }
             }
-            if (state.status == PackRuntimeStatus.DELETING && state.progress == null) {
+            if (state.status == PackRuntimeStatus.DELETING) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = accent)
             }
-            if (expanded && state.installed && state.progress == null) {
+            if (expanded && state.installed && state.progress == null &&
+                state.status != PackRuntimeStatus.DELETING) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween

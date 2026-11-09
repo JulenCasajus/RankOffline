@@ -60,6 +60,22 @@ suspend fun PackManager.recoverAll(): Map<PackId, Boolean> =
     discoverIds().associateWith { recover(it) }
 
 
+/** Publish deletion before cancelling cover work or waiting for the pack lock. */
+internal suspend fun PackManager.markDeleting(packId: PackId) = refreshMutex.withLock {
+    runtime[packId] = PackRuntimeStatus.DELETING
+    synchronized(stateLock) {
+        _states.value[packId]?.let { state ->
+            _states.value = _states.value + (packId to state.copy(status = PackRuntimeStatus.DELETING))
+        }
+    }
+}
+
+/** Restore the installed state if preparation failed before deletion began. */
+internal suspend fun PackManager.cancelDeleting(packId: PackId) {
+    if (runtime.remove(packId, PackRuntimeStatus.DELETING)) refresh()
+}
+
+
 suspend fun PackManager.delete(packId: PackId): Boolean = packLock(packId).withLock {
     runtime[packId] = PackRuntimeStatus.DELETING
     try {
@@ -90,8 +106,9 @@ suspend fun PackManager.acquireInitialCovers(
 ): CoverDownloadProgress = packLock(packId).withLock {
     require(target in 1..5_000)
     check(installer.installedDirectory(packId) != null && runtime[packId] == PackRuntimeStatus.READY)
-    // Selection precedes any network transfer; never display a misleading 0/0.
-    tracker.phase(packId, PackInstallPhase.WAITING_COVERS)
+    // The requested target is known before selection; show a stable 0/N immediately.
+    tracker.set(packId, PackInstallProgress(PackInstallPhase.DOWNLOADING_COVERS,
+        coverTarget = target))
     try {
         acquire { progress ->
             if (progress.target > 0) tracker.phase(packId, PackInstallPhase.DOWNLOADING_COVERS)
@@ -106,9 +123,8 @@ suspend fun PackManager.acquireInitialCovers(
 
 /** Clear the temporary indicator after WorkManager accepts cancellation of initial covers. */
 internal fun PackManager.clearCancelledInitialCoverProgress(packId: PackId) {
-    if (tracker.progress.value[packId]?.phase in setOf(
-            PackInstallPhase.WAITING_COVERS, PackInstallPhase.DOWNLOADING_COVERS
-        )) tracker.clear(packId)
+    if (tracker.progress.value[packId]?.phase == PackInstallPhase.DOWNLOADING_COVERS)
+        tracker.clear(packId)
 }
 
 internal fun PackManager.discoverIds(): Set<PackId> = packRoot.listFiles().orEmpty().mapNotNull { file ->

@@ -131,7 +131,7 @@ internal fun MediaListEntry.subtitleParts(
             field.labels[languageTag] ?: field.labels[languageTag.substringBefore('-')]
                 ?: field.labels["en"] ?: field.id,
             values,
-            field.multiple && (values.size >= 4 || values.joinToString(", ").length > 45)
+            field.multiple && (values.size >= 3 || values.joinToString(", ").length > 30)
         )
     }
 }

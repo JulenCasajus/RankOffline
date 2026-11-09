@@ -240,7 +240,7 @@
   <string name='ranking_share_empty'>ランキング画像を作成するには1件以上評価してください。</string>
   <string name="covers_batch_outcomes">%1$d件ダウンロード · %2$d件見つからず · %3$d件エラー</string>
   <plurals name="subtitle_values_of_field">
-    <item quantity="other">%2$s · %1$d件</item>
+    <item quantity="other">%2$s (%1$d)</item>
   </plurals>
   <string name="filter_match_any_description">OR · いずれか</string>
   <string name="filter_match_all_description">AND · すべて</string>

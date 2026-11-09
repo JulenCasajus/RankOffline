@@ -278,8 +278,8 @@
   <string name='ranking_share_empty'>Valora al menos un elemento para crear una imagen del ranking.</string>
   <string name="covers_batch_outcomes">%1$d descargadas · %2$d no encontradas · %3$d errores</string>
   <plurals name="subtitle_values_of_field">
-    <item quantity="one">%1$d valor · %2$s</item>
-    <item quantity="other">%1$d valores · %2$s</item>
+    <item quantity="one">%2$s (%1$d)</item>
+    <item quantity="other">%2$s (%1$d)</item>
   </plurals>
   <string name="filter_match_any_description">OR · cualquiera</string>
   <string name="filter_match_all_description">AND · todos</string>

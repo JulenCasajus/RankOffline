@@ -58,6 +58,16 @@ class SettingsAndWorkContractTest {
         assertTrue(request.tags.contains("rankoffline-pack-sequence:7"))
     }
 
+    @Test fun initialCoverTargetRemainsVisibleWhileSelectingCandidates() {
+        val id = PackId(11)
+        val tracker = PackProgressTracker()
+        tracker.set(id, PackInstallProgress(PackInstallPhase.DOWNLOADING_COVERS,
+            coverTarget = 100))
+        tracker.covers(id, CoverDownloadProgress(id, CoverDownloadStatus.PREPARING_COVER_LIST))
+        assertEquals(0, tracker.progress.value[id]?.coverProcessed)
+        assertEquals(100, tracker.progress.value[id]?.coverTarget)
+    }
+
     @Test fun coverBytesAreNotDoubleCountedInStorageTotal() {
         val storage = PackStorageSnapshot(installedBytes = 100, coverBytes = 30, residualBytes = 20)
         assertEquals(120L, storage.totalBytes)

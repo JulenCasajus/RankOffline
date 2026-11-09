@@ -1,7 +1,6 @@
 package org.rankoffline.app
 
 import android.util.Log
-import android.os.SystemClock
 import java.io.File
 import java.io.FilterInputStream
 import java.util.UUID
@@ -15,6 +14,7 @@ import kotlinx.coroutines.withContext
 
 suspend fun PackManager.markQueued(packId: PackId) {
     val descriptor = sources.descriptor(packId) ?: return
+    if (installer.installedDirectory(packId) != null) return
     if (tracker.progress.value[packId] != null) return
     tracker.set(packId, PackInstallProgress(PackInstallPhase.QUEUED,
         totalDownloadBytes = descriptor.archiveBytes))
@@ -59,26 +59,10 @@ suspend fun PackManager.downloadAndInstall(packId: PackId): PackOperationResult 
     tracker.set(packId, PackInstallProgress(PackInstallPhase.DOWNLOADING,
         totalDownloadBytes = descriptor.archiveBytes))
     try {
-        var firstByteLogged = false
-        var archiveAcquired = false
-        Log.d("RankOfflinePackTimeline", "pack=${packId.value} phase=ARCHIVE_REQUESTED atMs=${SystemClock.elapsedRealtime()}")
-        val outcome = try {
-            scheduler.withArchiveTransfer {
-                archiveAcquired = true
-                Log.d("RankOfflinePackTimeline", "pack=${packId.value} phase=ARCHIVE_ACQUIRED atMs=${SystemClock.elapsedRealtime()}")
-                downloader.download(descriptor, archive) { bytes ->
-                    if (bytes > 0L && !firstByteLogged) {
-                        firstByteLogged = true
-                        Log.d("RankOfflinePackTimeline", "pack=${packId.value} phase=FIRST_HTTP_BYTE atMs=${SystemClock.elapsedRealtime()}")
-                    }
-                    tracker.downloaded(packId, bytes)
-                }.also {
-                    Log.d("RankOfflinePackTimeline", "pack=${packId.value} phase=ARCHIVE_HTTP_FINISHED atMs=${SystemClock.elapsedRealtime()} result=$it")
-                }
+        val outcome = scheduler.withArchiveTransfer {
+            downloader.download(descriptor, archive) { bytes ->
+                tracker.downloaded(packId, bytes)
             }
-        } finally {
-            if (archiveAcquired) Log.d("RankOfflinePackTimeline",
-                "pack=${packId.value} phase=ARCHIVE_RELEASED atMs=${SystemClock.elapsedRealtime()}")
         }
         if (outcome != PackOperationResult.INSTALLED) {
             runtime[packId] = previous
@@ -147,12 +131,10 @@ internal suspend fun PackManager.installVerified(
         tracker.phase(id, PackInstallPhase.WAITING_IMPORT)
         importMutex.withLock {
             tracker.phase(id, PackInstallPhase.IMPORTING)
-            Log.d("RankOfflinePackTimeline", "pack=${id.value} phase=import-start atMs=${SystemClock.elapsedRealtime()}")
             val manifest = requireNotNull(readInstalledManifest(directory))
             require(manifest.packId == id)
             require(isCompatiblePackVersion(manifest.minRankOfflineVersion, currentAppVersion))
             synchronizer.sync(manifest, directory)
-            Log.d("RankOfflinePackTimeline", "pack=${id.value} phase=import-finished atMs=${SystemClock.elapsedRealtime()}")
         }
         imported = true
         tracker.phase(id, PackInstallPhase.FINALIZING)

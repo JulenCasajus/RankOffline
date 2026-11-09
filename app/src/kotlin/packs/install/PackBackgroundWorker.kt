@@ -1,7 +1,6 @@
 package org.rankoffline.app
 
 import android.content.Context
-import android.os.SystemClock
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -44,7 +43,6 @@ class PackBackgroundWorker(
         fun packName(): String = manager.states.value[packId]?.manifest?.displayName ?: packId.value.toString()
         var progressJob: Job? = null
         try {
-            Log.d("RankOfflinePackTimeline", "pack=${packId.value} work=$id action=$action phase=WORKER_STARTED atMs=${SystemClock.elapsedRealtime()}")
             // Android may start a dependent WorkRequest after the app has moved to the
             // background, where starting WorkManager's foreground service is forbidden.
             // The JobScheduler work itself remains valid and can continue without it.
@@ -89,14 +87,12 @@ class PackBackgroundWorker(
                     val sequence = inputData.getLong(PackWorkScheduler.KEY_QUEUE_SEQUENCE, 0L)
                     if (sequence > 0L) {
                         setProgress(Data.Builder().putString("phase", PackInstallPhase.QUEUED.name).build())
-                        Log.d("RankOfflinePackTimeline", "pack=${packId.value} phase=queue-wait atMs=${SystemClock.elapsedRealtime()}")
                         awaitPersistentPackDownloadTurn(applicationContext, sequence)
-                        Log.d("RankOfflinePackTimeline", "pack=${packId.value} phase=queue-released atMs=${SystemClock.elapsedRealtime()}")
                     }
                     manager.downloadAndInstall(packId).also { result ->
-                    if (result != PackOperationResult.INSTALLED) {
-                        Log.w(TAG, "pack=${packId.value} install result=$result attempt=$runAttemptCount")
-                    }
+                        if (result != PackOperationResult.INSTALLED) {
+                            Log.w(TAG, "pack=${packId.value} install result=$result attempt=$runAttemptCount")
+                        }
                     }.toWorkDisposition()
                 }
                 PackWorkAction.RECOVER -> if (manager.recover(packId)) {
@@ -109,10 +105,8 @@ class PackBackgroundWorker(
 
             // The INSTALL -> INITIAL_COVERS dependency is enqueued atomically by WorkManager.
             // No second status file, no manual rescheduling, no remembered cancellation.
-            Log.d("RankOfflinePackTimeline", "pack=${packId.value} work=$id action=$action phase=WORKER_FINISHED disposition=$disposition atMs=${SystemClock.elapsedRealtime()}")
             disposition.toResult()
         } catch (cancelled: CancellationException) {
-            Log.w("RankOfflinePackTimeline", "pack=${packId.value} work=$id action=$action phase=WORKER_CANCELLED atMs=${SystemClock.elapsedRealtime()}")
             throw cancelled
         } catch (exception: Exception) {
             Log.e(TAG, "pack=${packId.value} action=$action attempt=$runAttemptCount", exception)

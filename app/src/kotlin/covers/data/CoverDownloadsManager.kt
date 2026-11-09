@@ -1,7 +1,6 @@
 package org.rankoffline.app
 
 import android.util.Log
-import android.os.SystemClock
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
@@ -86,8 +85,6 @@ class CoverDownloadsManager(
         onProgress: (CoverDownloadProgress) -> Unit,
         select: suspend () -> List<CatalogEntryKey>
     ): CoverDownloadProgress = withContext(Dispatchers.IO) {
-        val startedAt = SystemClock.elapsedRealtime()
-        Log.d(TAG, "pack=${packId.value} phase=COVER_BATCH_STARTED atMs=$startedAt")
         publish(CoverDownloadProgress(packId, CoverDownloadStatus.WAITING_FOR_COVERS), onProgress)
         try {
             operationLocks.computeIfAbsent(packId) { Mutex() }.withLock {
@@ -120,14 +117,10 @@ class CoverDownloadsManager(
                     entries.size, outcomes, exhausted)
                     .also {
                         publish(it, onProgress)
-                        Log.d(TAG, "pack=${packId.value} phase=COVER_BATCH_FINISHED " +
-                            "downloaded=${it.downloaded} missing=${it.unavailable} errors=${it.errors} " +
-                            "durationMs=${SystemClock.elapsedRealtime() - startedAt}")
                         runCatching { onBatchFinished(packId, it) }
                     }
             }
         } catch (cancelled: CancellationException) {
-            Log.w(TAG, "pack=${packId.value} phase=COVER_CANCELLED atMs=${SystemClock.elapsedRealtime()}")
             publish(terminal(packId, CoverDownloadStatus.CANCELLED), onProgress)
             throw cancelled
         } catch (exception: Exception) {
@@ -143,10 +136,8 @@ class CoverDownloadsManager(
         keys: List<CatalogEntryKey>,
         completed: (CatalogEntryKey, CoverDownloadResult) -> Unit
     ) = coroutineScope {
-        // A catalog import can hold Room's writer after image HTTP finishes.
-        // Keep a bounded number of cover operations in flight so that a few
-        // pending Room writes do not occupy every operation coroutine. The
-        // shared scheduler still limits actual image HTTP to two transfers.
+        // Bound in-flight operations while Room writes are waiting behind an import.
+        // A long import can still stall this batch after all workers reach Room.
         val workers = minOf(keys.size, MAX_PENDING_COVERS)
         val next = AtomicInteger()
         val results = kotlinx.coroutines.channels.Channel<Pair<CatalogEntryKey, CoverDownloadResult>>(

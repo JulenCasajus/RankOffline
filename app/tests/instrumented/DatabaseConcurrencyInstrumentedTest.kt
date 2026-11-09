@@ -191,6 +191,13 @@ class DatabaseConcurrencyInstrumentedTest {
                 delay(300)
                 assertTrue("A Room writer must not stop every independent cover HTTP after three",
                     httpCompleted.get() >= 8)
+                val stalledAt = httpCompleted.get()
+                delay(300)
+                assertEquals("The bounded batch eventually waits for Room before starting more HTTP",
+                    stalledAt, httpCompleted.get())
+                assertTrue(stalledAt < keys.size)
+                assertEquals("No cover can be counted as finished before its Room state commits",
+                    0, manager.progressByPack.value[id]?.processed)
                 assertFalse("Catalog import must still be active", writer.isCompleted)
             } finally {
                 releaseWriter.complete(Unit)

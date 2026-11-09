@@ -273,8 +273,8 @@
   <string name='ranking_share_empty'>Rate at least one item to create a ranking image.</string>
   <string name="covers_batch_outcomes">%1$d downloaded · %2$d not found · %3$d errors</string>
   <plurals name="subtitle_values_of_field">
-    <item quantity="one">%1$d value · %2$s</item>
-    <item quantity="other">%1$d values · %2$s</item>
+    <item quantity="one">%2$s (%1$d)</item>
+    <item quantity="other">%2$s (%1$d)</item>
   </plurals>
   <string name="filter_match_any_description">OR · any</string>
   <string name="filter_match_all_description">AND · all</string>

@@ -38,7 +38,8 @@ internal class PackProgressTracker(
     fun covers(packId: PackId, progress: CoverDownloadProgress) = synchronized(monitor) {
         val previous = _progress.value[packId] ?: return@synchronized
         val value = previous.copy(
-            coverDownloaded = progress.downloaded, coverTarget = progress.target,
+            coverDownloaded = progress.downloaded,
+            coverTarget = progress.target.takeIf { it > 0 } ?: previous.coverTarget,
             coverProcessed = progress.processed, coverNotFound = progress.unavailable,
             coverErrors = progress.errors
         )

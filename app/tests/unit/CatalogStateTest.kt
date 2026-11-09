@@ -94,4 +94,17 @@ class CatalogStateTest {
         assertEquals(listOf("Action", "Drama", "Fantasy", "Mystery"), part.values)
         assertEquals(true, part.compact)
     }
+
+    @Test fun threeAuthorsRemainAccessibleInACompactSubtitle() {
+        val field = PackFieldDefinition("author", CatalogFieldType.TEXT, true,
+            mapOf("en" to "Author"), emptySet())
+        val entry = MediaListEntry.Item(MediaItem(PackId(1), "item", "Item", attributes = mapOf(
+            "author" to listOf("Chugong", "Dubu", "Gee So-Lyung")
+                .map(CatalogAttributeValue::Text)
+        )))
+        val part = entry.subtitleParts(listOf(field), "en").single()
+        assertEquals("Author", part.label)
+        assertEquals(3, part.values.size)
+        assertTrue(part.compact)
+    }
 }

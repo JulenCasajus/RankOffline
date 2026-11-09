@@ -23,6 +23,12 @@
         android:theme="@style/Theme.RankOffline"
         android:usesCleartextTraffic="false">
 
+        <provider
+            android:name=".Legacy020MigrationProvider"
+            android:authorities="${applicationId}.legacy-020-migration"
+            android:exported="false"
+            android:initOrder="100" />
+
         <activity
             android:name=".MainActivity"
             android:exported="false" />

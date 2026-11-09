@@ -8,6 +8,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -136,6 +137,7 @@ internal class PackUiController(
 
     /** Uninstall retains local rating JSON, DataStore and personal ratings in Room. */
     fun uninstallKeepPersonal(id: PackId) = scope.launch {
+        services.packManager.markDeleting(id)
         try {
             PackWorkScheduler.cancel(context, id)
             beforeDelete(id)
@@ -146,10 +148,12 @@ internal class PackUiController(
             }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { onError(failure) }
+        finally { withContext(NonCancellable) { services.packManager.cancelDeleting(id) } }
     }
 
     /** Purge is explicitly destructive, unlike uninstall; caller must confirm in the UI. */
     fun purge(id: PackId) = scope.launch {
+        services.packManager.markDeleting(id)
         try {
             PackWorkScheduler.cancel(context, id)
             beforeDelete(id)
@@ -163,6 +167,7 @@ internal class PackUiController(
             fallbackAfterDelete(id)
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { onError(failure) }
+        finally { withContext(NonCancellable) { services.packManager.cancelDeleting(id) } }
     }
 
     fun personalStorage(id: PackId) = services.packStorageRepository.observePersonalStorage(id)
