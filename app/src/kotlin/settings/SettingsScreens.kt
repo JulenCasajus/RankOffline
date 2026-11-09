@@ -36,6 +36,11 @@ internal fun SettingsScreen(
     val packName = installedManifests.firstOrNull { it.packId == packId }?.displayName
         ?: packId?.value?.toString().orEmpty()
     var destination by rememberSaveable { mutableStateOf(SettingsDestination.HOME) }
+    LaunchedEffect(destination) {
+        if (destination == SettingsDestination.PACKS && packs.values.none { it.sourceAvailable }) {
+            viewModel.refreshAvailablePacks()
+        }
+    }
     val goBack = { destination = settingsParent(destination) }
     BackHandler(destination != SettingsDestination.HOME, onBack = goBack)
 

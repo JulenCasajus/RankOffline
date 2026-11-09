@@ -8,6 +8,7 @@ import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -197,6 +198,28 @@ class CatalogImporterInstrumentedTest {
         rankingCases.forEach { (merge, state, expected) ->
             assertEquals(expected, repository.ranking(manifest, state, merge).map { it.id })
         }
+    }
+
+    @Test fun mergedGroupSubtitlesContainDistinctMemberValuesInManifestOrder() = runBlocking {
+        val manifest = installCatalog(listOf(
+            """{"id":"one","title":"One","attributes":{"genre":["drama","comedy"],"year":2020}}""",
+            """{"id":"two","title":"Two","attributes":{"genre":["drama"],"year":2021}}""",
+            """{"id":"three","title":"Three","attributes":{"genre":["comedy"],"year":2020}}"""
+        ), listOf(
+            """{"id":"trio","members":[{"mediaId":"one"},{"mediaId":"two"},{"mediaId":"three"}],"displayTitle":"Trio","groupType":"relations","representativeMediaId":"one"}"""
+        ))
+        CatalogImporter(database).importIfNeeded(manifest, root)
+        val repository = MediaRepository(database, RatingRepository(database))
+        val group = repository.search(manifest, SearchUiState(), mergeEnabled = true)
+            .filterIsInstance<MediaListEntry.Group>().single()
+        val parts = group.subtitleParts(manifest.subtitleDefinitions(), "en")
+
+        assertEquals(3, group.memberCount)
+        assertEquals(listOf("genre", "year"), parts.map { it.fieldId })
+        assertEquals(listOf("drama", "comedy"), parts[0].values)
+        assertEquals(listOf("2020", "2021"), parts[1].values)
+        assertFalse(parts[0].compact)
+        assertFalse(parts[1].compact)
     }
 
     @Test fun uninstallAndReinstallKeepRatingsWithoutDuplicatingCatalogDetails() = runBlocking {

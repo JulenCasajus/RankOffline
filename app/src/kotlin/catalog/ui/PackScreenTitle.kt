@@ -127,6 +127,7 @@ fun PackScreenTitle(
                 ?: AnnotatedString(title),
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
+            color = onBackground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false)

@@ -37,7 +37,8 @@
   <string name='settings_rating_description'>Categorías y sistema de puntuación</string>
   <string name='settings_icon_title'>Icono</string>
   <string name='settings_icon_description'>Elige el icono del launcher</string>
-  <string name='settings_data_title'>Datos</string>
+  <string name='settings_data_title'>Datos (Beta)</string>
+  <string name='settings_data_future_description'>Estamos trabajando para conectar cuentas de valoración como IMDb, AniList, MyAnimeList y Goodreads.</string>
   <string name='settings_data_description'>Importación, exportación y copia de seguridad</string>
   <string name='settings_about_title'>Información</string>
   <string name='settings_about_description'>Información, créditos y licencias</string>
@@ -272,7 +273,7 @@
   <string name='personal_backup_merge'>Fusionar los más recientes</string>
   <string name='personal_backup_replace'>Reemplazar</string>
   <string name='personal_backup_failed'>La operación de copia ha fallado.</string>
-  <string name='ranking_share_title'>Compartir ranking</string>
+  <string name='ranking_share_title'>Compartir ranking (Beta)</string>
   <string name='ranking_share_show_images'>Mostrar imágenes</string>
   <string name='ranking_share_failed'>No se ha podido crear la imagen del ranking.</string>
   <string name='ranking_share_empty'>Valora al menos un elemento para crear una imagen del ranking.</string>

@@ -37,7 +37,8 @@
   <string name='settings_rating_description'>Kategoriak eta puntuazio-sistema</string>
   <string name='settings_icon_title'>Ikonoa</string>
   <string name='settings_icon_description'>Aukeratu abiarazlearen ikonoa</string>
-  <string name='settings_data_title'>Datuak</string>
+  <string name='settings_data_title'>Datuak (Beta)</string>
+  <string name='settings_data_future_description'>IMDb, AniList, MyAnimeList eta Goodreads bezalako balorazio kontuak konektatzeko lanean ari gara.</string>
   <string name='settings_data_description'>Inportazioa, esportazioa eta babeskopia</string>
   <string name='settings_about_title'>Informazioa</string>
   <string name='settings_about_description'>Aplikazioari, kredituei eta lizentziei buruzko informazioa</string>
@@ -272,7 +273,7 @@
   <string name='personal_backup_merge'>Berrienak bateratu</string>
   <string name='personal_backup_replace'>Ordeztu</string>
   <string name='personal_backup_failed'>Babeskopia-eragiketak huts egin du.</string>
-  <string name='ranking_share_title'>Partekatu rankinga</string>
+  <string name='ranking_share_title'>Partekatu rankinga (Beta)</string>
   <string name='ranking_share_show_images'>Erakutsi irudiak</string>
   <string name='ranking_share_failed'>Ezin izan da rankingaren irudia sortu.</string>
   <string name='ranking_share_empty'>Baloratu gutxienez elementu bat rankingaren irudia sortzeko.</string>

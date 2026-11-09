@@ -37,7 +37,8 @@
   <string name='settings_rating_description'>Категории и система оценок</string>
   <string name='settings_icon_title'>Значок</string>
   <string name='settings_icon_description'>Выбрать значок лаунчера</string>
-  <string name='settings_data_title'>Данные</string>
+  <string name='settings_data_title'>Данные (Beta)</string>
+  <string name='settings_data_future_description'>Мы работаем над подключением аккаунтов для оценок, таких как IMDb, AniList, MyAnimeList и Goodreads.</string>
   <string name='settings_data_description'>Импорт, экспорт и резервное копирование</string>
   <string name='settings_about_title'>Информация</string>
   <string name='settings_about_description'>Информация, благодарности и лицензии</string>
@@ -263,7 +264,7 @@
   <string name='personal_backup_merge'>Объединить новые</string>
   <string name='personal_backup_replace'>Заменить</string>
   <string name='personal_backup_failed'>Не удалось выполнить операцию с копией.</string>
-  <string name='ranking_share_title'>Поделиться рейтингом</string>
+  <string name='ranking_share_title'>Поделиться рейтингом (Beta)</string>
   <string name='ranking_share_show_images'>Показывать изображения</string>
   <string name='ranking_share_failed'>Не удалось создать изображение рейтинга.</string>
   <string name='ranking_share_empty'>Оцените хотя бы один элемент, чтобы создать изображение рейтинга.</string>

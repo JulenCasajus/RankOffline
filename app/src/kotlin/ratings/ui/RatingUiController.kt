@@ -69,9 +69,12 @@ internal class RatingUiController(
                 action(target.key)
                 // Reload from the single Room source of truth; no optimistic duplicate scores.
                 val persisted = ratings.loadRating(target.key)
+                val detail = detailState.value
+                if (detail?.group?.key == target.key ||
+                    detail?.members?.any { it.key == target.key } == true
+                ) detailState.value = groups.detail(detail.group.key)
                 onChanged(target.key, persisted)
                 if (editorState.value?.key == target.key) editorState.value = null
-                if (detailState.value?.group?.key == target.key) detailState.value = groups.detail(target.key)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) {
                 Log.e("RankOfflineRating", "Rating $label failed", failure)

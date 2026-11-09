@@ -37,7 +37,8 @@
   <string name='settings_rating_description'>Catégories et système de notation</string>
   <string name='settings_icon_title'>Icône</string>
   <string name='settings_icon_description'>Choisir l’icône du lanceur</string>
-  <string name='settings_data_title'>Données</string>
+  <string name='settings_data_title'>Données (Beta)</string>
+  <string name='settings_data_future_description'>Nous travaillons à la connexion de comptes de notation comme IMDb, AniList, MyAnimeList et Goodreads.</string>
   <string name='settings_data_description'>Importation, exportation et sauvegarde</string>
   <string name='settings_about_title'>Informations</string>
   <string name='settings_about_description'>Informations, crédits et licences</string>
@@ -272,7 +273,7 @@
   <string name='personal_backup_merge'>Fusionner les plus récentes</string>
   <string name='personal_backup_replace'>Remplacer</string>
   <string name='personal_backup_failed'>L’opération de sauvegarde a échoué.</string>
-  <string name='ranking_share_title'>Partager le classement</string>
+  <string name='ranking_share_title'>Partager le classement (Beta)</string>
   <string name='ranking_share_show_images'>Afficher les images</string>
   <string name='ranking_share_failed'>Impossible de créer l’image du classement.</string>
   <string name='ranking_share_empty'>Notez au moins un élément pour créer une image du classement.</string>

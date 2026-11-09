@@ -41,7 +41,10 @@ internal fun RankOfflineTopAppBar(title: String, onBack: () -> Unit, actions: @C
             Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back))
         } },
         actions = actions,
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg,
+            titleContentColor = MaterialTheme.colorScheme.onBackground,
+            navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+            actionIconContentColor = MaterialTheme.colorScheme.onBackground)
     )
 }
 

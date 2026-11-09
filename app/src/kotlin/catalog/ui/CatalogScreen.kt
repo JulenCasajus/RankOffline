@@ -85,6 +85,15 @@ internal fun CatalogScreen(
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(value = state.query, onValueChange = onQuery,
             modifier = Modifier.fillMaxWidth(), singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                focusedPlaceholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                focusedLeadingIconColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedLeadingIconColor = MaterialTheme.colorScheme.onBackground,
+                focusedTrailingIconColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTrailingIconColor = MaterialTheme.colorScheme.onBackground),
             leadingIcon = { Icon(Icons.Default.Search, null) },
             trailingIcon = if (state.query.isNotEmpty()) ({ IconButton(onClick = { onQuery("") }) {
                 Icon(Icons.Default.Clear, stringResource(R.string.search_clear))
@@ -104,9 +113,10 @@ internal fun CatalogScreen(
             if (entries.isEmpty()) item { Text(
                 stringResource(if (page.failed) R.string.catalog_unavailable_error else
                     if (page.scope != scope || page.loadingInitial) R.string.loading_list else R.string.no_search_results),
-                modifier = Modifier.padding(16.dp)) }
+                modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onBackground) }
             if (page.failed && entries.isNotEmpty()) item {
-                Text(stringResource(R.string.catalog_unavailable_error), modifier = Modifier.padding(16.dp))
+                Text(stringResource(R.string.catalog_unavailable_error), modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.onBackground)
             }
         }
     }

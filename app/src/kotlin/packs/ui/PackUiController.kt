@@ -145,6 +145,7 @@ internal class PackUiController(
                 onChanged(id)
                 services.settingsRepository.removeRecentPack(id)
                 fallbackAfterDelete(id)
+                discoverAvailable()
             }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { onError(failure) }
@@ -165,6 +166,7 @@ internal class PackUiController(
             onChanged(id)
             services.settingsRepository.removeRecentPack(id)
             fallbackAfterDelete(id)
+            discoverAvailable()
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { onError(failure) }
         finally { withContext(NonCancellable) { services.packManager.cancelDeleting(id) } }

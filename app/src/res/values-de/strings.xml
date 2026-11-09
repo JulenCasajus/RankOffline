@@ -37,7 +37,8 @@
   <string name='settings_rating_description'>Kategorien und Wertungssystem</string>
   <string name='settings_icon_title'>Symbol</string>
   <string name='settings_icon_description'>Launcher-Symbol auswählen</string>
-  <string name='settings_data_title'>Daten</string>
+  <string name='settings_data_title'>Daten (Beta)</string>
+  <string name='settings_data_future_description'>Wir arbeiten an der Verbindung mit Bewertungskonten wie IMDb, AniList, MyAnimeList und Goodreads.</string>
   <string name='settings_data_description'>Import, Export und Datensicherung</string>
   <string name='settings_about_title'>Informationen</string>
   <string name='settings_about_description'>App-Informationen, Danksagungen und Lizenzen</string>
@@ -272,7 +273,7 @@
   <string name='personal_backup_merge'>Neuere zusammenführen</string>
   <string name='personal_backup_replace'>Ersetzen</string>
   <string name='personal_backup_failed'>Der Sicherungsvorgang ist fehlgeschlagen.</string>
-  <string name='ranking_share_title'>Rangliste teilen</string>
+  <string name='ranking_share_title'>Rangliste teilen (Beta)</string>
   <string name='ranking_share_show_images'>Bilder anzeigen</string>
   <string name='ranking_share_failed'>Das Ranglistenbild konnte nicht erstellt werden.</string>
   <string name='ranking_share_empty'>Bewerte mindestens einen Eintrag, um ein Ranglistenbild zu erstellen.</string>

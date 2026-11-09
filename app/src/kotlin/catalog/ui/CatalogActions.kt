@@ -69,7 +69,7 @@ internal fun CatalogActions(
         CompactCatalogAction(filterLabel, activeFilters > 0, onFilters,
             Modifier.weight(weights[index++]))
         Surface(Modifier.weight(weights[index]).height(48.dp), RoundedCornerShape(12.dp),
-            color = Color.Transparent, contentColor = MaterialTheme.colorScheme.onSurface,
+            color = Color.Transparent, contentColor = MaterialTheme.colorScheme.onBackground,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f).fillMaxHeight().clickable(onClick = onSort),
@@ -91,7 +91,7 @@ internal fun CatalogActions(
                     .semantics { contentDescription = directionDescription },
                     contentAlignment = Alignment.Center) {
                     Text(if (sortReversed) "↑" else "↓",
-                        color = MaterialTheme.colorScheme.primary, fontSize = 19.sp,
+                        color = MaterialTheme.colorScheme.onBackground, fontSize = 19.sp,
                         fontWeight = FontWeight.Bold)
                 }
             }
@@ -113,8 +113,7 @@ private fun CompactCatalogAction(
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                 else Color.Transparent,
-            contentColor = if (selected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurface),
+            contentColor = MaterialTheme.colorScheme.onBackground),
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
         Text(label, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
             fontSize = 11.sp)

@@ -36,7 +36,7 @@ dynamic dependency is used.
 
 The debug build has a single RankOffline launcher entry. Its configurable
 `BuildConfig.PACK_INDEX_URL` points to the HTTPS distribution index in the
-GitHub prerelease, while release builds leave remote discovery disabled.
+matching GitHub prerelease or stable release.
 The existing pack-management UI fetches the index and downloads selected `.pack`
 archives, verifies their size and SHA-256, and delegates to WorkManager,
 `PackInstaller`, `CatalogImporter` and the READY protocol. No `.pack` archive is

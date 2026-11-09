@@ -103,7 +103,9 @@ internal fun SettingsSubscreen(title: String, onBack: () -> Unit, content: @Comp
                     }
                 },
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground)
             )
         }
     ) { padding ->
@@ -112,7 +114,9 @@ internal fun SettingsSubscreen(title: String, onBack: () -> Unit, content: @Comp
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            content()
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
+                content()
+            }
         }
     }
 }

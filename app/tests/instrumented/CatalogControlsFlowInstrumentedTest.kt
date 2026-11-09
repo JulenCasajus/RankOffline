@@ -134,6 +134,24 @@ class CatalogControlsFlowInstrumentedTest {
                 search(listOf("alpha", "beta", "gamma"))
                 ranking(listOf("gamma", "beta", "alpha"))
                 assertEquals(0, controller.searchByPack.value[manifest.packId]?.filters?.activeCount)
+
+                database.mediaDao().upsertRating(MediaRatingEntity(11, "alpha", 0.0,
+                    1.0, 1.0, "", "done", 100))
+                controller.ratingChanged(CatalogEntryKey(manifest.packId, "alpha", CatalogEntryKind.ITEM),
+                    RatingDraft(finalScore = 1.0, qualityScore = 1.0))
+                settings.updateMergeEnabled(true)
+                withTimeout(8_000) {
+                    controller.searchPageState.first { page ->
+                        page.items.filterIsInstance<MediaListEntry.Group>()
+                            .singleOrNull()?.finalScore == 4.5
+                    }
+                }
+                withTimeout(8_000) {
+                    controller.rankingPage.first { page ->
+                        page.result.items.firstOrNull()?.let { it.id == "pair" && it.finalScore == 4.5 } == true
+                    }
+                }
+                Unit
             } finally {
                 searchCollector.cancel()
                 rankingCollector.cancel()

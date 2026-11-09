@@ -42,7 +42,8 @@
   <string name='settings_rating_description'>Categories and scoring system</string>
   <string name='settings_icon_title'>Icon</string>
   <string name='settings_icon_description'>Choose the launcher icon</string>
-  <string name='settings_data_title'>Data</string>
+  <string name='settings_data_title'>Data (Beta)</string>
+  <string name='settings_data_future_description'>We are working on connecting rating accounts such as IMDb, AniList, MyAnimeList and Goodreads.</string>
   <string name='settings_data_description'>Import, export and backup</string>
   <string name='settings_about_title'>Information</string>
   <string name='settings_about_description'>App information, credits and licences</string>
@@ -267,7 +268,7 @@
   <string name='personal_backup_merge'>Merge newer</string>
   <string name='personal_backup_replace'>Replace</string>
   <string name='personal_backup_failed'>The backup operation failed.</string>
-  <string name='ranking_share_title'>Share ranking</string>
+  <string name='ranking_share_title'>Share ranking (Beta)</string>
   <string name='ranking_share_show_images'>Show images</string>
   <string name='ranking_share_failed'>The ranking image could not be created.</string>
   <string name='ranking_share_empty'>Rate at least one item to create a ranking image.</string>

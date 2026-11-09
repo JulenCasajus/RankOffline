@@ -49,11 +49,17 @@ internal fun MediaEntryRow(
             Column(Modifier.weight(1f)) {
                 Text(entry.title, fontWeight = FontWeight.SemiBold, maxLines = 2,
                     overflow = TextOverflow.Ellipsis)
-                if (subtitles.isNotEmpty()) {
+                if (subtitles.isNotEmpty() || entry is MediaListEntry.Group) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        if (entry is MediaListEntry.Group) {
+                            Text(stringResource(R.string.group_entries_count, entry.memberCount),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable(onClick = onGroupDetails))
+                        }
                         subtitles.forEachIndexed { index, part ->
-                            if (index > 0) Text("·", style = MaterialTheme.typography.bodySmall,
+                            if (index > 0 || entry is MediaListEntry.Group) Text("·", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             val label = if (part.compact) pluralStringResource(
                                 R.plurals.subtitle_values_of_field, part.values.size,
@@ -68,14 +74,6 @@ internal fun MediaEntryRow(
                                 } else Modifier)
                         }
                     }
-                }
-                when (entry) {
-                    is MediaListEntry.Group -> Text(
-                        stringResource(R.string.group_entries_count, entry.memberCount),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable(onClick = onGroupDetails))
-                    is MediaListEntry.Item -> Unit
                 }
             }
             val displayed = when (rankingSortOrder) {
@@ -131,7 +129,8 @@ internal fun MediaListEntry.subtitleParts(
             field.labels[languageTag] ?: field.labels[languageTag.substringBefore('-')]
                 ?: field.labels["en"] ?: field.id,
             values,
-            field.multiple && (values.size >= 3 || values.joinToString(", ").length > 30)
+            (field.multiple || this is MediaListEntry.Group) &&
+                (values.size >= 3 || values.joinToString(", ").length > 30)
         )
     }
 }

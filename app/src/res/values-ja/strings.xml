@@ -37,7 +37,8 @@
   <string name='settings_rating_description'>カテゴリーと採点方式</string>
   <string name='settings_icon_title'>アイコン</string>
   <string name='settings_icon_description'>ランチャーアイコンを選択</string>
-  <string name='settings_data_title'>データ</string>
+  <string name='settings_data_title'>データ (Beta)</string>
+  <string name='settings_data_future_description'>IMDb、AniList、MyAnimeList、Goodreads などの評価アカウントとの連携に取り組んでいます。</string>
   <string name='settings_data_description'>インポート、エクスポート、バックアップ</string>
   <string name='settings_about_title'>情報</string>
   <string name='settings_about_description'>アプリ情報、クレジット、ライセンス</string>
@@ -234,7 +235,7 @@
   <string name='personal_backup_merge'>新しいデータを統合</string>
   <string name='personal_backup_replace'>置き換え</string>
   <string name='personal_backup_failed'>バックアップ操作に失敗しました。</string>
-  <string name='ranking_share_title'>ランキングを共有</string>
+  <string name='ranking_share_title'>ランキングを共有 (Beta)</string>
   <string name='ranking_share_show_images'>画像を表示</string>
   <string name='ranking_share_failed'>ランキング画像を作成できませんでした。</string>
   <string name='ranking_share_empty'>ランキング画像を作成するには1件以上評価してください。</string>

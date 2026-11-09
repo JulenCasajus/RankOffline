@@ -121,7 +121,21 @@ class MediaRepository(
             .flatMap { groups.preferredCoverGroups(packId.value, it) }
             .associate { it.mediaId to it.groupId }
         val groupEntities = groupIds.chunked(400).flatMap { groups.groupsByIds(packId.value, it) }.associateBy { it.id }
-        val groupAttrs = groupIds.chunked(400).flatMap { groups.attributesForGroups(packId.value, it) }.groupBy { it.groupId }
+        val declaredGroupAttrs = groupIds.chunked(400)
+            .flatMap { groups.attributesForGroups(packId.value, it) }.groupBy { it.groupId }
+        val memberGroupAttrs = groupIds.chunked(400)
+            .flatMap { groups.memberAttributesForGroups(packId.value, it) }.groupBy { it.groupId }
+        val groupAttrs = groupIds.associateWith { id ->
+            val declared = declaredGroupAttrs[id].orEmpty()
+            val members = memberGroupAttrs[id].orEmpty().map { row ->
+                MediaGroupAttributeEntity(packId.value, id, row.fieldId, 0,
+                    row.valueText, row.valueNumber, row.valueBoolean)
+            }
+            (declared + members).groupBy { it.fieldId }.flatMap { (field, values) ->
+                values.distinctBy { Triple(it.valueText, it.valueNumber, it.valueBoolean) }
+                    .mapIndexed { position, row -> row.copy(fieldId = field, position = position) }
+            }
+        }
         val representatives = groupIds.chunked(400).flatMap { groups.representativesByIds(packId.value, it) }
             .associateBy { it.groupId }
         check(entities.size == itemIds.size && groupEntities.size == groupIds.size) {

@@ -37,7 +37,8 @@
   <string name='settings_rating_description'>类别和评分体系</string>
   <string name='settings_icon_title'>图标</string>
   <string name='settings_icon_description'>选择启动器图标</string>
-  <string name='settings_data_title'>数据</string>
+  <string name='settings_data_title'>数据 (Beta)</string>
+  <string name='settings_data_future_description'>我们正在开发与 IMDb、AniList、MyAnimeList 和 Goodreads 等评分账户的连接功能。</string>
   <string name='settings_data_description'>导入、导出和备份</string>
   <string name='settings_about_title'>信息</string>
   <string name='settings_about_description'>应用信息、致谢和许可</string>
@@ -235,7 +236,7 @@
   <string name='personal_backup_merge'>合并较新数据</string>
   <string name='personal_backup_replace'>替换</string>
   <string name='personal_backup_failed'>备份操作失败。</string>
-  <string name='ranking_share_title'>分享排名</string>
+  <string name='ranking_share_title'>分享排名 (Beta)</string>
   <string name='ranking_share_show_images'>显示图片</string>
   <string name='ranking_share_failed'>无法创建排名图片。</string>
   <string name='ranking_share_empty'>请至少为一个条目评分以创建排名图片。</string>

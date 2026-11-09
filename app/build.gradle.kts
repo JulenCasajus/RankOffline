@@ -71,6 +71,14 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            buildConfigField(
+                "String", "PACK_INDEX_URL",
+                "\"https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.2/pack-index.json\""
+            )
+            buildConfigField(
+                "String", "PACK_ALLOWED_HOSTS",
+                "\"github.com,release-assets.githubusercontent.com,objects.githubusercontent.com,github-releases.githubusercontent.com\""
+            )
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

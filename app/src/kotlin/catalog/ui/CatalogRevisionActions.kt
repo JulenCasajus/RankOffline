@@ -17,6 +17,8 @@ internal fun CatalogUiController.ratingChanged(key: CatalogEntryKey, draft: Rati
         additiveScore = draft.finalScore?.let { draft.additiveScore }
     ))
     revisions.ratingsChanged(key.packId)
+    // Group rows in Search derive their score and rated-member count from Room.
+    revisions.catalogChanged(key.packId)
 }
 
 

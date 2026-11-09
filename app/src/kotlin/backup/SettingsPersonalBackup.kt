@@ -36,6 +36,8 @@ internal fun SettingsPersonalBackupScreen(
             Text("Backups contain ratings, notes, rating profiles and personal preferences. " +
                 "They do not contain installed packs, catalogs or image files.",
                 style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.settings_data_future_description),
+                style = MaterialTheme.typography.bodySmall)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     FilterChip(selected = scope == ViewingScope.All,

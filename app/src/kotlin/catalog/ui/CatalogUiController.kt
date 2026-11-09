@@ -337,6 +337,7 @@ internal class CatalogUiController(
                 session.findAllSearch(key)?.page
                     ?: fetched?.takeIf { it.first == current }?.second
                     ?: cachedAll?.takeIf { it.key.manifests == current.manifests &&
+                        it.key.merges == current.merges &&
                         it.page.items.isNotEmpty() }?.page?.copy(hasMore = false)
                     ?: SearchPageState(scope = selected)
             }
@@ -349,6 +350,7 @@ internal class CatalogUiController(
                     session.findSearch(manifest.packId, key)?.page
                         ?: fetched?.takeIf { it.first == current }?.second
                         ?: cached[manifest.packId]?.takeIf { it.key.manifest == manifest &&
+                            it.key.merge == (current.merges[manifest.packId] == true) &&
                             it.page.items.isNotEmpty() }?.page?.copy(hasMore = false)
                         ?: SearchPageState(scope = selected, query = current.search.query)
                 }
@@ -459,6 +461,7 @@ internal class CatalogUiController(
                 session.findAllRanking(key)?.page
                     ?: fetched?.takeIf { it.first == current }?.second
                     ?: cachedAll?.takeIf { it.key.manifests == current.manifests &&
+                        it.key.merges == current.merges &&
                         it.page.result.items.isNotEmpty() }?.page?.copy(hasMore = false)
                     ?: RankingPage()
             }
@@ -471,6 +474,7 @@ internal class CatalogUiController(
                     session.findRanking(manifest.packId, key)?.page
                         ?: fetched?.takeIf { it.first == current }?.second
                         ?: cached[manifest.packId]?.takeIf { it.key.manifest == manifest &&
+                            it.key.merge == (current.merges[manifest.packId] == true) &&
                             it.page.result.items.isNotEmpty() }?.page?.copy(hasMore = false)
                         ?: RankingPage()
                 }
