@@ -5,7 +5,7 @@ import androidx.work.WorkInfo
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -79,16 +79,57 @@ class PackOperationSchedulerTest {
         assertTrue(secondCoverEntered.isCompleted)
     }
 
-    @Test fun logicalCoverBatchesDoNotInterleave() = runBlocking {
-        val scheduler = PackOperationScheduler()
-        val releaseFirst = CompletableDeferred<Unit>()
+    @Test fun twoCoverTransfersCanOverlapButThirdWaits() = runBlocking {
+        val scheduler = PackOperationScheduler(maxConcurrentCovers = 2)
+        val release = CompletableDeferred<Unit>()
+        val firstEntered = CompletableDeferred<Unit>()
         val secondEntered = CompletableDeferred<Unit>()
-        val first = async { scheduler.withCoverBatch { releaseFirst.await() } }
-        val second = async { scheduler.withCoverBatch { secondEntered.complete(Unit) } }
+        val thirdEntered = CompletableDeferred<Unit>()
+        val first = launch { scheduler.withCoverTransfer { firstEntered.complete(Unit); release.await() } }
+        val second = launch { scheduler.withCoverTransfer { secondEntered.complete(Unit); release.await() } }
+        withTimeout(2_000) { firstEntered.await(); secondEntered.await() }
+        val third = launch { scheduler.withCoverTransfer { thirdEntered.complete(Unit) } }
+        assertFalse(thirdEntered.isCompleted)
+        release.complete(Unit)
+        withTimeout(2_000) { first.join(); second.join(); third.join() }
+        assertTrue(thirdEntered.isCompleted)
+    }
 
-        assertFalse(secondEntered.isCompleted)
+    @Test fun failedAndCancelledArchivesReleaseCoversAfterTheirTurns() = runBlocking {
+        val scheduler = PackOperationScheduler(maxConcurrentCovers = 1)
+        val firstAcquired = CompletableDeferred<Unit>()
+        val releaseFirst = CompletableDeferred<Unit>()
+        val secondAcquired = CompletableDeferred<Unit>()
+        val releaseSecond = CompletableDeferred<Unit>()
+        val thirdAcquired = CompletableDeferred<Unit>()
+        val coverAcquired = CompletableDeferred<Unit>()
+        val first = launch(start = CoroutineStart.UNDISPATCHED) {
+            runCatching { scheduler.withArchiveTransfer {
+                firstAcquired.complete(Unit)
+                releaseFirst.await()
+                error("archive failed")
+            } }
+        }
+        firstAcquired.await()
+        val second = launch(start = CoroutineStart.UNDISPATCHED) {
+            scheduler.withArchiveTransfer {
+                secondAcquired.complete(Unit)
+                releaseSecond.await()
+            }
+        }
+        val third = launch(start = CoroutineStart.UNDISPATCHED) {
+            scheduler.withArchiveTransfer { thirdAcquired.complete(Unit) }
+        }
+        val cover = launch(start = CoroutineStart.UNDISPATCHED) {
+            scheduler.withCoverTransfer { coverAcquired.complete(Unit) }
+        }
         releaseFirst.complete(Unit)
-        withTimeout(2_000) { first.await(); second.await() }
-        assertTrue(secondEntered.isCompleted)
+        withTimeout(2_000) { secondAcquired.await() }
+        assertFalse(coverAcquired.isCompleted)
+        second.cancelAndJoin()
+        withTimeout(2_000) { thirdAcquired.await(); coverAcquired.await() }
+        releaseSecond.complete(Unit)
+        withTimeout(2_000) { first.join(); third.join(); cover.join() }
+        assertTrue(coverAcquired.isCompleted)
     }
 }

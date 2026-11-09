@@ -124,8 +124,7 @@
   <string name='covers_settings_title'>Copertine</string>
   <string name='covers_settings_description'>Gestisci le copertine offline per il tipo di contenuto selezionato.</string>
   <string name='covers_settings_explanation'>
-    Le azioni riguardano solo il tipo selezionato. Il precaricamento scarica le
-    copertine mancanti degli elementi valutati.
+    Le azioni riguardano solo il tipo selezionato.
   </string>
   <string name='covers_downloading_rated'>Download delle copertine…</string>
   <string name='covers_download_top'>Scarica Top %1$d</string>
@@ -282,4 +281,6 @@
     <item quantity="one">%1$d valore · %2$s</item>
     <item quantity="other">%1$d valori · %2$s</item>
   </plurals>
+  <string name="filter_match_any_description">OR · uno</string>
+  <string name="filter_match_all_description">AND · tutti</string>
 </resources>

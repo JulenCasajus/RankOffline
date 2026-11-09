@@ -124,8 +124,7 @@
   <string name='covers_settings_title'>Jaquettes</string>
   <string name='covers_settings_description'>Gérez les jaquettes hors ligne du type de média sélectionné.</string>
   <string name='covers_settings_explanation'>
-    Les actions ne concernent que le type sélectionné. Le préchargement
-    télécharge les jaquettes manquantes des éléments notés.
+    Les actions ne concernent que le type sélectionné.
   </string>
   <string name='covers_downloading_rated'>Téléchargement des jaquettes…</string>
   <string name='covers_download_top'>Télécharger le Top %1$d</string>
@@ -282,4 +281,6 @@
     <item quantity="one">%1$d valeur · %2$s</item>
     <item quantity="other">%1$d valeurs · %2$s</item>
   </plurals>
+  <string name="filter_match_any_description">OR · au choix</string>
+  <string name="filter_match_all_description">AND · toutes</string>
 </resources>

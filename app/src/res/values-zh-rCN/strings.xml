@@ -111,7 +111,7 @@
   <string name='rating_reset_categories_confirmation'>将所有评分项替换为官方默认项？方案中兼容的权重会保留。</string>
   <string name='covers_settings_title'>封面</string>
   <string name='covers_settings_description'>管理所选媒体类型的离线封面。</string>
-  <string name='covers_settings_explanation'>封面操作仅应用于所选媒体类型。预下载只会获取已评分条目缺失的封面。</string>
+  <string name='covers_settings_explanation'>封面操作仅应用于所选媒体类型。</string>
   <string name='covers_downloading_rated'>正在下载封面…</string>
   <string name='covers_download_top'>下载前 %1$d 名</string>
   <string name='filters_title'>筛选</string>
@@ -243,4 +243,6 @@
   <plurals name="subtitle_values_of_field">
     <item quantity="other">%2$s · %1$d项</item>
   </plurals>
+  <string name="filter_match_any_description">OR · 任一</string>
+  <string name="filter_match_all_description">AND · 全部</string>
 </resources>

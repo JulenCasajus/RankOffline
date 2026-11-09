@@ -148,8 +148,7 @@
   <string name='covers_settings_title'>Covers</string>
   <string name='covers_settings_description'>Manage offline covers for the selected pack.</string>
   <string name='covers_settings_explanation'>
-    Cover actions apply only to the selected pack. Preload downloads
-    missing covers for individually rated items.
+    Cover actions apply only to the selected pack.
   </string>
   <string name='covers_downloading_rated'>Downloading covers…</string>
   <string name='covers_download_top'>Download Top %1$d</string>
@@ -277,4 +276,6 @@
     <item quantity="one">%1$d value · %2$s</item>
     <item quantity="other">%1$d values · %2$s</item>
   </plurals>
+  <string name="filter_match_any_description">OR · any</string>
+  <string name="filter_match_all_description">AND · all</string>
 </resources>

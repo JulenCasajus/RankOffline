@@ -118,8 +118,7 @@
   <string name='covers_settings_title'>Обложки</string>
   <string name='covers_settings_description'>Управляйте офлайн-обложками выбранного типа медиа.</string>
   <string name='covers_settings_explanation'>
-    Действия применяются только к выбранному типу медиа. Предзагрузка скачивает
-    недостающие обложки оценённых элементов.
+    Действия применяются только к выбранному типу медиа.
   </string>
   <string name='covers_downloading_rated'>Загрузка обложек…</string>
   <string name='covers_download_top'>Скачать топ-%1$d</string>
@@ -275,4 +274,6 @@
     <item quantity="many">%1$d значений · %2$s</item>
     <item quantity="other">%1$d значения · %2$s</item>
   </plurals>
+  <string name="filter_match_any_description">OR · любое</string>
+  <string name="filter_match_all_description">AND · все</string>
 </resources>

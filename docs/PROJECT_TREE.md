@@ -157,7 +157,6 @@ RankOffline/
               - install/
                 - PackArchiveDownloader.kt
                 - PackArchiveReader.kt
-                - PackArchiveStore.kt
                 - PackBackgroundWorker.kt
                 - PackInstallFiles.kt
                 - PackInstaller.kt
@@ -196,7 +195,6 @@ RankOffline/
               - storage/
                 - PackInstalledResources.kt
                 - PackMetrics.kt
-                - PackStorageInspector.kt
                 - PackStorageRepository.kt
               - ui/
                 - PackManagementContent.kt

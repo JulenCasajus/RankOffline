@@ -20,6 +20,51 @@ import org.junit.runner.RunWith
 /** Optional real-archive regression; put two verified .pack files in externalFilesDir for this test. */
 @RunWith(AndroidJUnit4::class)
 class RealPackImportInstrumentedTest {
+    @Test fun archiveDigestReadCostOnEmulator() { runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val input = requireNotNull(context.getExternalFilesDir(null))
+        val archive = File(input, "rankoffline-test-pack-a.pack")
+        val index = File(input, "rankoffline-test-pack-index.json")
+        assumeTrue("Verified archive and release index are required", archive.isFile && index.isFile)
+        val hosts = BuildConfig.PACK_ALLOWED_HOSTS.split(',').map(String::trim)
+            .filter(String::isNotEmpty).toSet()
+        val descriptor = PackIndexParser.parse(index.readText(), TrustedHttpsHosts(hosts))
+            .single { it.packId == PackId(1) }
+        val durations = List(3) {
+            val started = SystemClock.elapsedRealtime()
+            assertTrue(PackArchiveReader.verifyArchiveDigest(archive, descriptor))
+            SystemClock.elapsedRealtime() - started
+        }
+        Log.i("RankOfflineRealImportTest", "archiveShaBytes=${archive.length()} " +
+            "durationMs=$durations medianMs=${durations.sorted()[1]}")
+    } }
+
+    @Test fun freshMovieCatalogImportUsesTheRealInstaller() { runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val archive = File(context.getExternalFilesDir(null), "rankoffline-test-pack-c.pack")
+        assumeTrue("Real movie pack benchmark input is absent", archive.isFile)
+        val databaseName = "rankoffline-real-movie-import-test.db"
+        val root = File(context.cacheDir, "real-movie-import-test")
+        context.deleteDatabase(databaseName)
+        root.deleteRecursively()
+        check(root.mkdirs())
+        val database = Room.databaseBuilder(context, RankOfflineDatabase::class.java, databaseName)
+            .setJournalMode(androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING).build()
+        try {
+            val (manifest, directory) = install(PackInstaller(root), archive)
+            val started = SystemClock.elapsedRealtime()
+            val result = withTimeout(600_000) { CatalogImporter(database).importIfNeeded(manifest, directory) }
+            Log.i("RankOfflineRealImportTest", "movieImportMs=${SystemClock.elapsedRealtime() - started} batch=400 result=$result")
+            assertTrue(result is CatalogImportResult.Imported)
+            assertEquals((result as CatalogImportResult.Imported).itemCount,
+                database.mediaCatalogDao().itemCount(manifest.packId.value))
+        } finally {
+            database.close()
+            context.deleteDatabase(databaseName)
+            root.deleteRecursively()
+        }
+    } }
+
     @Test fun readyCatalogRemainsQueryableDuringAnotherRealImport() { runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val input = requireNotNull(context.getExternalFilesDir(null))
@@ -41,12 +86,20 @@ class RealPackImportInstrumentedTest {
             val firstResult = importer.importIfNeeded(readyManifest, readyDirectory)
             Log.i("RankOfflineRealImportTest", "firstImportMs=${SystemClock.elapsedRealtime() - firstStart} result=$firstResult")
             installer.commitInstallation(readyManifest.packId)
+            val repository = MediaRepository(database, RatingRepository(database))
+            repeat(3) { iteration ->
+                listOf(false, true).forEach { merge ->
+                    val started = SystemClock.elapsedRealtime()
+                    val entries = repository.search(readyManifest, SearchUiState(), merge)
+                    Log.i("RankOfflineRealImportTest", "merge=$merge run=$iteration " +
+                        "searchMs=${SystemClock.elapsedRealtime() - started} entries=${entries.size}")
+                }
+            }
             val (importingManifest, importingDirectory) = install(installer, second)
             val secondStart = SystemClock.elapsedRealtime()
             val importing = async(Dispatchers.IO) {
                 importer.importIfNeeded(importingManifest, importingDirectory)
             }
-            val repository = MediaRepository(database, RatingRepository(database))
             val read = async(Dispatchers.IO) {
                 repository.search(readyManifest, SearchUiState(), mergeEnabled = false)
             }
@@ -55,6 +108,12 @@ class RealPackImportInstrumentedTest {
             val queryMs = SystemClock.elapsedRealtime() - queryStart
             assertTrue("READY pack must remain queryable", entries.isNotEmpty())
             Log.i("RankOfflineRealImportTest", "queryDuringImportMs=$queryMs importingActive=${importing.isActive}")
+            val allPage = withTimeout(10_000) {
+                repository.searchAllPage(listOf(readyManifest),
+                    mapOf(readyManifest.packId to SearchUiState()),
+                    mapOf(readyManifest.packId to false), 20)
+            }
+            assertTrue("All must show READY packs during another import", allPage.entries.isNotEmpty())
             val secondResult = withTimeout(300_000) { importing.await() }
             Log.i("RankOfflineRealImportTest", "secondImportMs=${SystemClock.elapsedRealtime() - secondStart} result=$secondResult")
             assertTrue(secondResult is CatalogImportResult.Imported)

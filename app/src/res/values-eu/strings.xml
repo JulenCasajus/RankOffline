@@ -124,8 +124,7 @@
   <string name='covers_settings_title'>Azalak</string>
   <string name='covers_settings_description'>Kudeatu hautatutako multimedia motaren lineaz kanpoko azalak.</string>
   <string name='covers_settings_explanation'>
-    Ekintzek hautatutako multimedia motari bakarrik eragiten diote. Aurrekargak
-    baloratutako elementuen falta diren azalak deskargatzen ditu.
+    Ekintzek hautatutako multimedia motari bakarrik eragiten diote.
   </string>
   <string name='covers_downloading_rated'>Azalak deskargatzen…</string>
   <string name='covers_download_top'>Deskargatu Top %1$d</string>
@@ -282,4 +281,6 @@
     <item quantity="one">%1$d balio · %2$s</item>
     <item quantity="other">%1$d balio · %2$s</item>
   </plurals>
+  <string name="filter_match_any_description">OR · edozein</string>
+  <string name="filter_match_all_description">AND · guztiak</string>
 </resources>

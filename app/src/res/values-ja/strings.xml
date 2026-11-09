@@ -111,7 +111,7 @@
   <string name='rating_reset_categories_confirmation'>すべてのカテゴリーを公式の初期設定に戻しますか？互換性のあるプロファイルの重みは保持されます。</string>
   <string name='covers_settings_title'>カバー</string>
   <string name='covers_settings_description'>選択中のメディアのオフラインカバーを管理します。</string>
-  <string name='covers_settings_explanation'>カバー操作は選択中のメディアだけに適用されます。事前ダウンロードは評価済み項目の不足しているカバーのみを取得します。</string>
+  <string name='covers_settings_explanation'>カバー操作は選択中のメディアだけに適用されます。</string>
   <string name='covers_downloading_rated'>カバーをダウンロード中…</string>
   <string name='covers_download_top'>トップ%1$dをダウンロード</string>
   <string name='filters_title'>フィルター</string>
@@ -242,4 +242,6 @@
   <plurals name="subtitle_values_of_field">
     <item quantity="other">%2$s · %1$d件</item>
   </plurals>
+  <string name="filter_match_any_description">OR · いずれか</string>
+  <string name="filter_match_all_description">AND · すべて</string>
 </resources>

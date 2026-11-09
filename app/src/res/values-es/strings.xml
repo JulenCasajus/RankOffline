@@ -124,8 +124,7 @@
   <string name='covers_settings_title'>Portadas</string>
   <string name='covers_settings_description'>Gestiona las portadas sin conexión del tipo de contenido seleccionado.</string>
   <string name='covers_settings_explanation'>
-    Las acciones solo afectan al tipo seleccionado. La precarga descarga las
-    portadas que faltan de los elementos puntuados.
+    Las acciones solo afectan al tipo seleccionado.
   </string>
   <string name='covers_downloading_rated'>Descargando portadas…</string>
   <string name='covers_download_top'>Descargar Top %1$d</string>
@@ -282,4 +281,6 @@
     <item quantity="one">%1$d valor · %2$s</item>
     <item quantity="other">%1$d valores · %2$s</item>
   </plurals>
+  <string name="filter_match_any_description">OR · cualquiera</string>
+  <string name="filter_match_all_description">AND · todos</string>
 </resources>
