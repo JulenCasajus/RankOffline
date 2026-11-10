@@ -53,13 +53,15 @@ internal fun MediaEntryRow(
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         if (entry is MediaListEntry.Group) {
-                            Text(stringResource(R.string.group_entries_count, entry.memberCount),
+                            Text(stringResource(R.string.group_entries_subtitle_count, entry.memberCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.clickable(onClick = onGroupDetails))
                         }
                         subtitles.forEachIndexed { index, part ->
-                            if (index > 0 || entry is MediaListEntry.Group) Text("·", style = MaterialTheme.typography.bodySmall,
+                            if (index > 0 || entry is MediaListEntry.Group) Text(
+                                if (index == 0 && entry is MediaListEntry.Group) "|" else "·",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             val label = if (part.compact) pluralStringResource(
                                 R.plurals.subtitle_values_of_field, part.values.size,
@@ -76,13 +78,10 @@ internal fun MediaEntryRow(
                     }
                 }
             }
-            val displayed = when (rankingSortOrder) {
-                RankingSortOrder.QUALITY_SCORE -> entry.qualityScore
-                RankingSortOrder.PERSONAL_TASTE -> entry.additiveScore
-                RankingSortOrder.CATEGORY_SCORE -> entry.categoryScore
-                else -> entry.finalScore
+            val displayed = entry.scoreForList(rankingSortOrder)
+            if (displayed != null || rankingSortOrder != null) {
+                ScoreValueBadge(displayed, onClick = onClick)
             }
-            if (displayed != null || rankingSortOrder != null) ScoreValueBadge(displayed)
         }
     }
     subtitles.firstOrNull { it.fieldId == expandedField }?.let { part ->
@@ -97,6 +96,14 @@ internal fun MediaEntryRow(
                 Text(stringResource(android.R.string.ok))
             } })
     }
+}
+
+/** Ranking scale is presentation only; Room values and SQL ordering stay unchanged. */
+internal fun MediaListEntry.scoreForList(sortOrder: RankingSortOrder?): Double? = when (sortOrder) {
+    RankingSortOrder.QUALITY_SCORE -> qualityScore
+    RankingSortOrder.PERSONAL_TASTE -> additiveScore?.times(10.0)
+    RankingSortOrder.CATEGORY_SCORE -> categoryScore
+    else -> finalScore
 }
 
 internal data class CatalogSubtitlePart(

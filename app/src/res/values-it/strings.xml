@@ -48,8 +48,7 @@
   <string name='settings_donation_title'>Donazione</string>
   <string name='settings_donation_description'>Sostieni lo sviluppo di RankOffline</string>
   <string name='settings_donation_body'>
-    RankOffline è gratuito e open source. Le opzioni di donazione appariranno
-    qui quando sarà disponibile una destinazione ufficiale.
+    RankOffline è gratuito e open source. Puoi sostenere lo sviluppo tramite GitHub Sponsors.
   </string>
   <string name='settings_open_item'>Apri %1$s</string>
   <string name='icon_content_description'>Icona launcher %1$s</string>
@@ -141,6 +140,7 @@
   <string name='search_catalog_hint'>Cerca titoli…</string>
   <string name='catalog_unavailable_error'>Impossibile caricare il catalogo</string>
   <string name='group_entries_count'>%1$d titoli</string>
+  <string name='group_entries_subtitle_count'>%1$d Titoli</string>
   <string name='group_rated_count'>%1$d/%2$d valutati</string>
   <string name='group_rate_together'>Valuta</string>
   <string name='group_members'>Titoli</string>

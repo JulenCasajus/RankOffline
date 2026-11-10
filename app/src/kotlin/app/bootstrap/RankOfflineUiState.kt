@@ -28,7 +28,9 @@ data class SearchPageState(
     val loadingInitial: Boolean = true,
     val hasMore: Boolean = true,
     val failed: Boolean = false,
-    val query: String = ""
+    val query: String = "",
+    /** Exact group representation used to build this page. */
+    val mergedPacks: Set<PackId>? = null
 ) {
     init { validatePageScope(scope, items) }
 }
@@ -37,7 +39,8 @@ data class RankingResultState(
     val scope: ViewingScope? = null,
     val items: List<MediaListEntry> = emptyList(),
     val loading: Boolean = true,
-    val failed: Boolean = false
+    val failed: Boolean = false,
+    val mergedPacks: Set<PackId>? = null
 ) {
     init { validatePageScope(scope, items) }
 }

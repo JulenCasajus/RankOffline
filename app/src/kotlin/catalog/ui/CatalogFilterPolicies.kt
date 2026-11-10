@@ -5,6 +5,18 @@ package org.rankoffline.app
 internal fun CatalogFilters.withFilter(id: String, value: CatalogFilterValue?): CatalogFilters =
     copy(selections = if (value == null) selections - id else selections + (id to value))
 
+/** Re-sort the union of per-pack options; each input list is sorted only within its pack. */
+internal fun List<CatalogAttributeValue>.sortedFilterOptions(): List<CatalogAttributeValue> =
+    distinct().sortedWith { left, right -> when {
+        left is CatalogAttributeValue.Text && right is CatalogAttributeValue.Text ->
+            left.value.compareTo(right.value, ignoreCase = true)
+        left is CatalogAttributeValue.Number && right is CatalogAttributeValue.Number ->
+            left.value.compareTo(right.value)
+        left is CatalogAttributeValue.Flag && right is CatalogAttributeValue.Flag ->
+            left.value.compareTo(right.value)
+        else -> left.toString().compareTo(right.toString(), ignoreCase = true)
+    } }
+
 /** Only common, type-compatible filters are exposed in All; never assume an Anime schema. */
 internal fun sharedFilterManifest(manifests: List<PackManifest>): PackManifest? {
     val first = manifests.firstOrNull() ?: return null

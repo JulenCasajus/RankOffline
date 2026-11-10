@@ -4,6 +4,7 @@ import android.text.format.Formatter
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -148,9 +149,7 @@ internal fun PackManagementRow(
                     }
                 }
                 when {
-                    state.status == PackRuntimeStatus.DELETING -> Icon(Icons.Default.Lock,
-                        contentDescription = stringResource(R.string.category_download_unavailable),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    state.status == PackRuntimeStatus.DELETING -> UnavailablePackIcon()
                     state.progress?.phase == PackInstallPhase.DOWNLOADING_COVERS ->
                         IconButton(onClick = onCancelInitialCovers) {
                             Icon(Icons.Default.Close,
@@ -167,9 +166,7 @@ internal fun PackManagementRow(
                             else Icons.Default.CloudDownload,
                             contentDescription = stringResource(R.string.category_download), tint = accent)
                     }
-                    else -> Icon(Icons.Default.Lock,
-                        contentDescription = stringResource(R.string.category_download_unavailable),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else -> UnavailablePackIcon()
                 }
             }
             state.progress?.takeUnless { state.status == PackRuntimeStatus.DELETING }?.let { progress ->
@@ -214,5 +211,14 @@ internal fun PackManagementRow(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun UnavailablePackIcon() {
+    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Icon(Icons.Default.Lock,
+            contentDescription = stringResource(R.string.category_download_unavailable),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

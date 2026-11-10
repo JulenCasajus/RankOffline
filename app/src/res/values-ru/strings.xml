@@ -48,8 +48,7 @@
   <string name='settings_donation_title'>Пожертвование</string>
   <string name='settings_donation_description'>Поддержать разработку RankOffline</string>
   <string name='settings_donation_body'>
-    RankOffline — бесплатное приложение с открытым исходным кодом. Варианты
-    пожертвования появятся здесь, когда будет доступен официальный адрес.
+    RankOffline — бесплатное приложение с открытым исходным кодом. Поддержать разработку можно через GitHub Sponsors.
   </string>
   <string name='settings_open_item'>Открыть: %1$s</string>
   <string name='icon_content_description'>Значок лаунчера «%1$s»</string>
@@ -135,6 +134,7 @@
   <string name='search_catalog_hint'>Поиск названий…</string>
   <string name='catalog_unavailable_error'>Не удалось загрузить каталог</string>
   <string name='group_entries_count'>%1$d записей</string>
+  <string name='group_entries_subtitle_count'>%1$d Записей</string>
   <string name='group_rated_count'>Оценено %1$d из %2$d</string>
   <string name='group_rate_together'>Оценить</string>
   <string name='group_members'>Произведения</string>

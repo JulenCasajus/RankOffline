@@ -56,11 +56,11 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug.3"
+            versionNameSuffix = "-debug.4"
             buildConfigField(
                 "String",
                 "PACK_INDEX_URL",
-                "\"https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.2-debug.3/pack-index.json\""
+                "\"https://github.com/JulenCasajus/RankOffline/releases/download/v0.2.2-debug.4/pack-index.json\""
             )
             buildConfigField(
                 "String",

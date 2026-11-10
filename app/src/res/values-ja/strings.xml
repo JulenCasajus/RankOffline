@@ -47,7 +47,7 @@
   <string name='settings_active_pack_screen_title'>%1$sの設定</string>
   <string name='settings_donation_title'>寄付</string>
   <string name='settings_donation_description'>RankOfflineの開発を支援</string>
-  <string name='settings_donation_body'>RankOfflineは無料のオープンソースです。公式の寄付先が用意されたら、ここに表示します。</string>
+  <string name='settings_donation_body'>RankOfflineは無料のオープンソースです。GitHub Sponsorsで開発を支援できます。</string>
   <string name='settings_open_item'>%1$sを開く</string>
   <string name='icon_content_description'>%1$sのランチャーアイコン</string>
   <string name='general_display_section'>表示</string>
@@ -127,6 +127,7 @@
   <string name='search_catalog_hint'>タイトルを検索…</string>
   <string name='catalog_unavailable_error'>カタログを読み込めませんでした</string>
   <string name='group_entries_count'>%1$d作品</string>
+  <string name='group_entries_subtitle_count'>%1$d作品</string>
   <string name='group_rated_count'>%1$d/%2$d作品を評価済み</string>
   <string name='group_rate_together'>評価する</string>
   <string name='group_members'>作品一覧</string>

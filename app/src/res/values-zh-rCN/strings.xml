@@ -47,7 +47,7 @@
   <string name='settings_active_pack_screen_title'>%1$s设置</string>
   <string name='settings_donation_title'>捐赠</string>
   <string name='settings_donation_description'>支持 RankOffline 开发</string>
-  <string name='settings_donation_body'>RankOffline 免费且开源。官方捐赠渠道可用后会显示在这里。</string>
+  <string name='settings_donation_body'>RankOffline 免费且开源。可通过 GitHub Sponsors 支持开发。</string>
   <string name='settings_open_item'>打开%1$s</string>
   <string name='icon_content_description'>%1$s启动器图标</string>
   <string name='general_display_section'>显示</string>
@@ -127,6 +127,7 @@
   <string name='search_catalog_hint'>搜索标题…</string>
   <string name='catalog_unavailable_error'>无法加载目录</string>
   <string name='group_entries_count'>%1$d 部作品</string>
+  <string name='group_entries_subtitle_count'>%1$d 部作品</string>
   <string name='group_rated_count'>已评分 %1$d/%2$d</string>
   <string name='group_rate_together'>评分</string>
   <string name='group_members'>作品列表</string>

@@ -48,8 +48,7 @@
   <string name='settings_donation_title'>Dohaintza</string>
   <string name='settings_donation_description'>Lagundu RankOffline garatzen</string>
   <string name='settings_donation_body'>
-    RankOffline doakoa eta kode irekikoa da. Dohaintza-aukerak hemen agertuko
-    dira helmuga ofizial bat dagoenean.
+    RankOffline doakoa eta kode irekikoa da. Garapena GitHub Sponsors bidez lagun dezakezu.
   </string>
   <string name='settings_open_item'>Ireki %1$s</string>
   <string name='icon_content_description'>%1$s abiarazle-ikonoa</string>
@@ -141,6 +140,7 @@
   <string name='search_catalog_hint'>Bilatu izenburuak…</string>
   <string name='catalog_unavailable_error'>Ezin izan da katalogoa kargatu</string>
   <string name='group_entries_count'>%1$d sarrera</string>
+  <string name='group_entries_subtitle_count'>%1$d Sarrera</string>
   <string name='group_rated_count'>%1$d/%2$d baloratuta</string>
   <string name='group_rate_together'>Baloratu</string>
   <string name='group_members'>Sarrerak</string>

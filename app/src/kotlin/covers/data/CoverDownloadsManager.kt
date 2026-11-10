@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,33 +93,51 @@ class CoverDownloadsManager(
                 require(raw.size <= MAX_ENTRIES) { "Too many covers requested" }
                 require(raw.all { it.packId == packId }) { "Entries belong to different packs" }
                 val entries = raw.distinct()
-                val outcomes = LinkedHashMap<CatalogEntryKey, CoverDownloadResult>(entries.size)
-                val exhausted = HashSet<CatalogEntryKey>()
-                publish(coverProgressSnapshot(packId, CoverDownloadStatus.DOWNLOADING_COVERS,
-                    entries.size, outcomes, exhausted), onProgress)
+                val batch = repository.beginCoverBatch(packId, entries)
+                var flushAttempted = false
+                try {
+                    val outcomes = LinkedHashMap<CatalogEntryKey, CoverDownloadResult>(entries.size)
+                    val exhausted = HashSet<CatalogEntryKey>()
+                    publish(coverProgressSnapshot(packId, CoverDownloadStatus.DOWNLOADING_COVERS,
+                        entries.size, outcomes, exhausted), onProgress)
 
-                for (pass in 0 until DOWNLOAD_PASSES) {
-                    val pending = if (pass == 0) entries
-                        else entries.filter { outcomes[it].isRetryableCoverResult() }
-                    if (pending.isEmpty()) break
-                    val status = if (pass == 0) CoverDownloadStatus.DOWNLOADING_COVERS
-                        else CoverDownloadStatus.RETRYING_COVERS
-                    publish(coverProgressSnapshot(packId, status, entries.size, outcomes, exhausted), onProgress)
-                    downloadPending(pending) { key, result ->
-                        outcomes[key] = result
-                        if (pass == DOWNLOAD_PASSES - 1 && result.isRetryableCoverResult()) {
-                            exhausted += key
+                    for (pass in 0 until DOWNLOAD_PASSES) {
+                        val pending = if (pass == 0) entries
+                            else entries.filter { outcomes[it].isRetryableCoverResult() }
+                        if (pending.isEmpty()) break
+                        val status = if (pass == 0) CoverDownloadStatus.DOWNLOADING_COVERS
+                            else CoverDownloadStatus.RETRYING_COVERS
+                        publish(coverProgressSnapshot(packId, status, entries.size, outcomes, exhausted), onProgress)
+                        downloadPending(pending, batch) { key, result ->
+                            outcomes[key] = result
+                            if (pass == DOWNLOAD_PASSES - 1 && result.isRetryableCoverResult()) {
+                                exhausted += key
+                            }
+                            publish(coverProgressSnapshot(packId, status,
+                                entries.size, outcomes, exhausted), onProgress)
                         }
-                        publish(coverProgressSnapshot(packId, status,
-                            entries.size, outcomes, exhausted), onProgress)
                     }
+                    flushAttempted = true
+                    check(withContext(NonCancellable) { repository.flushCoverBatch(batch) }) {
+                        "Cover batch state changed during download"
+                    }
+                    coverProgressSnapshot(packId, CoverDownloadStatus.COMPLETED,
+                        entries.size, outcomes, exhausted)
+                        .also {
+                            publish(it, onProgress)
+                            runCatching { onBatchFinished(packId, it) }
+                        }
+                } finally {
+                    if (!flushAttempted && batch.updates.isNotEmpty()) {
+                        // A cancelled Worker must retain images already promoted. The network
+                        // has stopped; only their small Room state transaction remains.
+                        withContext(NonCancellable) {
+                            runCatching { repository.flushCoverBatch(batch) }
+                                .onFailure { Log.w(TAG, "pack=${packId.value} partial cover flush failed", it) }
+                        }
+                    }
+                    repository.endCoverBatch(batch)
                 }
-                coverProgressSnapshot(packId, CoverDownloadStatus.COMPLETED,
-                    entries.size, outcomes, exhausted)
-                    .also {
-                        publish(it, onProgress)
-                        runCatching { onBatchFinished(packId, it) }
-                    }
             }
         } catch (cancelled: CancellationException) {
             publish(terminal(packId, CoverDownloadStatus.CANCELLED), onProgress)
@@ -134,10 +153,11 @@ class CoverDownloadsManager(
 
     private suspend fun downloadPending(
         keys: List<CatalogEntryKey>,
+        batch: CoverBatchContext,
         completed: (CatalogEntryKey, CoverDownloadResult) -> Unit
     ) = coroutineScope {
-        // Bound in-flight operations while Room writes are waiting behind an import.
-        // A long import can still stall this batch after all workers reach Room.
+        // Room writes are staged until this pass finishes, so an unrelated import
+        // cannot occupy every HTTP worker after the first few images.
         val workers = minOf(keys.size, MAX_PENDING_COVERS)
         val next = AtomicInteger()
         val results = kotlinx.coroutines.channels.Channel<Pair<CatalogEntryKey, CoverDownloadResult>>(
@@ -149,7 +169,7 @@ class CoverDownloadsManager(
                     if (index >= keys.size) break
                     val key = keys[index]
                     val result = try {
-                        repository.downloadCover(key)
+                        repository.downloadCover(key, batch)
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (exception: Exception) {

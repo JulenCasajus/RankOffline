@@ -39,7 +39,7 @@ import org.junit.runner.RunWith
 class InitialCoverResumeInstrumentedTest {
     @Test fun initialCoversResumeBeforeAnotherPackFinishesImporting() = runScenario(false)
 
-    @Test fun initialCoversStallAfterInFlightHttpWhileImportHoldsRoomWriter() = runScenario(true)
+    @Test fun initialCoversFinishHttpWhileImportHoldsRoomWriter() = runScenario(true)
 
     @Test fun failedArchiveReleasesInitialCovers() = runScenario(false, failArchive = true)
 
@@ -174,6 +174,8 @@ class InitialCoverResumeInstrumentedTest {
                 assertEquals(3, covers.progressByPack.value[idA]?.downloaded)
                 assertEquals(0, covers.progressByPack.value[idA]?.errors)
                 assertEquals(CoverDownloadStatus.CANCELLED, covers.progressByPack.value[idA]?.status)
+                assertEquals("Completed images survive cancellation in Room", 3,
+                    keys.count { repository.observeCover(it).first().localPath != null })
                 return@runBlocking
             }
             PackWorkScheduler.enqueue(base, idB, PackWorkAction.INSTALL)
@@ -187,20 +189,14 @@ class InitialCoverResumeInstrumentedTest {
             archiveReleasedAt.set(SystemClock.elapsedRealtime())
             if (!failArchive && !cancelArchive) withTimeout(20_000) { importStarted.await() }
             if (holdRoomWriter) {
-                withTimeout(20_000) { while (httpCompleted.get() < 10) delay(10) }
-                // HTTP can run briefly, but all workers eventually wait for the same
-                // SQLite writer. This is not sustained cover-download progress.
-                delay(400)
-                val stalledAt = httpCompleted.get()
-                val committedAt = covers.progressByPack.value[idA]?.downloaded
-                delay(400)
-                assertEquals(stalledAt, httpCompleted.get())
-                assertTrue("A bounded batch must stall before all images are committed",
-                    stalledAt < keys.size)
-                assertEquals("Completed covers stop advancing behind Room's writer",
-                    committedAt, covers.progressByPack.value[idA]?.downloaded)
+                withTimeout(20_000) { while (httpCompleted.get() < keys.size) delay(10) }
+                withTimeout(20_000) {
+                    while (covers.progressByPack.value[idA]?.downloaded != keys.size) delay(10)
+                }
+                assertEquals("All HTTP must finish while B still holds Room", keys.size,
+                    httpCompleted.get())
                 assertFalse("B import must still hold Room while A downloads", importRelease.isCompleted)
-                assertEquals("A awaits the Room writer before promoting all images", 0L, coversFinishedAt.get())
+                assertEquals("Only the final Room flush waits for B", 0L, coversFinishedAt.get())
                 Log.i(TAG, "archiveReleased=${archiveReleasedAt.get()} importRoomHeld=true " +
                     "coverHttpCompleted=${httpCompleted.get()} atMs=${SystemClock.elapsedRealtime()}")
                 importRelease.complete(Unit)

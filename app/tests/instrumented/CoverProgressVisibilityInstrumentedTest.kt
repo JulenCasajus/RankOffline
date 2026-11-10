@@ -1,6 +1,7 @@
 package org.rankoffline.app
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.Bitmap
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -20,6 +21,46 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CoverProgressVisibilityInstrumentedTest {
+    @Test fun plannedTapDoesNotDuplicateAndPromotedFileRecoversAfterInterruptedBatch() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<Context>()
+        val root = java.io.File(app.cacheDir, "cover-batch-recovery-test")
+        root.deleteRecursively()
+        check(root.mkdirs())
+        val isolated = object : ContextWrapper(app) {
+            override fun getApplicationContext(): Context = this
+            override fun getFilesDir(): java.io.File = root
+        }
+        val database = Room.inMemoryDatabaseBuilder(app, RankOfflineDatabase::class.java).build()
+        try {
+            val id = PackId(88)
+            val key = CatalogEntryKey(id, "cover", CatalogEntryKind.ITEM)
+            database.mediaCatalogDao().insertNewItems(listOf(MediaItemEntity(id.value,
+                key.id, "Cover", provider = "fixture", remoteCoverRef = "cover")))
+            val installed = java.io.File(root, "packs/${id.directoryName()}")
+            check(installed.mkdirs())
+            java.io.File(installed, PackInstaller.PACK_MANIFEST)
+                .writeText(TestFixtures.manifestJson(id.value))
+            val repository = CoverRepository(isolated, database,
+                manifestProvider = { TestFixtures.manifest(it.value) },
+                downloader = CoverDownloader { _, _ -> error("HTTP must not repeat") },
+                beforeCoverMutation = { _, _ -> })
+            val batch = repository.beginCoverBatch(id, listOf(key))
+            assertEquals(CoverDownloadResult.AlreadyInProgress, repository.downloadCover(key))
+            repository.endCoverBatch(batch)
+            val file = repository.storage.coverFile(key)
+            check(file.parentFile!!.mkdirs())
+            val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
+            try { file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) } }
+            finally { bitmap.recycle() }
+            assertEquals(CoverDownloadResult.AlreadyAvailable, repository.downloadCover(key))
+            assertEquals(file.absolutePath,
+                database.mediaDao().item(id.value, key.id)?.localCoverPath)
+        } finally {
+            database.close()
+            root.deleteRecursively()
+        }
+    }
+
     @Test fun decodedGroupCoverCanBeReusedBeforeRoomEmitsItsFallbackPath() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val file = java.io.File(context.cacheDir, "warm-cover-test.png")

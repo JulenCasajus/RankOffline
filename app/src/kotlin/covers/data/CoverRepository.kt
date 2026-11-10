@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.map
 /** One repository for all local images, regardless of where their bytes came from. */
 class CoverRepository(
     context: Context,
-    database: RankOfflineDatabase,
+    internal val database: RankOfflineDatabase,
     internal val manifestProvider: (PackId) -> PackManifest?,
     internal val downloader: CoverDownloader = SecureCoverDownloader(),
     /** Must persist dirty bits before any filesystem/Room cover mutation. */
@@ -33,6 +33,7 @@ class CoverRepository(
         database.mediaDao(), database.mediaGroupDao(), DeclarativePackCoverProvider(manifestProvider)
     )
     internal val states = ConcurrentHashMap<CatalogEntryKey, MutableStateFlow<CoverDownloadState>>()
+    internal val activeBatches = ConcurrentHashMap<PackId, CoverBatchContext>()
 
     /** One logical GROUP image: own validated file first, otherwise the existing
      * representative/member ITEM file. Nothing is copied and Room GROUP paths stay untouched. */

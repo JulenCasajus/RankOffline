@@ -31,6 +31,31 @@ class CatalogStateTest {
         assertEquals(CatalogSortOrder.TITLE_ASC, CatalogSortOrder.TITLE_DESC.inverted())
     }
 
+    @Test fun personalTasteUsesTenPointScaleOnlyInListPresentation() {
+        val item = MediaListEntry.Item(MediaItem(PackId(1), "item", "Item",
+            finalScore = 8.5, qualityScore = 8.0, additiveScore = 0.75))
+        val group = MediaListEntry.Group(MediaGroup(PackId(1), "group", "Group", "relations"),
+            finalScore = 8.5, qualityScore = 8.0, additiveScore = 0.75,
+            categoryScore = null, memberCount = 2, ratedCount = 1, derived = true)
+        listOf(item, group).forEach { entry ->
+            assertEquals(7.5, entry.scoreForList(RankingSortOrder.PERSONAL_TASTE)!!, 0.0)
+            assertEquals(8.0, entry.scoreForList(RankingSortOrder.QUALITY_SCORE)!!, 0.0)
+            assertEquals(8.5, entry.scoreForList(null)!!, 0.0)
+            assertEquals(0.75, entry.additiveScore!!, 0.0)
+        }
+    }
+
+    @Test fun combinedFilterOptionsAreUniqueAndSortedAcrossPackBoundaries() {
+        val years = listOf(1940.0, 2027.0, 1888.0, 1950.0, 2028.0, 1940.0)
+            .map(CatalogAttributeValue::Number).sortedFilterOptions()
+        assertEquals(listOf(1888.0, 1940.0, 1950.0, 2027.0, 2028.0),
+            years.map { (it as CatalogAttributeValue.Number).value })
+        val names = listOf("Drama", "Zoology", "action", "Drama", "Biography")
+            .map(CatalogAttributeValue::Text).sortedFilterOptions()
+        assertEquals(listOf("action", "Biography", "Drama", "Zoology"),
+            names.map { (it as CatalogAttributeValue.Text).value })
+    }
+
     @Test fun manifestCapabilitiesRemoveStaleSortAndFilterSelections() {
         val manifest = TestFixtures.manifest().copy(
             capabilities = TestFixtures.manifest().capabilities.copy(popularity = false),

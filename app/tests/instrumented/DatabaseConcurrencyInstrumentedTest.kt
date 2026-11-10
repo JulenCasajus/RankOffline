@@ -187,21 +187,17 @@ class DatabaseConcurrencyInstrumentedTest {
             withTimeout(5_000) { writerStarted.await() }
             val batch = async(Dispatchers.IO) { manager.downloadSelected(id, keys) }
             try {
-                withTimeout(5_000) { while (httpCompleted.get() < 3) delay(10) }
-                delay(300)
-                assertTrue("A Room writer must not stop every independent cover HTTP after three",
-                    httpCompleted.get() >= 8)
-                val stalledAt = httpCompleted.get()
-                delay(300)
-                assertEquals("The bounded batch eventually waits for Room before starting more HTTP",
-                    stalledAt, httpCompleted.get())
-                assertTrue(stalledAt < keys.size)
-                assertEquals("No cover can be counted as finished before its Room state commits",
-                    0, manager.progressByPack.value[id]?.processed)
+                withTimeout(5_000) { while (httpCompleted.get() < keys.size) delay(10) }
+                assertEquals("An unrelated Room writer must not stop image HTTP", 20, httpCompleted.get())
+                withTimeout(5_000) {
+                    while (manager.progressByPack.value[id]?.processed != 20) delay(10)
+                }
+                assertFalse("Only the final Room flush should wait for the import", batch.isCompleted)
                 assertFalse("Catalog import must still be active", writer.isCompleted)
             } finally {
                 releaseWriter.complete(Unit)
                 assertEquals(20, withTimeout(10_000) { batch.await() }.unavailable)
+                assertEquals(20, database.mediaDao().notFoundCoverCount(id.value))
             }
         } finally {
             releaseWriter.complete(Unit)

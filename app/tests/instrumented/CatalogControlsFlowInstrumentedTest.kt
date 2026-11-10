@@ -71,7 +71,8 @@ class CatalogControlsFlowInstrumentedTest {
                 mediaSettings = mapOf(manifest.packId to manifest.resolveSettings(
                     PersonalPackPreferences(mergeEnabled = false))), settingsLoaded = true)
             val scope = ViewingScope.Pack(manifest.packId)
-            val controller = CatalogUiController(work, MediaRepository(database, RatingRepository(database)),
+            val ratings = RatingRepository(database)
+            val controller = CatalogUiController(work, MediaRepository(database, ratings),
                 manager, settings, MutableStateFlow(scope), MediaRevisionTracker())
             val searchCollector = work.launch { controller.searchPageState.collect() }
             val rankingCollector = work.launch { controller.rankingPage.collect() }
@@ -99,6 +100,15 @@ class CatalogControlsFlowInstrumentedTest {
                 settings.updateMergeEnabled(true)
                 search(listOf("pair", "gamma"))
                 ranking(listOf("pair", "gamma"))
+                assertEquals(setOf(manifest.packId),
+                    controller.cachedRankingPage(manifest.packId)?.result?.mergedPacks)
+                settings.updateMergeEnabled(false)
+                ranking(listOf("alpha", "gamma"))
+                settings.updateMergeEnabled(true)
+                // Returning to an already visited representation must use the ordered
+                // cached page in the same frame, before the flow publishes again.
+                assertEquals(listOf("pair", "gamma"),
+                    controller.cachedRankingPage(manifest.packId)?.result?.items?.map { it.id })
                 controller.searchSort(CatalogSortOrder.TITLE_DESC)
                 search(listOf("pair", "gamma"))
                 controller.toggleRankingDirection()
@@ -135,10 +145,21 @@ class CatalogControlsFlowInstrumentedTest {
                 ranking(listOf("gamma", "beta", "alpha"))
                 assertEquals(0, controller.searchByPack.value[manifest.packId]?.filters?.activeCount)
 
-                database.mediaDao().upsertRating(MediaRatingEntity(11, "alpha", 0.0,
-                    1.0, 1.0, "", "done", 100))
-                controller.ratingChanged(CatalogEntryKey(manifest.packId, "alpha", CatalogEntryKind.ITEM),
-                    RatingDraft(finalScore = 1.0, qualityScore = 1.0))
+                val editor = RatingUiController(work, ratings, GroupRepository(database, ratings),
+                    settings.state, { key, draft -> controller.ratingChanged(key, draft) },
+                    { throw it })
+                editor.openGroup(CatalogEntryKey(manifest.packId, "pair", CatalogEntryKind.GROUP))
+                withTimeout(8_000) { editor.groupDetail.first { it?.derivedRating?.finalScore == 8.5 } }
+                editor.open(MediaListEntry.Item(MediaItem(manifest.packId, "alpha", "Alpha")))
+                withTimeout(8_000) { editor.editor.first { it?.key?.id == "alpha" } }
+                editor.saveSimple(RatingDraft(), 1.0, 1.0)
+                withTimeout(8_000) {
+                    editor.groupDetail.first { detail ->
+                        detail?.derivedRating?.finalScore == 4.5 &&
+                            detail.members.first { it.id == "alpha" }.finalScore == 1.0
+                    }
+                }
+                withTimeout(8_000) { editor.editor.first { it == null } }
                 settings.updateMergeEnabled(true)
                 withTimeout(8_000) {
                     controller.searchPageState.first { page ->

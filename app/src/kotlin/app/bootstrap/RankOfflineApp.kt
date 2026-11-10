@@ -39,7 +39,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                 filtersByPack[manifest.packId].orEmpty().entries
             }
                 .groupBy({ it.key }, { it.value })
-                .mapValues { (_, lists) -> lists.flatten().distinct() }
+                .mapValues { (_, lists) -> lists.flatten().sortedFilterOptions() }
         }
     }
     val context = LocalContext.current
@@ -52,14 +52,31 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         ?: searchState
     val visibleRankingState = activePackId?.let { rankingByPack[it] }
         ?: rankingState
-    val visibleSearchPage = if (searchPage.scope == scope) searchPage else when (val selected = scope) {
-        ViewingScope.All -> viewModel.catalog.cachedAllSearchPage() ?: SearchPageState(scope = scope)
-        is ViewingScope.Pack -> viewModel.catalog.cachedSearchPage(selected.packId) ?: SearchPageState(scope = scope)
+    // A retained page matching the current query/merge wins over a StateFlow value from
+    // the previous frame. This matters when switching tabs immediately after Merge changes.
+    val retainedSearchPage = when (val selected = scope) {
+        ViewingScope.All -> viewModel.catalog.cachedAllSearchPage()
+        is ViewingScope.Pack -> viewModel.catalog.cachedSearchPage(selected.packId)
     }
-    val visibleRankingPage = if (rankingPage.result.scope == scope) rankingPage else when (val selected = scope) {
-        ViewingScope.All -> viewModel.catalog.cachedAllRankingPage() ?: CatalogUiController.RankingPage()
-        is ViewingScope.Pack -> viewModel.catalog.cachedRankingPage(selected.packId) ?: CatalogUiController.RankingPage()
+    val retainedRankingPage = when (val selected = scope) {
+        ViewingScope.All -> viewModel.catalog.cachedAllRankingPage()
+        is ViewingScope.Pack -> viewModel.catalog.cachedRankingPage(selected.packId)
     }
+    val mergedPacks = readyManifests.filter { manifest ->
+        manifest.capabilities.merge && when (scope) {
+            ViewingScope.All -> settings.allViewSettings.mergeEnabled
+            is ViewingScope.Pack -> manifest.packId == activePackId &&
+                settings.mediaSettings[manifest.packId]?.mergeEnabled == true
+        }
+    }.mapTo(hashSetOf()) { it.packId }
+    val visibleSearchPage = retainedSearchPage ?: searchPage.takeIf {
+        it.scope == scope && (it.loadingInitial || it.mergedPacks == mergedPacks)
+    }
+        ?: SearchPageState(scope = scope)
+    val visibleRankingPage = retainedRankingPage ?: rankingPage.takeIf {
+        it.result.scope == scope && (it.result.loading || it.result.mergedPacks == mergedPacks)
+    }
+        ?: CatalogUiController.RankingPage()
     val visibleSearchItems = visibleSearchPage.visibleItemsFor(scope,
         ratingOverrides, visibleSearchState.query)
     val visibleRankingItems = applyRatingOverrides(
@@ -134,6 +151,14 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         )
         if (draft != null) return
     }
+    viewerEntry?.let { entry ->
+        CoverViewerDialog(entry, settings, covers, bitmapCache,
+            onDismiss = { viewerEntry = null },
+            onDeleteConfirmed = viewModel::deleteDownloadedCover,
+            onDownloadRequested = viewModel::downloadCover,
+            onGroupDetails = if (entry is MediaListEntry.Group) ({ viewerEntry = null; viewModel.openGroupDetails(entry.key) }) else null
+        )
+    }
     group?.let { current ->
         GroupDetailScreen(current, settings, covers, bitmapCache,
             subtitleFields = readyManifests.firstOrNull {
@@ -153,14 +178,6 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
             onCoverOpen = { viewerEntry = it }
         )
         return
-    }
-    viewerEntry?.let { entry ->
-        CoverViewerDialog(entry, settings, covers, bitmapCache,
-            onDismiss = { viewerEntry = null },
-            onDeleteConfirmed = viewModel::deleteDownloadedCover,
-            onDownloadRequested = viewModel::downloadCover,
-            onGroupDetails = if (entry is MediaListEntry.Group) ({ viewerEntry = null; viewModel.openGroupDetails(entry.key) }) else null
-        )
     }
 
     val openManagement = { showPackManagement = true; tab = AppTab.SETTINGS }

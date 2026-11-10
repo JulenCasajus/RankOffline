@@ -45,12 +45,7 @@ internal fun RankingPodium(
                 val width = (art.sourceWidth * scale).dp
                 val height = (art.sourceHeight * scale).dp
                 val coverSize = minOf(if (place == 1) 120.dp else 96.dp, width)
-                val shown = when (sortOrder) {
-                    RankingSortOrder.QUALITY_SCORE -> entry.qualityScore
-                    RankingSortOrder.PERSONAL_TASTE -> entry.additiveScore
-                    RankingSortOrder.CATEGORY_SCORE -> entry.categoryScore
-                    else -> entry.finalScore
-                }
+                val shown = entry.scoreForList(sortOrder)
                 Column(Modifier.width(width), horizontalAlignment = Alignment.CenterHorizontally) {
                     ScoreValueBadge(shown, onClick = { onOpenRating(entry) })
                     Spacer(Modifier.height(8.dp))

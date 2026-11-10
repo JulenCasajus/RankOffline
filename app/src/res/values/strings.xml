@@ -53,8 +53,7 @@
   <string name='settings_donation_title'>Donation</string>
   <string name='settings_donation_description'>Support RankOffline development</string>
   <string name='settings_donation_body'>
-    RankOffline is free and open source. Donation options will appear here when
-    an official destination is available.
+    RankOffline is free and open source. You can support its development through GitHub Sponsors.
   </string>
   <string name='settings_open_item'>Open %1$s</string>
   <string name='icon_content_description'>%1$s launcher icon</string>
@@ -165,6 +164,7 @@
   <string name='search_catalog_hint'>Search titles…</string>
   <string name='catalog_unavailable_error'>Catalog could not be loaded</string>
   <string name='group_entries_count'>%1$d entries</string>
+  <string name='group_entries_subtitle_count'>%1$d Entries</string>
   <string name='group_rated_count'>%1$d/%2$d rated</string>
   <string name='group_rate_together'>Rate</string>
   <string name='group_members'>Members</string>
