@@ -975,6 +975,10 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch { settingsRepository.updateElaborateRatingEnabled(value) }
     }
 
+    fun updatePersonalTasteEnabled(value: Boolean) {
+        viewModelScope.launch { settingsRepository.updatePersonalTasteEnabled(value) }
+    }
+
     fun updateActiveMediaType(value: MediaType) {
         if (settings.value.activeMediaType == value) return
         viewModelScope.launch { settingsRepository.updateActiveMediaType(value) }
