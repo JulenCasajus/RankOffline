@@ -182,6 +182,8 @@ internal fun SettingsScreen(
         SettingsDestination.RATING -> RatingSettingsScreen(
             elaborateRatingEnabled = settings.elaborateRatingEnabled,
             onElaborateRatingEnabledChange = viewModel::updateElaborateRatingEnabled,
+            personalTasteEnabled = settings.personalTasteEnabled,
+            onPersonalTasteEnabledChange = viewModel::updatePersonalTasteEnabled,
             onProfiles = { destination = SettingsDestination.RATING_PROFILES },
             onCategories = { destination = SettingsDestination.RATING_CATEGORIES },
             onBack = goBack
@@ -1224,6 +1226,8 @@ private fun CoverPreloadProgressView(preloadProgress: CoverPreloadProgress) {
 private fun RatingSettingsScreen(
     elaborateRatingEnabled: Boolean,
     onElaborateRatingEnabledChange: (Boolean) -> Unit,
+    personalTasteEnabled: Boolean,
+    onPersonalTasteEnabledChange: (Boolean) -> Unit,
     onProfiles: () -> Unit,
     onCategories: () -> Unit,
     onBack: () -> Unit
@@ -1259,6 +1263,32 @@ private fun RatingSettingsScreen(
                                 Text(label)
                             }
                         }
+                    }
+                }
+            }
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().clickable {
+                            onPersonalTasteEnabledChange(!personalTasteEnabled)
+                        }.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.rating_personal_taste_toggle),
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                stringResource(R.string.rating_personal_taste_toggle_description),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 13.sp
+                            )
+                        }
+                        Switch(
+                            checked = personalTasteEnabled,
+                            onCheckedChange = onPersonalTasteEnabledChange
+                        )
                     }
                 }
             }
