@@ -502,6 +502,8 @@ class AnimeRepository(
 
     fun observeLocalCoverPath(animeId: String): Flow<String?> = dao.observeLocalCoverPath(animeId)
 
+    fun observeCoverResolutionState(animeId: String): Flow<String?> = dao.observeCoverResolutionState(animeId)
+
     suspend fun allLocalCoverPaths(): List<String> = withContext(Dispatchers.IO) {
         dao.allLocalCoverPaths()
     }
