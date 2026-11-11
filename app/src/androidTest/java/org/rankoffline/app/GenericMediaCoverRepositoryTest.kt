@@ -117,6 +117,23 @@ class GenericMediaCoverRepositoryTest {
     }
 
     @Test
+    fun notFoundIsObservedAndPreventsRepeatingTheSearch() = runBlocking {
+        val item = movie("permanently-missing")
+        mediaRepository.upsertItem(item)
+        val downloader = FakeCoverDownloader(MediaCoverTransferResult.NOT_FOUND)
+        val repository = GenericMediaCoverRepository(context, database, downloader = downloader)
+
+        assertEquals(CoverDownloadResult.NotFound, repository.downloadCover(item.id))
+        assertEquals(CoverResolutionState.NOT_FOUND.name, repository.observeResolutionState(item.id).first())
+        assertEquals(CoverDownloadResult.NotFound, repository.downloadCover(item.id))
+        assertEquals(1, downloader.invocations)
+
+        val recreated = GenericMediaCoverRepository(context, database, downloader = downloader)
+        assertEquals(CoverDownloadResult.NotFound, recreated.downloadCover(item.id))
+        assertEquals(1, downloader.invocations)
+    }
+
+    @Test
     fun normalizedAnimeWithoutDirectUrlUsesProviderResolver() = runBlocking {
         val item = MediaItemEntity(
             id = "mal:16498",
