@@ -67,7 +67,8 @@ data class MediaSettings(
     val mergeEnabled: Boolean,
     val oneCoverPerGroup: Boolean = false,
     val showImages: Boolean = false,
-    val stickyScore: Boolean = true
+    val stickyScore: Boolean = true,
+    val personalTasteEnabled: Boolean = false
 )
 
 @Serializable
@@ -357,6 +358,7 @@ data class AppSettingsState(
         get() = mediaSettings[activeMediaType] ?: DefaultSettings.mediaSettings(activeMediaType)
 
     val elaborateRatingEnabled: Boolean get() = activeMediaSettings.elaborateRatingEnabled
+    val personalTasteEnabled: Boolean get() = activeMediaSettings.personalTasteEnabled
     val ratingConfig: RatingSystemConfig get() = activeMediaSettings.ratingConfig
     val ratingProfiles: RatingProfilesConfig get() = activeMediaSettings.ratingProfiles
     val mergeEnabled: Boolean get() = activeMediaSettings.mergeEnabled
@@ -527,6 +529,10 @@ class SettingsRepository internal constructor(
 
     suspend fun updateElaborateRatingEnabled(value: Boolean) = updateMutex.withLock {
         persistActiveMediaSettings { it.copy(elaborateRatingEnabled = value) }
+    }
+
+    suspend fun updatePersonalTasteEnabled(value: Boolean) = updateMutex.withLock {
+        persistActiveMediaSettings { it.copy(personalTasteEnabled = value) }
     }
 
     suspend fun updateRatingConfig(config: RatingSystemConfig) = updateMutex.withLock {
