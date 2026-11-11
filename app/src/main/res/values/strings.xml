@@ -449,4 +449,6 @@
     <string name="book_genre_science_technology">Science &amp; Technology</string>
     <string name="book_genre_philosophy">Philosophy</string>
     <string name="book_genre_other">Other / Unclassified</string>
+    <string name="rating_personal_taste_toggle">Personal taste</string>
+    <string name="rating_personal_taste_toggle_description">Adds up to one point for personal taste</string>
 </resources>
