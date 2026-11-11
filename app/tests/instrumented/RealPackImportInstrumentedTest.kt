@@ -5,14 +5,19 @@ import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import androidx.room.Room
+import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -156,6 +161,80 @@ class RealPackImportInstrumentedTest {
         } finally {
             database.close()
             context.deleteDatabase(databaseName)
+            root.deleteRecursively()
+        }
+    } }
+
+    @Test fun realSeriesMergedCoverPreparationReadsDuringAnotherPackImport() { runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        assumeTrue("Run only on an isolated emulator", Build.HARDWARE.startsWith("ranchu") ||
+            Build.HARDWARE.startsWith("goldfish"))
+        val archive = File(context.getExternalFilesDir(null), "rankoffline-test-pack-series.pack")
+        assumeTrue("Verified Series pack fixture required", archive.isFile)
+        val name = "rankoffline-real-series-cover-test.db"
+        val root = File(context.cacheDir, "real-series-cover-test")
+        context.deleteDatabase(name)
+        root.deleteRecursively()
+        check(root.mkdirs())
+        val database = Room.databaseBuilder(context, RankOfflineDatabase::class.java, name)
+            .setJournalMode(androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING).build()
+        try {
+            val (manifest, directory) = install(PackInstaller(root), archive)
+            assertTrue(CatalogImporter(database).importIfNeeded(manifest, directory)
+                is CatalogImportResult.Imported)
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val writer = async(Dispatchers.IO) {
+                database.withTransaction {
+                    database.mediaCatalogDao().insertNewItems(listOf(MediaItemEntity(99, "new", "New")))
+                    started.complete(Unit)
+                    release.await()
+                }
+            }
+            try {
+                withTimeout(5_000) { started.await() }
+                val requests = AtomicInteger()
+                val covers = CoverRepository(context, database,
+                    manifestProvider = { if (it == manifest.packId) manifest else null },
+                    downloader = CoverDownloader { _, _ ->
+                        requests.incrementAndGet()
+                        CoverTransferResult.NOT_FOUND
+                    },
+                    beforeCoverMutation = { _, _ -> })
+                val selectedAt = SystemClock.elapsedRealtime()
+                val selected = withTimeout(30_000) {
+                    covers.topPopularVisibleCoverKeys(manifest.packId, 100, mergeEnabled = true)
+                }
+                val batch = withTimeout(30_000) { covers.beginCoverBatch(manifest.packId, selected) }
+                try {
+                    assertEquals(100, selected.size)
+                    assertTrue(selected.any { it.kind == CatalogEntryKind.GROUP })
+                    assertFalse("Series preparation must finish before the other import", writer.isCompleted)
+                    Log.i("RankOfflineRealImportTest", "seriesMergedCoverPreflightMs=" +
+                        (SystemClock.elapsedRealtime() - selectedAt) + " groups=" +
+                        selected.count { it.kind == CatalogEntryKind.GROUP })
+                } finally { covers.endCoverBatch(batch) }
+                val manager = CoverDownloadsManager(covers)
+                val download = async(Dispatchers.IO) {
+                    manager.downloadSelected(manifest.packId, selected)
+                }
+                withTimeout(30_000) {
+                    while (manager.progressByPack.value[manifest.packId]?.processed != selected.size)
+                        delay(10)
+                }
+                assertTrue("Series made no cover HTTP requests during the other import",
+                    requests.get() > 0)
+                assertFalse("Room flush must still wait for the other import", download.isCompleted)
+                Log.i("RankOfflineRealImportTest", "seriesCoverRequestsDuringImport=${requests.get()}")
+                release.complete(Unit)
+                withTimeout(30_000) { download.await() }
+            } finally {
+                release.complete(Unit)
+                withTimeout(5_000) { writer.await() }
+            }
+        } finally {
+            database.close()
+            context.deleteDatabase(name)
             root.deleteRecursively()
         }
     } }

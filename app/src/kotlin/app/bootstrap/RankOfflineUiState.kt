@@ -30,7 +30,8 @@ data class SearchPageState(
     val failed: Boolean = false,
     val query: String = "",
     /** Exact group representation used to build this page. */
-    val mergedPacks: Set<PackId>? = null
+    val mergedPacks: Set<PackId>? = null,
+    val queryState: SearchUiState? = null
 ) {
     init { validatePageScope(scope, items) }
 }
@@ -40,10 +41,19 @@ data class RankingResultState(
     val items: List<MediaListEntry> = emptyList(),
     val loading: Boolean = true,
     val failed: Boolean = false,
-    val mergedPacks: Set<PackId>? = null
+    val mergedPacks: Set<PackId>? = null,
+    val queryState: RankingUiState? = null
 ) {
     init { validatePageScope(scope, items) }
 }
+
+internal fun SearchPageState.matchesRequest(
+    scope: ViewingScope, query: SearchUiState, merges: Set<PackId>
+): Boolean = this.scope == scope && queryState == query && mergedPacks == merges
+
+internal fun RankingResultState.matchesRequest(
+    scope: ViewingScope, query: RankingUiState, merges: Set<PackId>
+): Boolean = this.scope == scope && queryState == query && mergedPacks == merges
 
 private fun validatePageScope(scope: ViewingScope?, entries: List<MediaListEntry>) {
     when (scope) {

@@ -36,7 +36,8 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     fun rankingListState(scope: ViewingScope): LazyListState = catalog.session.rankingScroll(scope)
 
     fun preloadRecentCatalogs() = catalog.preloadRecentPacks()
-    internal val covers = CoverUiController(viewModelScope, services, coverRepository, ::reportError)
+    internal val covers = CoverUiController(viewModelScope, services, coverRepository,
+        ::reportError, { resource -> messageChannel.send(UserMessage.Text(resource)) })
     internal val packController = PackUiController(application, viewModelScope, services, selection,
         onSelected = catalog::preparePack, beforeDelete = covers::cancelAndJoin,
         onChanged = { id -> catalog.removePack(id); covers.invalidate(id) },

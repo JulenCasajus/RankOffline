@@ -22,8 +22,8 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val group by viewModel.groupDetail.collectAsState()
     val searchPage by viewModel.searchPageState.collectAsState()
     val rankingPage by viewModel.rankingPage.collectAsState()
-    val searchState by viewModel.activeSearchState.collectAsState()
-    val rankingState by viewModel.activeRankingState.collectAsState()
+    val allSearchState by viewModel.catalog.allSearch.collectAsState()
+    val allRankingState by viewModel.catalog.allRanking.collectAsState()
     val searchByPack by viewModel.catalog.searchByPack.collectAsState()
     val rankingByPack by viewModel.catalog.rankingByPack.collectAsState()
     val recentPackIds by viewModel.settingsRepository.recentPackIds.collectAsState()
@@ -48,10 +48,20 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     var tab by rememberSaveable { mutableStateOf<AppTab?>(null) }
     val activeTab = tab ?: settings.lastTab
     val activePackId = (scope as? ViewingScope.Pack)?.packId
-    val visibleSearchState = activePackId?.let { searchByPack[it] }
-        ?: searchState
-    val visibleRankingState = activePackId?.let { rankingByPack[it] }
-        ?: rankingState
+    val visibleSearchState = when (val selected = scope) {
+        ViewingScope.All -> allSearchState
+        is ViewingScope.Pack -> searchByPack[selected.packId] ?: SearchUiState()
+    }
+    val visibleRankingState = (when (val selected = scope) {
+        ViewingScope.All -> allRankingState
+        is ViewingScope.Pack -> rankingByPack[selected.packId] ?: RankingUiState()
+    })
+        .withValidRatingCategory(when (val selected = scope) {
+        ViewingScope.All -> compatibleAllRatingCategories(readyManifests.map { it.packId },
+            settings.mediaSettings).mapTo(hashSetOf()) { it.id }
+        is ViewingScope.Pack -> settings.mediaSettings[selected.packId]?.ratingConfig
+            ?.categories.orEmpty().filter { it.active }.mapTo(hashSetOf()) { it.id }
+    })
     // A retained page matching the current query/merge wins over a StateFlow value from
     // the previous frame. This matters when switching tabs immediately after Merge changes.
     val retainedSearchPage = when (val selected = scope) {
@@ -69,14 +79,32 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                 settings.mediaSettings[manifest.packId]?.mergeEnabled == true
         }
     }.mapTo(hashSetOf()) { it.packId }
-    val visibleSearchPage = retainedSearchPage ?: searchPage.takeIf {
-        it.scope == scope && (it.loadingInitial || it.mergedPacks == mergedPacks)
+    val exactSearchPage = retainedSearchPage?.takeIf {
+        it.matchesRequest(scope, visibleSearchState, mergedPacks)
+    } ?: searchPage.takeIf {
+        it.matchesRequest(scope, visibleSearchState, mergedPacks)
     }
-        ?: SearchPageState(scope = scope)
-    val visibleRankingPage = retainedRankingPage ?: rankingPage.takeIf {
-        it.result.scope == scope && (it.result.loading || it.result.mergedPacks == mergedPacks)
+    val exactRankingPage = retainedRankingPage?.takeIf {
+        it.result.matchesRequest(scope, visibleRankingState, mergedPacks)
+    } ?: rankingPage.takeIf {
+        it.result.matchesRequest(scope, visibleRankingState, mergedPacks)
     }
-        ?: CatalogUiController.RankingPage()
+    // Retain an old result only during a query change inside the same tab. Switching tabs
+    // starts from the exact cached query, so a different filter can never flash on screen.
+    var previousSearchPage by remember(scope, activeTab) { mutableStateOf<SearchPageState?>(null) }
+    var previousRankingPage by remember(scope, activeTab) {
+        mutableStateOf<CatalogUiController.RankingPage?>(null)
+    }
+    val visibleSearchPage = exactSearchPage ?: previousSearchPage?.takeIf {
+        it.mergedPacks == mergedPacks
+    } ?: SearchPageState(scope = scope)
+    val visibleRankingPage = exactRankingPage ?: previousRankingPage?.takeIf {
+        it.result.mergedPacks == mergedPacks
+    } ?: CatalogUiController.RankingPage()
+    SideEffect {
+        if (exactSearchPage != null) previousSearchPage = exactSearchPage
+        if (exactRankingPage != null) previousRankingPage = exactRankingPage
+    }
     val visibleSearchItems = visibleSearchPage.visibleItemsFor(scope,
         ratingOverrides, visibleSearchState.query)
     val visibleRankingItems = applyRatingOverrides(
@@ -139,6 +167,9 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         onRequestStorageDetails = { viewModel.refreshPackStatistics(it) },
         onOnboardingComplete = viewModel::completeOnboarding
     )
+    if (shouldShowWhatsNew(settings, BuildConfig.VERSION_NAME)) {
+        WhatsNewDialog(onContinue = viewModel::completeWhatsNew)
+    }
 
     // Editor is a full-screen overlay, not another eagerly loaded destination.
     editor?.let { current ->
@@ -153,6 +184,8 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     }
     viewerEntry?.let { entry ->
         CoverViewerDialog(entry, settings, covers, bitmapCache,
+            subtitleFields = readyManifests.firstOrNull { it.packId == entry.packId }
+                ?.subtitleDefinitions().orEmpty(),
             onDismiss = { viewerEntry = null },
             onDeleteConfirmed = viewModel::deleteDownloadedCover,
             onDownloadRequested = viewModel::downloadCover,

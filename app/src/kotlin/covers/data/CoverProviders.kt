@@ -5,6 +5,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
+/** The redirect allowlist belongs to the source that produced this exact URL. */
+internal data class CoverImageCandidate(val uri: URI, val allowedHosts: Set<String>)
+
 /** Only resolves candidate URLs. Actual networking, image validation and caching belong elsewhere. */
 fun interface CoverProvider {
     fun resolve(item: MediaItem): URI?
@@ -28,7 +31,10 @@ class DeclarativePackCoverProvider(
 
     override fun resolve(item: MediaItem): URI? = resolveCandidates(item).firstOrNull()
 
-    override fun resolveCandidates(item: MediaItem): List<URI> = resolveCandidates(
+    override fun resolveCandidates(item: MediaItem): List<URI> =
+        resolveImageCandidates(item).map { it.uri }
+
+    internal fun resolveImageCandidates(item: MediaItem): List<CoverImageCandidate> = resolveCandidates(
         packId = item.packId,
         provider = item.provider,
         providerId = item.providerId,
@@ -36,23 +42,21 @@ class DeclarativePackCoverProvider(
     )
 
     /** A group uses exactly the same declaration rules as an ordinary item. */
-    fun resolveCandidates(group: MediaGroup): List<URI> = resolveCandidates(
+    internal fun resolveImageCandidates(group: MediaGroup): List<CoverImageCandidate> = resolveCandidates(
         packId = group.packId,
         provider = group.provider,
         providerId = group.providerGroupId,
         reference = group.remoteCoverRef
     )
 
-    private fun manifestFor(packId: PackId): PackManifest? =
-        manifestProvider(packId)?.takeIf { it.packId == packId && it.capabilities.covers }
-
     private fun resolveCandidates(
         packId: PackId,
         provider: String?,
         providerId: String?,
         reference: String?
-    ): List<URI> {
-        val manifest = manifestFor(packId) ?: return emptyList()
+    ): List<CoverImageCandidate> {
+        val manifest = manifestProvider(packId)?.takeIf { it.packId == packId && it.capabilities.covers }
+            ?: return emptyList()
         val ref = reference?.takeIf { it.isNotBlank() && it.length <= MAX_REFERENCE_LENGTH }
             ?: return emptyList()
         if (ref.startsWith("covers/")) return emptyList() // A bundled cover is a local resource.
@@ -75,7 +79,7 @@ class DeclarativePackCoverProvider(
                     if (raw.length > MAX_URL_LENGTH) return emptyList()
                     val uri = runCatching { URI.create(raw) }.getOrNull() ?: return emptyList()
                     if (!isSafeHttpsUri(uri, source.allowedHosts)) return emptyList()
-                    uri
+                    CoverImageCandidate(uri, source.allowedHosts)
                 }.distinct()
             } else {
                 fromTemplates(source, explicit.identity, providerId)
@@ -96,7 +100,8 @@ class DeclarativePackCoverProvider(
         provider: String?,
         reference: String?
     ): List<CoverMetadataCandidate> {
-        val manifest = manifestFor(packId) ?: return emptyList()
+        val manifest = manifestProvider(packId)?.takeIf { it.packId == packId && it.capabilities.covers }
+            ?: return emptyList()
         val values = parseMetadataReference(reference) ?: return emptyList()
         return manifest.coverSources.mapNotNull { source ->
             val request = source.metadataRequest ?: return@mapNotNull null
@@ -109,7 +114,7 @@ class DeclarativePackCoverProvider(
         source: PackCoverSource,
         reference: String,
         providerId: String?
-    ): List<URI> {
+    ): List<CoverImageCandidate> {
         val encodedReference = encodeUrlComponent(reference) ?: return emptyList()
         return source.urlTemplates.mapNotNull { template ->
             val encodedProviderId = if ("{providerId}" in template) {
@@ -120,6 +125,7 @@ class DeclarativePackCoverProvider(
             if (resolved.length > MAX_URL_LENGTH) return@mapNotNull null
             runCatching { URI.create(resolved) }.getOrNull()
                 ?.takeIf { isSafeHttpsUri(it, source.allowedHosts) }
+                ?.let { CoverImageCandidate(it, source.allowedHosts) }
         }.distinct()
     }
 

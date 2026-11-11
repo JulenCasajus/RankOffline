@@ -9,10 +9,15 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -21,6 +26,161 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CoverProgressVisibilityInstrumentedTest {
+    @Test fun manualNotFoundChangesObservedPlaceholder() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val database = Room.inMemoryDatabaseBuilder(context, RankOfflineDatabase::class.java).build()
+        val id = PackId(82)
+        val key = CatalogEntryKey(id, "missing-manual", CatalogEntryKind.ITEM)
+        val requests = AtomicInteger()
+        try {
+            database.mediaCatalogDao().insertNewItems(listOf(MediaItemEntity(id.value,
+                key.id, "Missing manual", provider = "fixture", remoteCoverRef = key.id)))
+            val repository = CoverRepository(context, database,
+                manifestProvider = { TestFixtures.manifest(it.value) },
+                downloader = CoverDownloader { _, _ ->
+                    requests.incrementAndGet()
+                    CoverTransferResult.NOT_FOUND
+                },
+                beforeCoverMutation = { _, _ -> })
+            val received = Channel<CoverSnapshot>(Channel.UNLIMITED)
+            val observer = launch(Dispatchers.IO) {
+                repository.observeCover(key).collect { received.send(it) }
+            }
+            try {
+                assertEquals(CoverResolutionState.UNKNOWN,
+                    withTimeout(5_000) { received.receive() }.resolution)
+                assertEquals(CoverDownloadResult.NotFound, repository.downloadCover(key))
+                val missing = withTimeout(5_000) {
+                    var snapshot: CoverSnapshot
+                    do { snapshot = received.receive() }
+                    while (snapshot.resolution != CoverResolutionState.NOT_FOUND)
+                    snapshot
+                }
+                val frame = CoverFrame(missing, null, false, false)
+                assertTrue(frame.notFound)
+                assertFalse(frame.canRequestDownload)
+                assertEquals(CoverDownloadResult.NotFound, repository.downloadCover(key))
+                assertEquals("A confirmed absence must not request the provider again", 1,
+                    requests.get())
+                assertEquals(CoverResolutionState.NOT_FOUND.name,
+                    database.mediaDao().item(id.value, key.id)?.coverResolutionState)
+            } finally { observer.cancelAndJoin(); received.close() }
+        } finally { database.close() }
+    }
+
+    @Test fun notFoundIconAppearsBeforeDeferredRoomCommit() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val database = Room.inMemoryDatabaseBuilder(context, RankOfflineDatabase::class.java).build()
+        val id = PackId(81)
+        val key = CatalogEntryKey(id, "missing", CatalogEntryKind.ITEM)
+        val commitRequested = CompletableDeferred<Unit>()
+        val releaseCommit = CompletableDeferred<Unit>()
+        try {
+            database.mediaCatalogDao().insertNewItems(listOf(MediaItemEntity(id.value,
+                key.id, "Missing", provider = "fixture", remoteCoverRef = "missing")))
+            val repository = CoverRepository(context, database,
+                manifestProvider = { TestFixtures.manifest(it.value) },
+                downloader = CoverDownloader { _, _ -> CoverTransferResult.NOT_FOUND },
+                withCoverCommitTurn = { onWaiting, commit ->
+                    onWaiting()
+                    commitRequested.complete(Unit)
+                    releaseCommit.await()
+                    commit()
+                }, beforeCoverMutation = { _, _ -> })
+            val batch = async(Dispatchers.IO) {
+                CoverDownloadsManager(repository).downloadSelected(id, listOf(key))
+            }
+            try {
+                withTimeout(5_000) { commitRequested.await() }
+                assertEquals("Room has not committed the missing state yet",
+                    CoverResolutionState.UNKNOWN.name,
+                    database.mediaDao().item(id.value, key.id)?.coverResolutionState)
+                assertEquals(CoverDownloadState.NOT_FOUND,
+                    repository.observeDownloadState(key).value)
+                val frame = CoverFrame(CoverSnapshot(null, CoverResolutionState.UNKNOWN), null,
+                    decodingFailed = false, downloading = false, pendingNotFound = true)
+                assertTrue(frame.notFound)
+                assertFalse(frame.loading)
+                assertFalse(frame.canRequestDownload)
+            } finally { releaseCommit.complete(Unit) }
+            assertEquals(1, withTimeout(5_000) { batch.await() }.unavailable)
+            assertEquals(CoverResolutionState.NOT_FOUND.name,
+                database.mediaDao().item(id.value, key.id)?.coverResolutionState)
+        } finally {
+            releaseCommit.complete(Unit)
+            database.close()
+        }
+    }
+
+    @Test fun networkFailureRemainsRetryableAndCountsOnlyOneFinalError() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val database = Room.inMemoryDatabaseBuilder(context, RankOfflineDatabase::class.java).build()
+        val id = PackId(83)
+        val key = CatalogEntryKey(id, "network-error", CatalogEntryKind.ITEM)
+        val requests = AtomicInteger()
+        try {
+            database.mediaCatalogDao().insertNewItems(listOf(MediaItemEntity(id.value,
+                key.id, "Network error", provider = "fixture", remoteCoverRef = key.id)))
+            val repository = CoverRepository(context, database,
+                manifestProvider = { TestFixtures.manifest(it.value) },
+                downloader = CoverDownloader { _, _ ->
+                    requests.incrementAndGet()
+                    CoverTransferResult.NETWORK_ERROR
+                }, beforeCoverMutation = { _, _ -> })
+            assertEquals(CoverDownloadResult.NetworkError, repository.downloadCover(key))
+            assertEquals(CoverResolutionState.UNKNOWN.name,
+                database.mediaDao().item(id.value, key.id)?.coverResolutionState)
+            val progress = CoverDownloadsManager(repository).downloadSelected(id, listOf(key))
+            assertEquals(0, progress.unavailable)
+            assertEquals(1, progress.errors)
+            assertTrue(requests.get() >= 4)
+            assertEquals(CoverResolutionState.UNKNOWN.name,
+                database.mediaDao().item(id.value, key.id)?.coverResolutionState)
+            assertTrue(CoverFrame(CoverSnapshot(null, CoverResolutionState.UNKNOWN), null,
+                false, false).canRequestDownload)
+        } finally { database.close() }
+    }
+
+    @Test fun observedMissingGroupCoverChangesFromDownloadIconToNotFoundIcon() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val database = Room.inMemoryDatabaseBuilder(context, RankOfflineDatabase::class.java).build()
+        val id = PackId(80)
+        val group = CatalogEntryKey(id, "group", CatalogEntryKind.GROUP)
+        try {
+            database.mediaCatalogDao().insertNewItems(listOf(MediaItemEntity(id.value,
+                "item", "Item", provider = "fixture", remoteCoverRef = "item")))
+            database.mediaGroupDao().insertNewGroups(listOf(MediaGroupEntity(id.value,
+                "group", "relations", "Group")))
+            database.mediaGroupDao().insertMemberships(listOf(
+                MediaGroupMemberEntity(id.value, "group", "item", 0)))
+            val repository = CoverRepository(context, database,
+                manifestProvider = { TestFixtures.manifest(it.value, merge = true) },
+                downloader = CoverDownloader { _, _ -> CoverTransferResult.NOT_FOUND },
+                beforeCoverMutation = { _, _ -> })
+            val received = Channel<CoverSnapshot>(Channel.UNLIMITED)
+            val observer = launch(Dispatchers.IO) {
+                repository.observeCover(group).collect { received.send(it) }
+            }
+            try {
+                assertEquals(CoverResolutionState.UNKNOWN,
+                    withTimeout(5_000) { received.receive() }.resolution)
+                val progress = CoverDownloadsManager(repository).downloadSelected(id, listOf(group))
+                assertEquals(1, progress.unavailable)
+                val missing = withTimeout(5_000) {
+                    var snapshot: CoverSnapshot
+                    do { snapshot = received.receive() }
+                    while (snapshot.resolution != CoverResolutionState.NOT_FOUND)
+                    snapshot
+                }
+                assertEquals(null, missing.localPath)
+                val frame = CoverFrame(missing, null, decodingFailed = false, downloading = false)
+                assertTrue(frame.notFound)
+                assertFalse(frame.loading)
+                assertFalse(frame.canRequestDownload)
+            } finally { observer.cancelAndJoin(); received.close() }
+        } finally { database.close() }
+    }
+
     @Test fun plannedTapDoesNotDuplicateAndPromotedFileRecoversAfterInterruptedBatch() = runBlocking {
         val app = ApplicationProvider.getApplicationContext<Context>()
         val root = java.io.File(app.cacheDir, "cover-batch-recovery-test")

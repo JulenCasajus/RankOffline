@@ -5,7 +5,6 @@
 
 # Gradle and build products
 .gradle/
-build/
 **/build/
 dist/
 
@@ -22,11 +21,10 @@ Thumbs.db
 *.swp
 *~
 
-# Local pack/tool caches
-tools/.cache/
+# Generated packs and Python caches
 *.pack
 __pycache__/
 *.py[cod]
 
 # Personal files
-docs/refactor-audit/
+imagenes_temporales/

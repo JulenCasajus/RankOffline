@@ -7,6 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlinx.coroutines.runBlocking
 
 class CoverSecurityContractTest {
     @Test fun templateVariablesAreEncodedButPathSeparatorsAreRejected() {
@@ -23,12 +24,51 @@ class CoverSecurityContractTest {
         assertFalse(isSafeHttpsUri(URI("https://images.example.com/a/../b.jpg"), hosts))
     }
 
-    @Test fun onlyNotFoundAndGoneAreDefinitiveAbsence() {
+    @Test fun forbiddenNotFoundAndGoneAreDefinitiveAbsence() {
+        assertEquals(CoverTransferResult.NOT_FOUND, coverTransferFailureForHttpStatus(403))
         assertEquals(CoverTransferResult.NOT_FOUND, coverTransferFailureForHttpStatus(404))
         assertEquals(CoverTransferResult.NOT_FOUND, coverTransferFailureForHttpStatus(410))
-        listOf(403, 408, 429, 500, 503).forEach {
+        listOf(408, 429, 500, 503).forEach {
             assertEquals(CoverTransferResult.TEMPORARY_ERROR, coverTransferFailureForHttpStatus(it))
         }
+    }
+
+    @Test fun blockedRedirectsAndExcessiveHopsAreDefinitiveAbsence() {
+        val hosts = setOf("covers.openlibrary.org", "archive.org")
+        assertEquals(CoverTransferResult.NOT_FOUND,
+            coverRedirectPolicyFailure(URI("https://ia800100.us.archive.org/cover.jpg"), hosts, 2))
+        assertEquals(CoverTransferResult.NOT_FOUND,
+            coverRedirectPolicyFailure(URI("http://archive.org/cover.jpg"), hosts, 1))
+        assertEquals(CoverTransferResult.NOT_FOUND,
+            coverRedirectPolicyFailure(URI("https://archive.org/cover.jpg"), hosts, 4))
+        assertNull(coverRedirectPolicyFailure(URI("https://archive.org/cover.jpg"), hosts, 3))
+    }
+
+    @Test fun redirectHostsStayAttachedToTheCandidateSource() {
+        val base = TestFixtures.manifest()
+        val source = base.coverSources.single()
+        val first = source.copy(id = "first", allowedHosts = setOf("images.example.com", "first.example.com"))
+        val second = source.copy(id = "second", allowedHosts = setOf("images.example.com", "second.example.com"))
+        val provider = DeclarativePackCoverProvider { base.copy(coverSources = listOf(first, second)) }
+        val ref = """{"schemaVersion":1,"sourceId":"first","identity":"x","urls":["https://images.example.com/x.jpg"]}"""
+        val item = MediaItem(base.packId, "x", "X", provider = "fixture", remoteCoverRef = ref)
+        val candidate = provider.resolveImageCandidates(item).single()
+        assertEquals(first.allowedHosts, candidate.allowedHosts)
+        assertTrue(isSafeHttpsUri(URI("https://first.example.com/x.jpg"), candidate.allowedHosts))
+        assertFalse(isSafeHttpsUri(URI("https://second.example.com/x.jpg"), candidate.allowedHosts))
+    }
+
+    @Test fun metadataCandidateKeepsOnlyItsOwnRedirectHosts() = runBlocking {
+        val uri = URI("https://images.example.com/x.jpg")
+        var observed: CoverImageCandidate? = null
+        progressiveCoverDownload(emptyList(), listOf("source-a"), {
+            CoverMetadataResolution(listOf(uri), allowedHosts = setOf("images.example.com", "a.example.com"))
+        }) { candidate ->
+            observed = candidate
+            CoverDownloadResult.NotFound
+        }
+        assertEquals(setOf("images.example.com", "a.example.com"), observed?.allowedHosts)
+        assertFalse(isSafeHttpsUri(URI("https://b.example.com/x.jpg"), requireNotNull(observed).allowedHosts))
     }
 
     @Test fun retryAfterAcceptsSecondsAndRfcDateWithSafetyBound() {

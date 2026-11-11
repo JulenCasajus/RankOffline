@@ -59,7 +59,7 @@ internal fun RatingProfilesScreen(
                     },
                     label = stringResource(R.string.rating_create_profile),
                     icon = Icons.Default.Add,
-                    filled = true
+                    primary = true
                 )
             }
             item {
@@ -67,7 +67,7 @@ internal fun RatingProfilesScreen(
                     onClick = { confirmReset = true },
                     label = stringResource(R.string.rating_reset_profiles),
                     icon = Icons.Default.Restore,
-                    filled = false
+                    primary = false
                 )
             }
         }

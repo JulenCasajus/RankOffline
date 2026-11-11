@@ -17,6 +17,13 @@
   <string name='action_cancel'>Abbrechen</string>
   <string name='action_delete'>Löschen</string>
   <string name='action_continue'>Fortfahren</string>
+  <string name='whats_new_title'>Neu in Version %1$s</string>
+  <string name='whats_new_visuals'>Ein stilvollerer Look in der ganzen App.</string>
+  <string name='whats_new_packs'>Generalisierte Pack-Unterstützung = Community-Packs in Kürze.</string>
+  <string name='whats_new_features'>Bessere Filter, Merge und Cover-Steuerung.</string>
+  <string name='whats_new_bugs'>Einige Fehler behoben… vielleicht neue eingebaut.</string>
+  <string name='whats_new_thanks'>Danke, dass du RankOffline nutzt!</string>
+  <string name='whats_new_contact'>Probleme? Sag mir Bescheid :D</string>
   <string name='action_save'>Speichern</string>
   <string name='action_apply'>Anwenden</string>
   <string name='action_back'>Zurück</string>
@@ -56,6 +63,8 @@
   <string name='general_sticky_score'>Fixierte Wertungsleiste</string>
   <string name='general_sticky_score_description'>Wertung beim Scrollen sichtbar halten</string>
   <string name='general_show_images'>Bilder anzeigen</string>
+  <string name='general_titles_on_podium'>Titel auf dem Podium</string>
+  <string name='general_titles_on_podium_description'>Titel der Einträge auf dem Podium anzeigen</string>
   <string name='language_title'>Sprache</string>
   <string name='language_description'>Sprache der App-Oberfläche</string>
   <string name='language_english'>English</string>
@@ -92,6 +101,9 @@
     Endwertungen und Notizen bleiben unverändert.
   </string>
   <string name='bonus_personal_taste'>Persönlicher Geschmack</string>
+  <string name='personal_taste_setting_description'>Bis zu 1 Zusatzpunkt für persönlichen Geschmack</string>
+  <string name='cover_network_error'>Verbindungsfehler. Versuche den Cover-Download erneut.</string>
+  <string name='cover_temporary_error'>Cover-Dienst nicht verfügbar. Versuche es später erneut.</string>
   <string name='about_version'>Version %1$s</string>
   <string name='error_initialize_local_data'>Lokale Daten konnten nicht initialisiert werden.</string>
   <string name='pack_source_refresh_failed'>Pakete konnten nicht aktualisiert werden. Prüfe die Verbindung und versuche es erneut.</string>
@@ -233,6 +245,7 @@
   <string name='category_phase_waiting_covers'>Warten auf Cover…</string>
   <string name='category_phase_importing_catalog'>Katalog wird importiert… Das kann etwas dauern.</string>
   <string name='category_phase_downloading_covers'>Cover werden heruntergeladen: %1$d / %2$d</string>
+  <string name='category_phase_covers_waiting_save'>Cover bereit · warte auf Datenbank</string>
   <string name='category_deleting'>Wird gelöscht…</string>
   <string name='category_phase_finalizing'>Wird abgeschlossen…</string>
   <string name='category_pack_runtime_error'>Der Katalog konnte nicht vorbereitet werden. Zum Wiederholen tippen.</string>
@@ -257,7 +270,8 @@
   <string name='pack_storage_details'>Speicherdetails</string>
   <string name='pack_storage_transfer'>Größe: %1$s</string>
   <string name='pack_storage_covers'>Cover</string>
-  <string name='pack_storage_physical_total'>Physische Gesamtgröße</string>
+  <string name='pack_storage_package'>Paket</string>
+  <string name='pack_storage_ratings'>Bewertungen</string>
   <string name='category_uninstall_keep_data'>Deinstallieren, persönliche Daten behalten</string>
   <string name='media_all'>Alle</string>
   <string name='personal_backup_preview_title'>Persönliche Daten importieren?</string>
@@ -277,7 +291,7 @@
   <string name='ranking_share_show_images'>Bilder anzeigen</string>
   <string name='ranking_share_failed'>Das Ranglistenbild konnte nicht erstellt werden.</string>
   <string name='ranking_share_empty'>Bewerte mindestens einen Eintrag, um ein Ranglistenbild zu erstellen.</string>
-  <string name="covers_batch_outcomes">%1$d heruntergeladen · %2$d nicht gefunden · %3$d Fehler</string>
+  <string name="covers_batch_outcomes">%1$d bereits vorhanden · %2$d heruntergeladen · %3$d nicht gefunden · %4$d Fehler</string>
   <plurals name="subtitle_values_of_field">
     <item quantity="one">%2$s (%1$d)</item>
     <item quantity="other">%2$s (%1$d)</item>

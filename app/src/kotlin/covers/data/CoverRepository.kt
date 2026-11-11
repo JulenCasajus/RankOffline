@@ -23,6 +23,8 @@ class CoverRepository(
     internal val manifestProvider: (PackId) -> PackManifest?,
     internal val downloader: CoverDownloader = SecureCoverDownloader(),
     /** Must persist dirty bits before any filesystem/Room cover mutation. */
+    internal val withCoverCommitTurn: suspend (() -> Unit, suspend () -> Boolean) -> Boolean =
+        { _, commit -> commit() },
     internal val beforeCoverMutation: (PackId, Set<PackSummaryField>) -> Unit
 ) : CoverObservationSource {
     internal val catalogItems = database.mediaDao()

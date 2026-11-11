@@ -51,6 +51,10 @@ suspend fun SettingsRepository.updateLastTab(value: AppTab) = lock.withLock {
 
 suspend fun SettingsRepository.updateShowImages(value: Boolean) = changeActive { it.copy(showImages = value) }
 
+suspend fun SettingsRepository.updateTitlesOnPodium(value: Boolean) = changeActive {
+    it.copy(titlesOnPodium = value)
+}
+
 
 suspend fun SettingsRepository.updateStickyScore(value: Boolean) = changeActive { it.copy(stickyScore = value) }
 

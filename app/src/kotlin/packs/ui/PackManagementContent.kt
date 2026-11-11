@@ -167,7 +167,8 @@ fun PackManagementContent(
     isDiscovering: Boolean = false,
     selectedPackId: PackId? = null,
     languageTag: String? = null,
-    footer: (@Composable () -> Unit)? = null
+    footer: (@Composable () -> Unit)? = null,
+    observePersonalStorage: ((PackId) -> kotlinx.coroutines.flow.Flow<PackPersonalStorage>)? = null
 ) {
     val currentLanguageTag = LocalConfiguration.current.locales[0]?.toLanguageTag()
         ?: Locale.getDefault().toLanguageTag()
@@ -219,7 +220,8 @@ fun PackManagementContent(
                 onInstall = { onInstallPack(entry.packId) },
                 onCancelInitialCovers = { onCancelInitialCovers(entry.packId) },
                 onRemove = { pendingRemovalId = entry.packId.value },
-                onRequestStorageDetails = { onRequestStorageDetails(entry.packId) }
+                onRequestStorageDetails = { onRequestStorageDetails(entry.packId) },
+                observePersonalStorage = observePersonalStorage
             )
         }
         if (isDiscovering && entries.isEmpty()) {

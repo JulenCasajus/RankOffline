@@ -57,12 +57,15 @@ data class MediaSettings(
     val ratingProfiles: RatingProfilesConfig,
     val mergeEnabled: Boolean,
     val showImages: Boolean = false,
-    val stickyScore: Boolean = true
+    val titlesOnPodium: Boolean = false,
+    val stickyScore: Boolean = true,
+    val personalTasteEnabled: Boolean = false
 )
 
 @Serializable
 data class AllViewSettings(
     val showImages: Boolean = true,
+    val titlesOnPodium: Boolean = false,
     val stickyScore: Boolean = true,
     val mergeEnabled: Boolean = false,
     val catalogSortOrder: CatalogSortOrder = CatalogSortOrder.POPULARITY

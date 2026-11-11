@@ -46,7 +46,31 @@ suspend fun CoverRepository.topPopularVisibleCoverKeys(
 
 
 internal suspend fun CoverRepository.fallbackKeys(groupKey: CatalogEntryKey): List<CatalogEntryKey> {
-    val candidates = records.fallbackItems(groupKey)
+    return selectFallbackCandidates(groupKey, records.fallbackItems(groupKey))
+}
+
+/** One bounded relation read per page, including representative/member order. */
+internal suspend fun CoverRepository.batchFallbackKeys(
+    groupKeys: List<CatalogEntryKey>
+): Map<CatalogEntryKey, List<CatalogEntryKey>> {
+    if (groupKeys.isEmpty()) return emptyMap()
+    val packId = groupKeys.first().packId
+    require(groupKeys.all { it.packId == packId && it.kind == CatalogEntryKind.GROUP })
+    val rows = groupKeys.map { it.id }.chunked(400).flatMap {
+        catalogGroups.coverCandidateIds(packId.value, it)
+    }
+    val itemsById = rows.map { it.mediaId }.distinct().chunked(400).flatMap {
+        catalogItems.itemsByIds(packId.value, it)
+    }.associateBy { it.id }
+    val byGroup = rows.groupBy({ it.groupId }, { itemsById[it.mediaId] }).mapValues { (_, items) ->
+        items.filterNotNull()
+    }
+    return groupKeys.associateWith { key -> selectFallbackCandidates(key, byGroup[key.id].orEmpty()) }
+}
+
+private fun CoverRepository.selectFallbackCandidates(
+    groupKey: CatalogEntryKey, candidates: List<MediaItemEntity>
+): List<CatalogEntryKey> {
     val locallyAvailable = candidates.filter { item ->
         val itemKey = CatalogEntryKey(groupKey.packId, item.id, CatalogEntryKind.ITEM)
         validItemCoverPath(itemKey, item.remoteCoverRef, item.localCoverPath) != null

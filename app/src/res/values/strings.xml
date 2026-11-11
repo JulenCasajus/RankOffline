@@ -18,6 +18,13 @@
   <string name='action_cancel'>Cancel</string>
   <string name='action_delete'>Delete</string>
   <string name='action_continue'>Continue</string>
+  <string name='whats_new_title'>What’s new in version %1$s</string>
+  <string name='whats_new_visuals'>Polished the style of the app.</string>
+  <string name='whats_new_packs'>Generalised pack support = community packs soon.</string>
+  <string name='whats_new_features'>Better filters, Merge and cover controls.</string>
+  <string name='whats_new_bugs'>Fixed some bugs… probably created new ones.</string>
+  <string name='whats_new_thanks'>Thanks for using RankOffline!!</string>
+  <string name='whats_new_contact'>Any problems? Let me know :D</string>
   <string name='action_save'>Save</string>
   <string name='action_apply'>Apply</string>
   <string name='action_back'>Back</string>
@@ -61,6 +68,8 @@
   <string name='general_sticky_score'>Sticky score header</string>
   <string name='general_sticky_score_description'>Keep the score visible while scrolling</string>
   <string name='general_show_images'>Show images</string>
+  <string name='general_titles_on_podium'>Titles on podium</string>
+  <string name='general_titles_on_podium_description'>Show entry titles on the podium</string>
   <string name='general_show_images_description'>Display catalog cover thumbnails</string>
   <string name='language_title'>Language</string>
   <string name='language_description'>App interface language</string>
@@ -98,6 +107,9 @@
     and notes will not change.
   </string>
   <string name='bonus_personal_taste'>Personal taste</string>
+  <string name='personal_taste_setting_description'>Adds up to 1 extra point for personal taste</string>
+  <string name='cover_network_error'>Connection error. Try downloading the cover again.</string>
+  <string name='cover_temporary_error'>Cover service unavailable. Try again later.</string>
   <string name='about_version'>Version %1$s</string>
   <string name='about_rankoffline_licence' translatable='false'>RankOffline application code: GNU General Public License v3.0 (GPL-3.0-only).</string>
   <string name='about_rankoffline_trademarks'>
@@ -121,7 +133,7 @@
   </string>
   <string name='error_initialize_local_data'>Unable to initialize local data.</string>
   <string name='pack_source_refresh_failed'>Packages could not be refreshed. Check your connection and try again.</string>
-  <string name='message_cover_not_found'>No cover was found for this item</string>
+  <string name='message_cover_not_found'>Cover not found</string>
   <string name='rating_profiles'>Profiles</string>
   <string name='rating_mode'>Rating mode</string>
   <string name='rating_simple'>Simple rating</string>
@@ -204,6 +216,7 @@
   <string name='category_phase_waiting_covers'>Waiting for covers…</string>
   <string name='category_phase_importing_catalog'>Importing catalog… This might take a while.</string>
   <string name='category_phase_downloading_covers'>Downloading covers: %1$d / %2$d</string>
+  <string name='category_phase_covers_waiting_save'>Covers ready · waiting for database</string>
   <string name='category_deleting'>Deleting…</string>
   <string name='category_phase_finalizing'>Finalizing…</string>
   <string name='category_download'>Download pack</string>
@@ -256,7 +269,8 @@
   <string name='pack_storage_details'>Storage details</string>
   <string name='pack_storage_transfer'>Size: %1$s</string>
   <string name='pack_storage_covers'>Covers</string>
-  <string name='pack_storage_physical_total'>Physical total</string>
+  <string name='pack_storage_package'>Package</string>
+  <string name='pack_storage_ratings'>Ratings</string>
   <string name='category_uninstall_keep_data'>Uninstall, keep personal data</string>
   <string name='media_all'>All</string>
   <string name='personal_backup_preview_title'>Import personal data?</string>
@@ -272,7 +286,7 @@
   <string name='ranking_share_show_images'>Show images</string>
   <string name='ranking_share_failed'>The ranking image could not be created.</string>
   <string name='ranking_share_empty'>Rate at least one item to create a ranking image.</string>
-  <string name="covers_batch_outcomes">%1$d downloaded · %2$d not found · %3$d errors</string>
+  <string name="covers_batch_outcomes">%1$d already downloaded · %2$d downloaded · %3$d not found · %4$d errors</string>
   <plurals name="subtitle_values_of_field">
     <item quantity="one">%2$s (%1$d)</item>
     <item quantity="other">%2$s (%1$d)</item>

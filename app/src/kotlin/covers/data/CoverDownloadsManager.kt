@@ -1,6 +1,7 @@
 package org.rankoffline.app
 
 import android.util.Log
+import android.os.SystemClock
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
@@ -89,12 +90,16 @@ class CoverDownloadsManager(
         publish(CoverDownloadProgress(packId, CoverDownloadStatus.WAITING_FOR_COVERS), onProgress)
         try {
             operationLocks.computeIfAbsent(packId) { Mutex() }.withLock {
+                val startedAt = SystemClock.elapsedRealtime()
                 val raw = select()
                 require(raw.size <= MAX_ENTRIES) { "Too many covers requested" }
                 require(raw.all { it.packId == packId }) { "Entries belong to different packs" }
                 val entries = raw.distinct()
                 val batch = repository.beginCoverBatch(packId, entries)
+                Log.i(TAG, "pack=${packId.value} phase=cover-prepared target=${entries.size} " +
+                    "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}")
                 var flushAttempted = false
+                var flushSucceeded = false
                 try {
                     val outcomes = LinkedHashMap<CatalogEntryKey, CoverDownloadResult>(entries.size)
                     val exhausted = HashSet<CatalogEntryKey>()
@@ -109,6 +114,14 @@ class CoverDownloadsManager(
                             else CoverDownloadStatus.RETRYING_COVERS
                         publish(coverProgressSnapshot(packId, status, entries.size, outcomes, exhausted), onProgress)
                         downloadPending(pending, batch) { key, result ->
+                            // The batch defers Room writes. Show a confirmed absence as soon
+                            // as this entry finishes, even while another catalog holds Room.
+                            if (result == CoverDownloadResult.NotFound) {
+                                repository.states[key]?.value = CoverDownloadState.NOT_FOUND
+                            }
+                            if (outcomes.isEmpty()) Log.i(TAG,
+                                "pack=${packId.value} phase=first-cover-result " +
+                                    "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} result=$result")
                             outcomes[key] = result
                             if (pass == DOWNLOAD_PASSES - 1 && result.isRetryableCoverResult()) {
                                 exhausted += key
@@ -118,9 +131,15 @@ class CoverDownloadsManager(
                         }
                     }
                     flushAttempted = true
-                    check(withContext(NonCancellable) { repository.flushCoverBatch(batch) }) {
+                    check(withContext(NonCancellable) { repository.flushCoverBatch(batch) {
+                        publish(coverProgressSnapshot(packId, CoverDownloadStatus.WAITING_TO_SAVE,
+                            entries.size, outcomes, exhausted), onProgress)
+                    } }) {
                         "Cover batch state changed during download"
                     }
+                    flushSucceeded = true
+                    Log.i(TAG, "pack=${packId.value} phase=cover-committed " +
+                        "elapsedMs=${SystemClock.elapsedRealtime() - startedAt} updates=${batch.updates.size}")
                     coverProgressSnapshot(packId, CoverDownloadStatus.COMPLETED,
                         entries.size, outcomes, exhausted)
                         .also {
@@ -133,8 +152,13 @@ class CoverDownloadsManager(
                         // has stopped; only their small Room state transaction remains.
                         withContext(NonCancellable) {
                             runCatching { repository.flushCoverBatch(batch) }
+                                .onSuccess { flushSucceeded = it }
                                 .onFailure { Log.w(TAG, "pack=${packId.value} partial cover flush failed", it) }
                         }
+                    }
+                    if (!flushSucceeded) entries.forEach { key ->
+                        repository.states[key]?.compareAndSet(
+                            CoverDownloadState.NOT_FOUND, CoverDownloadState.IDLE)
                     }
                     repository.endCoverBatch(batch)
                 }

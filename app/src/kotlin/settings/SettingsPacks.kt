@@ -21,6 +21,7 @@ internal fun PackSettingsScreen(
     onCancelInitialCovers: (PackId) -> Unit, onUninstall: (PackId) -> Unit,
     onPurge: (PackId) -> Unit, onSelect: (PackId) -> Unit,
     onStorage: (PackId) -> Unit,
+    observePersonalStorage: (PackId) -> kotlinx.coroutines.flow.Flow<PackPersonalStorage>,
     onRankingShare: () -> Unit, onBack: () -> Unit
 ) {
     SettingsSubscreen(stringResource(R.string.categories_title), onBack) {
@@ -34,6 +35,7 @@ internal fun PackSettingsScreen(
             onPurgePack = onPurge,
             onPackSelected = onSelect,
             onRequestStorageDetails = onStorage,
+            observePersonalStorage = observePersonalStorage,
             modifier = Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp),
             footer = {
                 Card(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),

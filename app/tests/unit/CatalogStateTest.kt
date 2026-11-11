@@ -85,6 +85,32 @@ class CatalogStateTest {
         }
     }
 
+    @Test fun retainedPagesRequireTheExactTabQuery() {
+        val scope = ViewingScope.Pack(PackId(1))
+        val merges = setOf(PackId(1))
+        val search = SearchUiState(filters = CatalogFilters(mapOf(
+            "genre" to CatalogFilterValue.Choices(setOf("drama")))))
+        val ranking = RankingUiState(filters = CatalogFilters(mapOf(
+            "genre" to CatalogFilterValue.Choices(setOf("action")))))
+        val searchPage = SearchPageState(scope = scope, loadingInitial = false,
+            mergedPacks = merges, queryState = search)
+        val rankingPage = RankingResultState(scope = scope, loading = false,
+            mergedPacks = merges, queryState = ranking)
+
+        assertTrue(searchPage.matchesRequest(scope, search, merges))
+        assertFalse(searchPage.matchesRequest(scope,
+            search.copy(sortOrder = CatalogSortOrder.TITLE_ASC), merges))
+        assertFalse(searchPage.matchesRequest(scope,
+            search.copy(filters = CatalogFilters()), merges))
+        assertFalse(searchPage.matchesRequest(scope, search, emptySet()))
+        assertTrue(rankingPage.matchesRequest(scope, ranking, merges))
+        assertFalse(rankingPage.matchesRequest(scope,
+            ranking.copy(sortOrder = RankingSortOrder.QUALITY_SCORE), merges))
+        assertFalse(rankingPage.matchesRequest(scope,
+            ranking.copy(filters = search.filters), merges))
+        assertFalse(rankingPage.matchesRequest(scope, ranking, emptySet()))
+    }
+
     @Test fun navigationReselectionIsDistinctFromSwitchingTabs() {
         assertEquals(BottomNavigationAction.RESELECT, bottomNavigationAction(1, 1))
         assertEquals(BottomNavigationAction.SWITCH, bottomNavigationAction(1, 2))

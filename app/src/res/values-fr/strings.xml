@@ -17,6 +17,13 @@
   <string name='action_cancel'>Annuler</string>
   <string name='action_delete'>Supprimer</string>
   <string name='action_continue'>Continuer</string>
+  <string name='whats_new_title'>Nouveautés de la version %1$s</string>
+  <string name='whats_new_visuals'>Un nouveau look plus soigné dans toute l’application.</string>
+  <string name='whats_new_packs'>Anime, manga, films, séries et livres au même endroit.</string>
+  <string name='whats_new_features'>Filtres, Merge et gestion des couvertures améliorés.</string>
+  <string name='whats_new_bugs'>Quelques bugs corrigés… peut-être d’autres créés.</string>
+  <string name='whats_new_thanks'>Merci d’utiliser RankOffline !</string>
+  <string name='whats_new_contact'>Un problème ? Faites-le-moi savoir :D</string>
   <string name='action_save'>Enregistrer</string>
   <string name='action_apply'>Appliquer</string>
   <string name='action_back'>Retour</string>
@@ -56,6 +63,8 @@
   <string name='general_sticky_score'>En-tête de note fixe</string>
   <string name='general_sticky_score_description'>Garder la note visible pendant le défilement</string>
   <string name='general_show_images'>Afficher les images</string>
+  <string name='general_titles_on_podium'>Titres sur le podium</string>
+  <string name='general_titles_on_podium_description'>Afficher les titres des entrées sur le podium</string>
   <string name='language_title'>Langue</string>
   <string name='language_description'>Langue de l’interface</string>
   <string name='language_english'>English</string>
@@ -92,6 +101,9 @@
     finales et commentaires existants ne changeront pas.
   </string>
   <string name='bonus_personal_taste'>Goût personnel</string>
+  <string name='personal_taste_setting_description'>Ajoute jusqu’à 1 point pour le goût personnel</string>
+  <string name='cover_network_error'>Erreur de connexion. Réessayez de télécharger la couverture.</string>
+  <string name='cover_temporary_error'>Service de couvertures indisponible. Réessayez plus tard.</string>
   <string name='about_version'>Version %1$s</string>
   <string name='error_initialize_local_data'>Impossible d’initialiser les données locales.</string>
   <string name='pack_source_refresh_failed'>Impossible d’actualiser les paquets. Vérifiez la connexion et réessayez.</string>
@@ -233,6 +245,7 @@
   <string name='category_phase_waiting_covers'>En attente des jaquettes…</string>
   <string name='category_phase_importing_catalog'>Importation du catalogue… Cela peut prendre un moment.</string>
   <string name='category_phase_downloading_covers'>Téléchargement des jaquettes : %1$d / %2$d</string>
+  <string name='category_phase_covers_waiting_save'>Jaquettes prêtes · attente de la base de données</string>
   <string name='category_deleting'>Suppression…</string>
   <string name='category_phase_finalizing'>Finalisation…</string>
   <string name='category_pack_runtime_error'>Impossible de préparer le catalogue. Touchez pour réessayer.</string>
@@ -257,7 +270,8 @@
   <string name='pack_storage_details'>Détails du stockage</string>
   <string name='pack_storage_transfer'>Taille : %1$s</string>
   <string name='pack_storage_covers'>Jaquettes</string>
-  <string name='pack_storage_physical_total'>Total physique</string>
+  <string name='pack_storage_package'>Paquet</string>
+  <string name='pack_storage_ratings'>Évaluations</string>
   <string name='category_uninstall_keep_data'>Désinstaller en conservant les données personnelles</string>
   <string name='media_all'>Tout</string>
   <string name='personal_backup_preview_title'>Importer les données personnelles ?</string>
@@ -277,7 +291,7 @@
   <string name='ranking_share_show_images'>Afficher les images</string>
   <string name='ranking_share_failed'>Impossible de créer l’image du classement.</string>
   <string name='ranking_share_empty'>Notez au moins un élément pour créer une image du classement.</string>
-  <string name="covers_batch_outcomes">%1$d téléchargées · %2$d introuvables · %3$d erreurs</string>
+  <string name="covers_batch_outcomes">%1$d déjà téléchargées · %2$d téléchargées · %3$d introuvables · %4$d erreurs</string>
   <plurals name="subtitle_values_of_field">
     <item quantity="one">%2$s (%1$d)</item>
     <item quantity="other">%2$s (%1$d)</item>

@@ -51,6 +51,12 @@ suspend fun SettingsRepository.completeOnboarding() = lock.withLock {
     )
 }
 
+suspend fun SettingsRepository.acknowledgeWhatsNew() = lock.withLock {
+    if (_state.value.lastSeenWhatsNewVersion == WHATS_NEW_VERSION) return@withLock
+    context.dataStore.edit { it[lastSeenWhatsNewVersionKey] = WHATS_NEW_VERSION }
+    _state.value = _state.value.copy(lastSeenWhatsNewVersion = WHATS_NEW_VERSION)
+}
+
 
 /** Personal backup API. Definitions remain owned by installed manifests, not by the backup. */
 suspend fun SettingsRepository.applyImportedPersonalSettings(
@@ -66,6 +72,7 @@ suspend fun SettingsRepository.applyImportedPersonalSettings(
             showImages = item.showImages,
             stickyScore = item.stickyScore,
             elaborateRatingEnabled = item.elaborateRatingEnabled,
+            personalTasteEnabled = item.personalTasteEnabled,
             mergeEnabled = item.mergeEnabled,
             catalogSortOrder = importedSortOrders[id]
         )

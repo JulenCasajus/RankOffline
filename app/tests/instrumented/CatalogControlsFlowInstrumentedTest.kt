@@ -16,7 +16,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -54,6 +56,8 @@ class CatalogControlsFlowInstrumentedTest {
             listOf("alpha", "beta", "gamma").forEachIndexed { index, id ->
                 database.mediaDao().upsertRating(MediaRatingEntity(11, id, 0.0,
                     9.0 - index, 9.0 - index, "", "done", index.toLong()))
+                database.mediaDao().insertRatingScores(listOf(
+                    MediaRatingScoreEntity(11, id, "writing", 9.0 - index, true)))
             }
             val packRoot = File(root, "packs").also { it.mkdirs() }
             val manager = PackManager(packRoot, File(root, "archives"), PackSourceRegistry(),
@@ -84,11 +88,13 @@ class CatalogControlsFlowInstrumentedTest {
                         page.scope == scope && !page.loadingInitial && page.items.map { it.id } == expected
                     }
                 }
-                suspend fun ranking(expected: List<String>) = withTimeout(8_000) {
-                    controller.rankingPage.first { page ->
-                        page.result.scope == scope && !page.result.loading &&
-                            page.result.items.map { it.id } == expected
-                    }
+                suspend fun ranking(expected: List<String>) {
+                    val result = withTimeoutOrNull(8_000) { controller.session.ranking.first {
+                        controller.cachedRankingPage(manifest.packId)?.result?.items?.map { entry -> entry.id } == expected
+                    } }
+                    assertTrue("Expected $expected for ${controller.rankingByPack.value[manifest.packId]}; " +
+                        "cached=${controller.cachedRankingPage(manifest.packId)?.result?.items?.map { it.id }} " +
+                        "visible=${controller.rankingPage.value.result.items.map { it.id }}", result != null)
                 }
                 search(listOf("alpha", "beta", "gamma"))
                 ranking(listOf("alpha", "beta", "gamma"))
@@ -102,6 +108,28 @@ class CatalogControlsFlowInstrumentedTest {
                 ranking(listOf("pair", "gamma"))
                 assertEquals(setOf(manifest.packId),
                     controller.cachedRankingPage(manifest.packId)?.result?.mergedPacks)
+                val drama2020 = CatalogFilters(mapOf(
+                    "genre" to CatalogFilterValue.Choices(setOf("drama")),
+                    "year" to CatalogFilterValue.Choices(setOf("2020"))))
+                controller.rankingFilters(drama2020)
+                ranking(listOf("pair"))
+                assertEquals(CatalogEntryKind.GROUP,
+                    controller.cachedRankingPage(manifest.packId)?.result?.items?.single()?.kind)
+                controller.rankingSort(RankingSortOrder.QUALITY_SCORE)
+                ranking(listOf("pair"))
+                assertEquals(CatalogEntryKind.GROUP,
+                    controller.cachedRankingPage(manifest.packId)?.result?.items?.single()?.kind)
+                controller.rankingSort(RankingSortOrder.PERSONAL_TASTE)
+                ranking(listOf("pair"))
+                assertEquals(CatalogEntryKind.GROUP,
+                    controller.cachedRankingPage(manifest.packId)?.result?.items?.single()?.kind)
+                controller.rankingCategory("writing")
+                ranking(listOf("pair"))
+                assertEquals(CatalogEntryKind.GROUP,
+                    controller.cachedRankingPage(manifest.packId)?.result?.items?.single()?.kind)
+                controller.rankingSort(RankingSortOrder.FINAL_SCORE)
+                controller.rankingFilters(drama)
+                ranking(listOf("pair", "gamma"))
                 settings.updateMergeEnabled(false)
                 ranking(listOf("alpha", "gamma"))
                 settings.updateMergeEnabled(true)

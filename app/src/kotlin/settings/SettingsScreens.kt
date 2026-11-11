@@ -101,6 +101,7 @@ internal fun SettingsScreen(
             settings, allSelected,
             onStickyScoreChange = viewModel::updateStickyScore,
             onShowImagesChange = viewModel::updateShowImages,
+            onTitlesOnPodiumChange = viewModel::updateTitlesOnPodium,
             onBack = goBack
         )
         SettingsDestination.THEME -> ThemeSettingsScreen(
@@ -123,6 +124,7 @@ internal fun SettingsScreen(
             onPurge = viewModel::purgePack,
             onSelect = viewModel::updateActivePack,
             onStorage = { viewModel.refreshPackStatistics(it) },
+            observePersonalStorage = viewModel::observePackPersonalStorage,
             onRankingShare = {
                 viewModel.loadRankingShare(selectedScope)
                 destination = SettingsDestination.RANKING_SHARE
@@ -147,6 +149,7 @@ internal fun SettingsScreen(
             settings.language, viewModel::updateLanguage, goBack)
         SettingsDestination.RATING -> RatingSettingsScreen(
             settings.elaborateRatingEnabled, viewModel::updateElaborateRatingEnabled,
+            settings.personalTasteEnabled, viewModel::updatePersonalTasteEnabled,
             onProfiles = { destination = SettingsDestination.RATING_PROFILES },
             onCategories = { destination = SettingsDestination.RATING_CATEGORIES }, onBack = goBack
         )

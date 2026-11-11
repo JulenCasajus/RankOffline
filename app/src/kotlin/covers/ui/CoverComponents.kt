@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Image as ImageIcon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -62,12 +63,14 @@ internal data class CoverFrame(
     val snapshot: CoverSnapshot?,
     val bitmap: Bitmap?,
     val decodingFailed: Boolean,
-    val downloading: Boolean
+    val downloading: Boolean,
+    val pendingNotFound: Boolean = false
 ) {
-    val loading: Boolean get() = snapshot == null ||
-        (snapshot.localPath != null && bitmap == null && !decodingFailed)
-    val notFound: Boolean get() = snapshot?.resolution == CoverResolutionState.NOT_FOUND &&
-        snapshot.localPath == null
+    val loading: Boolean get() = (snapshot == null && !pendingNotFound) ||
+        (snapshot?.localPath != null && bitmap == null && !decodingFailed)
+    val notFound: Boolean get() = snapshot?.localPath == null &&
+        (snapshot?.resolution == CoverResolutionState.NOT_FOUND || pendingNotFound)
+    val canRequestDownload: Boolean get() = !loading && !downloading && !notFound
 }
 
 /**
@@ -107,7 +110,8 @@ internal fun rememberCoverFrame(
         snapshot = snapshot,
         bitmap = bitmap,
         decodingFailed = decodingFailed,
-        downloading = downloadState == CoverDownloadState.DOWNLOADING
+        downloading = downloadState == CoverDownloadState.DOWNLOADING,
+        pendingNotFound = downloadState == CoverDownloadState.NOT_FOUND
     )
 }
 
@@ -147,8 +151,8 @@ internal fun MediaCover(
         CoverPlaceholder(
             modifier = modifier,
             loading = frame.loading || frame.downloading,
-            notFound = frame.notFound || frame.decodingFailed,
-            enabled = allowDownload && !frame.loading && !frame.downloading,
+            notFound = frame.notFound,
+            enabled = allowDownload && frame.canRequestDownload,
             onClick = onDownloadRequested
         )
     }
@@ -166,11 +170,12 @@ internal fun CoverPlaceholder(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+            .then(if (enabled && !notFound && !loading)
+                Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = Icons.Default.ImageIcon,
+            imageVector = if (notFound) Icons.Default.ImageIcon else Icons.Default.Download,
             contentDescription = stringResource(
                 if (notFound) R.string.message_cover_not_found else R.string.cover_download
             ),
@@ -215,7 +220,12 @@ internal fun MediaCover(
     // but the row still has null; use the already decoded image until Room emits.
     val warmPath = rowPath?.takeIf { bitmapCache.cachedBitmap(identity, it) != null }
         ?: bitmapCache.cachedCover(identity)?.first
+    val rowResolution = when (entry) {
+        is MediaListEntry.Item -> entry.value.coverResolutionState
+        is MediaListEntry.Group -> entry.value.coverResolutionState
+    }
     val initialSnapshot = warmPath?.let { CoverSnapshot(it, CoverResolutionState.AVAILABLE) }
+        ?: CoverSnapshot(null, rowResolution).takeIf { rowResolution == CoverResolutionState.NOT_FOUND }
     MediaCover(
         key = displayKey, title = entry.title, coverRepository = coverRepository,
         bitmapCache = bitmapCache, modifier = modifier, showImages = showImages,

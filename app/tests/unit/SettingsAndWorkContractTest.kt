@@ -12,15 +12,26 @@ class SettingsAndWorkContractTest {
         val settings = manifest.resolveSettings(PersonalPackPreferences())
         assertTrue(settings.mergeEnabled)
         assertTrue(settings.showImages)
+        assertFalse(settings.titlesOnPodium)
+        assertFalse(settings.personalTasteEnabled)
+        assertFalse(AllViewSettings().titlesOnPodium)
         assertEquals(listOf("writing"), settings.ratingConfig.categories.map { it.id })
     }
 
     @Test fun personalPreferencesOverrideOnlyTheirOwnPackSettings() {
         val manifest = TestFixtures.manifest(11, merge = true)
         val settings = manifest.resolveSettings(PersonalPackPreferences(
-            showImages = false, mergeEnabled = false))
+            showImages = false, mergeEnabled = false, titlesOnPodium = true))
         assertFalse(settings.showImages)
         assertFalse(settings.mergeEnabled)
+        assertTrue(settings.titlesOnPodium)
+        assertTrue(manifest.resolveSettings(
+            PersonalPackPreferences(personalTasteEnabled = true)).personalTasteEnabled)
+        val saved = RatingDraft(additiveScore = 0.75, finalScore = 8.75, qualityScore = 8.0)
+        assertEquals(0.0, saved.forPersonalTaste(false).additiveScore, 0.0)
+        assertEquals(0.75, saved.additiveScore, 0.0)
+        assertEquals(8.75, saved.finalScore!!, 0.0)
+        assertEquals(saved, saved.forPersonalTaste(true))
     }
 
     @Test fun mergeCannotBeEnabledWhenManifestDisablesIt() {

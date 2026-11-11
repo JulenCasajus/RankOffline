@@ -17,6 +17,13 @@
   <string name='action_cancel'>キャンセル</string>
   <string name='action_delete'>削除</string>
   <string name='action_continue'>続行</string>
+  <string name='whats_new_title'>バージョン %1$s の新機能</string>
+  <string name='whats_new_visuals'>アプリ全体のデザインを新しく、より洗練されたものにしました。</string>
+  <string name='whats_new_packs'>アニメ、マンガ、映画、ドラマ、本をひとつの場所に。</string>
+  <string name='whats_new_features'>フィルター、Merge、表紙の操作を改善しました。</string>
+  <string name='whats_new_bugs'>いくつかのバグを修正…新しいバグもあるかも。</string>
+  <string name='whats_new_thanks'>RankOffline を使ってくれてありがとう！</string>
+  <string name='whats_new_contact'>問題があれば教えてね :D</string>
   <string name='action_save'>保存</string>
   <string name='action_apply'>適用</string>
   <string name='action_back'>戻る</string>
@@ -54,6 +61,8 @@
   <string name='general_sticky_score'>スコアを固定表示</string>
   <string name='general_sticky_score_description'>スクロール中もスコアを表示します</string>
   <string name='general_show_images'>画像を表示</string>
+  <string name='general_titles_on_podium'>表彰台にタイトルを表示</string>
+  <string name='general_titles_on_podium_description'>表彰台に項目のタイトルを表示します</string>
   <string name='language_title'>言語</string>
   <string name='language_description'>アプリの表示言語</string>
   <string name='language_english'>English</string>
@@ -87,6 +96,9 @@
   <string name='category_delete_title'>カテゴリーを削除しますか？</string>
   <string name='category_delete_explanation'>%1$sと保存済みの詳細評価を削除します。既存の最終スコアとメモは変更されません。</string>
   <string name='bonus_personal_taste'>個人の好み</string>
+  <string name='personal_taste_setting_description'>個人の好みに最大1点を加算</string>
+  <string name='cover_network_error'>接続エラーです。表紙のダウンロードを再試行してください。</string>
+  <string name='cover_temporary_error'>表紙サービスを利用できません。後でもう一度お試しください。</string>
   <string name='about_version'>バージョン %1$s</string>
   <string name='error_initialize_local_data'>ローカルデータを初期化できませんでした。</string>
   <string name='pack_source_refresh_failed'>パッケージを更新できませんでした。接続を確認して再試行してください。</string>
@@ -203,6 +215,7 @@
   <string name='category_phase_waiting_covers'>カバー待機中…</string>
   <string name='category_phase_importing_catalog'>カタログを読み込み中… しばらくかかる場合があります。</string>
   <string name='category_phase_downloading_covers'>カバーをダウンロード中：%1$d / %2$d</string>
+  <string name='category_phase_covers_waiting_save'>カバーの準備完了 · データベース待機中</string>
   <string name='category_deleting'>削除中…</string>
   <string name='category_phase_finalizing'>完了処理中…</string>
   <string name='category_pack_runtime_error'>カタログを準備できませんでした。タップして再試行してください。</string>
@@ -227,7 +240,8 @@
   <string name='pack_storage_details'>ストレージの詳細</string>
   <string name='pack_storage_transfer'>サイズ: %1$s</string>
   <string name='pack_storage_covers'>カバー</string>
-  <string name='pack_storage_physical_total'>物理合計</string>
+  <string name='pack_storage_package'>パッケージ</string>
+  <string name='pack_storage_ratings'>評価</string>
   <string name='category_uninstall_keep_data'>個人データを残してアンインストール</string>
   <string name='media_all'>すべて</string>
   <string name='personal_backup_preview_title'>個人データをインポートしますか？</string>
@@ -240,7 +254,7 @@
   <string name='ranking_share_show_images'>画像を表示</string>
   <string name='ranking_share_failed'>ランキング画像を作成できませんでした。</string>
   <string name='ranking_share_empty'>ランキング画像を作成するには1件以上評価してください。</string>
-  <string name="covers_batch_outcomes">%1$d件ダウンロード · %2$d件見つからず · %3$d件エラー</string>
+  <string name="covers_batch_outcomes">%1$d件ダウンロード済み · %2$d件新規ダウンロード · %3$d件見つからず · %4$d件エラー</string>
   <plurals name="subtitle_values_of_field">
     <item quantity="other">%2$s (%1$d)</item>
   </plurals>

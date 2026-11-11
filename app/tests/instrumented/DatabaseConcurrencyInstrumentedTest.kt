@@ -9,6 +9,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -163,6 +164,12 @@ class DatabaseConcurrencyInstrumentedTest {
     @Test fun coverHttpKeepsMovingWhileAnotherPackHoldsRoomWriter() { runBlocking {
         val id = PackId(11)
         val keys = (0 until 20).map { CatalogEntryKey(id, "cover-$it", CatalogEntryKind.ITEM) }
+        val packManager = PackManager(
+            java.io.File(context.cacheDir, "cover-wait-packs"),
+            java.io.File(context.cacheDir, "cover-wait-archives"),
+            PackSourceRegistry(), PackArchiveDownloader { _, _, _ -> PackOperationResult.STORAGE_ERROR },
+            PackCatalogSynchronizer { _, _ -> }, PackCatalogCleaner { }, "0.2.2"
+        )
         database.mediaCatalogDao().insertNewItems(keys.map { key ->
             MediaItemEntity(id.value, key.id, key.id, provider = "fixture", remoteCoverRef = key.id)
         })
@@ -171,6 +178,67 @@ class DatabaseConcurrencyInstrumentedTest {
             manifestProvider = { TestFixtures.manifest(it.value) },
             downloader = CoverDownloader { _, _ ->
                 httpCompleted.incrementAndGet()
+                CoverTransferResult.NOT_FOUND
+            }, withCoverCommitTurn = { waiting, commit ->
+                packManager.withCoverCommitTurn(waiting, commit)
+            }, beforeCoverMutation = { _, _ -> })
+        val manager = CoverDownloadsManager(repository)
+        val writerStarted = CompletableDeferred<Unit>()
+        val releaseWriter = CompletableDeferred<Unit>()
+        val writer = async(Dispatchers.IO) {
+            packManager.withImportTurn {
+                database.withTransaction {
+                    database.mediaCatalogDao().insertNewItems(listOf(MediaItemEntity(12, "new", "New")))
+                    writerStarted.complete(Unit)
+                    releaseWriter.await()
+                }
+            }
+        }
+        try {
+            withTimeout(5_000) { writerStarted.await() }
+            val batch = async(Dispatchers.IO) { manager.downloadSelected(id, keys) }
+            try {
+                withTimeout(5_000) { while (httpCompleted.get() < keys.size) delay(10) }
+                assertEquals("An unrelated Room writer must not stop image HTTP", 20, httpCompleted.get())
+                withTimeout(5_000) {
+                    while (manager.progressByPack.value[id]?.processed != 20) delay(10)
+                }
+                withTimeout(5_000) {
+                    while (manager.progressByPack.value[id]?.status != CoverDownloadStatus.WAITING_TO_SAVE)
+                        delay(10)
+                }
+                assertFalse("Only the final Room flush should wait for the import", batch.isCompleted)
+                assertFalse("Catalog import must still be active", writer.isCompleted)
+            } finally {
+                releaseWriter.complete(Unit)
+                assertEquals(20, withTimeout(10_000) { batch.await() }.unavailable)
+                assertEquals(20, database.mediaDao().notFoundCoverCount(id.value))
+            }
+        } finally {
+            releaseWriter.complete(Unit)
+            withTimeout(10_000) { writer.await() }
+        }
+    } }
+
+    @Test fun mergedGroupCoversStartDuringAnotherPackImport() { runBlocking {
+        val id = PackId(11)
+        val count = 20
+        val downloaded = AtomicInteger()
+        database.mediaCatalogDao().insertNewItems((0 until count).map { index ->
+            MediaItemEntity(id.value, "item-$index", "Item $index", provider = "fixture",
+                remoteCoverRef = "item-$index")
+        })
+        database.mediaGroupDao().insertNewGroups((0 until count).map { index ->
+            MediaGroupEntity(id.value, "group-$index", "relations", "Group $index",
+                popularityRank = index)
+        })
+        database.mediaGroupDao().insertMemberships((0 until count).map { index ->
+            MediaGroupMemberEntity(id.value, "group-$index", "item-$index", 0)
+        })
+        val repository = CoverRepository(context, database,
+            manifestProvider = { TestFixtures.manifest(it.value, merge = true) },
+            downloader = CoverDownloader { _, _ ->
+                downloaded.incrementAndGet()
                 CoverTransferResult.NOT_FOUND
             }, beforeCoverMutation = { _, _ -> })
         val manager = CoverDownloadsManager(repository)
@@ -185,23 +253,56 @@ class DatabaseConcurrencyInstrumentedTest {
         }
         try {
             withTimeout(5_000) { writerStarted.await() }
-            val batch = async(Dispatchers.IO) { manager.downloadSelected(id, keys) }
+            val selected = withTimeout(5_000) {
+                repository.topPopularVisibleCoverKeys(id, count, mergeEnabled = true)
+            }
+            assertEquals(count, selected.size)
+            assertTrue(selected.all { it.kind == CatalogEntryKind.GROUP })
+            val batch = async(Dispatchers.IO) { manager.downloadSelected(id, selected) }
             try {
-                withTimeout(5_000) { while (httpCompleted.get() < keys.size) delay(10) }
-                assertEquals("An unrelated Room writer must not stop image HTTP", 20, httpCompleted.get())
+                withTimeout(10_000) { while (downloaded.get() < count) delay(10) }
+                assertEquals(count, downloaded.get())
+                assertFalse("The other import must still own its writer", writer.isCompleted)
+                assertFalse("Only the final cover commit may wait", batch.isCompleted)
                 withTimeout(5_000) {
-                    while (manager.progressByPack.value[id]?.processed != 20) delay(10)
+                    while (manager.progressByPack.value[id]?.processed != count) delay(10)
                 }
-                assertFalse("Only the final Room flush should wait for the import", batch.isCompleted)
-                assertFalse("Catalog import must still be active", writer.isCompleted)
             } finally {
                 releaseWriter.complete(Unit)
-                assertEquals(20, withTimeout(10_000) { batch.await() }.unavailable)
-                assertEquals(20, database.mediaDao().notFoundCoverCount(id.value))
+                withTimeout(10_000) { batch.await() }
             }
         } finally {
             releaseWriter.complete(Unit)
             withTimeout(10_000) { writer.await() }
         }
+    } }
+
+    @Test fun coverCommitPrecedesAnImportAlreadyWaitingForTheWriter() { runBlocking {
+        val manager = PackManager(
+            java.io.File(context.cacheDir, "cover-priority-packs"),
+            java.io.File(context.cacheDir, "cover-priority-archives"),
+            PackSourceRegistry(), PackArchiveDownloader { _, _, _ -> PackOperationResult.STORAGE_ERROR },
+            PackCatalogSynchronizer { _, _ -> }, PackCatalogCleaner { }, "0.2.2"
+        )
+        val releaseActiveImport = CompletableDeferred<Unit>()
+        val order = mutableListOf<String>()
+        val waitingNotice = AtomicInteger()
+        manager.withCoverCommitTurn({ waitingNotice.incrementAndGet() }) { true }
+        assertEquals("An uncontended write has no waiting phase", 0, waitingNotice.get())
+        val active = async(start = CoroutineStart.UNDISPATCHED) {
+            manager.withImportTurn { releaseActiveImport.await() }
+        }
+        val waiting = async(start = CoroutineStart.UNDISPATCHED) {
+            manager.withImportTurn { order += "next-import" }
+        }
+        val cover = async(start = CoroutineStart.UNDISPATCHED) {
+            manager.withCoverCommitTurn({ waitingNotice.incrementAndGet() },
+                { order += "cover-commit"; true })
+        }
+        assertEquals(1, manager.pendingCoverCommits.value)
+        assertEquals(1, waitingNotice.get())
+        releaseActiveImport.complete(Unit)
+        withTimeout(5_000) { active.await(); cover.await(); waiting.await() }
+        assertEquals(listOf("cover-commit", "next-import"), order)
     } }
 }

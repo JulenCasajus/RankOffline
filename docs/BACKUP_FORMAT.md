@@ -1,25 +1,26 @@
 # Personal backup format
 
-Personal exports are UTF-8 JSON with `schemaVersion: 2` and
-`source: "rankoffline"`. They are not `.pack` files and never include catalogs,
-covers, downloaded archives or cached summaries.
+Personal exports are UTF-8 JSON with `schemaVersion: 2` and `source: "rankoffline"`.
+They are separate from `.pack` archives and contain no catalog rows, downloaded
+archives, covers or cached summaries.
 
-`scopeId: 0` is a global export and carries global preferences plus all selected
-pack-local settings/ratings. A positive `scopeId` is pack-only and cannot alter
-global settings or contain another pack. Ratings remain valid when their pack
-is uninstalled.
+A backup with `scopeId: 0` contains global settings and the selected pack-local data. A
+positive `scopeId` limits the backup to one pack and cannot change global settings or
+another pack's ratings. Pack-local ratings remain valid when the catalog is uninstalled.
 
-The format includes:
+The format can carry global view, language, theme, icon and navigation preferences;
+per-pack display and rating settings; item and group ratings; notes; status; category
+scores; and profile selections. Optional fields allow a backup to omit a local settings
+file that did not exist at export time.
 
-- global All/view/theme/language/icon/last-scope preferences when global;
-- per-pack presentation preferences;
-- per-pack rating definitions and profiles;
-- item and group scores, notes, status, profile and category values.
+Import modes are `MERGE_NEWER`, which chooses the newer personal rating by update
+timestamp, and `REPLACE`, which replaces data only within the backup's scope. Input is
+validated before mutation. A restore journal coordinates Room, DataStore and local JSON
+writes so an interrupted restore can be recovered.
 
-`MERGE_NEWER` resolves personal rows by update timestamp and imports supplied
-settings. `REPLACE` replaces only the selected backup scope; a partial replace
-must not erase another pack. Imports are validated before mutation and use a
-restore journal across Room, DataStore and local JSON boundaries.
+The decoder limits encoded input to 64 MiB. Validation limits a backup to 500 pack
+settings and 100,000 item and group ratings combined. The Kotlin data classes and
+validation code in `app/src/kotlin/backup/` define the exact fields and limits.
 
-Limits currently include 64 MiB encoded input, at most 500 pack settings and
-100,000 item+group ratings. There is intentionally no v0.2.1 backup migration.
+Upgrading an installed 0.2.0 app is a separate, one-time migration path. It reads the
+old personal database directly; it is not a schema-1 JSON backup importer.

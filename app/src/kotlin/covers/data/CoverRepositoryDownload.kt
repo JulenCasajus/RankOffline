@@ -3,7 +3,6 @@ package org.rankoffline.app
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
-import java.net.URI
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -28,15 +27,16 @@ internal suspend fun CoverRepository.downloadCover(
     }
     if (!CoverRepository.inProgress.add(key)) return@withContext CoverDownloadResult.AlreadyInProgress
     val state = states.getOrPut(key) { MutableStateFlow(CoverDownloadState.IDLE) }
-    state.value = CoverDownloadState.DOWNLOADING
     val generation = generation(key.packId).get()
     var temporary: File? = null
     try {
-        val record = records.load(key) ?: return@withContext CoverDownloadResult.NotFound
+        val record = (batch?.records?.get(key) ?: if (batch == null) records.load(key) else null)
+            ?: return@withContext CoverDownloadResult.NotFound
         if (validLocal(key, record.remoteRef, record.localPath)) {
             if (record.state == CoverResolutionState.NOT_FOUND.name) {
                 return@withContext PackCoverWriteLocks.withPackLock(key.packId) {
-                    val latest = records.load(key) ?: return@withPackLock CoverDownloadResult.NotFound
+                    val latest = (if (batch == null) records.load(key) else record)
+                        ?: return@withPackLock CoverDownloadResult.NotFound
                     if (!sameVersion(record, latest) || generation != generation(key.packId).get())
                         return@withPackLock CoverDownloadResult.TemporaryError
                     dirty(key.packId, PackSummaryField.MISSING_COVER_COUNT)
@@ -51,7 +51,8 @@ internal suspend fun CoverRepository.downloadCover(
         val recovered = storage.coverFile(key)
         if (CoverImageFiles.isValid(recovered) && packInstalled(key.packId)) {
             return@withContext PackCoverWriteLocks.withPackLock(key.packId) {
-                val latest = records.load(key) ?: return@withPackLock CoverDownloadResult.NotFound
+                val latest = (if (batch == null) records.load(key) else record)
+                    ?: return@withPackLock CoverDownloadResult.NotFound
                 if (!sameVersion(record, latest) || generation != generation(key.packId).get())
                     return@withPackLock CoverDownloadResult.TemporaryError
                 dirty(key.packId, PackSummaryField.AVAILABLE_COVER_COUNT,
@@ -61,6 +62,13 @@ internal suspend fun CoverRepository.downloadCover(
             }
         }
 
+        // A confirmed absence must not restart HTTP or member fallback on a later tap.
+        // observeCover can still show a group member that acquires a local image later.
+        if (record.state == CoverResolutionState.NOT_FOUND.name) {
+            return@withContext CoverDownloadResult.NotFound
+        }
+        state.value = CoverDownloadState.DOWNLOADING
+
         // Dedicated GROUP sources are attempted before member images, even if a member is
         // already on disk. The member is only a visual fallback; no files are copied.
         // If this GROUP has no physical dedicated cover, request the ITEM image
@@ -69,15 +77,15 @@ internal suspend fun CoverRepository.downloadCover(
             (record.remoteRef.isNullOrBlank() ||
                 (record.remoteRef.startsWith("covers/") &&
                     declaredCover(key.packId, record.remoteRef)
-                        ?.let(CoverImageFiles::isValid) != true) ||
-                record.state == CoverResolutionState.NOT_FOUND.name)) {
+                        ?.let(CoverImageFiles::isValid) != true))) {
             return@withContext downloadGroupFallback(key, generation, record, batch)
         }
 
         // Pack-declared image references are local files. A user-deleted image stays deleted.
         if (record.remoteRef?.startsWith("covers/") == true) {
             return@withContext PackCoverWriteLocks.withPackLock(key.packId) {
-                val latest = records.load(key) ?: return@withPackLock CoverDownloadResult.NotFound
+                val latest = (if (batch == null) records.load(key) else record)
+                    ?: return@withPackLock CoverDownloadResult.NotFound
                 if (!sameVersion(record, latest) || generation != generation(key.packId).get())
                     return@withPackLock CoverDownloadResult.TemporaryError
                 val file = declaredCover(key.packId, latest.remoteRef)
@@ -108,15 +116,16 @@ internal suspend fun CoverRepository.downloadCover(
             directCandidates = record.candidates,
             metadataCandidates = record.metadataCandidates,
             resolveMetadata = DeclarativeCoverMetadataResolver::resolve
-        ) { uri ->
+        ) { candidate ->
             staging.delete()
-            when (downloader.download(uri, staging)) {
+            when (downloader.download(candidate.uri, staging, candidate.allowedHosts)) {
                 CoverTransferResult.DOWNLOADED -> {
                     if (!CoverImageFiles.isValid(staging)) {
-                        CoverFailureDiagnostics.record(uri.host, "invalid-image")
+                        CoverFailureDiagnostics.record(candidate.uri.host, "invalid-image")
                         CoverDownloadResult.TemporaryError
                     } else PackCoverWriteLocks.withPackLock(key.packId) {
-                        val latest = records.load(key) ?: return@withPackLock CoverDownloadResult.NotFound
+                        val latest = (if (batch == null) records.load(key) else record)
+                            ?: return@withPackLock CoverDownloadResult.NotFound
                         if (!sameVersion(record, latest) ||
                             generation != generation(key.packId).get() || !packInstalled(key.packId)) {
                             return@withPackLock CoverDownloadResult.TemporaryError
@@ -170,26 +179,28 @@ internal suspend fun CoverRepository.downloadCover(
 
 /** Resolves each metadata source only after every candidate from the previous source failed. */
 internal suspend fun <T> progressiveCoverDownload(
-    directCandidates: List<URI>,
+    directCandidates: List<CoverImageCandidate>,
     metadataCandidates: List<T>,
     resolveMetadata: suspend (T) -> CoverMetadataResolution,
-    downloadCandidate: suspend (URI) -> CoverDownloadResult
+    downloadCandidate: suspend (CoverImageCandidate) -> CoverDownloadResult
 ): CoverDownloadResult {
-    val seen = linkedSetOf<URI>()
+    val seen = linkedSetOf<CoverImageCandidate>()
     var networkFailure = false
     var temporaryFailure = false
     for (index in -1 until metadataCandidates.size) {
-        val resolution = if (index < 0) CoverMetadataResolution(directCandidates)
-            else resolveMetadata(metadataCandidates[index])
-        when (resolution.failure) {
+        val resolution = if (index < 0) null else resolveMetadata(metadataCandidates[index])
+        when (resolution?.failure) {
             CoverDownloadResult.NetworkError -> networkFailure = true
             CoverDownloadResult.TemporaryError,
             CoverDownloadResult.AlreadyInProgress -> temporaryFailure = true
             else -> Unit
         }
-        for (uri in resolution.candidates) {
-            if (!seen.add(uri)) continue
-            when (val result = downloadCandidate(uri)) {
+        val candidates = if (resolution == null) directCandidates else resolution.candidates.map { uri ->
+            CoverImageCandidate(uri, resolution.allowedHosts)
+        }
+        for (candidate in candidates) {
+            if (!seen.add(candidate)) continue
+            when (val result = downloadCandidate(candidate)) {
                 CoverDownloadResult.Downloaded,
                 CoverDownloadResult.AlreadyAvailable -> return result
                 CoverDownloadResult.NetworkError -> networkFailure = true
@@ -215,17 +226,26 @@ internal suspend fun CoverRepository.downloadGroupFallback(
 ): CoverDownloadResult {
     if (expectedGeneration != generation(groupKey.packId).get())
         return CoverDownloadResult.TemporaryError
-    val keys = fallbackKeys(groupKey)
+    val keys = batch?.fallbackKeys?.get(groupKey) ?: fallbackKeys(groupKey)
     if (keys.isEmpty()) return notFoundIfCurrent(original, expectedGeneration, batch)
+    var networkFailure = false
+    var temporaryFailure = false
     for (itemKey in keys) {
         if (expectedGeneration != generation(groupKey.packId).get())
             return CoverDownloadResult.TemporaryError
         when (val outcome = downloadCover(itemKey, batch)) {
             CoverDownloadResult.NotFound -> continue // Try next valid member.
+            CoverDownloadResult.NetworkError -> networkFailure = true
+            CoverDownloadResult.TemporaryError,
+            CoverDownloadResult.AlreadyInProgress -> temporaryFailure = true
             else -> return outcome
         }
     }
-    return notFoundIfCurrent(original, expectedGeneration, batch)
+    return when {
+        networkFailure -> CoverDownloadResult.NetworkError
+        temporaryFailure -> CoverDownloadResult.TemporaryError
+        else -> notFoundIfCurrent(original, expectedGeneration, batch)
+    }
 }
 
 
@@ -238,7 +258,8 @@ internal suspend fun CoverRepository.notFoundIfCurrent(
     record: CoverRecord, expectedGeneration: Long, batch: CoverBatchContext? = null
 ): CoverDownloadResult =
     PackCoverWriteLocks.withPackLock(record.key.packId) {
-        val latest = records.load(record.key) ?: return@withPackLock CoverDownloadResult.NotFound
+        val latest = (if (batch == null) records.load(record.key) else record)
+            ?: return@withPackLock CoverDownloadResult.NotFound
         if (!sameVersion(record, latest) ||
             expectedGeneration != generation(record.key.packId).get()) {
             return@withPackLock CoverDownloadResult.TemporaryError

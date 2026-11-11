@@ -23,7 +23,7 @@ internal fun SettingsActionButton(
     onClick: () -> Unit,
     label: String,
     icon: ImageVector,
-    filled: Boolean,
+    primary: Boolean,
     enabled: Boolean = true
 ) {
     val modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -32,7 +32,7 @@ internal fun SettingsActionButton(
         Spacer(Modifier.width(8.dp))
         Text(label, style = MaterialTheme.typography.labelLarge)
     }
-    if (filled) {
+    if (primary) {
         Button(
             onClick = onClick,
             enabled = enabled,
@@ -44,10 +44,14 @@ internal fun SettingsActionButton(
             content = content
         )
     } else {
-        OutlinedButton(
+        Button(
             onClick = onClick,
             enabled = enabled,
             modifier = modifier,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary
+            ),
             content = content
         )
     }

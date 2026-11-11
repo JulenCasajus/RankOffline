@@ -48,7 +48,6 @@ internal class CatalogUiController(
     internal val openedTabs = MutableStateFlow<Set<AppTab>>(emptySet())
     internal val filterOptionsState = MutableStateFlow<Map<PackId, Map<String, List<CatalogAttributeValue>>>>(emptyMap())
     val filterOptions: StateFlow<Map<PackId, Map<String, List<CatalogAttributeValue>>>> = filterOptionsState
-
     /** Called after the first visible page has composed; never downloads or imports packs. */
     fun preloadRecentPacks() {
         val active = (viewingScope.value as? ViewingScope.Pack)?.packId
@@ -87,7 +86,7 @@ internal class CatalogUiController(
                             .append(entries, INITIAL_SEARCH_PAGE_SIZE) { it.key }
                         val page = SearchPageState(ViewingScope.Pack(id), accumulator.items,
                             loadingInitial = false, hasMore = accumulator.hasMore, query = search.query,
-                            mergedPacks = if (merge) setOf(id) else emptySet())
+                            mergedPacks = if (merge) setOf(id) else emptySet(), queryState = search)
                         session.putSearch(id, CatalogSessionCache.SearchSnapshot(searchKey, page, accumulator))
                     }
                     yield()
@@ -106,7 +105,8 @@ internal class CatalogUiController(
                         val accumulator = SearchPageAccumulator<MediaListEntry>()
                             .append(entries, INITIAL_SEARCH_PAGE_SIZE) { it.key }
                         val page = RankingPage(RankingResultState(ViewingScope.Pack(id), accumulator.items,
-                            loading = false, mergedPacks = if (merge) setOf(id) else emptySet()),
+                            loading = false, mergedPacks = if (merge) setOf(id) else emptySet(),
+                            queryState = ranking),
                             hasMore = accumulator.hasMore)
                         session.putRanking(id, CatalogSessionCache.RankingSnapshot(rankingKey, page, accumulator))
                     }
@@ -119,13 +119,11 @@ internal class CatalogUiController(
             }
         }
     }
-
     fun stopPreload() {
         preloadJob?.cancel()
         preloadJob = null
         preloadTarget = null
     }
-
     /** Read the selected pack's valid page synchronously during the frame where scope changes. */
     fun cachedSearchPage(id: PackId): SearchPageState? {
         val manifest = packs.states.value[id]?.takeIf { it.available }?.manifest ?: return null
@@ -134,7 +132,6 @@ internal class CatalogUiController(
         val revision = revisions.catalog.value[id] ?: 0L
         return session.findSearch(id, CatalogSessionCache.SearchKey(manifest, state, merge, revision))?.page
     }
-
     fun cachedRankingPage(id: PackId): RankingPage? {
         val manifest = packs.states.value[id]?.takeIf { it.available }?.manifest ?: return null
         val validCategories = preferences.state.value.mediaSettings[id]?.ratingConfig?.categories.orEmpty()
@@ -145,7 +142,6 @@ internal class CatalogUiController(
         val revision = (revisions.catalog.value[id] ?: 0L) * 13L + (revisions.ratings.value[id] ?: 0L)
         return session.findRanking(id, CatalogSessionCache.RankingKey(manifest, state, merge, revision))?.page
     }
-
     /** Available only on demand when the user opens filter controls. */
     fun refreshFilterOptions(packId: PackId) = scope.launch {
         val manifest = packs.states.value[packId]?.takeIf { it.available }?.manifest ?: return@launch
@@ -157,26 +153,21 @@ internal class CatalogUiController(
             Log.e("RankOfflineCatalog", "Failed loading filter options", failure)
         }
     }
-
-
     val activeSearchState: StateFlow<SearchUiState> = combine(
         viewingScope, searchByPack, allSearch
     ) { selected, packs, all -> when (selected) {
         ViewingScope.All -> all
         is ViewingScope.Pack -> packs[selected.packId] ?: SearchUiState()
     } }.stateIn(scope, SharingStarted.Eagerly, SearchUiState())
-
     val activeRankingState: StateFlow<RankingUiState> = combine(
         viewingScope, rankingByPack, allRanking
     ) { selected, packs, all -> when (selected) {
         ViewingScope.All -> all
         is ViewingScope.Pack -> packs[selected.packId] ?: RankingUiState()
     } }.stateIn(scope, SharingStarted.Eagerly, RankingUiState())
-
     private val versions = combine(revisions.catalog, revisions.ratings) { catalog, ratings ->
         catalog to ratings
     }
-
     private data class Plan(
         val scope: ViewingScope,
         val manifests: List<PackManifest>,
@@ -192,7 +183,6 @@ internal class CatalogUiController(
         searches, rankings, allSearchState, allRankingState ->
         Pair(searches to rankings, allSearchState to allRankingState)
     }
-
     private val basePlan = combine(
         viewingScope, preferences.state, scopedStates, packs.states
     ) { selection, settings, statesByScope, states ->
@@ -257,7 +247,8 @@ internal class CatalogUiController(
             if (request.plan.blockedByUnreadyPack || request.plan.manifests.isEmpty()) {
                 emit(request.plan to SearchPageState(scope = selected, query = search.query,
                     loadingInitial = false, hasMore = false, failed = request.plan.blockedByUnreadyPack,
-                    mergedPacks = request.plan.merges.filterValues { it }.keys))
+                    mergedPacks = request.plan.merges.filterValues { it }.keys,
+                    queryState = search))
                 return@flow
             }
             try {
@@ -278,7 +269,8 @@ internal class CatalogUiController(
                         rows.addAll(page.entries.filter { seen.add(it.key) })
                         val result = SearchPageState(selected, rows.toList(),
                             loadingInitial = false, hasMore = page.hasMore, query = search.query,
-                            mergedPacks = request.plan.merges.filterValues { it }.keys)
+                            mergedPacks = request.plan.merges.filterValues { it }.keys,
+                            queryState = search)
                         session.putAllSearch(CatalogSessionCache.AllSearchSnapshot(key, result, cursor))
                         emit(request.plan to result)
                         return page.hasMore
@@ -300,7 +292,8 @@ internal class CatalogUiController(
                         accumulator = accumulator.append(page, limit) { it.key }
                         val result = SearchPageState(selected, accumulator.items, loadingInitial = false,
                             hasMore = accumulator.hasMore, query = search.query,
-                            mergedPacks = if (key.merge) setOf(id) else emptySet())
+                            mergedPacks = if (key.merge) setOf(id) else emptySet(),
+                            queryState = search)
                         session.putSearch(id, CatalogSessionCache.SearchSnapshot(key, result, accumulator))
                         emit(request.plan to result)
                         return accumulator.hasMore
@@ -319,10 +312,11 @@ internal class CatalogUiController(
                     }?.page
                 }
                 val result = previous?.copy(loadingInitial = false, hasMore = false,
-                    failed = true)
+                    failed = true, queryState = search)
                     ?: SearchPageState(scope = selected, loadingInitial = false, hasMore = false,
                         failed = true, query = search.query,
-                        mergedPacks = request.plan.merges.filterValues { it }.keys)
+                        mergedPacks = request.plan.merges.filterValues { it }.keys,
+                        queryState = search)
                 if (selected is ViewingScope.Pack) {
                     val manifest = request.plan.manifests.single()
                     val key = CatalogSessionCache.SearchKey(manifest, search,
@@ -346,12 +340,13 @@ internal class CatalogUiController(
                     ?: cachedAll?.takeIf { it.key.manifests == current.manifests &&
                         it.key.merges == current.merges &&
                         it.page.items.isNotEmpty() }?.page?.copy(hasMore = false)
-                    ?: SearchPageState(scope = selected, mergedPacks = current.merges.filterValues { it }.keys)
+                    ?: SearchPageState(scope = selected, mergedPacks = current.merges.filterValues { it }.keys,
+                        queryState = current.search)
             }
             is ViewingScope.Pack -> {
                 val manifest = current.manifests.singleOrNull()
                 if (manifest == null) SearchPageState(scope = selected, loadingInitial = false,
-                    hasMore = false, mergedPacks = emptySet())
+                    hasMore = false, mergedPacks = emptySet(), queryState = current.search)
                 else {
                     val key = CatalogSessionCache.SearchKey(manifest, current.search,
                         current.merges[manifest.packId] == true, current.catalogRevision)
@@ -361,7 +356,8 @@ internal class CatalogUiController(
                             it.key.merge == (current.merges[manifest.packId] == true) &&
                             it.page.items.isNotEmpty() }?.page?.copy(hasMore = false)
                         ?: SearchPageState(scope = selected, query = current.search.query,
-                            mergedPacks = current.merges.filterValues { it }.keys)
+                            mergedPacks = current.merges.filterValues { it }.keys,
+                            queryState = current.search)
                 }
             }
         }
@@ -390,7 +386,8 @@ internal class CatalogUiController(
             if (current.blockedByUnreadyPack || current.manifests.isEmpty()) {
                 emit(current to RankingPage(RankingResultState(selected, emptyList(), loading = false,
                     failed = current.blockedByUnreadyPack,
-                    mergedPacks = current.merges.filterValues { it }.keys)))
+                    mergedPacks = current.merges.filterValues { it }.keys,
+                    queryState = current.ranking)))
                 return@flow
             }
             try {
@@ -411,7 +408,8 @@ internal class CatalogUiController(
                         val seen = entries.mapTo(hashSetOf()) { it.key }
                         entries.addAll(page.entries.filter { seen.add(it.key) })
                         val result = RankingPage(RankingResultState(selected, entries.toList(),
-                            loading = false, mergedPacks = current.merges.filterValues { it }.keys),
+                            loading = false, mergedPacks = current.merges.filterValues { it }.keys,
+                            queryState = current.ranking),
                             hasMore = page.hasMore)
                         session.putAllRanking(CatalogSessionCache.AllRankingSnapshot(key, result, cursor))
                         emit(current to result)
@@ -432,7 +430,8 @@ internal class CatalogUiController(
                             key.merge, batchSize, accumulator.nextOffset)
                         accumulator = accumulator.append(chunk, batchSize) { it.key }
                         val result = RankingPage(RankingResultState(selected, accumulator.items,
-                            loading = false, mergedPacks = if (key.merge) setOf(id) else emptySet()),
+                            loading = false, mergedPacks = if (key.merge) setOf(id) else emptySet(),
+                            queryState = current.ranking),
                             hasMore = accumulator.hasMore)
                         session.putRanking(id, CatalogSessionCache.RankingSnapshot(key, result, accumulator))
                         emit(current to result)
@@ -451,9 +450,10 @@ internal class CatalogUiController(
                     }?.page
                 }
                 val result = previous?.copy(result = previous.result.copy(loading = false,
-                    failed = true), hasMore = false)
+                    failed = true, queryState = current.ranking), hasMore = false)
                     ?: RankingPage(RankingResultState(selected, emptyList(), loading = false,
-                        failed = true, mergedPacks = current.merges.filterValues { it }.keys))
+                        failed = true, mergedPacks = current.merges.filterValues { it }.keys,
+                        queryState = current.ranking))
                 if (selected is ViewingScope.Pack) {
                     val manifest = current.manifests.single()
                     val key = CatalogSessionCache.RankingKey(manifest, current.ranking,
@@ -482,7 +482,7 @@ internal class CatalogUiController(
             is ViewingScope.Pack -> {
                 val manifest = current.manifests.singleOrNull()
                 if (manifest == null) RankingPage(RankingResultState(selected, loading = false,
-                    mergedPacks = emptySet()))
+                    mergedPacks = emptySet(), queryState = current.ranking))
                 else {
                     val key = CatalogSessionCache.RankingKey(manifest, current.ranking,
                         current.merges[manifest.packId] == true, current.revision)

@@ -1,22 +1,30 @@
 # Scoring
 
-RankOffline owns a fixed 0–10 score scale. A pack supplies generic categories
-and profiles; it does not supply executable formulas.
+RankOffline calculates scores on a 0–10 scale. Packs declare category names,
+descriptions, colours, default weights and profiles. They cannot supply executable
+scoring formulas. Users may edit local category and profile definitions without changing
+the installed manifest.
 
-For active applicable categories with positive weight:
+For active, applicable categories with positive weight, quality is the weighted mean:
 
-`quality = Σ(score × weight) / Σ(applicable weight)`
+```text
+quality = sum(category score × weight) / sum(applicable weight)
+```
 
-Missing or not-applicable categories are excluded and remaining weights are
-renormalized. Invalid/non-finite values produce no calculated score. The
-app-owned personal-taste bonus is constrained to 0–1 and the final result is:
+Missing or inapplicable categories are excluded and the remaining weights are
+renormalized. Invalid or non-finite values do not produce a calculated score. The
+optional personal-taste bonus is an application rule in the range 0–1:
 
-`final = clamp(quality + bonus, 0, 10)`
+```text
+final = clamp(quality + personal-taste bonus, 0, 10)
+```
 
-Editor values snap to configured steps (rating 0.5, bonus 0.1, weights 5).
-Changing criteria, weights, profile or taste is an explicit recalculation.
-Editing only notes/status preserves stored final score, quality, bonus, profile
-and category values.
+Personal taste is off by default in the editor. Disabling it affects a newly saved
+rating; existing stored ratings are not silently recalculated when the preference
+changes. Rating inputs snap to the configured steps: 0.5 for categories, 0.1 for the
+bonus and 5 for weights. Internal scores retain calculation precision; UI formatting
+does not change stored values or ranking order.
 
-Group drafts can derive means from valid rated members of one pack. This is a
-starting representation and never replaces item identities.
+A group draft can start from the valid ratings of its members in the same pack. Group
+and item ratings remain separate records. Reset Default restores the installed pack's
+category and profile definitions, not a hardcoded set of official presets.

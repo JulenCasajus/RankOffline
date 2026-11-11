@@ -22,7 +22,8 @@ import org.json.JSONObject
 
 internal data class CoverMetadataResolution(
     val candidates: List<URI> = emptyList(),
-    val failure: CoverDownloadResult? = null
+    val failure: CoverDownloadResult? = null,
+    val allowedHosts: Set<String> = emptySet()
 )
 
 internal data class CoverMetadataCandidate(val source: PackCoverSource, val identity: String)
@@ -113,7 +114,7 @@ internal object DeclarativeCoverMetadataResolver {
                 connection.outputStream.bufferedWriter().use { it.write(value) }
             }
             val status = connection.responseCode
-            if (status == 404 || status == 410) return null
+            if (status == 403 || status == 404 || status == 410) return null
             if (status == 429 || status == 503) {
                 val retryDelay = retryAfterDelayMillis(connection.getHeaderField("Retry-After"))
                     ?: 2_000L
@@ -166,7 +167,8 @@ internal object DeclarativeCoverMetadataResolver {
         }.distinct()
         return CoverMetadataResolution(
             candidates = candidates,
-            failure = CoverDownloadResult.TemporaryError.takeIf { invalidCandidate }
+            failure = CoverDownloadResult.TemporaryError.takeIf { invalidCandidate },
+            allowedHosts = hosts
         )
     }
 }

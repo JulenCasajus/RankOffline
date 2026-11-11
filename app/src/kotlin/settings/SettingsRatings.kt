@@ -24,6 +24,8 @@ import java.util.UUID
 internal fun RatingSettingsScreen(
     elaborateRatingEnabled: Boolean,
     onElaborateRatingEnabledChange: (Boolean) -> Unit,
+    personalTasteEnabled: Boolean,
+    onPersonalTasteEnabledChange: (Boolean) -> Unit,
     onProfiles: () -> Unit,
     onCategories: () -> Unit,
     onBack: () -> Unit
@@ -58,6 +60,18 @@ internal fun RatingSettingsScreen(
                                 )
                                 Text(label)
                             }
+                        }
+                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.bonus_personal_taste),
+                                    color = MaterialTheme.colorScheme.onSurface)
+                                Text(stringResource(R.string.personal_taste_setting_description),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(checked = personalTasteEnabled,
+                                onCheckedChange = onPersonalTasteEnabledChange)
                         }
                     }
                 }
@@ -119,7 +133,7 @@ internal fun RatingCategoriesScreen(
                     },
                     label = stringResource(R.string.rating_add_category),
                     icon = Icons.Default.Add,
-                    filled = true
+                    primary = true
                 )
             }
             item {
@@ -127,7 +141,7 @@ internal fun RatingCategoriesScreen(
                     onClick = { confirmReset = true },
                     label = stringResource(R.string.rating_reset_categories),
                     icon = Icons.Default.Restore,
-                    filled = false
+                    primary = false
                 )
             }
         }

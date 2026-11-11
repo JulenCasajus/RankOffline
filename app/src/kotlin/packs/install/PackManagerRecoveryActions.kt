@@ -30,11 +30,11 @@ suspend fun PackManager.recover(packId: PackId): Boolean = packLock(packId).with
             if (directory != null) {
                 val manifest = requireNotNull(readInstalledManifest(directory))
                 require(isCompatiblePackVersion(manifest.minRankOfflineVersion, currentAppVersion))
-                importMutex.withLock { synchronizer.sync(manifest, directory) }
+                withImportTurn { synchronizer.sync(manifest, directory) }
                 if (phase == PackRecoveryState.AWAITING_COMMIT) withContext(Dispatchers.IO) {
                     installer.commitInstallation(packId)
                 }
-            } else importMutex.withLock { catalogCleaner.clear(packId) }
+            } else withImportTurn { catalogCleaner.clear(packId) }
             true
         }
         runtime[packId] = if (installer.installedDirectory(packId) != null)
@@ -81,7 +81,7 @@ suspend fun PackManager.delete(packId: PackId): Boolean = packLock(packId).withL
     try {
         val ok = PackCoverWriteLocks.withPackLock(packId) {
             summaries.markAllDirty(packId) // Before deletion or catalog cleanup.
-            importMutex.withLock { catalogCleaner.clear(packId) }
+            withImportTurn { catalogCleaner.clear(packId) }
             withContext(Dispatchers.IO) { installer.deleteInstalledPack(packId) }
         }
         val filesGone = ok
@@ -111,7 +111,11 @@ suspend fun PackManager.acquireInitialCovers(
         coverTarget = target))
     try {
         acquire { progress ->
-            if (progress.target > 0) tracker.phase(packId, PackInstallPhase.DOWNLOADING_COVERS)
+            if (progress.status == CoverDownloadStatus.WAITING_TO_SAVE) {
+                tracker.phase(packId, PackInstallPhase.WAITING_TO_SAVE_COVERS)
+            } else if (progress.target > 0 && progress.status != CoverDownloadStatus.COMPLETED) {
+                tracker.phase(packId, PackInstallPhase.DOWNLOADING_COVERS)
+            }
             tracker.covers(packId, progress)
         }
     } finally {

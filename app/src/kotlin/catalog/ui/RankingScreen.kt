@@ -35,9 +35,14 @@ internal fun RankingScreen(
     onDownloadCover: (CatalogEntryKey) -> Unit, onOpenCover: (MediaListEntry) -> Unit
 ) {
     val all = scope == ViewingScope.All
-    val showImages = if (all) settings.allViewSettings.showImages else settings.showImages
+    val packSettings = activeManifest?.let { settings.mediaSettings[it.packId] }
+    val personalTasteEnabled = if (all) settings.mediaSettings.values.any { it.personalTasteEnabled }
+        else packSettings?.personalTasteEnabled == true
+    val showImages = if (all) settings.allViewSettings.showImages else packSettings?.showImages == true
+    val showTitlesOnPodium = if (all) settings.allViewSettings.titlesOnPodium
+        else packSettings?.titlesOnPodium == true
     val categories = if (all) compatibleAllRatingCategories(installedManifests.map { it.packId }, settings.mediaSettings)
-        else settings.activeMediaSettings?.ratingConfig?.categories.orEmpty().filter { it.active }
+        else packSettings?.ratingConfig?.categories.orEmpty().filter { it.active }
     var filtersOpen by remember { mutableStateOf(false) }
     var sortOpen by remember { mutableStateOf(false) }
     val subtitleFields = remember(installedManifests) {
@@ -59,14 +64,15 @@ internal fun RankingScreen(
                 onAllSelected = onAll)
             Spacer(Modifier.height(10.dp))
             CatalogActions((if (all) installedManifests.any { it.merge.enabled } else activeManifest?.merge?.enabled == true),
-                (if (all) settings.allViewSettings.mergeEnabled else settings.activeMediaSettings?.mergeEnabled == true), onMerge,
+                (if (all) settings.allViewSettings.mergeEnabled else packSettings?.mergeEnabled == true), onMerge,
                 "Merge",
                 state.filters.activeCount, { filtersOpen = true },
                 rankingSortLabel(state.sortOrder, state.ratingCategoryId, categories),
                 rankingSortIcon(state.sortOrder),
                 !state.descending, { sortOpen = true }, onSortDirection) {
               RankOfflinePopupMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
-                RankingSortOrder.entries.filterNot { it == RankingSortOrder.CATEGORY_SCORE }.forEach { order ->
+                RankingSortOrder.entries.filter { it != RankingSortOrder.CATEGORY_SCORE &&
+                    (it != RankingSortOrder.PERSONAL_TASTE || personalTasteEnabled) }.forEach { order ->
                     RankOfflinePopupMenuItem(label = order.localizedLabel(),
                         selected = state.sortOrder == order, onClick = {
                             sortOpen = false; onSort(order)
@@ -103,9 +109,9 @@ internal fun RankingScreen(
         }
         if (showImages && entries.isNotEmpty()) {
             item(key = "ranking-podium") {
-                RankingPodium(entries.take(3), state.sortOrder, settings,
+                RankingPodium(entries.take(3), state.sortOrder, settings, showTitlesOnPodium,
                     coverRepository, bitmapCache, onDownloadCover,
-                    onOpenCover, onEntry)
+                    onOpenCover, onEntry, onGroup)
             }
         }
         val shown = if (showImages) entries.drop(3) else entries

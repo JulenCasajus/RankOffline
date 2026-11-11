@@ -17,6 +17,13 @@
   <string name='action_cancel'>Cancelar</string>
   <string name='action_delete'>Eliminar</string>
   <string name='action_continue'>Continuar</string>
+  <string name='whats_new_title'>Novedades de la versión %1$s</string>
+  <string name='whats_new_visuals'>Mejoras visuales, la app ha quedado mas fresca que tú.</string>
+  <string name='whats_new_packs'>Paquetes generalizados = paquetes de la comunidad pronto.</string>
+  <string name='whats_new_features'>Filtros, Merge y portadas mejorados.</string>
+  <string name='whats_new_bugs'>He corregido algunos errores… posiblemente haya creado otros. sad.</string>
+  <string name='whats_new_thanks'>¡Gracias por usar RankOffline!</string>
+  <string name='whats_new_contact'>¿Algún problema? Dímelo :D</string>
   <string name='action_save'>Guardar</string>
   <string name='action_apply'>Aplicar</string>
   <string name='action_back'>Atrás</string>
@@ -56,6 +63,8 @@
   <string name='general_sticky_score'>Cabecera de puntuación fija</string>
   <string name='general_sticky_score_description'>Mantener la puntuación visible al desplazarse</string>
   <string name='general_show_images'>Mostrar imágenes</string>
+  <string name='general_titles_on_podium'>Títulos en el podio</string>
+  <string name='general_titles_on_podium_description'>Mostrar los títulos de las entradas en el podio</string>
   <string name='language_title'>Idioma</string>
   <string name='language_description'>Idioma de la interfaz de la aplicación</string>
   <string name='language_english'>English</string>
@@ -92,6 +101,10 @@
     finales y las notas existentes no cambiarán.
   </string>
   <string name='bonus_personal_taste'>Gusto personal</string>
+  <string name='personal_taste_setting_description'>Añade hasta 1 punto extra de gusto personal</string>
+  <string name='cover_network_error'>Error de conexión. Vuelve a intentar descargar la portada.</string>
+  <string name='cover_temporary_error'>El servicio de portadas no está disponible. Inténtalo más tarde.</string>
+  <string name='message_cover_not_found'>Portada no encontrada</string>
   <string name='about_version'>Versión %1$s</string>
   <string name='error_initialize_local_data'>No se pudieron inicializar los datos locales.</string>
   <string name='pack_source_refresh_failed'>No se pudieron actualizar los paquetes. Comprueba la conexión e inténtalo de nuevo.</string>
@@ -233,6 +246,7 @@
   <string name='category_phase_waiting_covers'>Esperando las portadas…</string>
   <string name='category_phase_importing_catalog'>Importando catálogo… Esto puede tardar un rato.</string>
   <string name='category_phase_downloading_covers'>Descargando portadas: %1$d / %2$d</string>
+  <string name='category_phase_covers_waiting_save'>Portadas listas · esperando a la base de datos</string>
   <string name='category_deleting'>Eliminando…</string>
   <string name='category_phase_finalizing'>Finalizando…</string>
   <string name='category_pack_runtime_error'>No se pudo preparar el catálogo. Toca para reintentar.</string>
@@ -257,7 +271,8 @@
   <string name='pack_storage_details'>Detalles de almacenamiento</string>
   <string name='pack_storage_transfer'>Tamaño: %1$s</string>
   <string name='pack_storage_covers'>Portadas</string>
-  <string name='pack_storage_physical_total'>Total físico</string>
+  <string name='pack_storage_package'>Paquete</string>
+  <string name='pack_storage_ratings'>Valoraciones</string>
   <string name='category_uninstall_keep_data'>Desinstalar y conservar datos personales</string>
   <string name='media_all'>Todo</string>
   <string name='personal_backup_preview_title'>¿Importar datos personales?</string>
@@ -277,7 +292,7 @@
   <string name='ranking_share_show_images'>Mostrar imágenes</string>
   <string name='ranking_share_failed'>No se ha podido crear la imagen del ranking.</string>
   <string name='ranking_share_empty'>Valora al menos un elemento para crear una imagen del ranking.</string>
-  <string name="covers_batch_outcomes">%1$d descargadas · %2$d no encontradas · %3$d errores</string>
+  <string name="covers_batch_outcomes">%1$d ya descargadas · %2$d descargadas · %3$d no encontradas · %4$d errores</string>
   <plurals name="subtitle_values_of_field">
     <item quantity="one">%2$s (%1$d)</item>
     <item quantity="other">%2$s (%1$d)</item>

@@ -18,7 +18,8 @@ internal class CoverUiController(
     private val scope: CoroutineScope,
     private val services: RankOfflineServices,
     private val bitmapCache: CoverBitmapCache,
-    private val onError: suspend (Throwable) -> Unit
+    private val onError: suspend (Throwable) -> Unit,
+    private val onDownloadFailure: suspend (Int) -> Unit
 ) {
     private val activeBatches = mutableMapOf<PackId, Job>()
     val progress: StateFlow<CoverDownloadProgress> get() = services.coverDownloadsManager.progress
@@ -30,7 +31,12 @@ internal class CoverUiController(
 
     fun download(key: CatalogEntryKey) = scope.launch {
         try {
-            services.downloadCover(key)
+            when (services.downloadCover(key)) {
+                CoverDownloadResult.NotFound -> onDownloadFailure(R.string.message_cover_not_found)
+                CoverDownloadResult.NetworkError -> onDownloadFailure(R.string.cover_network_error)
+                CoverDownloadResult.TemporaryError -> onDownloadFailure(R.string.cover_temporary_error)
+                else -> Unit
+            }
             services.refreshPackStatistics(key.packId,
                 setOf(PackSummaryField.AVAILABLE_COVER_COUNT))
         } catch (cancelled: CancellationException) { throw cancelled }

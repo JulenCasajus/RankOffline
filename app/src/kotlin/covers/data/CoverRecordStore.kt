@@ -10,7 +10,7 @@ internal data class CoverRecord(
     val remoteRef: String?,
     val localPath: String?,
     val state: String,
-    val candidates: List<java.net.URI>,
+    val candidates: List<CoverImageCandidate>,
     val metadataCandidates: List<CoverMetadataCandidate> = emptyList()
 )
 
@@ -23,16 +23,44 @@ internal class CoverRecordStore(
     suspend fun load(key: CatalogEntryKey): CoverRecord? = when (key.kind) {
         CatalogEntryKind.ITEM -> items.item(key.packId.value, key.id)?.let { entity ->
             CoverRecord(key, entity.remoteCoverRef, entity.localCoverPath,
-                entity.coverResolutionState, provider.resolveCandidates(entity.toDomain()),
+                entity.coverResolutionState, provider.resolveImageCandidates(entity.toDomain()),
                 provider.metadataCandidates(entity.toDomain()))
         }
         CatalogEntryKind.GROUP -> groups.group(key.packId.value, key.id)?.let { entity ->
             // Deliberately NO representative candidates here. Downloading those under
             // GROUP would create a second physical image in covers/groups/.
-            val candidates = provider.resolveCandidates(entity.toDomain())
+            val candidates = provider.resolveImageCandidates(entity.toDomain())
             CoverRecord(key, entity.remoteCoverRef, entity.localCoverPath,
                 entity.coverResolutionState, candidates, provider.metadataCandidates(entity.toDomain()))
         }
+    }
+
+    /** Snapshot the selected batch before HTTP starts; no Room read is needed per image. */
+    suspend fun loadMany(keys: Collection<CatalogEntryKey>): Map<CatalogEntryKey, CoverRecord> {
+        val result = HashMap<CatalogEntryKey, CoverRecord>(keys.size)
+        keys.groupBy { it.packId }.forEach { (packId, packKeys) ->
+            packKeys.groupBy { it.kind }.forEach { (kind, typedKeys) ->
+                typedKeys.map { it.id }.chunked(400).forEach { ids ->
+                    when (kind) {
+                        CatalogEntryKind.ITEM -> items.itemsByIds(packId.value, ids).forEach { entity ->
+                            val key = CatalogEntryKey(packId, entity.id, kind)
+                            val item = entity.toDomain()
+                            result[key] = CoverRecord(key, entity.remoteCoverRef, entity.localCoverPath,
+                                entity.coverResolutionState, provider.resolveImageCandidates(item),
+                                provider.metadataCandidates(item))
+                        }
+                        CatalogEntryKind.GROUP -> groups.groupsByIds(packId.value, ids).forEach { entity ->
+                            val key = CatalogEntryKey(packId, entity.id, kind)
+                            val group = entity.toDomain()
+                            result[key] = CoverRecord(key, entity.remoteCoverRef, entity.localCoverPath,
+                                entity.coverResolutionState, provider.resolveImageCandidates(group),
+                                provider.metadataCandidates(group))
+                        }
+                    }
+                }
+            }
+        }
+        return result
     }
 
 

@@ -4,6 +4,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.withLock
 
+suspend fun SettingsRepository.updatePersonalTasteEnabled(value: Boolean) = changeActive {
+    require(!value || manifests.getValue(requireActivePackId()).capabilities.ratings)
+    it.copy(personalTasteEnabled = value)
+}
+
 /** Writes categories and profiles as one atomic local JSON; DataStore is not involved. */
 suspend fun SettingsRepository.updateRatingConfig(value: RatingSystemConfig) = editRating { original, current ->
     PackRatingDefinition(

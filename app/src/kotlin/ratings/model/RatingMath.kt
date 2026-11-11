@@ -61,6 +61,10 @@ data class RatingDraft(
         ScoreCalculator.calculate(categoryScores, additiveScore, config).finalScore
 }
 
+/** A disabled bonus affects a new scoring write, never the stored rating being edited. */
+internal fun RatingDraft.forPersonalTaste(enabled: Boolean): RatingDraft =
+    if (enabled) this else copy(additiveScore = 0.0)
+
 /** Mean over valid rated members of ONE pack; no assumptions about group content or type. */
 data class DerivedGroupRating(
     val finalScore: Double?,

@@ -17,6 +17,13 @@
   <string name='action_cancel'>Отмена</string>
   <string name='action_delete'>Удалить</string>
   <string name='action_continue'>Продолжить</string>
+  <string name='whats_new_title'>Что нового в версии %1$s</string>
+  <string name='whats_new_visuals'>Новый, более стильный облик всего приложения.</string>
+  <string name='whats_new_packs'>Аниме, манга, фильмы, сериалы и книги в одном месте.</string>
+  <string name='whats_new_features'>Улучшены фильтры, Merge и управление обложками.</string>
+  <string name='whats_new_bugs'>Исправлены ошибки… возможно, появились новые.</string>
+  <string name='whats_new_thanks'>Спасибо, что пользуетесь RankOffline!</string>
+  <string name='whats_new_contact'>Есть проблемы? Напишите мне :D</string>
   <string name='action_save'>Сохранить</string>
   <string name='action_apply'>Применить</string>
   <string name='action_back'>Назад</string>
@@ -56,6 +63,8 @@
   <string name='general_sticky_score'>Закреплённая оценка</string>
   <string name='general_sticky_score_description'>Показывать оценку при прокрутке</string>
   <string name='general_show_images'>Показывать изображения</string>
+  <string name='general_titles_on_podium'>Названия на подиуме</string>
+  <string name='general_titles_on_podium_description'>Показывать названия элементов на подиуме</string>
   <string name='language_title'>Язык</string>
   <string name='language_description'>Язык интерфейса приложения</string>
   <string name='language_english'>English</string>
@@ -92,6 +101,9 @@
     оценки и заметки не изменятся.
   </string>
   <string name='bonus_personal_taste'>Личный вкус</string>
+  <string name='personal_taste_setting_description'>Добавляет до 1 балла за личные предпочтения</string>
+  <string name='cover_network_error'>Ошибка соединения. Повторите загрузку обложки.</string>
+  <string name='cover_temporary_error'>Сервис обложек недоступен. Повторите попытку позже.</string>
   <string name='about_version'>Версия %1$s</string>
   <string name='error_initialize_local_data'>Не удалось инициализировать локальные данные.</string>
   <string name='pack_source_refresh_failed'>Не удалось обновить пакеты. Проверьте подключение и повторите попытку.</string>
@@ -227,6 +239,7 @@
   <string name='category_phase_waiting_covers'>Ожидание обложек…</string>
   <string name='category_phase_importing_catalog'>Импорт каталога… Это может занять некоторое время.</string>
   <string name='category_phase_downloading_covers'>Загрузка обложек: %1$d / %2$d</string>
+  <string name='category_phase_covers_waiting_save'>Обложки готовы · ожидание базы данных</string>
   <string name='category_deleting'>Удаление…</string>
   <string name='category_phase_finalizing'>Завершение…</string>
   <string name='category_pack_runtime_error'>Не удалось подготовить каталог. Нажмите, чтобы повторить.</string>
@@ -251,7 +264,8 @@
   <string name='pack_storage_details'>Сведения о хранилище</string>
   <string name='pack_storage_transfer'>Размер: %1$s</string>
   <string name='pack_storage_covers'>Обложки</string>
-  <string name='pack_storage_physical_total'>Физический итог</string>
+  <string name='pack_storage_package'>Пакет</string>
+  <string name='pack_storage_ratings'>Оценки</string>
   <string name='category_uninstall_keep_data'>Удалить пакет, сохранив личные данные</string>
   <string name='media_all'>Все</string>
   <string name='personal_backup_preview_title'>Импортировать личные данные?</string>
@@ -268,7 +282,7 @@
   <string name='ranking_share_show_images'>Показывать изображения</string>
   <string name='ranking_share_failed'>Не удалось создать изображение рейтинга.</string>
   <string name='ranking_share_empty'>Оцените хотя бы один элемент, чтобы создать изображение рейтинга.</string>
-  <string name="covers_batch_outcomes">%1$d загружено · %2$d не найдено · %3$d ошибок</string>
+  <string name="covers_batch_outcomes">%1$d уже загружено · %2$d загружено сейчас · %3$d не найдено · %4$d ошибок</string>
   <plurals name="subtitle_values_of_field">
     <item quantity="one">%2$s (%1$d)</item>
     <item quantity="few">%2$s (%1$d)</item>

@@ -41,6 +41,7 @@ class SettingsRepository internal constructor(
     internal val languageKey = stringPreferencesKey("language_tag")
     internal val welcomeKey = booleanPreferencesKey("has_completed_welcome")
     internal val onboardingKey = booleanPreferencesKey("has_completed_onboarding")
+    internal val lastSeenWhatsNewVersionKey = stringPreferencesKey("last_seen_whats_new_version")
     internal val welcomeImagesKey = booleanPreferencesKey("welcome_show_images_choice")
     internal val welcomeElaborateKey = booleanPreferencesKey("welcome_elaborate_rating_choice")
 
@@ -84,6 +85,7 @@ class SettingsRepository internal constructor(
             elaborateRatingEnabled = if (manifest.capabilities.ratings) {
                 welcomeElaborate ?: original.elaborateRatingEnabled
             } else false,
+            personalTasteEnabled = false,
             catalogSortOrder = CatalogSortOrder.POPULARITY
         )
     }

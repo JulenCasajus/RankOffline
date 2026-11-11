@@ -21,7 +21,7 @@ import java.math.BigDecimal
 
 @Composable
 internal fun RatingScoreHeader(base: Double?, bonus: Double, final: Double?, config: RatingSystemConfig,
-    group: Boolean, onEdit: () -> Unit) {
+    group: Boolean, showPersonalTaste: Boolean, onEdit: () -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
@@ -29,10 +29,12 @@ internal fun RatingScoreHeader(base: Double?, bonus: Double, final: Double?, con
                 Text(stringResource(if (group) R.string.score_group_title else R.string.score_title),
                     style = MaterialTheme.typography.titleLarge)
                 Text(stringResource(R.string.score_quality, base?.let(::formatScoreForDisplay) ?: "—"))
-                val bonusConfig = config.additiveBonus
-                Text(stringResource(R.string.score_bonus_value, localizedBonusName(bonusConfig),
-                    formatScoreForDisplay(bonus)),
-                    color = MaterialTheme.colorScheme.secondary)
+                if (showPersonalTaste) {
+                    val bonusConfig = config.additiveBonus
+                    Text(stringResource(R.string.score_bonus_value, localizedBonusName(bonusConfig),
+                        formatScoreForDisplay(bonus)),
+                        color = MaterialTheme.colorScheme.secondary)
+                }
             }
             ScoreValueBadge(final, onEdit)
         }

@@ -45,7 +45,9 @@ internal class RatingUiController(
     fun closeEditor() { openJob?.cancel(); openJob = null; editorState.value = null }
 
     fun saveSimple(draft: RatingDraft, quality: Double, final: Double) = mutate("simple") { key ->
-        ratings.saveSimpleRating(key, draft, quality, final)
+        val enabled = settings.value.mediaSettings[key.packId]?.personalTasteEnabled == true
+        ratings.saveSimpleRating(key, draft.forPersonalTaste(enabled),
+            quality, final)
     }
     fun saveElaborate(draft: RatingDraft, profileId: String, override: Double? = null) =
         mutate("elaborate") { key ->
@@ -53,7 +55,8 @@ internal class RatingUiController(
                 "Pack settings are not loaded"
             }
             val profile = config.ratingProfiles.resolveProfile(profileId)
-            ratings.saveElaborateRating(key, draft, config.ratingConfig.withProfile(profile),
+            ratings.saveElaborateRating(key, draft.forPersonalTaste(config.personalTasteEnabled),
+                config.ratingConfig.withProfile(profile),
                 override, profile.id)
         }
     fun saveMetadata(notes: String, status: String) = mutate("metadata") { key ->

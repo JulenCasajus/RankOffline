@@ -885,7 +885,7 @@
       },
       "fileName": "pack-5.pack",
       "displayName": "Books",
-      "version": "openlibrary-2026-09-30-readinglog-top-50000-v3",
+      "version": "openlibrary-2026-09-30-readinglog-top-50000-v4",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Books-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Books", "de": "Bücher", "es": "Libros", "eu": "Liburuak", "fr": "Livres", "it": "Libri", "ja": "本", "ru": "Книги", "zh-CN": "图书"},
@@ -904,7 +904,7 @@
       "subtitle": ["genre", "year", "author"],
       "merge": {"enabled": true, "strategy": "GROUP_ID", "groupType": "book_series", "labels": {"en": "Book series"}},
       "coverSources": [
-        {"id": "openlibrary_cover", "sourceId": "openlibrary", "providerId": "openlibrary", "urlTemplates": ["https://covers.openlibrary.org/b/olid/{reference}-L.jpg?default=false"], "allowedHosts": ["covers.openlibrary.org"]}
+        {"id": "openlibrary_cover", "sourceId": "openlibrary", "providerId": "openlibrary", "urlTemplates": ["https://covers.openlibrary.org/b/olid/{reference}-L.jpg?default=false"], "allowedHosts": ["covers.openlibrary.org", "archive.org"]}
       ],
       "attribution": {
         "publisher": {"name": "RankOffline official pack"},

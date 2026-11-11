@@ -11,5 +11,7 @@ internal fun PreferencesUiController.welcome(showImages: Boolean, elaborate: Boo
 
 internal fun PreferencesUiController.onboardingComplete() = run { settings.completeOnboarding() }
 
+internal fun PreferencesUiController.whatsNewComplete() = run { settings.acknowledgeWhatsNew() }
+
 
 internal fun PreferencesUiController.language(value: SupportedLanguage) = run { settings.updateLanguage(value) }

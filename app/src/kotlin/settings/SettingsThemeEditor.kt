@@ -55,7 +55,12 @@ internal fun CustomThemeEditorScreen(
                     onValueChange = { if (it.length <= MAX_CUSTOM_THEME_NAME_LENGTH) name = it },
                     label = { Text(stringResource(R.string.theme_name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onBackground
+                    )
                 )
             }
             item { CustomThemePreview(palette) }

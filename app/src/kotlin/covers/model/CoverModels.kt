@@ -13,7 +13,7 @@ data class CoverStorageIdentity(
 }
 
 enum class CoverResolutionState { UNKNOWN, AVAILABLE, NOT_FOUND }
-enum class CoverDownloadState { IDLE, DOWNLOADING }
+enum class CoverDownloadState { IDLE, DOWNLOADING, NOT_FOUND }
 
 sealed interface CoverDownloadResult {
     data object Downloaded : CoverDownloadResult
@@ -24,23 +24,9 @@ sealed interface CoverDownloadResult {
     data object TemporaryError : CoverDownloadResult
 }
 
-object CoverResolutionPolicy {
-    fun afterDownload(
-        current: CoverResolutionState,
-        result: CoverDownloadResult
-    ): CoverResolutionState = when (result) {
-        CoverDownloadResult.Downloaded,
-        CoverDownloadResult.AlreadyAvailable -> CoverResolutionState.AVAILABLE
-        CoverDownloadResult.NotFound -> CoverResolutionState.NOT_FOUND
-        CoverDownloadResult.AlreadyInProgress,
-        CoverDownloadResult.NetworkError,
-        CoverDownloadResult.TemporaryError -> current
-    }
-}
-
 enum class CoverDownloadStatus {
     IDLE, WAITING_FOR_COVERS, PREPARING_COVER_LIST, DOWNLOADING_COVERS,
-    RETRYING_COVERS, COMPLETED, CANCELLED, FAILED
+    RETRYING_COVERS, WAITING_TO_SAVE, COMPLETED, CANCELLED, FAILED
 }
 
 val CoverDownloadStatus.isTerminal: Boolean
@@ -62,7 +48,8 @@ data class CoverDownloadProgress(
         CoverDownloadStatus.WAITING_FOR_COVERS,
         CoverDownloadStatus.PREPARING_COVER_LIST,
         CoverDownloadStatus.DOWNLOADING_COVERS,
-        CoverDownloadStatus.RETRYING_COVERS
+        CoverDownloadStatus.RETRYING_COVERS,
+        CoverDownloadStatus.WAITING_TO_SAVE
     )
 
     /** Counts only verified local files, not attempts or failed downloads. */

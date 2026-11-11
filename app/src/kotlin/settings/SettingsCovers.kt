@@ -53,6 +53,11 @@ internal fun CoversSettingsScreen(
                         if (progress.target > 0) {
                             Text("${progress.processed}/${progress.target}",
                                 modifier = Modifier.padding(top = 8.dp))
+                            if (progress.status == CoverDownloadStatus.WAITING_TO_SAVE) {
+                                Text(stringResource(R.string.category_phase_covers_waiting_save),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
                             LinearProgressIndicator(
                                 progress = { (progress.processed.toFloat() / progress.target).coerceIn(0f, 1f) },
                                 modifier = Modifier.fillMaxWidth())
@@ -63,11 +68,13 @@ internal fun CoversSettingsScreen(
                         }
                         if (progress.target > 0) {
                             Text(stringResource(R.string.covers_batch_outcomes,
-                                progress.downloaded, progress.unavailable, progress.errors),
+                                progress.existing, progress.downloaded,
+                                progress.unavailable, progress.errors),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall)
                         }
-                        if (progress.isActive) TextButton(onClick = onCancel) {
+                        if (progress.isActive && progress.status != CoverDownloadStatus.WAITING_TO_SAVE)
+                            TextButton(onClick = onCancel) {
                             Text(stringResource(R.string.action_cancel))
                         }
                         OutlinedButton(onClick = { clearConfirmation = true },

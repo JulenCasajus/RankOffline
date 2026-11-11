@@ -39,9 +39,11 @@ data class BackupLocalPack(
 @Serializable
 data class BackupPackPreferences(
     val showImages: Boolean? = null,
+    val titlesOnPodium: Boolean? = null,
     val stickyScore: Boolean? = null,
     val mergeEnabled: Boolean? = null,
     val elaborateRatingEnabled: Boolean? = null,
+    val personalTasteEnabled: Boolean? = null,
     val catalogSortOrder: CatalogSortOrder? = null
 )
 

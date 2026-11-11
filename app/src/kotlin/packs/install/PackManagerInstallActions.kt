@@ -9,8 +9,37 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+
+/** Waiting imports yield to a short completed-cover write. An active import remains atomic. */
+internal suspend fun <T> PackManager.withImportTurn(block: suspend () -> T): T {
+    while (true) {
+        pendingCoverCommits.first { it == 0 }
+        importMutex.lock()
+        if (pendingCoverCommits.value == 0) break
+        importMutex.unlock()
+    }
+    try { return block() } finally { importMutex.unlock() }
+}
+
+internal suspend fun <T> PackManager.withCoverCommitTurn(onWaiting: () -> Unit, block: suspend () -> T): T {
+    synchronized(coverCommitMonitor) { pendingCoverCommits.value += 1 }
+    var acquired = false
+    try {
+        acquired = importMutex.tryLock()
+        if (!acquired) {
+            onWaiting()
+            importMutex.lock()
+            acquired = true
+        }
+        return block()
+    } finally {
+        if (acquired) importMutex.unlock()
+        synchronized(coverCommitMonitor) { pendingCoverCommits.value -= 1 }
+    }
+}
 
 suspend fun PackManager.markQueued(packId: PackId) {
     val descriptor = sources.descriptor(packId) ?: return
@@ -129,7 +158,7 @@ internal suspend fun PackManager.installVerified(
         }
         promoted = true
         tracker.phase(id, PackInstallPhase.WAITING_IMPORT)
-        importMutex.withLock {
+        withImportTurn {
             tracker.phase(id, PackInstallPhase.IMPORTING)
             val manifest = requireNotNull(readInstalledManifest(directory))
             require(manifest.packId == id)

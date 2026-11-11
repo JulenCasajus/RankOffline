@@ -92,7 +92,8 @@ internal class RankOfflineServices private constructor(
             manifestProvider = { id ->
                 packManager.packDefinition(id)?.manifest ?: packManager.descriptor(id)?.manifest
             },
-            beforeCoverMutation = { id, fields -> packManager.invalidateCoverSummary(id, fields) }
+            beforeCoverMutation = { id, fields -> packManager.invalidateCoverSummary(id, fields) },
+            withCoverCommitTurn = { waiting, commit -> packManager.withCoverCommitTurn(waiting, commit) }
         )
     }
     val coverDownloadsManager: CoverDownloadsManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

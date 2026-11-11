@@ -49,6 +49,7 @@ suspend fun SettingsRepository.loadInitialState() = lock.withLock {
         language = language,
         hasCompletedWelcome = welcomeDone,
         hasCompletedOnboarding = onboardingDone,
+        lastSeenWhatsNewVersion = prefs[lastSeenWhatsNewVersionKey],
         settingsLoaded = true
     )
     localeController.apply(language)

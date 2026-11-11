@@ -17,6 +17,13 @@
   <string name='action_cancel'>Utzi</string>
   <string name='action_delete'>Ezabatu</string>
   <string name='action_continue'>Jarraitu</string>
+  <string name='whats_new_title'>%1$s bertsioko berrikuntzak</string>
+  <string name='whats_new_visuals'>Aplikazio galanta ta ederra utzi dut.</string>
+  <string name='whats_new_packs'>Paqueteak orokorratu in ditut = tortilla patata baloratzeko paquetea incoming.</string>
+  <string name='whats_new_features'>Iragazki, Merge eta azal kontrol hobeak.</string>
+  <string name='whats_new_bugs'>Akats batzuk konpondu ditut… seguraski beste batzuk sortu ere.</string>
+  <string name='whats_new_thanks'>Eskerrik asko RankOffline erabiltzeagatik!</string>
+  <string name='whats_new_contact'>Arazorik? Esan iezadazu :D</string>
   <string name='action_save'>Gorde</string>
   <string name='action_apply'>Aplikatu</string>
   <string name='action_back'>Atzera</string>
@@ -56,6 +63,8 @@
   <string name='general_sticky_score'>Puntuazio-goiburu finkoa</string>
   <string name='general_sticky_score_description'>Mantendu puntuazioa ikusgai korritzean</string>
   <string name='general_show_images'>Erakutsi irudiak</string>
+  <string name='general_titles_on_podium'>Izenburuak podiumean</string>
+  <string name='general_titles_on_podium_description'>Erakutsi sarreren izenburuak podiumean</string>
   <string name='language_title'>Hizkuntza</string>
   <string name='language_description'>Aplikazioaren interfazearen hizkuntza</string>
   <string name='language_english'>English</string>
@@ -92,6 +101,9 @@
     eta oharrak ez dira aldatuko.
   </string>
   <string name='bonus_personal_taste'>Gustu pertsonala</string>
+  <string name='personal_taste_setting_description'>Gustu pertsonalagatik puntu 1 gehitzen du gehienez</string>
+  <string name='cover_network_error'>Konexio-errorea. Saiatu azala berriro deskargatzen.</string>
+  <string name='cover_temporary_error'>Azalen zerbitzua ez dago erabilgarri. Saiatu geroago.</string>
   <string name='about_version'>%1$s bertsioa</string>
   <string name='error_initialize_local_data'>Ezin izan dira datu lokalak hasieratu.</string>
   <string name='pack_source_refresh_failed'>Ezin izan dira paketeak eguneratu. Egiaztatu konexioa eta saiatu berriro.</string>
@@ -233,6 +245,7 @@
   <string name='category_phase_waiting_covers'>Azalen zain…</string>
   <string name='category_phase_importing_catalog'>Katalogoa inportatzen… Baliteke pixka bat luzatzea.</string>
   <string name='category_phase_downloading_covers'>Azalak deskargatzen: %1$d / %2$d</string>
+  <string name='category_phase_covers_waiting_save'>Azalak prest · datu-basearen zain</string>
   <string name='category_deleting'>Ezabatzen…</string>
   <string name='category_phase_finalizing'>Amaitzen…</string>
   <string name='category_pack_runtime_error'>Ezin izan da katalogoa prestatu. Sakatu berriro saiatzeko.</string>
@@ -257,7 +270,8 @@
   <string name='pack_storage_details'>Biltegiratze-xehetasunak</string>
   <string name='pack_storage_transfer'>Tamaina: %1$s</string>
   <string name='pack_storage_covers'>Azalak</string>
-  <string name='pack_storage_physical_total'>Guztizko fisikoa</string>
+  <string name='pack_storage_package'>Paketea</string>
+  <string name='pack_storage_ratings'>Balorazioak</string>
   <string name='category_uninstall_keep_data'>Desinstalatu, datu pertsonalak mantenduz</string>
   <string name='media_all'>Guztiak</string>
   <string name='personal_backup_preview_title'>Datu pertsonalak inportatu?</string>
@@ -277,7 +291,7 @@
   <string name='ranking_share_show_images'>Erakutsi irudiak</string>
   <string name='ranking_share_failed'>Ezin izan da rankingaren irudia sortu.</string>
   <string name='ranking_share_empty'>Baloratu gutxienez elementu bat rankingaren irudia sortzeko.</string>
-  <string name="covers_batch_outcomes">%1$d deskargatuta · %2$d aurkitu gabe · %3$d errore</string>
+  <string name="covers_batch_outcomes">%1$d lehendik deskargatuta · %2$d deskargatuta · %3$d aurkitu gabe · %4$d errore</string>
   <plurals name="subtitle_values_of_field">
     <item quantity="one">%2$s (%1$d)</item>
     <item quantity="other">%2$s (%1$d)</item>

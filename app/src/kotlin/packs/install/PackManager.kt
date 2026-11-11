@@ -49,6 +49,8 @@ class PackManager internal constructor(
     internal val installer = PackInstaller(packRoot)
     internal val registry = PackRegistry(packRoot)
     internal val importMutex = Mutex()
+    internal val coverCommitMonitor = Any()
+    internal val pendingCoverCommits = MutableStateFlow(0)
     internal val refreshMutex = Mutex()
     internal val packLocks = ConcurrentHashMap<PackId, Mutex>()
     internal val runtime = ConcurrentHashMap<PackId, PackRuntimeStatus>()

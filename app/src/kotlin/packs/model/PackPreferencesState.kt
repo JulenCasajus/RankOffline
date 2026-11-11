@@ -6,9 +6,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data class PersonalPackPreferences(
     val showImages: Boolean? = null,
+    val titlesOnPodium: Boolean? = null,
     val stickyScore: Boolean? = null,
     val mergeEnabled: Boolean? = null,
     val elaborateRatingEnabled: Boolean? = null,
+    val personalTasteEnabled: Boolean? = null,
     val catalogSortOrder: CatalogSortOrder? = null
 )
 
@@ -21,10 +23,12 @@ internal fun PackManifest.resolveSettings(
     return MediaSettings(
         elaborateRatingEnabled = capabilities.ratings &&
             (personal.elaborateRatingEnabled ?: (defaults.ratingMode == "elaborated")),
+        personalTasteEnabled = capabilities.ratings && (personal.personalTasteEnabled ?: false),
         ratingConfig = definition?.config ?: RatingSystemConfig(emptyList()),
         ratingProfiles = definition?.profiles ?: RatingProfilesConfig(emptyList()),
         mergeEnabled = (personal.mergeEnabled ?: defaults.mergeEnabled) && merge.enabled,
         showImages = personal.showImages ?: defaults.showImages,
+        titlesOnPodium = personal.titlesOnPodium ?: false,
         stickyScore = personal.stickyScore ?: defaults.stickyScoreHeader
     )
 }
@@ -55,12 +59,14 @@ data class AppSettingsState(
     val language: SupportedLanguage = SupportedLanguage.DEFAULT,
     val hasCompletedWelcome: Boolean = false,
     val hasCompletedOnboarding: Boolean = false,
+    val lastSeenWhatsNewVersion: String? = null,
     val settingsLoaded: Boolean = false
 ) {
     val activeMediaSettings: MediaSettings? get() = activePackId?.let(mediaSettings::get)
     val showImages: Boolean get() = activeMediaSettings?.showImages ?: false
     val stickyScore: Boolean get() = activeMediaSettings?.stickyScore ?: true
     val elaborateRatingEnabled: Boolean get() = activeMediaSettings?.elaborateRatingEnabled ?: false
+    val personalTasteEnabled: Boolean get() = activeMediaSettings?.personalTasteEnabled ?: false
     val ratingConfig: RatingSystemConfig get() = activeMediaSettings?.ratingConfig
         ?: RatingSystemConfig(emptyList())
     val ratingProfiles: RatingProfilesConfig get() = activeMediaSettings?.ratingProfiles

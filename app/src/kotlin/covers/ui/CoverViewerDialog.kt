@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Image as ImageIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -114,23 +115,22 @@ internal fun CoverViewerDialog(
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_cancel))
                         }
                     }
-                    if (groupMemberCount != null && onGroupDetails != null) {
+                    if (groupMemberCount != null || !subtitle.isNullOrBlank()) {
+                        val groupLabel = groupMemberCount?.let {
+                            stringResource(R.string.group_entries_subtitle_count, it)
+                        }
+                        val detail = listOfNotNull(groupLabel, subtitle?.takeIf(String::isNotBlank))
+                            .joinToString(if (groupLabel == null) "" else " | ")
                         Text(
-                            text = stringResource(R.string.group_entries_count, groupMemberCount),
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold,
+                            text = detail,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp,
-                            modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onGroupDetails)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    } else if (!subtitle.isNullOrBlank()) {
-                        Text(
-                            text = subtitle,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                            modifier = Modifier.fillMaxWidth().then(if (groupLabel != null && onGroupDetails != null)
+                                Modifier.clickable(role = Role.Button, onClick = onGroupDetails)
+                                else Modifier)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
                     Box(
@@ -150,7 +150,7 @@ internal fun CoverViewerDialog(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Icon(
-                                    Icons.Default.ImageIcon,
+                                    if (frame.notFound) Icons.Default.ImageIcon else Icons.Default.Download,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -174,7 +174,7 @@ internal fun CoverViewerDialog(
                                 Text(stringResource(R.string.cover_delete))
                             }
                         }
-                        !frame.loading && !frame.downloading && onDownloadRequested != null -> {
+                        frame.canRequestDownload && onDownloadRequested != null -> {
                             OutlinedButton(
                                 onClick = onDownloadRequested,
                                 enabled = !deleting,
@@ -238,16 +238,24 @@ internal fun CoverViewerDialog(
     onDismiss: () -> Unit,
     onDeleteConfirmed: (CatalogEntryKey, (Boolean) -> Unit) -> Unit,
     subtitle: String? = null,
+    subtitleFields: List<PackFieldDefinition> = emptyList(),
     onGroupDetails: (() -> Unit)? = null,
     onDownloadRequested: ((CatalogEntryKey) -> Unit)? = null
 ) {
     val imageKey = entry.key
     val memberCount = (entry as? MediaListEntry.Group)?.memberCount
+    val languageTag = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+        ?.toLanguageTag() ?: "en"
+    val subtitleLabels = mutableListOf<String>()
+    for (part in entry.subtitleParts(subtitleFields, languageTag)) {
+        subtitleLabels += part.displayText()
+    }
+    val displaySubtitle = subtitle ?: subtitleLabels.joinToString(" · ")
     CoverViewerDialog(
         key = imageKey, title = entry.title, coverRepository = coverRepository,
         bitmapCache = bitmapCache, onDismiss = onDismiss,
         onDeleteConfirmed = { finished -> onDeleteConfirmed(imageKey, finished) },
-        subtitle = subtitle, groupMemberCount = memberCount,
+        subtitle = displaySubtitle, groupMemberCount = memberCount,
         onGroupDetails = onGroupDetails,
         onDownloadRequested = onDownloadRequested?.let { request -> { request(imageKey) } }
     )

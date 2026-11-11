@@ -61,6 +61,7 @@ internal class PackWorkNotification(private val context: Context) {
             PackInstallPhase.IMPORTING -> R.string.category_phase_importing_catalog
             PackInstallPhase.FINALIZING -> R.string.category_phase_finalizing
             PackInstallPhase.DOWNLOADING_COVERS -> R.string.covers_downloading_rated
+            PackInstallPhase.WAITING_TO_SAVE_COVERS -> R.string.category_phase_covers_waiting_save
             null -> when (action) {
                 PackWorkAction.INSTALL -> R.string.pack_background_downloading
                 PackWorkAction.RECOVER -> R.string.category_phase_waiting_import

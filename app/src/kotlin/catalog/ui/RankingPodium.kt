@@ -1,6 +1,7 @@
 package org.rankoffline.app
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -10,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 
@@ -24,9 +27,10 @@ private fun podiumArtwork(position: Int): PodiumArtwork = when (position) {
 @Composable
 internal fun RankingPodium(
     entries: List<MediaListEntry>, sortOrder: RankingSortOrder,
-    settings: AppSettingsState, covers: CoverRepository, cache: CoverBitmapCache,
+    settings: AppSettingsState, showTitles: Boolean,
+    covers: CoverRepository, cache: CoverBitmapCache,
     onDownload: (CatalogEntryKey) -> Unit, onOpenCover: (MediaListEntry) -> Unit,
-    onOpenRating: (MediaListEntry) -> Unit
+    onOpenRating: (MediaListEntry) -> Unit, onGroupDetails: (MediaListEntry) -> Unit
 ) {
     val positions = when (entries.size) {
         0 -> emptyList()
@@ -48,6 +52,19 @@ internal fun RankingPodium(
                 val shown = entry.scoreForList(sortOrder)
                 Column(Modifier.width(width), horizontalAlignment = Alignment.CenterHorizontally) {
                     ScoreValueBadge(shown, onClick = { onOpenRating(entry) })
+                    if (showTitles) {
+                        Column(Modifier.fillMaxWidth().then(if (entry is MediaListEntry.Group)
+                            Modifier.clickable { onGroupDetails(entry) } else Modifier),
+                            horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(entry.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelSmall)
+                            if (entry is MediaListEntry.Group) {
+                                Text(stringResource(R.string.group_entries_subtitle_count, entry.memberCount),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
                     Spacer(Modifier.height(8.dp))
                     Box(Modifier.width(width).height(coverSize + height - 8.dp)) {
                         MediaCover(entry, settings, covers, cache,

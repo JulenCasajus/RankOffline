@@ -1,16 +1,16 @@
 # Third-party notices
 
-The application depends on AndroidX/Jetpack (Activity, Annotation, AppCompat,
-Core, Compose, DataStore, Lifecycle, Room, SQLite transitively and WorkManager),
-Kotlin, Kotlin Coroutines, Kotlin Serialization, KSP, Gradle and the Android
-Gradle Plugin. These projects are distributed primarily under Apache License
-2.0; consult each resolved artifact's metadata/source distribution for the
-authoritative notice and any transitive exceptions.
+RankOffline uses AndroidX and Jetpack components, Kotlin libraries, the Android Gradle
+Plugin, Gradle and KSP. The exact resolved dependencies and versions are declared in
+`gradle/libs.versions.toml`, `app/build.gradle.kts` and the Gradle lock or resolution
+output. Consult each dependency's distributed licence and notice for its applicable
+terms; this document does not replace those notices.
 
-No catalog database, provider logo or provider-specific attribution from the
-v0.2.1 archive is bundled. Each installed `.pack` must carry and expose its own
-publisher, dataset, source, licence and notice information.
+Catalog datasets, cover services, provider marks and pack-specific legal texts are
+declared by each installed `.pack` and displayed through its attribution information. A
+pack's manifest and bundled legal files are the relevant sources for that pack.
+Technical validation of a manifest does not establish that its publisher holds all
+distribution rights.
 
-The GPL-3.0 application licence is in [LICENSE](../LICENSE). Visual resource
-provenance and unresolved publication checks are listed in
-[legal/ASSET_PROVENANCE.md](ASSET_PROVENANCE.md).
+Application source is licensed under [GPL-3.0-only](../../LICENSE). RankOffline branding
+and third-party marks are addressed separately in [TRADEMARKS.md](TRADEMARKS.md).

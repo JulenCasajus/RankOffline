@@ -17,6 +17,13 @@
   <string name='action_cancel'>Annulla</string>
   <string name='action_delete'>Elimina</string>
   <string name='action_continue'>Continua</string>
+  <string name='whats_new_title'>Novità della versione %1$s</string>
+  <string name='whats_new_visuals'>Un aspetto nuovo e più curato in tutta l’app.</string>
+  <string name='whats_new_packs'>Anime, manga, film, serie e libri in un unico posto.</string>
+  <string name='whats_new_features'>Filtri, Merge e gestione delle copertine migliorati.</string>
+  <string name='whats_new_bugs'>Risolti alcuni bug… forse ne ho creati altri.</string>
+  <string name='whats_new_thanks'>Grazie per usare RankOffline!</string>
+  <string name='whats_new_contact'>Problemi? Fammi sapere :D</string>
   <string name='action_save'>Salva</string>
   <string name='action_apply'>Applica</string>
   <string name='action_back'>Indietro</string>
@@ -56,6 +63,8 @@
   <string name='general_sticky_score'>Intestazione del punteggio fissa</string>
   <string name='general_sticky_score_description'>Mantieni visibile il punteggio durante lo scorrimento</string>
   <string name='general_show_images'>Mostra immagini</string>
+  <string name='general_titles_on_podium'>Titoli sul podio</string>
+  <string name='general_titles_on_podium_description'>Mostra i titoli degli elementi sul podio</string>
   <string name='language_title'>Lingua</string>
   <string name='language_description'>Lingua dell’interfaccia dell’app</string>
   <string name='language_english'>English</string>
@@ -92,6 +101,9 @@
     finali e le note esistenti non cambieranno.
   </string>
   <string name='bonus_personal_taste'>Gusto personale</string>
+  <string name='personal_taste_setting_description'>Aggiunge fino a 1 punto per il gusto personale</string>
+  <string name='cover_network_error'>Errore di connessione. Riprova a scaricare la copertina.</string>
+  <string name='cover_temporary_error'>Servizio copertine non disponibile. Riprova più tardi.</string>
   <string name='about_version'>Versione %1$s</string>
   <string name='error_initialize_local_data'>Impossibile inizializzare i dati locali.</string>
   <string name='pack_source_refresh_failed'>Impossibile aggiornare i pacchetti. Controlla la connessione e riprova.</string>
@@ -233,6 +245,7 @@
   <string name='category_phase_waiting_covers'>In attesa delle copertine…</string>
   <string name='category_phase_importing_catalog'>Importazione catalogo… Potrebbe richiedere un po’ di tempo.</string>
   <string name='category_phase_downloading_covers'>Download copertine: %1$d / %2$d</string>
+  <string name='category_phase_covers_waiting_save'>Copertine pronte · attesa del database</string>
   <string name='category_deleting'>Eliminazione…</string>
   <string name='category_phase_finalizing'>Finalizzazione…</string>
   <string name='category_pack_runtime_error'>Impossibile preparare il catalogo. Tocca per riprovare.</string>
@@ -257,7 +270,8 @@
   <string name='pack_storage_details'>Dettagli archiviazione</string>
   <string name='pack_storage_transfer'>Dimensione: %1$s</string>
   <string name='pack_storage_covers'>Copertine</string>
-  <string name='pack_storage_physical_total'>Totale fisico</string>
+  <string name='pack_storage_package'>Pacchetto</string>
+  <string name='pack_storage_ratings'>Valutazioni</string>
   <string name='category_uninstall_keep_data'>Disinstalla e conserva i dati personali</string>
   <string name='media_all'>Tutto</string>
   <string name='personal_backup_preview_title'>Importare i dati personali?</string>
@@ -277,7 +291,7 @@
   <string name='ranking_share_show_images'>Mostra immagini</string>
   <string name='ranking_share_failed'>Impossibile creare l’immagine della classifica.</string>
   <string name='ranking_share_empty'>Valuta almeno un elemento per creare un’immagine della classifica.</string>
-  <string name="covers_batch_outcomes">%1$d scaricate · %2$d non trovate · %3$d errori</string>
+  <string name="covers_batch_outcomes">%1$d già scaricate · %2$d scaricate · %3$d non trovate · %4$d errori</string>
   <plurals name="subtitle_values_of_field">
     <item quantity="one">%2$s (%1$d)</item>
     <item quantity="other">%2$s (%1$d)</item>

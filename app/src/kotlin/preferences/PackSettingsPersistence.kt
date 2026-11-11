@@ -68,6 +68,9 @@ suspend fun SettingsRepository.updateAllMergeEnabled(value: Boolean) = updateAll
 
 suspend fun SettingsRepository.updateAllShowImages(value: Boolean) = updateAllView { it.copy(showImages = value) }
 
+suspend fun SettingsRepository.updateAllTitlesOnPodium(value: Boolean) =
+    updateAllView { it.copy(titlesOnPodium = value) }
+
 
 suspend fun SettingsRepository.updateAllStickyScore(value: Boolean) = updateAllView { it.copy(stickyScore = value) }
 

@@ -1,29 +1,20 @@
 # Changelog
 
-## 0.2.2 integration work
+This file records user-visible changes. Development builds may contain additional fixes
+before a release is published.
 
-- Added debug HTTPS package discovery and installation from a GitHub release
-  index, reusing the existing archive validation, Room import and READY path.
-- Removed the temporary additional debug launcher and file-picker activity.
-- Added separate supplied Share backgrounds for every official package and new
-  default Top 7/Top 10 artwork, stored as high-quality WebP.
-- Added reproducible schema-2 package validation and bounded declarative cover
-  metadata requests; the Anime package declares AniList/Jikan without provider
-  branches in Kotlin.
+## 0.2.1 & 0.2.2
 
-## 0.2.2 — unreleased
+- Rebuilt the application around validated, downloadable catalog packs. The engine handles fields, filters, groups, rating categories, profiles, cover sources and attribution declared by each pack.
+- Added RankOffline All, paged Search and MyRanking, and a five-view session cache with independent list positions.
+- Added declarative cover downloads with source-specific HTTPS restrictions, provider rate limits, group-cover fallback and visible batch progress.
+- Added editable local rating categories and profiles, personal JSON backup and restore, and a one-time import of personal ratings from the published 0.2.0 app.
+- Added a package index, WorkManager installation and recovery, and local READY verification after restart.
+- Updated sharing, themes, onboarding and package settings. Pack and personal data remain separate so ordinary uninstall retains ratings.
 
-- Replaced the legacy category-specific engine with 194 universal Kotlin files.
-- Adopted numeric positive `PackId`; zero is virtual RankOfflineAll.
-- Added manifest schema 2, catalog/group format 2 and personal backup schema 2.
-- Added composite pack-scoped Room storage, paged All, generic covers, group
-  relationships, Top 7/Top 10 Share and durable pack work.
-- Reconstructed the Android project with AGP 9.5, Gradle 9.8.2, Kotlin 2.4.21,
-  API 37, Compose, Room/KSP and WorkManager.
-- Removed built-in content/provider catalogs and obsolete schema-1 pack tools.
-- Added a declarative, deterministic schema-2 pack builder, an independent
-  strict validator, negative fixtures and conversion configurations for the
-  five official catalog snapshots. Generated `.pack` files are not committed.
+## 0.2.0
 
-Not included: legacy migration, production publisher-trust registry,
-pack updates/synchronization, Google Play publication or definitive Share artwork.
+- Published the earlier catalog and rating application. Its data format and database are distinct from the current pack-driven engine.
+
+The `.pack` manifest and personal backup formats have independent version numbers; see
+[PACK_FORMAT.md](PACK_FORMAT.md).

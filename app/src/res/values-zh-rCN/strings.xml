@@ -17,6 +17,13 @@
   <string name='action_cancel'>取消</string>
   <string name='action_delete'>删除</string>
   <string name='action_continue'>继续</string>
+  <string name='whats_new_title'>版本 %1$s 的新变化</string>
+  <string name='whats_new_visuals'>整个应用焕然一新，更加美观。</string>
+  <string name='whats_new_packs'>动画、漫画、电影、剧集和图书，尽在一处。</string>
+  <string name='whats_new_features'>改进了筛选、Merge 和封面操作。</string>
+  <string name='whats_new_bugs'>修复了一些问题……也许又添了几个。</string>
+  <string name='whats_new_thanks'>感谢使用 RankOffline！</string>
+  <string name='whats_new_contact'>遇到问题？告诉我吧 :D</string>
   <string name='action_save'>保存</string>
   <string name='action_apply'>应用</string>
   <string name='action_back'>返回</string>
@@ -54,6 +61,8 @@
   <string name='general_sticky_score'>固定评分栏</string>
   <string name='general_sticky_score_description'>滚动时保持评分可见</string>
   <string name='general_show_images'>显示图片</string>
+  <string name='general_titles_on_podium'>领奖台显示标题</string>
+  <string name='general_titles_on_podium_description'>在领奖台上显示条目标题</string>
   <string name='language_title'>语言</string>
   <string name='language_description'>应用界面语言</string>
   <string name='language_english'>English</string>
@@ -87,6 +96,9 @@
   <string name='category_delete_title'>删除类别？</string>
   <string name='category_delete_explanation'>将删除“%1$s”及其已保存的详细评分。现有最终分数和笔记不会更改。</string>
   <string name='bonus_personal_taste'>个人喜好</string>
+  <string name='personal_taste_setting_description'>根据个人喜好最多加 1 分</string>
+  <string name='cover_network_error'>连接错误。请重试下载封面。</string>
+  <string name='cover_temporary_error'>封面服务暂不可用，请稍后重试。</string>
   <string name='about_version'>版本 %1$s</string>
   <string name='error_initialize_local_data'>无法初始化本地数据。</string>
   <string name='pack_source_refresh_failed'>无法刷新软件包。请检查网络连接后重试。</string>
@@ -204,6 +216,7 @@
   <string name='category_phase_waiting_covers'>等待封面…</string>
   <string name='category_phase_importing_catalog'>正在导入目录… 这可能需要一些时间。</string>
   <string name='category_phase_downloading_covers'>正在下载封面：%1$d / %2$d</string>
+  <string name='category_phase_covers_waiting_save'>封面已就绪 · 等待数据库</string>
   <string name='category_deleting'>正在删除…</string>
   <string name='category_phase_finalizing'>正在完成…</string>
   <string name='category_pack_runtime_error'>无法准备目录。点按重试。</string>
@@ -228,7 +241,8 @@
   <string name='pack_storage_details'>存储详情</string>
   <string name='pack_storage_transfer'>大小：%1$s</string>
   <string name='pack_storage_covers'>封面</string>
-  <string name='pack_storage_physical_total'>物理总量</string>
+  <string name='pack_storage_package'>资源包</string>
+  <string name='pack_storage_ratings'>评分</string>
   <string name='category_uninstall_keep_data'>卸载并保留个人数据</string>
   <string name='media_all'>全部</string>
   <string name='personal_backup_preview_title'>导入个人数据？</string>
@@ -241,7 +255,7 @@
   <string name='ranking_share_show_images'>显示图片</string>
   <string name='ranking_share_failed'>无法创建排名图片。</string>
   <string name='ranking_share_empty'>请至少为一个条目评分以创建排名图片。</string>
-  <string name="covers_batch_outcomes">%1$d 已下载 · %2$d 未找到 · %3$d 错误</string>
+  <string name="covers_batch_outcomes">%1$d 此前已下载 · %2$d 本次下载 · %3$d 未找到 · %4$d 错误</string>
   <plurals name="subtitle_values_of_field">
     <item quantity="other">%2$s (%1$d)</item>
   </plurals>

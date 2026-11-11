@@ -36,7 +36,7 @@ internal fun MediaEntryRow(
     var expandedField by remember(entry.key) { mutableStateOf<String?>(null) }
     Card(colors = CardDefaults.cardColors(containerColor = Panel),
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = if (entry is MediaListEntry.Group) onGroupDetails else onClick)) {
+        modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (rank != null) Text("$rank.", modifier = Modifier.width(38.dp), fontWeight = FontWeight.SemiBold)
             if (showImages) {
@@ -46,7 +46,9 @@ internal fun MediaEntryRow(
                     showImages = true, modifier = Modifier.size(56.dp))
                 Spacer(Modifier.width(12.dp))
             }
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f).clickable(
+                onClick = if (entry is MediaListEntry.Group) onGroupDetails else onClick
+            )) {
                 Text(entry.title, fontWeight = FontWeight.SemiBold, maxLines = 2,
                     overflow = TextOverflow.Ellipsis)
                 if (subtitles.isNotEmpty() || entry is MediaListEntry.Group) {
@@ -63,10 +65,7 @@ internal fun MediaEntryRow(
                                 if (index == 0 && entry is MediaListEntry.Group) "|" else "·",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            val label = if (part.compact) pluralStringResource(
-                                R.plurals.subtitle_values_of_field, part.values.size,
-                                part.values.size, part.label
-                            ) else part.values.joinToString(", ")
+                            val label = part.displayText()
                             Text(label, style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 color = if (part.compact) MaterialTheme.colorScheme.primary
@@ -112,6 +111,11 @@ internal data class CatalogSubtitlePart(
     val values: List<String>,
     val compact: Boolean
 )
+
+@Composable
+internal fun CatalogSubtitlePart.displayText(): String = if (compact) pluralStringResource(
+    R.plurals.subtitle_values_of_field, values.size, values.size, label
+) else values.joinToString(", ")
 
 internal fun PackManifest.subtitleDefinitions(): List<PackFieldDefinition> =
     subtitle.mapNotNull { id -> fields.firstOrNull { it.id == id } }

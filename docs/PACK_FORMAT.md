@@ -1,60 +1,37 @@
-# `.pack` format overview
+# Pack format
 
-A `.pack` is a data-only ZIP archive. It is not an APK, backup or executable
-plugin. The validated root `manifest.json` uses `schemaVersion: 2` and binds the
-archive identity, compatible app version, capabilities, data files, integrity,
-presentation and legal attribution.
+A `.pack` is a data-only ZIP archive. It is neither an APK nor a personal backup. The
+root `manifest.json` uses `schemaVersion: 2` and declares the pack's identity,
+compatibility, presentation, fields, filters, ratings, cover sources, payload paths,
+attribution and integrity data.
 
-## Four independent versions
+The following versions are independent:
 
-| Concept | Current value | Purpose |
+| Contract | Current version | Purpose |
 |---|---:|---|
-| APK `versionName` | 0.2.2 | Installed Android application release |
-| pack manifest `schemaVersion` | 2 | Shape and rules of `manifest.json` |
-| catalog/group `formatVersion` | 2 | JSONL record representation |
-| personal backup `schemaVersion` | 2 | User-data JSON; never a `.pack` |
+| Android application | `versionName` in `app/build.gradle.kts` | Installed application version |
+| Pack manifest | 2 | Structure of `manifest.json` |
+| Catalog and group records | 2 | JSONL item and group representation |
+| Personal backup | 2 | User-owned JSON export; never a `.pack` |
 
-Changing one does not implicitly change the others.
+Catalog and group payloads are UTF-8 JSONL, optionally compressed as `.jsonl.gz`. Every
+non-directory ZIP entry except `manifest.json` must be declared exactly once in
+`integrity.files` with its path, byte count and SHA-256. The installed-byte total must
+match the declared files. Undeclared, duplicate, missing, unsafe or oversized entries
+are rejected.
 
-## Data
+Item and group IDs are scoped to a positive numeric `packId`. The verified containing
+manifest supplies that identity; individual JSONL records do not repeat it. The parser
+rejects unknown record properties and attributes not declared in `fields`. Group
+membership is a relation between existing items. Merge determines whether the UI
+displays groups or individual entries.
 
-Catalog and optional group payloads are UTF-8 JSONL, optionally GZIP-compressed
-as declared by the manifest. Item and group IDs are local to one positive
-numeric `packId`; the importer supplies the verified containing `packId` rather
-than trusting each line. Field definitions are generic (`text`, `integer`,
-`decimal`, `boolean`, `date`, `choice`). Unknown properties and undeclared
-fields are rejected.
+A cover source declares either ordered HTTPS image URL templates or a bounded JSON
+metadata request. Each image candidate retains the exact `allowedHosts` set of the
+source that produced it. The downloader validates URLs, DNS/IP, redirects, size and
+image content before storing a file. Installed local covers and downloaded covers remain
+inside the owning pack directory.
 
-Every payload/resource must be declared by path, byte count and SHA-256 in the
-integrity section. Paths are relative, normalized and contained inside the
-installation root. See [PACK_MANIFEST_SPEC.md](PACK_MANIFEST_SPEC.md) for the
-complete normative contract.
-
-Pack tools from v0.2.1 implement schema 1 and are not compatible.
-
-## Archive contract enforced by v0.2.2
-
-`manifest.json` is not listed inside `integrity.files`. Every other non-directory
-ZIP entry is listed exactly once; undeclared and missing entries are rejected.
-Catalog/group payloads accepted by the importer end in `.jsonl` or `.jsonl.gz`
-(not the historical `.jsonl.gzip`). Explicit ZIP directory entries are not
-needed by the generator.
-
-Item and group records use strict JSON decoding. Item records contain only
-`id`, `title`, optional provider/popularity/cover values, `attributes` and
-`aliases`; group records contain only identity, membership, presentation,
-provider/popularity and cover values. The containing verified manifest supplies
-the numeric `packId`.
-
-The maintained commands and conversion limitations are documented in
-[PACK_GENERATION.md](PACK_GENERATION.md).
-
-## Remote covers
-
-A source declares either ordered HTTPS `urlTemplates` or one bounded
-`metadataRequest`. Metadata-backed records use
-`cover:v1|reference_key=positive_id` and may contain several keys so sources can
-be tried in manifest order. A metadata recipe is data, not executable provider
-code: it is limited to GET/POST JSON, a fixed HTTPS host, ordered JSON response
-paths, request spacing and approved image hosts. The resulting image still
-passes through the ordinary size, MIME, content and storage checks.
+See [PACK_MANIFEST_SPEC.md](PACK_MANIFEST_SPEC.md) for the manifest fields and
+[PACK_GENERATION.md](PACK_GENERATION.md) for generation and validation commands. The
+Kotlin parser and installer are authoritative if documentation and code differ.

@@ -112,7 +112,7 @@ internal fun ThemeSettingsScreen(
                     },
                     label = stringResource(R.string.theme_create),
                     icon = Icons.Default.Add,
-                    filled = true
+                    primary = true
                 )
             }
             item {
@@ -120,7 +120,7 @@ internal fun ThemeSettingsScreen(
                     onClick = onResetBuiltInThemes,
                     label = stringResource(R.string.theme_reset_builtins),
                     icon = Icons.Default.Restore,
-                    filled = false
+                    primary = false
                 )
             }
         }

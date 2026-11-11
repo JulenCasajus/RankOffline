@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,6 +44,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 
 /** UI-only phase mapping; no status persistence or duplicate job state. */
 @Composable
@@ -66,6 +69,8 @@ private fun packStatusText(state: PackState): String {
             progress.coverProcessed,
             progress.coverTarget
         )
+        PackInstallPhase.WAITING_TO_SAVE_COVERS ->
+            stringResource(R.string.category_phase_covers_waiting_save)
         null -> when (state.status) {
             PackRuntimeStatus.READY -> stringResource(R.string.category_downloaded) +
                 if (state.storage.current) {
@@ -88,11 +93,15 @@ internal fun PackManagementRow(
     onInstall: () -> Unit,
     onCancelInitialCovers: () -> Unit,
     onRemove: () -> Unit,
-    onRequestStorageDetails: () -> Unit
+    onRequestStorageDetails: () -> Unit,
+    observePersonalStorage: ((PackId) -> Flow<PackPersonalStorage>)? = null
 ) {
     val state = entry.state
     val accent = entry.accentArgb?.let(::Color) ?: MaterialTheme.colorScheme.primary
     var expanded by rememberSaveable(entry.packId.value) { mutableStateOf(false) }
+    val personal by produceState<PackPersonalStorage?>(null, entry.packId, expanded) {
+        if (expanded) observePersonalStorage?.invoke(entry.packId)?.collect { value = it }
+    }
     val context = LocalContext.current
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -113,10 +122,13 @@ internal fun PackManagementRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     state.progress?.takeIf { state.status != PackRuntimeStatus.DELETING &&
-                        it.phase == PackInstallPhase.DOWNLOADING_COVERS }
+                        it.phase in setOf(PackInstallPhase.DOWNLOADING_COVERS,
+                            PackInstallPhase.WAITING_TO_SAVE_COVERS) }
                         ?.let { progress ->
                             Text(
                                 text = stringResource(R.string.covers_batch_outcomes,
+                                    (progress.coverProcessed - progress.coverDownloaded -
+                                        progress.coverNotFound - progress.coverErrors).coerceAtLeast(0),
                                     progress.coverDownloaded, progress.coverNotFound, progress.coverErrors),
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -175,7 +187,8 @@ internal fun PackManagementRow(
                         progress = { progress.downloadFraction },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = accent
                     )
-                    PackInstallPhase.DOWNLOADING_COVERS -> LinearProgressIndicator(
+                    PackInstallPhase.DOWNLOADING_COVERS,
+                    PackInstallPhase.WAITING_TO_SAVE_COVERS -> LinearProgressIndicator(
                         progress = {
                             if (progress.coverTarget <= 0) 0f
                             else (progress.coverProcessed.toFloat() / progress.coverTarget).coerceIn(0f, 1f)
@@ -191,26 +204,25 @@ internal fun PackManagementRow(
             }
             if (expanded && state.installed && state.progress == null &&
                 state.status != PackRuntimeStatus.DELETING) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(stringResource(R.string.pack_storage_physical_total), fontSize = 12.sp)
-                    Text(
-                        if (state.storage.current) Formatter.formatFileSize(context, state.storage.installedBytes)
-                        else "—",
-                        fontSize = 12.sp, fontWeight = FontWeight.Medium
-                    )
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.pack_storage_covers), fontSize = 12.sp)
-                    Text(
-                        if (state.storage.current) Formatter.formatFileSize(context, state.storage.coverBytes)
-                        else "—", fontSize = 12.sp
-                    )
-                }
+                StorageBreakdownRow(stringResource(R.string.pack_storage_package),
+                    if (state.storage.current) Formatter.formatFileSize(context,
+                        (state.storage.installedBytes - state.storage.coverBytes).coerceAtLeast(0L)) else "—",
+                    Modifier.padding(top = 10.dp))
+                StorageBreakdownRow(stringResource(R.string.pack_storage_ratings),
+                    personal?.let { Formatter.formatFileSize(context, it.logicalDatabaseBytes) } ?: "—")
+                StorageBreakdownRow(stringResource(R.string.pack_storage_covers),
+                    if (state.storage.current) Formatter.formatFileSize(context, state.storage.coverBytes)
+                    else "—")
             }
         }
+    }
+}
+
+@Composable
+private fun StorageBreakdownRow(label: String, size: String, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, fontSize = 12.sp)
+        Text(size, fontSize = 12.sp)
     }
 }
 

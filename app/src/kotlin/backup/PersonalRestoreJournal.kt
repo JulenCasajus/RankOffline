@@ -116,12 +116,16 @@ internal class PersonalLocalBackupFiles(context: Context) {
 }
 
 internal fun PersonalPackPreferences.toBackup() = BackupPackPreferences(
-    showImages = showImages, stickyScore = stickyScore, mergeEnabled = mergeEnabled,
-    elaborateRatingEnabled = elaborateRatingEnabled, catalogSortOrder = catalogSortOrder
+    showImages = showImages, titlesOnPodium = titlesOnPodium,
+    stickyScore = stickyScore, mergeEnabled = mergeEnabled,
+    elaborateRatingEnabled = elaborateRatingEnabled, personalTasteEnabled = personalTasteEnabled,
+    catalogSortOrder = catalogSortOrder
 )
 internal fun BackupPackPreferences.toPersonal() = PersonalPackPreferences(
-    showImages = showImages, stickyScore = stickyScore, mergeEnabled = mergeEnabled,
-    elaborateRatingEnabled = elaborateRatingEnabled, catalogSortOrder = catalogSortOrder
+    showImages = showImages, titlesOnPodium = titlesOnPodium,
+    stickyScore = stickyScore, mergeEnabled = mergeEnabled,
+    elaborateRatingEnabled = elaborateRatingEnabled, personalTasteEnabled = personalTasteEnabled,
+    catalogSortOrder = catalogSortOrder
 )
 
 private const val MAX_RESTORE_JOURNAL_BYTES = 64 * 1024 * 1024

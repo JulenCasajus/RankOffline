@@ -22,13 +22,21 @@ enum class CoverTransferResult { DOWNLOADED, NOT_FOUND, NETWORK_ERROR, TEMPORARY
 
 internal fun coverTransferFailureForHttpStatus(status: Int): CoverTransferResult? = when {
     status in 200..299 -> null
-    status == 404 || status == 410 -> CoverTransferResult.NOT_FOUND
+    status == 403 || status == 404 || status == 410 -> CoverTransferResult.NOT_FOUND
     else -> CoverTransferResult.TEMPORARY_ERROR
 }
+
+/** A URL rejected by the pack's security policy cannot succeed on a later retry. */
+internal fun coverRedirectPolicyFailure(uri: URI, allowedHosts: Set<String>, redirects: Int): CoverTransferResult? =
+    if (redirects > 3 || !isSafeHttpsUri(uri, allowedHosts)) CoverTransferResult.NOT_FOUND else null
 
 fun interface CoverDownloader {
     /** Destination must be a fresh temporary file in the app's private directory. */
     suspend fun download(remoteUri: URI, destination: File): CoverTransferResult
+
+    /** Existing test downloaders can still implement the two-argument method. */
+    suspend fun download(remoteUri: URI, destination: File, allowedHosts: Set<String>): CoverTransferResult =
+        download(remoteUri, destination)
 }
 
 /**
@@ -39,35 +47,39 @@ class SecureCoverDownloader internal constructor(
     private val scheduler: PackOperationScheduler? = null
 ) : CoverDownloader {
     override suspend fun download(remoteUri: URI, destination: File): CoverTransferResult =
+        download(remoteUri, destination, setOfNotNull(remoteUri.host?.lowercase(java.util.Locale.ROOT)))
+
+    override suspend fun download(
+        remoteUri: URI, destination: File, allowedHosts: Set<String>
+    ): CoverTransferResult =
         withContext(Dispatchers.IO) {
-            val host = remoteUri.host?.lowercase()
-                ?.takeIf { isSafeHttpsUri(remoteUri, setOf(it)) }
-                ?: return@withContext CoverTransferResult.TEMPORARY_ERROR
+            val hosts = allowedHosts.map { it.lowercase(java.util.Locale.ROOT) }.toSet()
             var current = remoteUri
             var redirects = 0
+            var currentHost = remoteUri.host?.lowercase(java.util.Locale.ROOT) ?: "unknown-host"
             try {
                 while (true) {
                     currentCoroutineContext().ensureActive()
-                    val retryGate = retryAfterByHost.computeIfAbsent(host) { AtomicLong(0L) }
+                    if (coverRedirectPolicyFailure(current, hosts, redirects) != null) {
+                        CoverFailureDiagnostics.record(current.host,
+                            if (redirects > 3) "redirect-limit" else "unsafe-redirect")
+                        return@withContext CoverTransferResult.NOT_FOUND
+                    }
+                    currentHost = current.host?.lowercase(java.util.Locale.ROOT)
+                        ?: return@withContext CoverTransferResult.NOT_FOUND
+                    val retryGate = retryAfterByHost.computeIfAbsent(currentHost) { AtomicLong(0L) }
                     val wait = retryGate.get() - System.currentTimeMillis()
                     if (wait > 0L) delay(wait)
-                    if (!isSafeHttpsUri(current, setOf(host))) {
-                        CoverFailureDiagnostics.record(host, "unsafe-redirect")
-                        return@withContext CoverTransferResult.TEMPORARY_ERROR
-                    }
-                    if (!resolvesToPublicAddresses(host)) {
-                        CoverFailureDiagnostics.record(host, "non-public-dns")
-                        return@withContext CoverTransferResult.TEMPORARY_ERROR
+                    if (!resolvesToPublicAddresses(currentHost)) {
+                        CoverFailureDiagnostics.record(currentHost, "non-public-dns")
+                        return@withContext CoverTransferResult.NOT_FOUND
                     }
 
-                    val attempt = if (scheduler == null) requestOnce(current, host, retryGate, destination)
-                        else scheduler.withCoverTransfer { requestOnce(current, host, retryGate, destination) }
+                    val attempt = if (scheduler == null) requestOnce(current, currentHost, retryGate, destination)
+                        else scheduler.withCoverTransfer { requestOnce(current, currentHost, retryGate, destination) }
                     if (attempt.redirect != null) {
-                        if (redirects++ >= 3) {
-                            CoverFailureDiagnostics.record(host, "redirect-limit")
-                            return@withContext CoverTransferResult.TEMPORARY_ERROR
-                        }
                         current = attempt.redirect
+                        redirects++
                         continue
                     }
                     return@withContext requireNotNull(attempt.result)
@@ -77,7 +89,7 @@ class SecureCoverDownloader internal constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: IOException) {
-                CoverFailureDiagnostics.record(host, failure.javaClass.simpleName)
+                CoverFailureDiagnostics.record(currentHost, failure.javaClass.simpleName)
                 if (failure is UnknownHostException || failure is ConnectException ||
                     failure is SocketException || failure is SocketTimeoutException
                 ) CoverTransferResult.NETWORK_ERROR
@@ -100,9 +112,9 @@ class SecureCoverDownloader internal constructor(
             val status = connection.responseCode
             if (status in REDIRECT_STATUSES) {
                 val location = connection.getHeaderField("Location")
-                    ?: return CoverHttpAttempt(result = CoverTransferResult.TEMPORARY_ERROR)
+                    ?: return CoverHttpAttempt(result = CoverTransferResult.NOT_FOUND)
                 val target = runCatching { uri.resolve(location) }.getOrNull()
-                    ?: return CoverHttpAttempt(result = CoverTransferResult.TEMPORARY_ERROR)
+                    ?: return CoverHttpAttempt(result = CoverTransferResult.NOT_FOUND)
                 return CoverHttpAttempt(redirect = target)
             }
             if (status !in 200..299) CoverFailureDiagnostics.record(host, "http-$status")

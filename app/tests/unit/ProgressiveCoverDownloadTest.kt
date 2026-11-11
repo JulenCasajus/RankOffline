@@ -43,22 +43,45 @@ class ProgressiveCoverDownloadTest {
         val result = progressiveCoverDownload(emptyList(), listOf("first", "second"), { source ->
             resolved += source
             CoverMetadataResolution(listOf(if (source == "first") first else second))
-        }) { if (it == first) CoverDownloadResult.NotFound else CoverDownloadResult.Downloaded }
+        }) { if (it.uri == first) CoverDownloadResult.NotFound else CoverDownloadResult.Downloaded }
 
         assertEquals(CoverDownloadResult.Downloaded, result)
         assertEquals(listOf("first", "second"), resolved)
     }
 
     @Test
-    fun forbiddenImageFallsBackWithoutBecomingNotFound() = runBlocking {
+    fun forbiddenImageFallsBackBeforeDefinitiveAbsence() = runBlocking {
         val forbidden = URI("https://images.example.com/forbidden.jpg")
         val fallback = URI("https://images.example.com/fallback.jpg")
         val result = progressiveCoverDownload(emptyList(), listOf("first", "second"), { source ->
             CoverMetadataResolution(listOf(if (source == "first") forbidden else fallback))
-        }) { if (it == forbidden) CoverDownloadResult.TemporaryError else CoverDownloadResult.Downloaded }
+        }) { if (it.uri == forbidden) CoverDownloadResult.NotFound else CoverDownloadResult.Downloaded }
 
-        assertEquals(CoverTransferResult.TEMPORARY_ERROR, coverTransferFailureForHttpStatus(403))
+        assertEquals(CoverTransferResult.NOT_FOUND, coverTransferFailureForHttpStatus(403))
         assertEquals(CoverDownloadResult.Downloaded, result)
+    }
+
+    @Test
+    fun unauthorizedRedirectFallsBackBeforePersistingAbsence() = runBlocking {
+        val first = URI("https://covers.openlibrary.org/first.jpg")
+        val fallback = URI("https://images.example.com/fallback.jpg")
+        val requested = mutableListOf<URI>()
+        val result = progressiveCoverDownload(
+            listOf(
+                CoverImageCandidate(first, setOf("covers.openlibrary.org", "archive.org")),
+                CoverImageCandidate(fallback, setOf("images.example.com"))
+            ), emptyList<String>(), { CoverMetadataResolution() }
+        ) { candidate ->
+            requested += candidate.uri
+            if (candidate.uri == first) {
+                assertEquals(CoverTransferResult.NOT_FOUND, coverRedirectPolicyFailure(
+                    URI("https://ia800100.us.archive.org/first.jpg"), candidate.allowedHosts, 2))
+                CoverDownloadResult.NotFound
+            } else CoverDownloadResult.Downloaded
+        }
+
+        assertEquals(CoverDownloadResult.Downloaded, result)
+        assertEquals(listOf(first, fallback), requested)
     }
 
     @Test
@@ -84,6 +107,11 @@ class ProgressiveCoverDownloadTest {
         assertEquals(CoverTransferResult.NOT_FOUND, coverTransferFailureForHttpStatus(404))
         assertEquals(CoverTransferResult.NOT_FOUND, coverTransferFailureForHttpStatus(410))
         assertEquals(CoverDownloadResult.NotFound, result)
+        val key = CatalogEntryKey(PackId(1), "missing", CatalogEntryKind.ITEM)
+        val progress = coverProgressSnapshot(PackId(1), CoverDownloadStatus.COMPLETED, 1,
+            mapOf(key to result), emptySet())
+        assertEquals(1, progress.unavailable)
+        assertEquals(0, progress.errors)
     }
 
     @Test
@@ -109,7 +137,7 @@ class ProgressiveCoverDownloadTest {
         val result = progressiveCoverDownload(emptyList(), listOf("primary", "fallback"), { source ->
             resolved += source
             CoverMetadataResolution(listOf(first, second))
-        }) { if (it == first) CoverDownloadResult.NotFound else CoverDownloadResult.Downloaded }
+        }) { if (it.uri == first) CoverDownloadResult.NotFound else CoverDownloadResult.Downloaded }
 
         assertEquals(CoverDownloadResult.Downloaded, result)
         assertEquals(listOf("primary"), resolved)
@@ -120,12 +148,12 @@ class ProgressiveCoverDownloadTest {
         val shared = URI("https://images.example.com/shared.jpg")
         val final = URI("https://images.example.com/final.jpg")
         val requested = mutableListOf<URI>()
-        val result = progressiveCoverDownload(listOf(shared), listOf("first", "second"), { source ->
-            if (source == "first") CoverMetadataResolution(listOf(shared, shared))
-            else CoverMetadataResolution(listOf(shared, final))
-        }) { uri ->
-            requested += uri
-            if (uri == final) CoverDownloadResult.Downloaded else CoverDownloadResult.NotFound
+        val result = progressiveCoverDownload(listOf(CoverImageCandidate(shared, imageHosts)), listOf("first", "second"), { source ->
+            if (source == "first") CoverMetadataResolution(listOf(shared, shared), allowedHosts = imageHosts)
+            else CoverMetadataResolution(listOf(shared, final), allowedHosts = imageHosts)
+        }) { image ->
+            requested += image.uri
+            if (image.uri == final) CoverDownloadResult.Downloaded else CoverDownloadResult.NotFound
         }
 
         assertEquals(CoverDownloadResult.Downloaded, result)
@@ -144,7 +172,7 @@ class ProgressiveCoverDownloadTest {
         assertThrows(CancellationException::class.java) {
             runBlocking {
                 progressiveCoverDownload(
-                    listOf(URI("https://images.example.com/first.jpg")), emptyList<String>(),
+                    listOf(CoverImageCandidate(URI("https://images.example.com/first.jpg"), imageHosts)), emptyList<String>(),
                     { CoverMetadataResolution() }
                 ) { throw CancellationException("download cancelled") }
             }
@@ -155,9 +183,10 @@ class ProgressiveCoverDownloadTest {
     fun invalidImageTriesNextCandidate() = runBlocking {
         val invalid = URI("https://images.example.com/invalid.jpg")
         val valid = URI("https://images.example.com/valid.jpg")
-        val result = progressiveCoverDownload(listOf(invalid, valid), emptyList<String>(),
-            { CoverMetadataResolution() }) { uri ->
-            if (uri == invalid) CoverDownloadResult.TemporaryError else CoverDownloadResult.Downloaded
+        val result = progressiveCoverDownload(listOf(CoverImageCandidate(invalid, imageHosts),
+            CoverImageCandidate(valid, imageHosts)), emptyList<String>(),
+            { CoverMetadataResolution() }) { image ->
+            if (image.uri == invalid) CoverDownloadResult.TemporaryError else CoverDownloadResult.Downloaded
         }
 
         assertEquals(CoverDownloadResult.Downloaded, result)
@@ -171,7 +200,7 @@ class ProgressiveCoverDownloadTest {
         val exhausted = hashSetOf<CatalogEntryKey>()
         repeat(3) { attempt ->
             outcomes[key] = progressiveCoverDownload(
-                listOf(URI("https://images.example.com/timeout.jpg")), emptyList<String>(),
+                listOf(CoverImageCandidate(URI("https://images.example.com/timeout.jpg"), imageHosts)), emptyList<String>(),
                 { CoverMetadataResolution() }
             ) { CoverDownloadResult.NetworkError }
             if (attempt == 2) exhausted += key
@@ -182,4 +211,7 @@ class ProgressiveCoverDownloadTest {
         assertEquals(1, coverProgressSnapshot(packId, CoverDownloadStatus.COMPLETED,
             1, outcomes, exhausted).errors)
     }
+
 }
+
+private val imageHosts = setOf("images.example.com")

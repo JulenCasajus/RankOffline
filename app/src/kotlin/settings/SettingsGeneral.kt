@@ -257,8 +257,10 @@ internal fun ActivePackSettingsScreen(
 internal fun DisplaySettingsScreen(
     settings: AppSettingsState, allSelected: Boolean,
     onStickyScoreChange: (Boolean) -> Unit, onShowImagesChange: (Boolean) -> Unit,
+    onTitlesOnPodiumChange: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
+    val showImages = if (allSelected) settings.allViewSettings.showImages else settings.showImages
     SettingsSubscreen(stringResource(R.string.general_display_section), onBack) {
         LazyColumn(
             Modifier.fillMaxSize().background(Bg).padding(16.dp),
@@ -274,22 +276,31 @@ internal fun DisplaySettingsScreen(
             item {
                 SettingsSwitchRow(stringResource(R.string.general_show_images),
                     stringResource(R.string.general_show_images_description),
-                    if (allSelected) settings.allViewSettings.showImages else settings.showImages,
+                    showImages,
                     onShowImagesChange)
+            }
+            item {
+                SettingsSwitchRow(stringResource(R.string.general_titles_on_podium),
+                    stringResource(R.string.general_titles_on_podium_description),
+                    if (allSelected) settings.allViewSettings.titlesOnPodium
+                    else settings.activeMediaSettings?.titlesOnPodium == true,
+                    onTitlesOnPodiumChange, enabled = showImages)
             }
         }
     }
 }
 
 @Composable
-private fun SettingsSwitchRow(label: String, detail: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
-        Row(Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun SettingsSwitchRow(label: String, detail: String, checked: Boolean,
+                              onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.alpha(if (enabled) 1f else 0.45f)) {
+        Row(Modifier.fillMaxWidth().clickable(enabled = enabled) { onChange(!checked) }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(label, fontWeight = FontWeight.SemiBold)
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Switch(checked = checked, onCheckedChange = onChange)
+            Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
         }
     }
 }
