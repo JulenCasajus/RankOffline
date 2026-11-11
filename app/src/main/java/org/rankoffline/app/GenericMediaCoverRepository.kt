@@ -222,6 +222,9 @@ class GenericMediaCoverRepository(
     override fun observeLocalCoverPath(mediaId: String): Flow<String?> =
         dao.observeLocalCoverPath(mediaId).distinctUntilChanged()
 
+    override fun observeResolutionState(mediaId: String): Flow<String?> =
+        dao.observeCoverResolutionState(mediaId).distinctUntilChanged()
+
     override fun observeDownloadState(mediaId: String): StateFlow<CoverDownloadState> =
         downloadStates.getOrPut(mediaId) { MutableStateFlow(CoverDownloadState.IDLE) }.asStateFlow()
 
@@ -290,6 +293,9 @@ class GenericMediaCoverRepository(
             dao.updateMediaCover(mediaId, null, CoverResolutionState.UNKNOWN.name)
         }
 
+        if (entity.coverResolutionState == CoverResolutionState.NOT_FOUND.name) {
+            return@withContext CoverDownloadResult.NotFound
+        }
         if (!inProgress.add(mediaId)) return@withContext CoverDownloadResult.AlreadyInProgress
 
         destination.parentFile?.let { directory ->
@@ -470,6 +476,9 @@ class GenericMediaGroupCoverRepository(
     override fun observeLocalCoverPath(mediaId: String): Flow<String?> =
         dao.observeLocalCoverPath(mediaId).distinctUntilChanged()
 
+    override fun observeResolutionState(mediaId: String): Flow<String?> =
+        dao.observeCoverResolutionState(mediaId).distinctUntilChanged()
+
     override fun observeDownloadState(mediaId: String): StateFlow<CoverDownloadState> =
         downloadStates.getOrPut(mediaId) { MutableStateFlow(CoverDownloadState.IDLE) }.asStateFlow()
 
@@ -497,6 +506,9 @@ class GenericMediaGroupCoverRepository(
         if (!entity.localCoverPath.isNullOrBlank() || entity.coverResolutionState == CoverResolutionState.AVAILABLE.name) {
             if (existing != null && storage.isDownloaded(existing, mediaType) && existing.exists()) existing.delete()
             dao.updateGroupCover(groupId, null, CoverResolutionState.UNKNOWN.name)
+        }
+        if (entity.coverResolutionState == CoverResolutionState.NOT_FOUND.name) {
+            return@withContext CoverDownloadResult.NotFound
         }
         if (!inProgress.add(groupId)) return@withContext CoverDownloadResult.AlreadyInProgress
         destination.parentFile?.let {
