@@ -20,6 +20,24 @@ class MediaSettingsTest {
     }
 
     @Test
+    fun personalTasteStartsDisabledForEveryPackAndPersistsIndependently() {
+        MediaType.entries.forEach { mediaType ->
+            assertFalse(DefaultSettings.mediaSettings(mediaType).personalTasteEnabled)
+        }
+        val changed = updateMediaSettings(DefaultSettings.allMediaSettings(), MediaType.BOOK) {
+            it.copy(personalTasteEnabled = true)
+        }
+        val restored = normalizeMediaSettingsSnapshot(
+            decodeMediaSettingsSnapshot(encodeMediaSettingsSnapshot(changed)),
+            changed.getValue(MediaType.ANIME)
+        )
+        assertTrue(restored.getValue(MediaType.BOOK).personalTasteEnabled)
+        MediaType.entries.filterNot { it == MediaType.BOOK }.forEach {
+            assertFalse(restored.getValue(it).personalTasteEnabled)
+        }
+    }
+
+    @Test
     fun welcomeImageChoiceKeepsBooksConservativeDefault() {
         assertFalse(onboardingShowImagesDefault(MediaType.BOOK, requested = true))
         MediaType.entries.filterNot { it == MediaType.BOOK }.forEach { mediaType ->
