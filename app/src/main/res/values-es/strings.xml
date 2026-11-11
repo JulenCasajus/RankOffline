@@ -194,4 +194,6 @@
     <string name="book_genre_science_technology">Ciencia y tecnología</string>
     <string name="book_genre_philosophy">Filosofía</string>
     <string name="book_genre_other">Otros / Sin clasificar</string>
+    <string name="rating_personal_taste_toggle">Gusto personal</string>
+    <string name="rating_personal_taste_toggle_description">Añade hasta un punto por gusto personal</string>
 </resources>
