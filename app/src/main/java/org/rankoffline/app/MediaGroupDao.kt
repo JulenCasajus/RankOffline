@@ -494,6 +494,9 @@ interface MediaGroupDao {
     @Query("SELECT local_cover_path FROM media_group WHERE id = :groupId")
     fun observeLocalCoverPath(groupId: String): Flow<String?>
 
+    @Query("SELECT cover_resolution_state FROM media_group WHERE id = :groupId")
+    fun observeCoverResolutionState(groupId: String): Flow<String?>
+
     @Query(
         "UPDATE media_group SET local_cover_path = :path, cover_resolution_state = :state " +
             "WHERE id = :groupId"
