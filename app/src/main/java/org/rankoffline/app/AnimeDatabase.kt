@@ -638,6 +638,9 @@ interface AnimeDao {
     @Query("SELECT local_cover_path FROM anime WHERE id = :animeId")
     fun observeLocalCoverPath(animeId: String): Flow<String?>
 
+    @Query("SELECT cover_resolution_state FROM anime WHERE id = :animeId")
+    fun observeCoverResolutionState(animeId: String): Flow<String?>
+
     @Query("SELECT local_cover_path FROM anime WHERE local_cover_path IS NOT NULL")
     suspend fun allLocalCoverPaths(): List<String>
 
