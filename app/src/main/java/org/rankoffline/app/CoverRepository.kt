@@ -53,6 +53,9 @@ class CoverRepository(
         return existing?.path ?: databaseValue
     }
 
+    override fun observeResolutionState(mediaId: String): Flow<String?> =
+        animeRepository.observeCoverResolutionState(mediaId).distinctUntilChanged()
+
     override fun observeDownloadState(mediaId: String): StateFlow<CoverDownloadState> =
         downloadStates.getOrPut(mediaId) { MutableStateFlow(CoverDownloadState.IDLE) }.asStateFlow()
 
