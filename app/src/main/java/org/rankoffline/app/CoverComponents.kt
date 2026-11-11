@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +63,12 @@ internal fun AnimeCover(
         observationSource?.observeDownloadState(storageIdentity.id) ?: flowOf(CoverDownloadState.IDLE)
     }
     val downloadState by downloadStateFlow.collectAsState(initial = CoverDownloadState.IDLE)
+    val resolutionFlow = remember(storageIdentity, observationSource) {
+        observationSource?.observeResolutionState(storageIdentity.id)
+            ?: flowOf(anime.coverResolutionState.name)
+    }
+    val resolutionName by resolutionFlow.collectAsState(initial = anime.coverResolutionState.name)
+    val notFound = resolutionName == CoverResolutionState.NOT_FOUND.name
     var invalidLocalPath by remember(anime.id, localPath) { mutableStateOf(false) }
     val effectiveLocalPath = localPath.takeUnless { invalidLocalPath }
     var bitmap by remember(storageIdentity, effectiveLocalPath) {
@@ -91,7 +98,8 @@ internal fun AnimeCover(
         effectiveLocalPath == null -> DefaultCover(
             modifier = modifier,
             downloading = downloadState == CoverDownloadState.DOWNLOADING,
-            enabled = allowDownload,
+            enabled = allowDownload && !notFound,
+            notFound = notFound,
             onClick = { dispatchCoverTap(null, onDownloadRequested, onCoverClick) }
         )
         else -> Box(
@@ -107,6 +115,7 @@ private fun DefaultCover(
     modifier: Modifier = Modifier,
     downloading: Boolean,
     enabled: Boolean = true,
+    notFound: Boolean = false,
     onClick: () -> Unit
 ) {
     Box(
@@ -116,7 +125,12 @@ private fun DefaultCover(
             .clickable(enabled = enabled && !downloading, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.Default.Image, stringResource(R.string.cover_download), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+        Icon(
+            if (notFound) Icons.Default.Image else Icons.Default.Download,
+            stringResource(if (notFound) R.string.message_cover_not_found else R.string.cover_download),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp)
+        )
         if (downloading) CircularProgressIndicator(Modifier.size(26.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
     }
 }
