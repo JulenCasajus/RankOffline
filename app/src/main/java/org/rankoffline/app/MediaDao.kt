@@ -253,6 +253,9 @@ interface MediaDao {
     @Query("SELECT local_cover_path FROM media_item WHERE id = :mediaId")
     fun observeLocalCoverPath(mediaId: String): Flow<String?>
 
+    @Query("SELECT cover_resolution_state FROM media_item WHERE id = :mediaId")
+    fun observeCoverResolutionState(mediaId: String): Flow<String?>
+
     @Query(
         "SELECT item.* FROM media_item item INNER JOIN media_rating rating ON rating.media_id = item.id " +
             "WHERE item.media_type = :mediaType AND rating.pack_id = :packId " +
