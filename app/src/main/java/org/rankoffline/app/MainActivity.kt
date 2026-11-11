@@ -1457,7 +1457,9 @@ private fun RatingScreen(
     onDelete: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
-    val config = settings.ratingConfig
+    val personalTasteEnabled = settings.personalTasteEnabled
+    val config = if (personalTasteEnabled) settings.ratingConfig
+        else settings.ratingConfig.copy(additiveBonus = null)
     val elaborate = settings.elaborateRatingEnabled
     val profiles = settings.ratingProfiles.profiles
     val initialProfile = remember(initial.profileId, profiles) {
@@ -1466,8 +1468,10 @@ private fun RatingScreen(
     var selectedProfileId by remember(anime.id, initialProfile.id) { mutableStateOf(initialProfile.id) }
     val selectedProfile = settings.ratingProfiles.resolveProfile(selectedProfileId)
     val calculationConfig = config.withProfile(selectedProfile)
-    val defaultDraft = remember(anime.id, initial, config.categories, elaborate) {
-        if (elaborate && initial.categoryScores.isEmpty()) initial.withDefaultCategoryScores(config) else initial
+    val defaultDraft = remember(anime.id, initial, config.categories, elaborate, personalTasteEnabled) {
+        val baseDraft = if (elaborate && initial.categoryScores.isEmpty())
+            initial.withDefaultCategoryScores(config) else initial
+        if (personalTasteEnabled) baseDraft else baseDraft.copy(additiveScore = 0.0)
     }
     var draft by remember(anime.id, defaultDraft) { mutableStateOf(defaultDraft) }
     val initialSimpleQuality = remember(anime.id, initial.qualityScore, initial.finalScore, initial.additiveScore) {
