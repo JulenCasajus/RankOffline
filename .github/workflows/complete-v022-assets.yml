@@ -1,0 +1,60 @@
+name: Complete v0.2.2 release assets
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Collect and verify assets
+        run: |
+          set -euo pipefail
+          mkdir dist
+          gh run download 43121551037 --name rankoffline-signed-release-apk --dir dist --repo "$GITHUB_REPOSITORY"
+          mv dist/app-release.apk dist/RankOffline-v0.2.2.apk
+          gh release download v0.2.2-debug.4 --pattern 'pack-*.pack' --dir dist --repo "$GITHUB_REPOSITORY"
+          gh release download v0.2.2 --pattern 'pack-index.json' --dir dist --repo "$GITHUB_REPOSITORY"
+          gh release download v0.2.2 --pattern 'SHA256SUMS.txt' --dir dist --repo "$GITHUB_REPOSITORY"
+          cd dist
+          sha256sum --check SHA256SUMS.txt
+
+      - name: Upload large assets
+        run: |
+          set -euo pipefail
+          for asset in RankOffline-v0.2.2.apk pack-{1..5}.pack; do
+            gh release upload v0.2.2 "dist/$asset" --repo "$GITHUB_REPOSITORY"
+          done
+
+      - name: Verify uploaded assets
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=20" \
+            --jq '.[] | select(.tag_name == "v0.2.2") | .id' > release-id.txt
+          test -s release-id.txt
+          gh api "repos/$GITHUB_REPOSITORY/releases/$(cat release-id.txt)/assets?per_page=100" > assets.json
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          assets = json.loads(Path('assets.json').read_text())
+          uploaded = {asset['name']: asset for asset in assets}
+          expected = ['RankOffline-v0.2.2.apk', 'pack-index.json', 'SHA256SUMS.txt']
+          expected += [f'pack-{number}.pack' for number in range(1, 6)]
+          assert set(uploaded) == set(expected), sorted(uploaded)
+          for name in expected:
+              asset = uploaded[name]
+              content = Path('dist', name).read_bytes()
+              assert asset['state'] == 'uploaded', (name, asset['state'])
+              assert asset['size'] == len(content), name
+              assert asset['digest'] == 'sha256:' + hashlib.sha256(content).hexdigest(), name
+          print('All eight release assets are uploaded and match their SHA-256 digests.')
+          PY
