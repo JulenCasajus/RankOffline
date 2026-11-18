@@ -55,7 +55,10 @@ data class MediaGroup(
     val representativeMediaId: String? = null,
     val remoteCoverRef: String? = null,
     val localCoverPath: String? = null,
-    val coverResolutionState: CoverResolutionState = CoverResolutionState.UNKNOWN
+    val coverResolutionState: CoverResolutionState = CoverResolutionState.UNKNOWN,
+    val aliases: List<MediaItemAlias> = emptyList(),
+    /** Search-only display name; never changes the group's identity or canonical ordering. */
+    val searchDisplayTitle: String? = null
 ) {
     val key: CatalogEntryKey get() = CatalogEntryKey(packId, id, CatalogEntryKind.GROUP)
 }
@@ -124,7 +127,7 @@ sealed interface MediaListEntry {
         override val id: String get() = value.id
         override val packId: PackId get() = value.packId
         override val kind: CatalogEntryKind get() = CatalogEntryKind.GROUP
-        override val title: String get() = value.displayTitle
+        override val title: String get() = value.searchDisplayTitle ?: value.displayTitle
         val popularity: Double? get() = value.popularity
         val popularityRank: Int? get() = value.popularityRank
         val representativeMediaId: String? get() = value.representativeMediaId
@@ -138,7 +141,8 @@ internal fun bestMatchingAliasTitle(
     rawQuery: String
 ): String? {
     val query = rawQuery.trim()
-    if (query.codePointCount(0, query.length) < 3) return null
+    val codePoints = query.codePointCount(0, query.length)
+    if (codePoints < 3 && !(codePoints >= 2 && query.any { it.code > 127 })) return null
     val normalizedQuery = query.normalizedForAliasMatch()
     if (canonicalTitle.normalizedForAliasMatch().contains(normalizedQuery)) return null
 

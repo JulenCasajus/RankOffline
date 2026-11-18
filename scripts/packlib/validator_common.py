@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 
 ROOT_KEYS = {
-    "schemaVersion", "packId", "version", "minRankOfflineVersion", "displayName",
+    "schemaVersion", "packId", "slug", "version", "minRankOfflineVersion", "displayName",
     "presentation", "capabilities", "fields", "filters", "subtitle", "merge", "defaults",
     "rating", "coverSources", "catalog", "groups", "covers", "attribution", "integrity",
 }
@@ -16,7 +16,7 @@ RECORD_KEYS = {
 }
 GROUP_KEYS = {
     "id", "members", "displayTitle", "groupType", "representativeMediaId", "provider",
-    "providerGroupId", "popularity", "popularityRank", "remoteCoverRef",
+    "providerGroupId", "popularity", "popularityRank", "remoteCoverRef", "aliases",
 }
 FORBIDDEN_SUFFIXES = (".dex", ".jar", ".class", ".so", ".apk", ".js", ".html", ".htm", ".svg", ".sh")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")

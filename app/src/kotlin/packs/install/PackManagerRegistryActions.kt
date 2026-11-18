@@ -28,6 +28,7 @@ suspend fun PackManager.refresh() = refreshMutex.withLock {
             val directory = installer.installedDirectory(id)
             val current = runtime[id] != PackRuntimeStatus.DELETING && (knownReady || (directory != null &&
                 !installer.hasPendingInstallation(id) && !installer.hasPendingDeletion(id) &&
+                !installer.hasPendingUpdate(id) &&
                 isCompatiblePackVersion(definition.manifest.minRankOfflineVersion, currentAppVersion) &&
                 synchronizer.isCurrentFast(definition.manifest, directory)))
             id.takeIf { current }
@@ -64,7 +65,14 @@ suspend fun PackManager.refresh() = refreshMutex.withLock {
                 hasPendingFiles = pending,
                 availableCoverCount = summary?.availableCoverCount?.takeIf {
                     !summary.isDirty(PackSummaryField.AVAILABLE_COVER_COUNT)
-                }
+                },
+                updateVersion = definition?.manifest?.takeIf { installedManifest ->
+                    available[id]?.let { remote ->
+                        isCompatiblePackVersion(remote.manifest.minRankOfflineVersion,
+                            currentAppVersion) && newerPackRevision(installedManifest, remote)
+                    } == true
+                }?.let { available[id]?.manifest?.version },
+                updateFailed = id in updateFailures
             )
         }
         synchronized(stateLock) { _states.value = next }

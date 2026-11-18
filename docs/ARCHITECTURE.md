@@ -20,10 +20,14 @@ A positive `PackId` identifies an installed pack. Room uses pack-scoped keys for
 entries, groups and ratings. `PackId(0)` is the virtual RankOffline All view and has no
 physical pack directory. Group membership comes from the catalog; Merge changes how
 entries are displayed, not their identity.
+The manifest also carries a permanent slug and a version of the form `slug-vN`.
+The trusted index embeds that manifest; the publishing registry reserves each ID and
+slug independently of the localized public name. The app compares revisions only
+within the same ID and slug, using five exact mappings for published v0.2.2 manifests.
 
 The pack installer verifies archive size, SHA-256, file inventory, paths and payload
 hashes before activating files under `files/packs/pack-<id>/`. The catalog importer
-writes items, attributes, aliases, groups and relations to Room. Installation state and
+writes items, attributes, item and group aliases, groups and relations to Room. Installation state and
 import fingerprints support recovery without reimporting a valid READY catalog. Room
 uses write-ahead logging. User ratings and editable settings remain under separate
 storage so a normal uninstall retains them.

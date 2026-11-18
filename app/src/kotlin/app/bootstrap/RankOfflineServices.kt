@@ -152,6 +152,10 @@ internal class RankOfflineServices private constructor(
      */
     suspend fun initializeVisiblePack(): PackId? {
         settingsRepository.loadInitialState()
+        // A process may die between the two directory moves or after Room commits.
+        // Restore the previous pack (or finalize the new one) before exposing READY.
+        packManager.discoverIds().filter { packManager.installer.hasPendingUpdate(it) }
+            .forEach { packManager.recover(it) }
         packManager.refresh()
         settingsRepository.syncInstalledPacks(installedManifests())
         val active = settingsRepository.state.value.activePackId ?: return null
@@ -195,10 +199,6 @@ internal class RankOfflineServices private constructor(
         return true
     }
 
-    /** Manual and Top-N requests share the image transfer gate inside the downloader. */
-    suspend fun downloadCover(key: CatalogEntryKey): CoverDownloadResult =
-        mediaCoverRepository.downloadCover(key)
-
     /** Explicitly cancel optional initial cover Work. Cancellation is not remembered. */
     suspend fun cancelInitialCoverDownloads(packId: PackId) {
         PackWorkScheduler.cancelInitialCovers(appContext, packId)
@@ -214,7 +214,10 @@ internal class RankOfflineServices private constructor(
     /** Worker entry point: no Activity or in-memory UI must have run first. */
     override suspend fun prepare(packId: PackId, action: PackWorkAction) {
         when (action) {
-            PackWorkAction.INSTALL -> {
+            PackWorkAction.INSTALL, PackWorkAction.UPDATE -> {
+                if (action == PackWorkAction.UPDATE && packManager.installer.hasPendingUpdate(packId)) {
+                    check(packManager.recover(packId)) { "Cannot recover interrupted update" }
+                }
                 // One index fetch can hydrate every descriptor needed by concurrent workers.
                 sourceLoadLock.withLock {
                     if (packSources.descriptor(packId) == null) {
@@ -255,6 +258,12 @@ internal class RankOfflineServices private constructor(
         // a persisted PARTIAL/PENDING flag. User may request another download later.
         return result.status == CoverDownloadStatus.COMPLETED ||
             result.status == CoverDownloadStatus.FAILED
+    }
+
+    override suspend fun onPackUpdated(packId: PackId) {
+        settingsRepository.loadInitialState()
+        settingsRepository.syncInstalledPacks(installedManifests())
+        settingsRepository.ensurePackSettingsLoaded(packId)
     }
 
     private suspend fun loadPackSettingsForWorker(packId: PackId) {

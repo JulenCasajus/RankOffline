@@ -17,14 +17,14 @@ import kotlinx.coroutines.withContext
 
 /** One UI-facing boundary for installed packs and durable WorkManager operations. */
 internal class PackUiController(
-    private val context: Context,
-    private val scope: CoroutineScope,
-    private val services: RankOfflineServices,
+    internal val context: Context,
+    internal val scope: CoroutineScope,
+    internal val services: RankOfflineServices,
     private val selection: MutableStateFlow<ViewingScope>,
     private val onSelected: (PackId, CatalogSortOrder) -> Unit,
     private val beforeDelete: suspend (PackId) -> Unit,
     private val onChanged: (PackId) -> Unit,
-    private val onError: suspend (Throwable) -> Unit,
+    internal val onError: suspend (Throwable) -> Unit,
     private val onDiscoveryError: suspend (Throwable) -> Unit
 ) {
     val states: StateFlow<Map<PackId, PackState>> = services.packManager.states
@@ -35,6 +35,8 @@ internal class PackUiController(
     val ready: StateFlow<Boolean> = bootstrapped.asStateFlow()
     private val discovering = MutableStateFlow(false)
     val discoveryInProgress: StateFlow<Boolean> = discovering.asStateFlow()
+    private val updateCheck = MutableStateFlow(false)
+    val updateCheckFinished: StateFlow<Boolean> = updateCheck.asStateFlow()
     private var discoveryJob: Job? = null
 
     fun bootstrap(afterReady: suspend () -> Unit = {}) = scope.launch {
@@ -71,6 +73,13 @@ internal class PackUiController(
             } }
             // WorkManager resumes its own persistent jobs; don't initialize it merely for a screen.
             afterReady()
+            if (services.settingsRepository.state.value.hasCompletedOnboarding) scope.launch(Dispatchers.IO) {
+                try { services.refreshAvailablePacks() }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) {
+                    Log.i("RankOfflinePack", "Update check unavailable; installed catalogs remain usable", failure)
+                } finally { updateCheck.value = true }
+            }
             // WorkManager survives process death; its terminal failures must also reach Compose.
             scope.launch {
                 try { PackWorkScheduler.observePersistentWork(context, services.packManager) }
@@ -158,7 +167,10 @@ internal class PackUiController(
         try {
             PackWorkScheduler.cancel(context, id)
             beforeDelete(id)
-            if (!services.packManager.delete(id)) return@launch
+            if (!services.packManager.delete(id)) {
+                onError(IllegalStateException("Pack deletion failed for ${id.value}"))
+                return@launch
+            }
             services.database.withTransaction {
                 services.database.personalDataDao().deletePersonalData(id.value)
             }

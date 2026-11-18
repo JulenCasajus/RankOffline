@@ -18,9 +18,9 @@
   <string name='action_delete'>削除</string>
   <string name='action_continue'>続行</string>
   <string name='whats_new_title'>バージョン %1$s の新機能</string>
-  <string name='whats_new_visuals'>アプリ全体のデザインを新しく、より洗練されたものにしました。</string>
-  <string name='whats_new_packs'>アニメ、マンガ、映画、ドラマ、本をひとつの場所に。</string>
-  <string name='whats_new_features'>フィルター、Merge、表紙の操作を改善しました。</string>
+  <string name='whats_new_visuals'>別名でグループを検索できます。</string>
+  <string name='whats_new_packs'>評価を保持したままパックを更新できます。</string>
+  <string name='whats_new_features'>初期設定とグループ評価を改善しました。</string>
   <string name='whats_new_bugs'>いくつかのバグを修正…新しいバグもあるかも。</string>
   <string name='whats_new_thanks'>RankOffline を使ってくれてありがとう！</string>
   <string name='whats_new_contact'>問題があれば教えてね :D</string>
@@ -160,12 +160,11 @@
   <string name='action_retry'>再試行</string>
   <string name='category_not_installed'>未ダウンロード</string>
   <string name='onboarding_welcome_title'>RankOfflineへようこそ!</string>
-  <string name='onboarding_choose_style'>スタイルを選択</string>
-  <string name='onboarding_change_later'>設定からいつでも変更できます。</string>
-  <string name='onboarding_minimal'>ミニマル</string>
-  <string name='onboarding_with_images'>画像あり</string>
-  <string name='onboarding_rating_simple'>シンプル評価</string>
   <string name='onboarding_rating_elaborate'>詳細評価</string>
+  <string name='onboarding_rating_simple_description'>オフ：各作品を0から10で直接評価します。</string>
+  <string name='onboarding_rating_elaborate_description'>オン：複数の項目を評価して最終スコアを計算します。</string>
+  <string name='onboarding_covers_hint'>表紙は各パックの設定で表示・非表示を切り替えられます。</string>
+  <string name='onboarding_offline_hint'>カタログはパックごとにダウンロードします。評価は端末内に保存され、ダウンロード済みのカタログはオフラインで使えます。</string>
   <string name='onboarding_start'>始める</string>
   <string name='onboarding_categories_title'>どこから始めますか？</string>
   <string name='onboarding_categories_subtitle'>使用するオフラインカタログを選択してください。後で設定から管理できます。</string>
@@ -260,4 +259,14 @@
   </plurals>
   <string name="filter_match_any_description">OR · いずれか</string>
   <string name="filter_match_all_description">AND · すべて</string>
+  <string name="pack_updates_title">パックの更新があります</string>
+  <string name="pack_updates_description">インストール済みのパックに新しい版があります。今すぐ、または後で設定から更新できます。</string>
+  <string name="pack_updates_personal_data">更新しても評価と個人設定は保持されます。</string>
+  <string name="pack_updates_versions">インストール済み: %1$s · 新しい版: %2$s</string>
+  <string name="pack_updates_done">更新済み</string>
+  <string name="pack_updates_action">更新</string>
+  <string name="pack_updates_later">後で</string>
+  <string name="pack_updates_all">すべて更新</string>
+  <string name="pack_updates_available">更新あり: %1$s → %2$s</string>
+  <string name="pack_updates_error">更新に失敗しました。もう一度お試しください。</string>
 </resources>

@@ -54,6 +54,7 @@ class PackManager internal constructor(
     internal val refreshMutex = Mutex()
     internal val packLocks = ConcurrentHashMap<PackId, Mutex>()
     internal val runtime = ConcurrentHashMap<PackId, PackRuntimeStatus>()
+    internal val updateFailures = ConcurrentHashMap.newKeySet<PackId>()
     internal val stateLock = Any()
     internal val _states = MutableStateFlow<Map<PackId, PackState>>(emptyMap())
     internal val tracker = PackProgressTracker { id, progress ->

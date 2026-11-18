@@ -40,8 +40,9 @@ internal object PackWorkScheduler {
                 .then(request(packId, PackWorkAction.INITIAL_COVERS))
                 .enqueue()
         } else {
+            val sequence = if (action == PackWorkAction.UPDATE) nextPackInstallSequence(context) else null
             work.enqueueUniqueWork(uniqueName(packId, action), ExistingWorkPolicy.KEEP,
-                request(packId, action))
+                request(packId, action, sequence))
         }
     }
 
@@ -67,7 +68,7 @@ internal object PackWorkScheduler {
                 .putLong(KEY_PACK_ID, packId.value)
                 .putString(KEY_ACTION, action.name)
         if (sequence != null) {
-            require(action == PackWorkAction.INSTALL && sequence > 0)
+            require(action in setOf(PackWorkAction.INSTALL, PackWorkAction.UPDATE) && sequence > 0)
             input.putLong(KEY_QUEUE_SEQUENCE, sequence)
             builder.addTag(packInstallSequenceTag(sequence))
         }
@@ -98,7 +99,8 @@ internal object PackWorkScheduler {
     suspend fun observePersistentWork(context: Context, manager: PackManager) {
         var previouslyActive = emptySet<UUID>()
         WorkManager.getInstance(context).getWorkInfosByTagFlow(ALL_TAG).collect { infos ->
-            val installs = infos.filter { it.tags.contains(actionTag(PackWorkAction.INSTALL)) }
+            val installs = infos.filter { it.tags.contains(actionTag(PackWorkAction.INSTALL)) ||
+                it.tags.contains(actionTag(PackWorkAction.UPDATE)) }
             val newlyFailed = installs.filter { info ->
                 info.id in previouslyActive &&
                     (info.state == WorkInfo.State.FAILED || info.state == WorkInfo.State.CANCELLED)
@@ -111,7 +113,8 @@ internal object PackWorkScheduler {
     private suspend fun reconcile(
         manager: PackManager, infos: List<WorkInfo>, newlyFailed: Set<UUID>
     ) {
-        val installs = infos.filter { it.tags.contains(actionTag(PackWorkAction.INSTALL)) }
+        val installs = infos.filter { it.tags.contains(actionTag(PackWorkAction.INSTALL)) ||
+            it.tags.contains(actionTag(PackWorkAction.UPDATE)) }
         // A RUNNING install can be finishing its import after PackManager clears its
         // progress. Recreating QUEUED there briefly shows "Waiting to download".
         val queued = installs.filter { info ->
@@ -121,6 +124,8 @@ internal object PackWorkScheduler {
         }.mapNotNull(::packIdFromTags).toSet()
         val failed = installs.filter { it.id in newlyFailed }.mapNotNull(::packIdFromTags).toSet()
         manager.reconcileQueuedInstallStates(queued, failed)
+        infos.filter { it.id in newlyFailed && it.tags.contains(actionTag(PackWorkAction.UPDATE)) }
+            .mapNotNull(::packIdFromTags).forEach(manager::markUpdateFailed)
     }
 
     private fun packIdFromTags(info: WorkInfo): PackId? = info.tags

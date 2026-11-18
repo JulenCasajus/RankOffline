@@ -1,0 +1,9 @@
+{
+  "packs": [
+    {"packId": 1, "slug": "animes", "publishedRevision": 5, "publishedContentSha256": "293df2a6cefd24fd4c1fe5d8d4b26075708b3cae3519838052472db75553be01"},
+    {"packId": 2, "slug": "mangas", "publishedRevision": 3, "publishedContentSha256": "4c4d862c58a2bb2c3449a42ea76ac792009ef3f81c251a5d86a2ed0da9d6e259"},
+    {"packId": 3, "slug": "movies", "publishedRevision": 3, "publishedContentSha256": "f7ee106465e3b9a8a8bc1f9e154c9f7d6d64e7190ecc389f2ca55a4baa316940"},
+    {"packId": 4, "slug": "series", "publishedRevision": 3, "publishedContentSha256": "7c1c31a66646520ec71cfd8fdadce6dc42c69710cfdae4b1c7caa8ecc928407b"},
+    {"packId": 5, "slug": "books", "publishedRevision": 4, "publishedContentSha256": "0cce48c859878819f41add904b2f49a2eea1d7796203d0874d2cc5f9ff39e4c7"}
+  ]
+}

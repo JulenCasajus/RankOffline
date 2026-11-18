@@ -3,6 +3,8 @@ package org.rankoffline.app
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.room.Room
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.File
@@ -13,10 +15,58 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONObject
 
 /** Reproduces a READY state arriving before the settings manifest observer. */
 @RunWith(AndroidJUnit4::class)
 class ReadyManifestSettingsInstrumentedTest {
+    @Test fun welcomeUsesEachPackCoverDefaultAndKeepsPersonalChoice() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<Context>()
+        val root = File(app.cacheDir, "welcome-cover-defaults-test")
+        root.deleteRecursively()
+        assertTrue(root.mkdirs())
+        val isolated = object : ContextWrapper(app) {
+            override fun getApplicationContext(): Context = this
+            override fun getFilesDir(): File = root
+        }
+        try {
+            isolated.dataStore.edit { it[booleanPreferencesKey("welcome_style_images")] = false }
+            val repository = SettingsRepository(isolated,
+                object : AppIconAliasController {
+                    override fun activate(icon: AppIcon, previousIcon: AppIcon) = Unit
+                }, AppLocaleController { })
+            repository.loadInitialState()
+            repository.completeWelcome(true)
+            val shown = PackManifestParser.parse(TestFixtures.manifestJson(packId = 77))
+            val hiddenJson = JSONObject(TestFixtures.manifestJson(packId = 78))
+            hiddenJson.getJSONObject("defaults").put("showImages", false)
+            val hidden = PackManifestParser.parse(hiddenJson.toString())
+            repository.syncInstalledPacks(listOf(shown, hidden))
+            repository.ensurePackSettingsLoaded(listOf(shown.packId, hidden.packId))
+            assertTrue(repository.state.value.mediaSettings.getValue(shown.packId).showImages)
+            assertFalse(repository.state.value.mediaSettings.getValue(hidden.packId).showImages)
+            repository.updateActivePack(hidden.packId)
+            repository.updateShowImages(true)
+            repository.completeWelcome(false)
+            assertTrue(repository.state.value.mediaSettings.getValue(hidden.packId).showImages)
+            val reopened = SettingsRepository(isolated,
+                object : AppIconAliasController {
+                    override fun activate(icon: AppIcon, previousIcon: AppIcon) = Unit
+                }, AppLocaleController { })
+            reopened.loadInitialState()
+            reopened.syncInstalledPacks(listOf(shown, hidden))
+            reopened.ensurePackSettingsLoaded(hidden.packId)
+            assertTrue(reopened.state.value.mediaSettings.getValue(hidden.packId).showImages)
+            repository.postponePackUpdates(listOf(hidden.packId to "fixture-v2"))
+            val notices = SettingsRepository(isolated,
+                object : AppIconAliasController {
+                    override fun activate(icon: AppIcon, previousIcon: AppIcon) = Unit
+                }, AppLocaleController { })
+            notices.loadInitialState()
+            assertTrue(packUpdateNoticeKey(hidden.packId, "fixture-v2") in notices.postponedUpdates.value)
+            assertFalse(packUpdateNoticeKey(hidden.packId, "fixture-v3") in notices.postponedUpdates.value)
+        } finally { root.deleteRecursively() }
+    }
     @Test fun whatsNewAcknowledgementSurvivesRestart() = runBlocking {
         val app = ApplicationProvider.getApplicationContext<Context>()
         val root = File(app.cacheDir, "whats-new-settings-test")
@@ -33,16 +83,16 @@ class ReadyManifestSettingsInstrumentedTest {
                 }, AppLocaleController { })
             first.loadInitialState()
             first.completeOnboarding()
-            assertTrue(shouldShowWhatsNew(first.state.value, "0.2.2-debug.4"))
+            assertTrue(shouldShowWhatsNew(first.state.value, "0.2.3-debug.1"))
             first.acknowledgeWhatsNew()
-            assertFalse(shouldShowWhatsNew(first.state.value, "0.2.2-debug.4"))
+            assertFalse(shouldShowWhatsNew(first.state.value, "0.2.3-debug.1"))
 
             val restarted = SettingsRepository(isolated,
                 object : AppIconAliasController {
                     override fun activate(icon: AppIcon, previousIcon: AppIcon) = Unit
                 }, AppLocaleController { })
             restarted.loadInitialState()
-            assertFalse(shouldShowWhatsNew(restarted.state.value, "0.2.2"))
+            assertFalse(shouldShowWhatsNew(restarted.state.value, "0.2.3"))
         } finally { root.deleteRecursively() }
     }
 

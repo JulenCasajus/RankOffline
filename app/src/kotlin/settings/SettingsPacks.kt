@@ -17,7 +17,7 @@ import androidx.compose.ui.window.*
 @Composable
 internal fun PackSettingsScreen(
     packStates: Map<PackId, PackState>, selectedPackId: PackId?,
-    onDiscover: () -> Unit, onInstall: (PackId) -> Unit,
+    onDiscover: () -> Unit, onInstall: (PackId) -> Unit, onUpdate: (PackId) -> Unit,
     onCancelInitialCovers: (PackId) -> Unit, onUninstall: (PackId) -> Unit,
     onPurge: (PackId) -> Unit, onSelect: (PackId) -> Unit,
     onStorage: (PackId) -> Unit,
@@ -30,6 +30,7 @@ internal fun PackSettingsScreen(
             selectedPackId = selectedPackId,
             onDiscoverPacks = onDiscover,
             onInstallPack = onInstall,
+            onUpdatePack = onUpdate,
             onCancelInitialCovers = onCancelInitialCovers,
             onUninstallPack = onUninstall,
             onPurgePack = onPurge,

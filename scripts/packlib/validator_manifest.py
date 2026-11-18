@@ -7,6 +7,7 @@ import zipfile
 from urllib.parse import urlparse
 
 from .common import FIELD_ID
+from .pack_identity import validate_identity
 from .validator_attribution import _validate_attribution
 from .validator_common import (
     LOCALE, ROOT_KEYS, SHA256, PackValidationError, _exact_keys, _fail,
@@ -15,12 +16,17 @@ from .validator_common import (
 
 def _validate_manifest(manifest: dict, archive: zipfile.ZipFile) -> tuple[dict[str, dict], dict[str, dict]]:
     _exact_keys(manifest, ROOT_KEYS, "manifest")
-    _required_keys(manifest, ROOT_KEYS, "manifest")
+    _required_keys(manifest, ROOT_KEYS - {"slug"}, "manifest")
     if (manifest["schemaVersion"] != 2 or type(manifest["packId"]) is not int or
             not 1 <= manifest["packId"] <= 9_223_372_036_854_775_807):
         _fail("schemaVersion must be 2 and packId a positive JSON integer")
     for key, limit in (("version", 80), ("minRankOfflineVersion", 80), ("displayName", 160)):
         _text(manifest[key], limit, key)
+    if "slug" in manifest:
+        try:
+            validate_identity(manifest["packId"], manifest["slug"], manifest["version"])
+        except ValueError as error:
+            _fail(str(error))
     integrity = manifest["integrity"]
     _exact_keys(integrity, {"installedBytes", "files"}, "integrity")
     if not isinstance(integrity.get("files"), list) or not 1 <= len(integrity["files"]) <= 100_000:

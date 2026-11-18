@@ -49,7 +49,7 @@ import kotlinx.coroutines.flow.collect
 
 /** UI-only phase mapping; no status persistence or duplicate job state. */
 @Composable
-private fun packStatusText(state: PackState): String {
+internal fun packStatusText(state: PackState): String {
     if (state.status == PackRuntimeStatus.DELETING) return stringResource(R.string.category_deleting)
     val progress = state.progress
     return when (progress?.phase) {
@@ -91,6 +91,7 @@ internal fun PackManagementRow(
     selected: Boolean,
     onSelect: () -> Unit,
     onInstall: () -> Unit,
+    onUpdate: (() -> Unit)?,
     onCancelInitialCovers: () -> Unit,
     onRemove: () -> Unit,
     onRequestStorageDetails: () -> Unit,
@@ -120,6 +121,11 @@ internal fun PackManagementRow(
                     Text(
                         text = packStatusText(state), fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (state.canUpdate && onUpdate != null) Text(
+                        stringResource(R.string.pack_updates_available,
+                            state.manifest?.version ?: "—", state.updateVersion ?: "—"),
+                        fontSize = 11.sp, color = accent
                     )
                     state.progress?.takeIf { state.status != PackRuntimeStatus.DELETING &&
                         it.phase in setOf(PackInstallPhase.DOWNLOADING_COVERS,
@@ -159,6 +165,10 @@ internal fun PackManagementRow(
                             contentDescription = stringResource(R.string.pack_storage_details),
                             modifier = Modifier.offset(x = 6.dp))
                     }
+                }
+                if (state.canUpdate && onUpdate != null) IconButton(onClick = onUpdate) {
+                    Icon(Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.pack_updates_action), tint = accent)
                 }
                 when {
                     state.status == PackRuntimeStatus.DELETING -> UnavailablePackIcon()

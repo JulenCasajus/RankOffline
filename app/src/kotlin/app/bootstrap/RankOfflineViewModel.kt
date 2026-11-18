@@ -58,6 +58,8 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
     val ready = packController.ready
     val packStates = packController.states
     val discoveringPacks = packController.discoveryInProgress
+    val updateCheckFinished = packController.updateCheckFinished
+    val postponedPackUpdates = settingsRepository.postponedUpdates
     val packInstallProgress = packController.progress
     val packDownloadProgress = packController.aggregateProgress
     val filterOptions = catalog.filterOptions
@@ -78,6 +80,7 @@ class RankOfflineViewModel(application: Application) : AndroidViewModel(applicat
 
     init {
         // No network source discovery, legacy migrations, full ranking or initial covers here.
+        observePackReplacements()
         packController.bootstrap()
     }
 

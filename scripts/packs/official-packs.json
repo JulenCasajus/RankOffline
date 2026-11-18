@@ -212,7 +212,9 @@
       },
       "fileName": "pack-1.pack",
       "displayName": "Animes",
-      "version": "anime-69005e06b4a92ee6caa4c57efcb5951086a2ffaa6b8ade997276f301908b6223-v5",
+      "slug": "animes",
+      "version": "animes-v6",
+      "minRankOfflineVersion": "0.2.3",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Anime-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Animes", "de": "Anime", "es": "Animes", "eu": "Animeak", "fr": "Anime", "it": "Anime", "ja": "アニメ", "ru": "Аниме", "zh-CN": "动漫"},
@@ -302,6 +304,40 @@
         "sourceMetadata": {
           "catalog/anime_catalog.manifest.json": "metadata/source/catalog-manifest.json",
           "groups/anime_groups.manifest.json": "metadata/source/groups-manifest.json"
+        }
+      },
+      "groupAliasReviewed": {
+        "group:mal:20899:SERIES": ["Le bizzarre avventure di JoJo: Stardust Crusaders"],
+        "group:mal:134:SERIES": ["건슬링거걸"],
+        "group:mal:54714:SERIES": ["超超超超超喜欢你的100个女朋友"],
+        "group:mal:31240:SERIES": ["Re:Zero — жизнь с нуля в другом мире"],
+        "group:mal:194:SERIES": ["Robotech: La Saga de Macross"],
+        "group:mal:223:SERIES": ["Bola de Drac"],
+        "group:mal:25781:SERIES": ["Атака титанов"],
+        "group:mal:33255:SERIES": ["Saiki K"]
+      },
+      "groupTitleReviewed": {
+        "group:mal:223:SPECIAL": "Dragon Ball: Specials",
+        "group:mal:527:SPECIAL": "Pokemon: Specials"
+      },
+      "groupSplitReviewed": {
+        "group:mal:2335:SPECIAL": {
+          "sourceIdsSha256": "fc2d149958fe1ce09b08c415dc440d6b11031457f569a635ca30f802ab79eacc",
+          "ungrouped": ["mal:6115"],
+          "parts": [
+            {
+              "id": "group:mal:2335:SPECIAL",
+              "displayTitle": "Lupin III: Specials",
+              "titlePrefixes": ["Lupin III:"],
+              "memberIdsSha256": "4298e45bda02b1138a7cdbd7ea79466edba66ed80e47173a4f6aaf411a0aa541"
+            },
+            {
+              "id": "group:mal:235:SPECIAL",
+              "displayTitle": "Meitantei Conan: Specials",
+              "titlePrefixes": ["Meitantei Conan", "Edogawa Conan"],
+              "memberIdsSha256": "3305842b8bd4aaa72cd00186ff9b90ff70eb6a543b445924c3f4c578766e303d"
+            }
+          ]
         }
       }
     },
@@ -401,7 +437,9 @@
       },
       "fileName": "pack-2.pack",
       "displayName": "Mangas",
-      "version": "mangadex-2026-10-16-v3",
+      "slug": "mangas",
+      "version": "mangas-v4",
+      "minRankOfflineVersion": "0.2.3",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Manga-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Mangas", "de": "Manga", "es": "Mangas", "eu": "Mangak", "fr": "Mangas", "it": "Manga", "ja": "漫画", "ru": "Манга", "zh-CN": "漫画"},
@@ -440,6 +478,11 @@
           "catalog/manga_catalog.manifest.json": "metadata/source/catalog-manifest.json",
           "groups/manga_groups.manifest.json": "metadata/source/groups-manifest.json"
         }
+      },
+      "groupAliasReviewed": {
+        "manga:mangadex:variants:cf4ce618fb4cf04ea6a284db37577d744ad196337fe4809c6a5522a7f8b285de": ["Komi não consegue se comunicar"],
+        "manga:mangadex:variants:866232cdfcf859cf086b6d5e21edd72ab27d6b956713f9edfed53fb9af0992fd": ["Брачные узы с семьёй Амагами"],
+        "manga:mangadex:variants:1a07da25cbd86d477ab7a04afda23f9401a69d512d35356fb071e95b0fc1beb5": ["Blue Box"]
       }
     },
     {
@@ -552,7 +595,8 @@
       },
       "fileName": "pack-3.pack",
       "displayName": "Movies",
-      "version": "tmdb-movies-2026-10-16-v3",
+      "slug": "movies",
+      "version": "movies-v4",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Movies-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Movies", "de": "Filme", "es": "Películas", "eu": "Filmak", "fr": "Films", "it": "Film", "ja": "映画", "ru": "Фильмы", "zh-CN": "电影"},
@@ -595,6 +639,12 @@
           "catalog/movie_catalog.manifest.json": "metadata/source/catalog-manifest.json",
           "groups/movie_groups.manifest.json": "metadata/source/groups-manifest.json"
         }
+      },
+      "groupAliasReviewed": {
+        "movie:tmdb:collection:1582249": ["Мой домовой"],
+        "movie:tmdb:collection:708574": ["Ten Days Without Mom"],
+        "movie:tmdb:collection:52835": ["Barracas na Praia"],
+        "movie:tmdb:collection:853316": ["通奸校友会"]
       }
     },
     {
@@ -718,7 +768,9 @@
       },
       "fileName": "pack-4.pack",
       "displayName": "Series",
-      "version": "tmdb-series-2026-10-16-v3",
+      "slug": "series",
+      "version": "series-v4",
+      "minRankOfflineVersion": "0.2.3",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Series-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Series", "de": "Serien", "es": "Series", "eu": "Telesailak", "fr": "Séries", "it": "Serie", "ja": "シリーズ", "ru": "Сериалы", "zh-CN": "剧集"},
@@ -750,6 +802,24 @@
         "datasets": [{"name": "RankOffline Series catalog snapshot", "sourceIds": ["tmdb"], "licenceIds": [], "notices": ["Current use is non-commercial; public or commercial distribution requires a fresh terms review."]}],
         "notices": ["Poster references identify remotely hosted images; poster artwork is not embedded in this package."],
         "legalFiles": ["metadata/legal/tmdb-logo-provenance.txt"]
+      },
+      "groupAliasReviewHolds": {
+        "series:tmdb:1072": null,
+        "series:tmdb:119495": ["Kage-Jitsu!", "かげじつ！"],
+        "series:tmdb:100049": ["トニカクカワイイ ~制服~"],
+        "series:tmdb:71914": ["The Wheel of Time Origin Stories"],
+        "series:tmdb:87491": ["超級英雄女孩：星際遊戲"],
+        "series:tmdb:109691": null
+      },
+      "groupAliasReviewed": {
+        "series:tmdb:206630": ["Sasaki to Pii-chan: Isekai de Slow Life wo Tanoshimou to Shitara, Gendai de Inou Battle ni Makikomareta Ken - Mahou Shoujo ga Up wo Hajimeta you desu"],
+        "series:tmdb:95594": ["ワイルド・スピード／スパイレーサー"],
+        "series:tmdb:66732": ["Extraño al revés"],
+        "series:tmdb:123542": ["시광대리인 -Link Click"],
+        "series:tmdb:224024": ["Max and the Midknights"],
+        "series:tmdb:10957": ["Survivor AU"],
+        "series:tmdb:65334": ["Miraculous: Las Aventuras de Ladybug"],
+        "series:tmdb:65844": ["Konosuba: ¡Una bendición para este maravilloso mundo!"]
       },
       "adapter": {
         "catalogPath": "catalog/series_catalog.jsonl.gzip",
@@ -885,7 +955,8 @@
       },
       "fileName": "pack-5.pack",
       "displayName": "Books",
-      "version": "openlibrary-2026-09-30-readinglog-top-50000-v4",
+      "slug": "books",
+      "version": "books-v4",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Books-v0.2.0.pack",
       "presentation": {
         "names": {"en": "Books", "de": "Bücher", "es": "Libros", "eu": "Liburuak", "fr": "Livres", "it": "Libri", "ja": "本", "ru": "Книги", "zh-CN": "图书"},

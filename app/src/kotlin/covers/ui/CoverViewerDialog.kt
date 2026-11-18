@@ -1,7 +1,6 @@
 package org.rankoffline.app
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -41,11 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
@@ -58,8 +55,8 @@ internal fun CoverViewerDialog(
     bitmapCache: CoverBitmapCache,
     onDismiss: () -> Unit,
     onDeleteConfirmed: ((Boolean) -> Unit) -> Unit,
-    subtitle: String? = null,
-    groupMemberCount: Int? = null,
+    subtitleEntry: MediaListEntry? = null,
+    subtitleFields: List<PackFieldDefinition> = emptyList(),
     onGroupDetails: (() -> Unit)? = null,
     onDownloadRequested: (() -> Unit)? = null,
     initialSnapshot: CoverSnapshot? = null
@@ -115,23 +112,10 @@ internal fun CoverViewerDialog(
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_cancel))
                         }
                     }
-                    if (groupMemberCount != null || !subtitle.isNullOrBlank()) {
-                        val groupLabel = groupMemberCount?.let {
-                            stringResource(R.string.group_entries_subtitle_count, it)
-                        }
-                        val detail = listOfNotNull(groupLabel, subtitle?.takeIf(String::isNotBlank))
-                            .joinToString(if (groupLabel == null) "" else " | ")
-                        Text(
-                            text = detail,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 13.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.fillMaxWidth().then(if (groupLabel != null && onGroupDetails != null)
-                                Modifier.clickable(role = Role.Button, onClick = onGroupDetails)
-                                else Modifier)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
+                    subtitleEntry?.let { entry ->
+                        CatalogSubtitles(entry, subtitleFields, onGroupDetails,
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            maxLines = 2)
                     }
                     Box(
                         modifier = Modifier.fillMaxWidth().height(imageHeight),
@@ -237,25 +221,16 @@ internal fun CoverViewerDialog(
     bitmapCache: CoverBitmapCache,
     onDismiss: () -> Unit,
     onDeleteConfirmed: (CatalogEntryKey, (Boolean) -> Unit) -> Unit,
-    subtitle: String? = null,
     subtitleFields: List<PackFieldDefinition> = emptyList(),
     onGroupDetails: (() -> Unit)? = null,
     onDownloadRequested: ((CatalogEntryKey) -> Unit)? = null
 ) {
     val imageKey = entry.key
-    val memberCount = (entry as? MediaListEntry.Group)?.memberCount
-    val languageTag = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
-        ?.toLanguageTag() ?: "en"
-    val subtitleLabels = mutableListOf<String>()
-    for (part in entry.subtitleParts(subtitleFields, languageTag)) {
-        subtitleLabels += part.displayText()
-    }
-    val displaySubtitle = subtitle ?: subtitleLabels.joinToString(" · ")
     CoverViewerDialog(
         key = imageKey, title = entry.title, coverRepository = coverRepository,
         bitmapCache = bitmapCache, onDismiss = onDismiss,
         onDeleteConfirmed = { finished -> onDeleteConfirmed(imageKey, finished) },
-        subtitle = displaySubtitle, groupMemberCount = memberCount,
+        subtitleEntry = entry, subtitleFields = subtitleFields,
         onGroupDetails = onGroupDetails,
         onDownloadRequested = onDownloadRequested?.let { request -> { request(imageKey) } }
     )

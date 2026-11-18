@@ -9,21 +9,30 @@ record validators and installer are the definitive implementation of this contra
 `manifest.json` is at the ZIP root. Its top-level keys are:
 
 ```text
-schemaVersion, packId, version, minRankOfflineVersion, displayName,
+schemaVersion, packId, slug, version, minRankOfflineVersion, displayName,
 presentation, capabilities, fields, filters, subtitle, merge, defaults,
 rating, coverSources, catalog, groups, covers, attribution, integrity
 ```
 
 The parser rejects unknown top-level properties. `schemaVersion` is the integer `2`.
-`packId` is a positive JSON integer represented as a Kotlin `Long`; zero is reserved for
-the virtual RankOffline All view. `version` identifies pack content, while
-`minRankOfflineVersion` states the minimum compatible application version. `displayName`
-is the fallback visible name. An item or group ID is unique within its pack; its
-complete identity includes `packId`.
+`packId` is a permanent positive JSON integer represented as a Kotlin `Long`; zero is
+reserved for the virtual RankOffline All view. New packs declare a permanent `slug`
+using 1–64 lowercase ASCII letters, digits, hyphens or underscores, beginning with a
+letter or digit. `version` must be exactly `{slug}-v{N}`, with a positive decimal
+revision and no leading zero. Only the final `-vN` is parsed as the revision, so a slug
+may contain dates or another `-vN`. `minRankOfflineVersion` states only the minimum
+compatible application version. `displayName` and localized presentation names are
+visible labels and need not be unique. An item or group ID is unique within its pack;
+its complete identity includes `packId`. Previously published schema-2 packs without
+`slug` remain readable; only five exact official v0.2.2 versions have an update mapping.
 
 Pack identity must remain stable across updates if ratings are to remain attached to the
 same items. Archive integrity does not prove publisher identity. A distribution index
 must provide a trusted archive URL, size and SHA-256 for the package it advertises.
+The index embeds the manifest and verifies its version and pack ID; it has no second
+revision counter. The shared publishing registry reserves IDs and slugs permanently,
+including withdrawn packages. Contributions are reviewed through that registry, with
+no exclusive package owner or required creator account.
 
 ## Presentation and capabilities
 
@@ -69,7 +78,9 @@ group type and at least one declared group payload.
 
 Group JSONL records define relationships between items of the same pack. A record has an
 `id`, a `members` array and optional `displayTitle`, `groupType`,
-`representativeMediaId`, provider, popularity and cover fields. The importer validates
+`representativeMediaId`, provider, popularity, cover fields and up to 64 group-owned
+`aliases`. Each alias has a nonempty `title` of at most 500 characters and optional
+`language` and `kind`. The importer validates
 member and representative references. Merge changes the list representation; it does not
 create, delete or change group membership. A group can have its own cover; otherwise the
 UI falls back to a valid representative image without copying the file.
@@ -113,7 +124,7 @@ the pack's declared sources. It is not permission to fetch an arbitrary URL.
 least one catalog payload is required. Catalog and group records are UTF-8 JSONL,
 optionally GZIP-compressed with a `.jsonl.gz` suffix. A catalog record contains `id`,
 `title`, optional provider/popularity/cover fields, `attributes` and `aliases`; a group
-record contains group identity and membership fields. The verified manifest supplies the
+record contains group identity, membership and optional group aliases. The verified manifest supplies the
 `packId`, which is not repeated per line. Unknown record properties and undeclared
 attributes are rejected.
 

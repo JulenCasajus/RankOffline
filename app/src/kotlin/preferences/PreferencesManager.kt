@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,17 +43,18 @@ class SettingsRepository internal constructor(
     internal val welcomeKey = booleanPreferencesKey("has_completed_welcome")
     internal val onboardingKey = booleanPreferencesKey("has_completed_onboarding")
     internal val lastSeenWhatsNewVersionKey = stringPreferencesKey("last_seen_whats_new_version")
-    internal val welcomeImagesKey = booleanPreferencesKey("welcome_show_images_choice")
+    internal val postponedUpdatesKey = stringSetPreferencesKey("postponed_pack_updates")
     internal val welcomeElaborateKey = booleanPreferencesKey("welcome_elaborate_rating_choice")
 
     internal var personal = emptyMap<PackId, PersonalPackPreferences>()
     /** Only these packs have had their editable JSON read from disk in this process. */
     internal var loadedPackIds = emptySet<PackId>()
-    internal var welcomeChoices: Pair<Boolean, Boolean>? = null
+    internal var welcomeElaborateChoice: Boolean? = null
     internal var manifests = emptyMap<PackId, PackManifest>()
     internal val _state = MutableStateFlow(AppSettingsState())
     val state: StateFlow<AppSettingsState> = _state.asStateFlow()
     internal val recentPackIds = MutableStateFlow<List<PackId>>(emptyList())
+    internal val postponedUpdates = MutableStateFlow<Set<String>>(emptySet())
 
     internal fun currentCatalogSortOrders(): Map<PackId, CatalogSortOrder> =
         manifests.keys.associateWith { personal[it]?.catalogSortOrder ?: CatalogSortOrder.POPULARITY }
@@ -62,11 +64,8 @@ class SettingsRepository internal constructor(
         values: Map<PackId, PersonalPackPreferences> = personal
     ): PersonalPackPreferences {
         val saved = values[id] ?: PersonalPackPreferences()
-        val defaults = welcomeChoices ?: return saved
-        return saved.copy(
-            showImages = saved.showImages ?: defaults.first,
-            elaborateRatingEnabled = saved.elaborateRatingEnabled ?: defaults.second
-        )
+        return saved.copy(elaborateRatingEnabled = saved.elaborateRatingEnabled
+            ?: welcomeElaborateChoice?.takeIf { manifests[id]?.capabilities?.ratings == true })
     }
 
     internal fun AppSettingsState.refreshPackSettings(): AppSettingsState = copy(
@@ -77,13 +76,12 @@ class SettingsRepository internal constructor(
 
     internal fun initialPackPreferences(manifest: PackManifest): PersonalPackPreferences {
         val original = manifest.resolveSettings(PersonalPackPreferences())
-        val (welcomeImages, welcomeElaborate) = welcomeChoices ?: (null to null)
         return PersonalPackPreferences(
-            showImages = welcomeImages ?: original.showImages,
+            showImages = original.showImages,
             stickyScore = original.stickyScore,
             mergeEnabled = original.mergeEnabled,
             elaborateRatingEnabled = if (manifest.capabilities.ratings) {
-                welcomeElaborate ?: original.elaborateRatingEnabled
+                welcomeElaborateChoice ?: original.elaborateRatingEnabled
             } else false,
             personalTasteEnabled = false,
             catalogSortOrder = CatalogSortOrder.POPULARITY

@@ -4,8 +4,8 @@ package org.rankoffline.app
 internal fun PreferencesUiController.lastTab(value: AppTab) = run { settings.updateLastTab(value) }
 
 
-internal fun PreferencesUiController.welcome(showImages: Boolean, elaborate: Boolean) = run {
-    settings.completeWelcome(showImages, elaborate)
+internal fun PreferencesUiController.welcome(elaborate: Boolean) = run {
+    settings.completeWelcome(elaborate)
 }
 
 

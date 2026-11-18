@@ -104,6 +104,8 @@ internal object PackIndexParser {
         require(descriptors.map { it.packId }.distinct().size == descriptors.size) {
             "Duplicate pack identity in index"
         }
+        require(descriptors.mapNotNull { it.manifest.slug }.distinct().size ==
+            descriptors.count { it.manifest.slug != null }) { "Duplicate pack slug in index" }
         require(descriptors.map { it.registryId }.distinct().size == descriptors.size) {
             "Duplicate registry identity in index"
         }

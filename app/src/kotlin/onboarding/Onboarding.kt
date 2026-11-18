@@ -12,7 +12,7 @@ fun FirstRunOnboarding(
     settings: AppSettingsState,
     packStates: Map<PackId, PackState>,
     isDiscovering: Boolean,
-    onWelcomeComplete: (showImages: Boolean, elaborateRating: Boolean) -> Unit,
+    onWelcomeComplete: (elaborateRating: Boolean) -> Unit,
     onLanguageSelected: (SupportedLanguage) -> Unit,
     onThemeSelected: (AppThemePalette) -> Unit,
     onDiscoverPacks: () -> Unit,

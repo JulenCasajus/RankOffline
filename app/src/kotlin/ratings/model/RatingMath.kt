@@ -71,12 +71,14 @@ data class DerivedGroupRating(
     val qualityScore: Double?,
     val additiveScore: Double?,
     val categoryScores: Map<String, Double>,
-    val ratedCount: Int
+    val ratedCount: Int,
+    val predominantProfileId: String? = null
 ) {
     fun asDraft(): RatingDraft = RatingDraft(
         categoryScores = categoryScores.mapValues { (_, value) -> snapRatingValue(value) },
         additiveScore = snapBonusValue(additiveScore ?: 0.0) ?: 0.0,
-        qualityScore = qualityScore ?: finalScore?.minus(additiveScore ?: 0.0)?.coerceIn(RATING_MIN, RATING_MAX)
+        qualityScore = qualityScore ?: finalScore?.minus(additiveScore ?: 0.0)?.coerceIn(RATING_MIN, RATING_MAX),
+        profileId = predominantProfileId
     )
 }
 
@@ -101,11 +103,19 @@ fun deriveMediaGroupRating(
         .groupBy { it.categoryId }
         .mapValues { (_, values) -> values.mapNotNull { it.score }.average() }
 
+    // Only the members included in the score average vote. Ties prefer general, then ID.
+    val predominantProfile = rated.values.mapNotNull { it.profileId?.takeIf(String::isNotBlank) }
+        .groupingBy { it }.eachCount().entries
+        .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }
+            .thenBy { if (it.key == "general") 0 else 1 }.thenBy { it.key })
+        .firstOrNull()?.key
+
     return DerivedGroupRating(
         finalScore = rated.values.map { it.finalScore }.averageValid(),
         qualityScore = rated.values.map { it.qualityScore }.averageValid(),
         additiveScore = rated.values.map { it.additiveScore }.averageValid(),
         categoryScores = categoryAverages,
-        ratedCount = rated.size
+        ratedCount = rated.size,
+        predominantProfileId = predominantProfile
     )
 }

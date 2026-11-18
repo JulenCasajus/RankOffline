@@ -7,6 +7,7 @@ import shutil
 
 from .common import canonical_json, sha256_file, temporary_directory, write_deterministic_zip
 from .legacy_adapter import convert_legacy_archive
+from .group_alias_pipeline import add_group_aliases
 
 
 def _resolve(path: str, *, project_root: Path, legacy_root: Path) -> Path:
@@ -67,7 +68,8 @@ def _optional_share_assets(config: dict, staging: Path, project_root: Path) -> t
     return result, presentation
 
 
-def _manifest(config: dict, files: dict[str, Path], share_backgrounds: dict[str, str]) -> dict:
+def _manifest(config: dict, files: dict[str, Path], share_backgrounds: dict[str, str],
+              has_group_aliases: bool = False) -> dict:
     declared = [
         {"path": path, "bytes": file.stat().st_size, "sha256": sha256_file(file)}
         for path, file in sorted(files.items())
@@ -79,11 +81,23 @@ def _manifest(config: dict, files: dict[str, Path], share_backgrounds: dict[str,
     groups = adapter.get("groupTargets")
     if groups is None:
         groups = [adapter["groupsTarget"]] if adapter.get("groupsTarget") else []
+    minimum = config.get("minRankOfflineVersion", "0.2.2")
+    if has_group_aliases or config.get("slug"):
+        core = minimum.split("+", 1)[0].split("-", 1)[0]
+        try:
+            numbers = tuple(int(part) for part in core.split("."))
+        except ValueError as error:
+            raise ValueError(f"Invalid minRankOfflineVersion: {minimum}") from error
+        if len(numbers) != 3:
+            raise ValueError(f"Invalid minRankOfflineVersion: {minimum}")
+        if numbers < (0, 2, 3) or (numbers == (0, 2, 3) and "-" in minimum):
+            minimum = "0.2.3"
     return {
         "schemaVersion": 2,
         "packId": config["packId"],
+        "slug": config["slug"],
         "version": config["version"],
-        "minRankOfflineVersion": config.get("minRankOfflineVersion", "0.2.2"),
+        "minRankOfflineVersion": minimum,
         "displayName": config["displayName"],
         "presentation": presentation,
         "capabilities": config["capabilities"],
@@ -124,13 +138,22 @@ def build_pack(config: dict, *, output: Path, project_root: Path,
             files, conversion = _copy_schema2_inputs(config, staging, project_root, legacy_root)
         else:
             raise ValueError(f"Unsupported input adapter: {adapter_type}")
+        alias_summary = add_group_aliases(
+            files, staging, project_root / "build" / "group-alias-audit", config["packId"],
+            config.get("groupAliasReviewHolds"), config.get("groupAliasReviewed"),
+            config.get("groupTitleReviewed"), config.get("groupSplitReviewed")
+        )
+        if alias_summary["groupAliases"]:
+            conversion.update({key: value for key, value in alias_summary.items()
+                               if key != "hasGroupAliasField"})
         files.update(_copy_declared_assets(config, staging, project_root, legacy_root))
         share_files, share_backgrounds = _optional_share_assets(config, staging, project_root)
         files.update(share_files)
         conversion_path = staging / "conversion-report.json"
         conversion_path.write_bytes(canonical_json(conversion, newline=True))
         files["metadata/conversion-report.json"] = conversion_path
-        manifest = _manifest(config, files, share_backgrounds)
+        manifest = _manifest(config, files, share_backgrounds,
+                             has_group_aliases=alias_summary["hasGroupAliasField"])
         write_deterministic_zip(output, files, canonical_json(manifest, newline=True))
     return {
         "packId": config["packId"],

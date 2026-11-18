@@ -56,11 +56,15 @@ data class PackState(
     val progress: PackInstallProgress? = null,
     val hasPendingFiles: Boolean = false,
     /** Null means the persisted statistic is absent or dirty; never render it as a false zero. */
-    val availableCoverCount: Long? = null
+    val availableCoverCount: Long? = null,
+    val updateVersion: String? = null,
+    val updateFailed: Boolean = false
 ) {
     val available: Boolean get() = installed && status == PackRuntimeStatus.READY
     val canDownload: Boolean get() = sourceAvailable && !installed && progress == null &&
         status != PackRuntimeStatus.INITIALIZING && status != PackRuntimeStatus.DELETING
     val canDelete: Boolean get() = progress == null && status != PackRuntimeStatus.DELETING &&
         (installed || hasPendingFiles)
+    val canUpdate: Boolean get() = installed && sourceAvailable && updateVersion != null &&
+        progress == null && status == PackRuntimeStatus.READY
 }

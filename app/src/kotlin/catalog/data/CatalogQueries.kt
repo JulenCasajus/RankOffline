@@ -186,12 +186,9 @@ internal object CatalogQueries {
         val pattern = "%${term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")}%"
         if (memberOfGroup) {
             sql.append(" AND (g.display_title LIKE ? ESCAPE '\\' COLLATE NOCASE OR EXISTS (")
-            sql.append("SELECT 1 FROM media_group_member m JOIN media_item i ")
-            sql.append("ON i.pack_id=m.pack_id AND i.id=m.media_id WHERE m.pack_id=g.pack_id ")
-            sql.append("AND m.group_id=g.id AND (i.title LIKE ? ESCAPE '\\' COLLATE NOCASE OR EXISTS (")
-            sql.append("SELECT 1 FROM media_alias a WHERE a.pack_id=i.pack_id AND a.media_id=i.id ")
-            sql.append("AND a.title LIKE ? ESCAPE '\\' COLLATE NOCASE))))")
-            repeat(3) { args += pattern }
+            sql.append("SELECT 1 FROM media_group_alias a WHERE a.pack_id=g.pack_id AND a.group_id=g.id ")
+            sql.append("AND a.title LIKE ? ESCAPE '\\' COLLATE NOCASE))")
+            repeat(2) { args += pattern }
         } else {
             sql.append(" AND (i.title LIKE ? ESCAPE '\\' COLLATE NOCASE OR EXISTS (")
             sql.append("SELECT 1 FROM media_alias a WHERE a.pack_id=i.pack_id AND a.media_id=i.id ")

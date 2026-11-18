@@ -11,7 +11,7 @@ private const val NEXT_SEQUENCE = "next_install_sequence"
 private val sequenceLock = Any()
 
 /** WorkManager only coordinates persistent operations; PackManager owns their implementation. */
-internal enum class PackWorkAction { INSTALL, RECOVER, INITIAL_COVERS }
+internal enum class PackWorkAction { INSTALL, UPDATE, RECOVER, INITIAL_COVERS }
 internal enum class PackWorkDisposition { SUCCESS, RETRYABLE, PERMANENT_FAILURE }
 
 internal fun PackOperationResult.toWorkDisposition(): PackWorkDisposition = when (this) {
@@ -46,7 +46,7 @@ internal suspend fun awaitPersistentPackDownloadTurn(context: Context, sequence:
 }
 
 internal fun WorkInfo.blocksArchiveSequence(sequence: Long): Boolean {
-    if (state.isFinished || tags.none { it.endsWith(":INSTALL") }) return false
+    if (state.isFinished || tags.none { it.endsWith(":INSTALL") || it.endsWith(":UPDATE") }) return false
     val phase = progress.getString("phase")
     if (phase != null && phase != PackInstallPhase.QUEUED.name &&
         phase != PackInstallPhase.DOWNLOADING.name) return false
@@ -64,6 +64,7 @@ internal interface PackWorkerRuntime {
 
     /** Initial cover batch is optional; cancellation is owned by WorkManager, never persisted. */
     suspend fun resumeInitialCoversIfNeeded(packId: PackId): Boolean
+    suspend fun onPackUpdated(packId: PackId) = Unit
 }
 
 internal object PackWorkerRuntimeProvider {

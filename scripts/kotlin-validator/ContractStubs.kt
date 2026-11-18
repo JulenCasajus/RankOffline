@@ -32,6 +32,11 @@ data class MediaGroupEntity(
     val coverResolutionState: String = "UNKNOWN"
 )
 
+data class MediaGroupAliasEntity(
+    val packId: Long, val groupId: String, val title: String,
+    val language: String? = null, val kind: String? = null
+)
+
 data class MediaGroupMemberEntity(
     val packId: Long, val groupId: String, val mediaId: String, val position: Int
 )

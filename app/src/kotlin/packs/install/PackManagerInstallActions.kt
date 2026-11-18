@@ -43,8 +43,10 @@ internal suspend fun <T> PackManager.withCoverCommitTurn(onWaiting: () -> Unit, 
 
 suspend fun PackManager.markQueued(packId: PackId) {
     val descriptor = sources.descriptor(packId) ?: return
-    if (installer.installedDirectory(packId) != null) return
+    if (installer.installedDirectory(packId) != null &&
+        states.value[packId]?.updateVersion == null) return
     if (tracker.progress.value[packId] != null) return
+    if (states.value[packId]?.installed == true) updateFailures.remove(packId)
     tracker.set(packId, PackInstallProgress(PackInstallPhase.QUEUED,
         totalDownloadBytes = descriptor.archiveBytes))
     refresh()
@@ -76,12 +78,28 @@ suspend fun PackManager.reconcileQueuedInstallStates(
 }
 
 
-suspend fun PackManager.downloadAndInstall(packId: PackId): PackOperationResult = packLock(packId).withLock {
+suspend fun PackManager.downloadAndInstall(packId: PackId): PackOperationResult =
+    downloadAndApply(packId, update = false)
+
+suspend fun PackManager.downloadAndUpdate(packId: PackId): PackOperationResult =
+    downloadAndApply(packId, update = true)
+
+private suspend fun PackManager.downloadAndApply(
+    packId: PackId, update: Boolean
+): PackOperationResult = packLock(packId).withLock {
     val descriptor = sources.descriptor(packId) ?: return@withLock PackOperationResult.NOT_FOUND
+    if (update) updateFailures.remove(packId)
     if (!isCompatiblePackVersion(descriptor.manifest.minRankOfflineVersion, currentAppVersion)) {
         return@withLock PackOperationResult.INVALID_PACK
     }
-    alreadyInstalled(packId, descriptor.manifest)?.let { return@withLock it }
+    val installed = alreadyInstalled(packId, descriptor.manifest)
+    if (update) {
+        if (installed == PackOperationResult.INSTALLED) return@withLock installed
+        if (installed == PackOperationResult.STORAGE_ERROR) return@withLock installed
+        val old = installer.installedDirectory(packId)?.let(::readInstalledManifest)
+            ?: return@withLock PackOperationResult.INVALID_PACK
+        if (!newerPackRevision(old, descriptor)) return@withLock PackOperationResult.INVALID_PACK
+    } else installed?.let { return@withLock it }
     val previous = runtime[packId] ?: PackRuntimeStatus.NOT_INSTALLED
     val archive = newTemporaryArchive(packId)
     runtime[packId] = PackRuntimeStatus.INITIALIZING
@@ -94,15 +112,18 @@ suspend fun PackManager.downloadAndInstall(packId: PackId): PackOperationResult 
             }
         }
         if (outcome != PackOperationResult.INSTALLED) {
+            if (update) updateFailures.add(packId)
             runtime[packId] = previous
             return@withLock outcome
         }
         tracker.phase(packId, PackInstallPhase.VERIFYING)
         if (!PackArchiveReader.verifyArchiveDigest(archive, descriptor)) {
+            if (update) updateFailures.add(packId)
             runtime[packId] = previous
             return@withLock PackOperationResult.INVALID_PACK
         }
-        val result = installVerified(packId, archive, descriptor.manifest)
+        val result = installVerified(packId, archive, descriptor.manifest, update)
+        if (update && result != PackOperationResult.INSTALLED) updateFailures.add(packId)
         runtime[packId] = if (result == PackOperationResult.INSTALLED) PackRuntimeStatus.READY
             else PackRuntimeStatus.ERROR
         result
@@ -110,6 +131,7 @@ suspend fun PackManager.downloadAndInstall(packId: PackId): PackOperationResult 
         runtime[packId] = previous
         throw cancelled
     } catch (failure: Exception) {
+        if (update) updateFailures.add(packId)
         Log.e("RankOfflinePack", "Download or installation failed: pack=${packId.value}", failure)
         runtime[packId] = PackRuntimeStatus.ERROR
         PackOperationResult.STORAGE_ERROR
@@ -123,7 +145,8 @@ suspend fun PackManager.downloadAndInstall(packId: PackId): PackOperationResult 
 
 /** A repeated installation is a no-op only for the exact same manifest. */
 internal fun PackManager.alreadyInstalled(id: PackId, expected: PackManifest): PackOperationResult? {
-    if (installer.hasPendingInstallation(id) || installer.hasPendingDeletion(id))
+    if (installer.hasPendingInstallation(id) || installer.hasPendingDeletion(id) ||
+        installer.hasPendingUpdate(id))
         return PackOperationResult.STORAGE_ERROR
     val directory = installer.installedDirectory(id) ?: return null
     return if (readInstalledManifest(directory) == expected) PackOperationResult.INSTALLED
@@ -132,7 +155,7 @@ internal fun PackManager.alreadyInstalled(id: PackId, expected: PackManifest): P
 
 
 internal suspend fun PackManager.installVerified(
-    id: PackId, archive: File, expected: PackManifest
+    id: PackId, archive: File, expected: PackManifest, update: Boolean = false
 ): PackOperationResult = PackCoverWriteLocks.withPackLock(id) {
     var promoted = false
     var imported = false
@@ -142,7 +165,7 @@ internal suspend fun PackManager.installVerified(
             val context = currentCoroutineContext()
             PackArchiveReader.withVerifiedArchive(archive, expected) { request, open ->
                 tracker.phase(id, PackInstallPhase.INSTALLING)
-                installer.install(request) { spec ->
+                val verifiedOpen: (PackManifestFile) -> java.io.InputStream = { spec ->
                     object : FilterInputStream(open(spec)) {
                         override fun read(): Int {
                             context.ensureActive()
@@ -154,6 +177,8 @@ internal suspend fun PackManager.installVerified(
                         }
                     }
                 }
+                if (update) installer.stageUpdate(request, verifiedOpen)
+                else installer.install(request, verifiedOpen)
             }
         }
         promoted = true
@@ -167,17 +192,25 @@ internal suspend fun PackManager.installVerified(
         }
         imported = true
         tracker.phase(id, PackInstallPhase.FINALIZING)
-        withContext(Dispatchers.IO) { installer.commitInstallation(id) }
+        withContext(Dispatchers.IO) {
+            if (update) installer.commitUpdate(id) else installer.commitInstallation(id)
+        }
         // Advisory cache must never turn a successful Room commit into a failed install.
         runCatching { summaries.markCatalogReady(id, directory) }
         PackOperationResult.INSTALLED
     } catch (cancelled: CancellationException) {
-        if (promoted && !imported) withContext(NonCancellable + Dispatchers.IO) {
+        if (promoted && update) reconcileInterruptedUpdate(id)
+        else if (promoted && !imported) withContext(NonCancellable + Dispatchers.IO) {
             runCatching { installer.abortInstallation(id) }
         }
         throw cancelled
     } catch (failure: Exception) {
         Log.e("RankOfflinePack", "Archive installation failed: pack=${id.value}", failure)
+        if (promoted && update) {
+            if (!reconcileInterruptedUpdate(id)) return@withPackLock PackOperationResult.STORAGE_ERROR
+            return@withPackLock if (readInstalledManifest(installer.packDirectory(id)) == expected)
+                PackOperationResult.INSTALLED else PackOperationResult.IMPORT_ERROR
+        }
         if (promoted && !imported) {
             val cleared = withContext(NonCancellable + Dispatchers.IO) {
                 runCatching { installer.abortInstallation(id) }.isSuccess

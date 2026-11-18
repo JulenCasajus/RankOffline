@@ -14,6 +14,14 @@ import org.junit.Test
 class RatingRulesTest {
     private val definition = TestFixtures.ratingDefinition()
 
+    @Test fun derivedGroupChoiceRequiresMembersAndNoExplicitScore() {
+        assertTrue(needsGroupRatingChoice(false, 2, 7.5))
+        assertTrue(needsGroupRatingChoice(false, 1, 0.0))
+        assertEquals(false, needsGroupRatingChoice(true, 2, 7.5))
+        assertEquals(false, needsGroupRatingChoice(false, 0, null))
+        assertEquals(false, needsGroupRatingChoice(false, 2, null))
+    }
+
     @Test fun displayedScoresTruncateToTwoLocalizedDecimals() {
         assertEquals("7.60", formatScoreForDisplay(7.600000005, Locale.US))
         assertEquals("7.60", formatScoreForDisplay(7.609, Locale.US))

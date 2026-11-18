@@ -14,29 +14,13 @@ suspend fun SettingsRepository.updateLanguage(value: SupportedLanguage) = lock.w
 }
 
 
-/** Persist the user's welcome choices even when no packs are installed yet. */
-suspend fun SettingsRepository.completeWelcome(showImages: Boolean, elaborateRating: Boolean) = lock.withLock {
-    // This is infrequent; read existing customizations before applying onboarding globally.
-    manifests.keys.forEach { loadPackLocked(it) }
-    // Welcome can run after a pack has already been installed. Apply its choices to
-    // currently installed packs as well; future installations inherit the choices.
-    val updates = manifests.mapValues { (id, manifest) ->
-        val current = personal[id] ?: initialPackPreferences(manifest)
-        current.copy(
-            showImages = showImages,
-            elaborateRatingEnabled = if (manifest.capabilities.ratings) elaborateRating else false
-        )
-    }
-    withContext(Dispatchers.IO) {
-        updates.forEach { (id, value) -> packFiles.write(id, value) }
-    }
+/** Only the initial rating mode is global; each pack owns its cover default. */
+suspend fun SettingsRepository.completeWelcome(elaborateRating: Boolean) = lock.withLock {
     context.dataStore.edit { prefs ->
-        prefs[welcomeImagesKey] = showImages
         prefs[welcomeElaborateKey] = elaborateRating
         prefs[welcomeKey] = true
     }
-    personal = personal + updates
-    welcomeChoices = showImages to elaborateRating
+    welcomeElaborateChoice = elaborateRating
     _state.value = _state.value.copy(hasCompletedWelcome = true).refreshPackSettings()
 }
 

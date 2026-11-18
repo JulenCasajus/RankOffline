@@ -18,9 +18,9 @@
   <string name='action_delete'>Elimina</string>
   <string name='action_continue'>Continua</string>
   <string name='whats_new_title'>Novità della versione %1$s</string>
-  <string name='whats_new_visuals'>Un aspetto nuovo e più curato in tutta l’app.</string>
-  <string name='whats_new_packs'>Anime, manga, film, serie e libri in un unico posto.</string>
-  <string name='whats_new_features'>Filtri, Merge e gestione delle copertine migliorati.</string>
+  <string name='whats_new_visuals'>Trova i gruppi tramite i loro titoli alternativi.</string>
+  <string name='whats_new_packs'>Aggiorna i pacchetti senza perdere le valutazioni.</string>
+  <string name='whats_new_features'>Benvenuto più semplice e valutazioni dei gruppi migliorate.</string>
   <string name='whats_new_bugs'>Risolti alcuni bug… forse ne ho creati altri.</string>
   <string name='whats_new_thanks'>Grazie per usare RankOffline!</string>
   <string name='whats_new_contact'>Problemi? Fammi sapere :D</string>
@@ -183,12 +183,11 @@
   <string name='action_retry'>Riprova</string>
   <string name='category_not_installed'>Non scaricata</string>
   <string name='onboarding_welcome_title'>Benvenuto in RankOffline!</string>
-  <string name='onboarding_choose_style'>Scegli il tuo stile</string>
-  <string name='onboarding_change_later'>Potrai cambiarlo dalle Impostazioni.</string>
-  <string name='onboarding_minimal'>Minimalista</string>
-  <string name='onboarding_with_images'>Con immagini</string>
-  <string name='onboarding_rating_simple'>Valutazione semplice</string>
   <string name='onboarding_rating_elaborate'>Valutazione dettagliata</string>
+  <string name='onboarding_rating_simple_description'>Disattivato: valuta ogni titolo direttamente da 0 a 10.</string>
+  <string name='onboarding_rating_elaborate_description'>Attivato: valuta vari aspetti per calcolare il voto finale.</string>
+  <string name='onboarding_covers_hint'>Mostra o nascondi le copertine nelle impostazioni di ogni pacchetto.</string>
+  <string name='onboarding_offline_hint'>Scarica i cataloghi per pacchetto. Le valutazioni restano su questo dispositivo e i cataloghi scaricati funzionano offline.</string>
   <string name='onboarding_start'>Inizia</string>
   <string name='onboarding_categories_title'>Da dove vuoi iniziare?</string>
   <string name='onboarding_categories_subtitle'>
@@ -298,4 +297,14 @@
   </plurals>
   <string name="filter_match_any_description">OR · uno</string>
   <string name="filter_match_all_description">AND · tutti</string>
+  <string name="pack_updates_title">Aggiornamenti dei pacchetti disponibili</string>
+  <string name="pack_updates_description">Alcuni pacchetti installati hanno revisioni più recenti. Puoi aggiornarli ora o più tardi nelle impostazioni.</string>
+  <string name="pack_updates_personal_data">Le valutazioni e le impostazioni personali vengono conservate durante gli aggiornamenti.</string>
+  <string name="pack_updates_versions">Installata: %1$s · Disponibile: %2$s</string>
+  <string name="pack_updates_done">Aggiornato</string>
+  <string name="pack_updates_action">Aggiorna</string>
+  <string name="pack_updates_later">Più tardi</string>
+  <string name="pack_updates_all">Aggiorna tutti</string>
+  <string name="pack_updates_available">Aggiornamento disponibile: %1$s → %2$s</string>
+  <string name="pack_updates_error">Aggiornamento non riuscito. Riprova.</string>
 </resources>

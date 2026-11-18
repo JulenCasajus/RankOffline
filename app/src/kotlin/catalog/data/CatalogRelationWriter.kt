@@ -157,6 +157,8 @@ internal class CatalogRelationWriter(
         groupDao.replaceRelations(
             packId, ids, rows.flatMap { it.members }, rows.mapNotNull { it.representative }
         )
+        groupDao.deleteAliases(packId, ids)
+        rows.flatMap { it.aliases }.chunked(500).forEach { groupDao.insertAliases(it) }
         // Current group records do not declare attributes; do not retain stale catalog attributes.
         groupDao.replaceAttributes(packId, ids, emptyList())
     }

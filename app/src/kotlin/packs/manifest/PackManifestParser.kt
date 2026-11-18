@@ -18,7 +18,7 @@ object PackManifestParser {
     }
 
     fun parse(root: JSONObject): PackManifest {
-        root.requireOnlyKeys("schemaVersion", "packId", "version", "minRankOfflineVersion", "displayName",
+        root.requireOnlyKeys("schemaVersion", "packId", "slug", "version", "minRankOfflineVersion", "displayName",
             "presentation", "capabilities", "fields", "filters", "subtitle", "merge", "defaults",
             "rating", "coverSources", "catalog", "groups", "covers", "attribution", "integrity")
         require(root.toString().toByteArray(Charsets.UTF_8).size <= MAX_MANIFEST_BYTES) {
@@ -29,6 +29,10 @@ object PackManifestParser {
         val packId = PackId.fromJson(root.get("packId"))
         val displayName = root.requiredText("displayName", 160)
         val version = root.requiredText("version", 80)
+        val slug = root.optString("slug").takeIf { root.has("slug") }
+        if (slug != null) require(parsePackRevision(version)?.slug == slug) {
+            "Pack slug and version disagree"
+        }
         val minRankOfflineVersion = root.requiredText("minRankOfflineVersion", 80)
 
         val integrity = PackManifestIntegrity.parse(root.getJSONObject("integrity"))
@@ -55,6 +59,7 @@ object PackManifestParser {
             packId = packId,
             displayName = displayName,
             version = version,
+            slug = slug,
             minRankOfflineVersion = minRankOfflineVersion,
             presentation = presentation,
             fields = fields,

@@ -41,7 +41,6 @@ internal class CatalogUiController(
     internal val allRanking = MutableStateFlow(RankingUiState())
     internal val moreSearch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     internal val moreRanking = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    internal val ratingDisplayOverrides = MutableStateFlow<Map<CatalogEntryKey, RatingDisplayOverride>>(emptyMap())
     internal val session = CatalogSessionCache()
     private var preloadJob: Job? = null
     private var preloadTarget: Pair<PackId, List<PackId>>? = null

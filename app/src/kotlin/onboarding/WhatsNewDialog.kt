@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
-internal const val WHATS_NEW_VERSION = "0.2.2"
+internal const val WHATS_NEW_VERSION = "0.2.3"
 
 internal fun shouldShowWhatsNew(settings: AppSettingsState, versionName: String): Boolean =
     settings.settingsLoaded && settings.hasCompletedOnboarding &&

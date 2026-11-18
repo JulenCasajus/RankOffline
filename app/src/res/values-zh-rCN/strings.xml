@@ -18,9 +18,9 @@
   <string name='action_delete'>删除</string>
   <string name='action_continue'>继续</string>
   <string name='whats_new_title'>版本 %1$s 的新变化</string>
-  <string name='whats_new_visuals'>整个应用焕然一新，更加美观。</string>
-  <string name='whats_new_packs'>动画、漫画、电影、剧集和图书，尽在一处。</string>
-  <string name='whats_new_features'>改进了筛选、Merge 和封面操作。</string>
+  <string name='whats_new_visuals'>可通过别名搜索分组。</string>
+  <string name='whats_new_packs'>更新内容包时保留您的评分。</string>
+  <string name='whats_new_features'>简化首次使用流程并改进分组评分。</string>
   <string name='whats_new_bugs'>修复了一些问题……也许又添了几个。</string>
   <string name='whats_new_thanks'>感谢使用 RankOffline！</string>
   <string name='whats_new_contact'>遇到问题？告诉我吧 :D</string>
@@ -161,12 +161,11 @@
   <string name='action_retry'>重试</string>
   <string name='category_not_installed'>未下载</string>
   <string name='onboarding_welcome_title'>欢迎使用 RankOffline!</string>
-  <string name='onboarding_choose_style'>选择样式</string>
-  <string name='onboarding_change_later'>之后可随时在设置中更改。</string>
-  <string name='onboarding_minimal'>极简</string>
-  <string name='onboarding_with_images'>显示图片</string>
-  <string name='onboarding_rating_simple'>简单评分</string>
   <string name='onboarding_rating_elaborate'>详细评分</string>
+  <string name='onboarding_rating_simple_description'>关闭：直接为每个条目打0到10分。</string>
+  <string name='onboarding_rating_elaborate_description'>开启：为多个方面评分并计算最终分数。</string>
+  <string name='onboarding_covers_hint'>可在每个内容包的设置中显示或隐藏封面。</string>
+  <string name='onboarding_offline_hint'>按内容包下载目录。评分保存在本机，已下载的目录可离线使用。</string>
   <string name='onboarding_start'>开始</string>
   <string name='onboarding_categories_title'>想从哪里开始？</string>
   <string name='onboarding_categories_subtitle'>选择要离线使用的目录。之后可在设置中管理。</string>
@@ -261,4 +260,14 @@
   </plurals>
   <string name="filter_match_any_description">OR · 任一</string>
   <string name="filter_match_all_description">AND · 全部</string>
+  <string name="pack_updates_title">有可用的资源包更新</string>
+  <string name="pack_updates_description">部分已安装资源包有新版本。可立即更新，也可稍后在设置中更新。</string>
+  <string name="pack_updates_personal_data">更新资源包时会保留评分和个人设置。</string>
+  <string name="pack_updates_versions">已安装：%1$s · 可用：%2$s</string>
+  <string name="pack_updates_done">已更新</string>
+  <string name="pack_updates_action">更新</string>
+  <string name="pack_updates_later">稍后</string>
+  <string name="pack_updates_all">全部更新</string>
+  <string name="pack_updates_available">有可用更新：%1$s → %2$s</string>
+  <string name="pack_updates_error">更新失败，请重试。</string>
 </resources>

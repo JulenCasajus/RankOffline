@@ -5,17 +5,11 @@ internal fun CatalogUiController.removePack(packId: PackId) {
     filterOptionsState.value = filterOptionsState.value - packId
     searchByPack.value = searchByPack.value - packId
     rankingByPack.value = rankingByPack.value - packId
-    ratingDisplayOverrides.value = ratingDisplayOverrides.value.filterKeys { it.packId != packId }
     revisions.catalogChanged(packId)
 }
 
 
-internal fun CatalogUiController.ratingChanged(key: CatalogEntryKey, draft: RatingDraft) {
-    ratingDisplayOverrides.value = ratingDisplayOverrides.value + (key to RatingDisplayOverride(
-        finalScore = draft.finalScore,
-        qualityScore = draft.qualityScore,
-        additiveScore = draft.finalScore?.let { draft.additiveScore }
-    ))
+internal fun CatalogUiController.ratingChanged(key: CatalogEntryKey) {
     revisions.ratingsChanged(key.packId)
     // Group rows in Search derive their score and rated-member count from Room.
     revisions.catalogChanged(key.packId)
