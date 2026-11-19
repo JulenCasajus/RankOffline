@@ -24,11 +24,12 @@ internal fun WelcomeStyleDialog(
     onComplete: (Boolean) -> Unit
 ) {
     var elaborateRating by rememberSaveable { mutableStateOf(settings.elaborateRatingEnabled) }
-    WelcomeDialogBackground {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val layout = welcomeLayoutMetrics(maxHeight)
-            Column(Modifier.fillMaxSize().padding(layout.outerPadding)) {
-                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+    WelcomeDialogBackground { availableHeight ->
+        val layout = welcomeLayoutMetrics(availableHeight)
+        Column(Modifier.padding(layout.outerPadding)) {
+            Column(Modifier.fillMaxWidth()
+                    .heightIn(max = (availableHeight - 110.dp).coerceAtLeast(100.dp))
+                    .verticalScroll(rememberScrollState())) {
                     Text(stringResource(R.string.onboarding_welcome_title),
                         fontSize = layout.welcomeTitleFontSize,
                         lineHeight = layout.welcomeTitleLineHeight,
@@ -82,12 +83,11 @@ internal fun WelcomeStyleDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = layout.helperFontSize,
                         lineHeight = layout.helperLineHeight)
-                }
-                Button(onClick = { onComplete(elaborateRating) },
-                    modifier = Modifier.fillMaxWidth().padding(top = layout.buttonTopPadding)
-                        .testTag("onboarding_start")) {
-                    Text(stringResource(R.string.onboarding_start), fontWeight = FontWeight.Bold)
-                }
+            }
+            Button(onClick = { onComplete(elaborateRating) },
+                modifier = Modifier.fillMaxWidth().padding(top = layout.buttonTopPadding)
+                    .testTag("onboarding_start")) {
+                Text(stringResource(R.string.onboarding_start), fontWeight = FontWeight.Bold)
             }
         }
     }

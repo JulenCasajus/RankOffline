@@ -206,21 +206,24 @@ internal suspend fun PackManager.installVerified(
         throw cancelled
     } catch (failure: Exception) {
         Log.e("RankOfflinePack", "Archive installation failed: pack=${id.value}", failure)
+        val invalidPack = failure is IllegalArgumentException || failure is SecurityException ||
+            failure is java.util.zip.ZipException
         if (promoted && update) {
             if (!reconcileInterruptedUpdate(id)) return@withPackLock PackOperationResult.STORAGE_ERROR
             return@withPackLock if (readInstalledManifest(installer.packDirectory(id)) == expected)
-                PackOperationResult.INSTALLED else PackOperationResult.IMPORT_ERROR
+                PackOperationResult.INSTALLED else if (!imported && invalidPack) PackOperationResult.INVALID_PACK
+                else PackOperationResult.IMPORT_ERROR
         }
         if (promoted && !imported) {
             val cleared = withContext(NonCancellable + Dispatchers.IO) {
                 runCatching { installer.abortInstallation(id) }.isSuccess
             }
             if (!cleared) return@withPackLock PackOperationResult.STORAGE_ERROR
-            return@withPackLock PackOperationResult.IMPORT_ERROR
+            return@withPackLock if (invalidPack) PackOperationResult.INVALID_PACK
+                else PackOperationResult.IMPORT_ERROR
         }
         if (promoted) return@withPackLock PackOperationResult.STORAGE_ERROR
-        if (failure is IllegalArgumentException || failure is SecurityException ||
-            failure is java.util.zip.ZipException) PackOperationResult.INVALID_PACK
+        if (invalidPack) PackOperationResult.INVALID_PACK
         else PackOperationResult.STORAGE_ERROR
     }
 }

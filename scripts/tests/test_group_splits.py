@@ -27,7 +27,8 @@ class GroupSplitTests(unittest.TestCase):
         self.source_id = "group:mal:1:SPECIAL"
         self.group = {"id": self.source_id, "displayTitle": "Lupin III: First",
                       "groupType": "relations", "representativeMediaId": "mal:1",
-                      "popularity": 42.0, "providerGroupId": self.source_id,
+                      "popularity": 42.0, "provider": "anime_offline_database",
+                      "providerGroupId": self.source_id,
                       "members": [{"mediaId": mid, "position": index}
                                   for index, mid in enumerate(self.items)]}
         self.spec = {self.source_id: {
@@ -51,6 +52,10 @@ class GroupSplitTests(unittest.TestCase):
         self.assertEqual([group["representativeMediaId"] for group in groups],
                          ["mal:1", "mal:3"])
         self.assertTrue(all("popularity" not in group for group in groups))
+        self.assertEqual(groups[0]["provider"], "anime_offline_database")
+        self.assertEqual(groups[0]["providerGroupId"], self.source_id)
+        self.assertNotIn("provider", groups[1])
+        self.assertNotIn("providerGroupId", groups[1])
         self.assertEqual(report[0]["ungrouped"], ["mal:5"])
 
     def test_source_changes_and_collisions_fail_closed(self):

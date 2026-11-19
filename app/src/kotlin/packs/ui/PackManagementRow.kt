@@ -182,12 +182,13 @@ internal fun PackManagementRow(
                         Icon(Icons.Default.Delete,
                             contentDescription = stringResource(R.string.category_remove_catalog), tint = accent)
                     }
-                    state.canDownload -> IconButton(onClick = onInstall) {
-                        Icon(
-                            if (state.status == PackRuntimeStatus.ERROR) Icons.Default.Refresh
-                            else Icons.Default.CloudDownload,
-                            contentDescription = stringResource(R.string.category_download), tint = accent)
-                    }
+                    state.canDownload -> if (state.status == PackRuntimeStatus.ERROR) {
+                        IconButton(onClick = onInstall) {
+                            Icon(Icons.Default.Refresh,
+                                contentDescription = stringResource(R.string.category_download), tint = accent)
+                        }
+                    } else PackCloudDownloadButton(onInstall, accent,
+                        stringResource(R.string.category_download))
                     else -> UnavailablePackIcon()
                 }
             }
@@ -233,6 +234,17 @@ private fun StorageBreakdownRow(label: String, size: String, modifier: Modifier 
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontSize = 12.sp)
         Text(size, fontSize = 12.sp)
+    }
+}
+
+@Composable
+internal fun PackCloudDownloadButton(
+    onClick: () -> Unit,
+    tint: Color,
+    contentDescription: String
+) {
+    IconButton(onClick = onClick) {
+        Icon(Icons.Default.CloudDownload, contentDescription = contentDescription, tint = tint)
     }
 }
 

@@ -18,12 +18,12 @@
   <string name='action_delete'>Löschen</string>
   <string name='action_continue'>Fortfahren</string>
   <string name='whats_new_title'>Neu in Version %1$s</string>
-  <string name='whats_new_visuals'>Gruppen über ihre alternativen Titel finden.</string>
-  <string name='whats_new_packs'>Packs aktualisieren und Bewertungen behalten.</string>
-  <string name='whats_new_features'>Einfacherer Einstieg und bessere Gruppenbewertungen.</string>
-  <string name='whats_new_bugs'>Einige Fehler behoben… vielleicht neue eingebaut.</string>
+  <string name='whats_new_visuals'>Finde Gruppen über ihre alternativen Titel (meist Übersetzungen).</string>
+  <string name='whats_new_packs'>Neues Fenster für Pack-Updates, damit du deine Bewertungen nicht für verloren hältst.</string>
+  <string name='whats_new_features'>Viele kleine Neuerungen.</string>
+  <string name='whats_new_bugs'>Einige Fehler behoben…</string>
   <string name='whats_new_thanks'>Danke, dass du RankOffline nutzt!</string>
-  <string name='whats_new_contact'>Probleme? Sag mir Bescheid :D</string>
+  <string name='whats_new_contact'>Probleme, Fehler oder Vorschläge? Schreib mir auf GitHub oder schick eine Brieftaube :D</string>
   <string name='action_save'>Speichern</string>
   <string name='action_apply'>Anwenden</string>
   <string name='action_back'>Zurück</string>
@@ -242,7 +242,7 @@
   <string name='category_phase_installing'>Wird installiert…</string>
   <string name='category_phase_waiting_import'>Warten auf Import…</string>
   <string name='category_phase_waiting_covers'>Warten auf Cover…</string>
-  <string name='category_phase_importing_catalog'>Katalog wird importiert… Das kann etwas dauern.</string>
+  <string name='category_phase_importing_catalog'>Katalog wird importiert… Das kann eine Minute dauern.</string>
   <string name='category_phase_downloading_covers'>Cover werden heruntergeladen: %1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>Cover bereit · warte auf Datenbank</string>
   <string name='category_deleting'>Wird gelöscht…</string>

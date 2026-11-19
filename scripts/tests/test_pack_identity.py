@@ -56,6 +56,12 @@ class PackIdentityTests(unittest.TestCase):
         validate_registry(records)
         self.assertEqual(6, next_pack_id(records))
 
+    def test_animes_new_install_defaults_to_merge(self):
+        path = Path(__file__).resolve().parents[1] / "packs" / "official-packs.json"
+        config = json.loads(path.read_text(encoding="utf-8"))
+        anime = next(pack for pack in config["packs"] if pack["packId"] == 1)
+        self.assertTrue(anime["defaults"]["mergeEnabled"])
+
 
 if __name__ == "__main__":
     unittest.main()

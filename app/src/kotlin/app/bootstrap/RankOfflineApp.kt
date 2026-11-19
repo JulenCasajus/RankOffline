@@ -287,8 +287,13 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     coverRepository = covers, bitmapCache = bitmapCache,
                     onPack = viewModel::updateActivePack, onAll = viewModel::selectAllPacks,
                     onManage = openManagement, onQuery = {
-                        viewModel.setSearchQuery(it)
-                        coroutines.launch { catalogListState.scrollToItem(0) }
+                        if (it != visibleSearchState.query) {
+                            if (catalogListState.firstVisibleItemIndex != 0 ||
+                                catalogListState.firstVisibleItemScrollOffset != 0) {
+                                catalogListState.requestScrollToItem(0)
+                            }
+                            viewModel.setSearchQuery(it)
+                        }
                     },
                     onSort = {
                         viewModel.setCatalogSortOrder(it)

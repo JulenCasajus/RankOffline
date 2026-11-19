@@ -119,14 +119,17 @@ internal class PackUiController(
 
     fun discoverAvailable() {
         if (discoveryJob?.isActive == true) return
+        discovering.value = true
         discoveryJob = scope.launch {
-            discovering.value = true
             try {
                 services.refreshAvailablePacks()
                 PackWorkScheduler.reconcilePersistentWork(context, services.packManager)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { onDiscoveryError(failure) }
-            finally { discovering.value = false }
+            finally {
+                discoveryJob = null
+                discovering.value = false
+            }
         }
     }
 

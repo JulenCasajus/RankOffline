@@ -18,12 +18,12 @@
   <string name='action_delete'>Elimina</string>
   <string name='action_continue'>Continua</string>
   <string name='whats_new_title'>Novità della versione %1$s</string>
-  <string name='whats_new_visuals'>Trova i gruppi tramite i loro titoli alternativi.</string>
-  <string name='whats_new_packs'>Aggiorna i pacchetti senza perdere le valutazioni.</string>
-  <string name='whats_new_features'>Benvenuto più semplice e valutazioni dei gruppi migliorate.</string>
-  <string name='whats_new_bugs'>Risolti alcuni bug… forse ne ho creati altri.</string>
+  <string name='whats_new_visuals'>Trova i gruppi tramite i titoli alternativi (soprattutto traduzioni).</string>
+  <string name='whats_new_packs'>Nuova finestra per aggiornare i pacchetti, così non penserai di aver perso le tue valutazioni.</string>
+  <string name='whats_new_features'>Aggiunte molte piccole novità.</string>
+  <string name='whats_new_bugs'>Risolti alcuni bug…</string>
   <string name='whats_new_thanks'>Grazie per usare RankOffline!</string>
-  <string name='whats_new_contact'>Problemi? Fammi sapere :D</string>
+  <string name='whats_new_contact'>Problemi, bug o suggerimenti? Scrivimi su GitHub o manda un piccione viaggiatore :D</string>
   <string name='action_save'>Salva</string>
   <string name='action_apply'>Applica</string>
   <string name='action_back'>Indietro</string>
@@ -242,7 +242,7 @@
   <string name='category_phase_installing'>Installazione…</string>
   <string name='category_phase_waiting_import'>In attesa dell’importazione…</string>
   <string name='category_phase_waiting_covers'>In attesa delle copertine…</string>
-  <string name='category_phase_importing_catalog'>Importazione catalogo… Potrebbe richiedere un po’ di tempo.</string>
+  <string name='category_phase_importing_catalog'>Importazione catalogo… Potrebbe richiedere un minuto.</string>
   <string name='category_phase_downloading_covers'>Download copertine: %1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>Copertine pronte · attesa del database</string>
   <string name='category_deleting'>Eliminazione…</string>

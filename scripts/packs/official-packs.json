@@ -213,7 +213,7 @@
       "fileName": "pack-1.pack",
       "displayName": "Animes",
       "slug": "animes",
-      "version": "animes-v6",
+      "version": "animes-v8",
       "minRankOfflineVersion": "0.2.3",
       "sourceArchive": "dist/v0.2.1-debug.1/RankOffline-Anime-v0.2.0.pack",
       "presentation": {
@@ -221,7 +221,7 @@
         "accentColor": "#1976D2"
       },
       "capabilities": {"covers": true},
-      "defaults": {"showImages": true},
+      "defaults": {"showImages": true, "mergeEnabled": true},
       "fieldIds": [
         "source_media_type", "year", "start_date", "format", "status", "original_language", "genre", "studio",
         "legacy_cover_reference", "source_alias_overflow_1", "source_alias_overflow_2", "source_alias_overflow_3",

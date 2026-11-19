@@ -19,6 +19,17 @@ class SearchPresentationTest {
         assertEquals("Canonical", entry.value.title)
     }
 
+    @Test fun aliasTitleAppearsForOneOrTwoCharactersAndTracksEveryEdit() {
+        val scope = ViewingScope.Pack(PackId(1))
+        val item = MediaListEntry.Item(MediaItem(PackId(1), "id", "Canonical",
+            aliases = listOf(MediaItemAlias("Zephyr name"))))
+        val page = SearchPageState(scope, listOf(item), loadingInitial = false)
+        assertEquals("Zephyr name", page.visibleItemsFor(scope, "Z").single().title)
+        assertEquals("Zephyr name", page.visibleItemsFor(scope, "Ze").single().title)
+        assertEquals("Canonical", page.visibleItemsFor(scope, "C").single().title)
+        assertEquals("Canonical", page.visibleItemsFor(scope, "").single().title)
+    }
+
     @Test fun groupSearchUsesOnlyGroupTitleAndOwnAliases() {
         val query = CatalogQueries.catalog(TestFixtures.manifest(11, merge = true),
             SearchUiState(query = "Alternative"), merge = true, limit = 200)
@@ -37,6 +48,7 @@ class SearchPresentationTest {
         val entry = MediaListEntry.Group(group, null, null, null, null, 2, 0, derived = true)
         val page = SearchPageState(scope, listOf(entry), loadingInitial = false, query = "別名")
         assertEquals("別名グループ", page.visibleItemsFor(scope, "別名").single().title)
+        assertEquals("別名グループ", page.visibleItemsFor(scope, "別").single().title)
         assertEquals("別名グループ", page.visibleItemsFor(scope, "グループ").single().title)
         assertEquals("Canonical group", page.visibleItemsFor(scope, "Canonical").single().title)
         assertEquals("Canonical group", group.displayTitle)

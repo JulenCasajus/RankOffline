@@ -50,6 +50,7 @@ private fun validate(path: String): String {
     var items = 0L
     var groups = 0L
     var relationships = 0L
+    val providerGroupIds = HashSet<Triple<String, String, String>>()
     ZipFile(file).use { archive ->
         manifest.catalog.forEach { payload ->
             archive.forEachJsonLine(payload) { line, number ->
@@ -74,6 +75,12 @@ private fun validate(path: String): String {
                 }
                 require(record.representativeMediaId == null || record.representativeMediaId in itemIds) {
                     "Group representative is missing at $payload:$number"
+                }
+                if (record.provider != null && record.providerGroupId != null) {
+                    val identity = Triple(record.groupType ?: "group", record.provider, record.providerGroupId)
+                    require(providerGroupIds.add(identity)) {
+                        "Duplicate group provider identity at $payload:$number: $identity"
+                    }
                 }
                 groups++
                 relationships += record.members.size

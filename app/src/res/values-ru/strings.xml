@@ -18,12 +18,12 @@
   <string name='action_delete'>Удалить</string>
   <string name='action_continue'>Продолжить</string>
   <string name='whats_new_title'>Что нового в версии %1$s</string>
-  <string name='whats_new_visuals'>Ищите группы по альтернативным названиям.</string>
-  <string name='whats_new_packs'>Обновляйте пакеты без потери оценок.</string>
-  <string name='whats_new_features'>Упрощено начало работы и улучшена оценка групп.</string>
-  <string name='whats_new_bugs'>Исправлены ошибки… возможно, появились новые.</string>
+  <string name='whats_new_visuals'>Ищите группы по альтернативным названиям (в основном переводам).</string>
+  <string name='whats_new_packs'>Новое окно обновления пакетов: ваши оценки никуда не пропали.</string>
+  <string name='whats_new_features'>Добавлено много небольших функций.</string>
+  <string name='whats_new_bugs'>Исправлено несколько ошибок…</string>
   <string name='whats_new_thanks'>Спасибо, что пользуетесь RankOffline!</string>
-  <string name='whats_new_contact'>Есть проблемы? Напишите мне :D</string>
+  <string name='whats_new_contact'>Проблемы, ошибки или идеи? Напишите мне на GitHub или пришлите почтового голубя :D</string>
   <string name='action_save'>Сохранить</string>
   <string name='action_apply'>Применить</string>
   <string name='action_back'>Назад</string>
@@ -236,7 +236,7 @@
   <string name='category_phase_installing'>Установка…</string>
   <string name='category_phase_waiting_import'>Ожидание импорта…</string>
   <string name='category_phase_waiting_covers'>Ожидание обложек…</string>
-  <string name='category_phase_importing_catalog'>Импорт каталога… Это может занять некоторое время.</string>
+  <string name='category_phase_importing_catalog'>Импорт каталога… Это может занять минуту.</string>
   <string name='category_phase_downloading_covers'>Загрузка обложек: %1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>Обложки готовы · ожидание базы данных</string>
   <string name='category_deleting'>Удаление…</string>

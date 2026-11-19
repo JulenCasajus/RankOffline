@@ -2,10 +2,14 @@ package org.rankoffline.app
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
 
 /**
  * First-run presentation only. No filesystem, Room, WorkManager or network calls from Compose.
- * The host owns actions, state collection and the one-time trusted-source discovery.
+ * The host owns actions, state collection and trusted-source discovery.
  */
 @Composable
 fun FirstRunOnboarding(
@@ -24,9 +28,18 @@ fun FirstRunOnboarding(
     onRequestStorageDetails: (PackId) -> Unit,
     onOnboardingComplete: () -> Unit
 ) {
-    // Begin metadata-only discovery as soon as the first onboarding screen opens.
-    LaunchedEffect(settings.settingsLoaded, settings.hasCompletedOnboarding) {
-        if (settings.settingsLoaded && !settings.hasCompletedOnboarding) onDiscoverPacks()
+    val latestPacks by rememberUpdatedState(packStates)
+    val latestDiscovering by rememberUpdatedState(isDiscovering)
+    // Prefetch on step one; retry once on entering step two if the first fetch failed.
+    LaunchedEffect(settings.settingsLoaded, settings.hasCompletedWelcome,
+        settings.hasCompletedOnboarding) {
+        if (!settings.settingsLoaded || settings.hasCompletedOnboarding) return@LaunchedEffect
+        if (!settings.hasCompletedWelcome) {
+            onDiscoverPacks()
+        } else if (latestPacks.values.none { it.sourceAvailable }) {
+            if (latestDiscovering) snapshotFlow { latestDiscovering }.first { !it }
+            if (latestPacks.values.none { it.sourceAvailable }) onDiscoverPacks()
+        }
     }
     when {
         !settings.settingsLoaded -> Unit

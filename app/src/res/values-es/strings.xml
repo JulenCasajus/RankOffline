@@ -18,12 +18,12 @@
   <string name='action_delete'>Eliminar</string>
   <string name='action_continue'>Continuar</string>
   <string name='whats_new_title'>Novedades de la versión %1$s</string>
-  <string name='whats_new_visuals'>Encuentra agrupaciones por sus títulos alternativos.</string>
-  <string name='whats_new_packs'>Actualiza paquetes sin perder tus valoraciones.</string>
-  <string name='whats_new_features'>Bienvenida más sencilla y mejores valoraciones de grupos.</string>
-  <string name='whats_new_bugs'>He corregido algunos errores… posiblemente haya creado otros. sad.</string>
+  <string name='whats_new_visuals'>Encuentra agrupaciones por sus títulos alternativos (sobre todo traducciones).</string>
+  <string name='whats_new_packs'>Nueva ventana para actualizar paquetes sin pensar que has perdido tus valoraciones.</string>
+  <string name='whats_new_features'>Muchas pequeñas novedades.</string>
+  <string name='whats_new_bugs'>He corregido algunos errores…</string>
   <string name='whats_new_thanks'>¡Gracias por usar RankOffline!</string>
-  <string name='whats_new_contact'>¿Algún problema? Dímelo :D</string>
+  <string name='whats_new_contact'>¿Problemas, errores o sugerencias? Avísame en GitHub o envíame una paloma mensajera :D</string>
   <string name='action_save'>Guardar</string>
   <string name='action_apply'>Aplicar</string>
   <string name='action_back'>Atrás</string>
@@ -243,7 +243,7 @@
   <string name='category_phase_installing'>Instalando…</string>
   <string name='category_phase_waiting_import'>Esperando para importar…</string>
   <string name='category_phase_waiting_covers'>Esperando las portadas…</string>
-  <string name='category_phase_importing_catalog'>Importando catálogo… Esto puede tardar un rato.</string>
+  <string name='category_phase_importing_catalog'>Importando catálogo… Esto puede tardar un minuto.</string>
   <string name='category_phase_downloading_covers'>Descargando portadas: %1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>Portadas listas · esperando a la base de datos</string>
   <string name='category_deleting'>Eliminando…</string>

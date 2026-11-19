@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 
@@ -43,6 +44,7 @@ internal fun RatingScreen(
     var current by rememberSaveable(identity) {
         mutableStateOf(if (elaborate) draft.withDefaultCategoryScores(config) else draft)
     }
+    var notes by rememberSaveable(identity) { mutableStateOf(draft.notes) }
     var simpleQuality by rememberSaveable(identity) {
         mutableDoubleStateOf(snapRatingValue(
             draft.qualityScore ?: draft.finalScore?.minus(draft.additiveScore) ?: 5.0) ?: 5.0)
@@ -105,18 +107,19 @@ internal fun RatingScreen(
                     manualOverride = null; scoringChanged = true
                 }
             }
-            item { OutlinedTextField(current.notes, { current = current.copy(notes = it) },
+            item { OutlinedTextField(notes, { notes = it },
                 label = { Text(stringResource(R.string.rating_notes)) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp)) }
+                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp).testTag("rating_notes")) }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(onClick = {
                         val metadataOnly = !scoringChanged &&
-                            (current.notes != draft.notes || current.status != draft.status)
+                            (notes != draft.notes || current.status != draft.status)
+                        val updatedDraft = scoredDraft.copy(notes = notes)
                         if (metadataOnly || (!scoringChanged && draft.finalScore != null))
-                            onSaveMetadata(current.notes, current.status)
-                        else if (elaborate) onSaveElaborate(scoredDraft, profile.id, manualOverride)
-                        else calculated?.let { onSaveSimple(scoredDraft, simpleQuality, it) }
+                            onSaveMetadata(notes, current.status)
+                        else if (elaborate) onSaveElaborate(updatedDraft, profile.id, manualOverride)
+                        else calculated?.let { onSaveSimple(updatedDraft, simpleQuality, it) }
                     }, modifier = Modifier.weight(1f), enabled = calculated != null) {
                         Icon(Icons.Default.Save, null)
                         Spacer(Modifier.width(6.dp))

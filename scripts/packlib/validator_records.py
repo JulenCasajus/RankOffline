@@ -169,6 +169,7 @@ def _validate_records(archive: zipfile.ZipFile, manifest: dict, fields: dict[str
     if len(item_ids) > 2_000_000:
         _fail("Catalog exceeds the engine item limit")
     group_ids: set[str] = set()
+    provider_group_ids: set[tuple[str, str, str]] = set()
     relationships = 0
     for path in manifest["groups"]:
         if not path.endswith((".jsonl", ".jsonl.gz")):
@@ -206,6 +207,12 @@ def _validate_records(archive: zipfile.ZipFile, manifest: dict, fields: dict[str
                     _fail(f"Invalid {key} at {path}:{line_number}")
             if record.get("providerGroupId") is not None and record.get("provider") is None:
                 _fail(f"providerGroupId without provider at {path}:{line_number}")
+            if record.get("providerGroupId") is not None:
+                identity = (record.get("groupType") or "group", record["provider"],
+                            record["providerGroupId"])
+                if identity in provider_group_ids:
+                    _fail(f"Duplicate group provider identity at {path}:{line_number}: {identity}")
+                provider_group_ids.add(identity)
             popularity = record.get("popularity")
             if popularity is not None and (type(popularity) not in (int, float) or not math.isfinite(popularity) or popularity < 0):
                 _fail(f"Invalid group popularity at {path}:{line_number}")

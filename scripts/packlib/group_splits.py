@@ -56,6 +56,11 @@ def split_reviewed_groups(groups: list[dict], items: dict[str, dict],
             # The source popularity came from a crossover removed from both groups.
             for key in ("popularity", "popularityRank", "remoteCoverRef"):
                 replacement.pop(key, None)
+            if group_id != source_id:
+                # The new group has no provider identity of its own. Reusing the
+                # source identity would collide with the retained group in Room.
+                replacement.pop("provider", None)
+                replacement.pop("providerGroupId", None)
             produced.append(replacement)
         if assigned != original or not any(group["id"] == source_id for group in produced):
             raise ValueError(f"Reviewed split does not partition source: {source_id}")

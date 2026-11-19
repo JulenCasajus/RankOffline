@@ -18,12 +18,12 @@
   <string name='action_delete'>削除</string>
   <string name='action_continue'>続行</string>
   <string name='whats_new_title'>バージョン %1$s の新機能</string>
-  <string name='whats_new_visuals'>別名でグループを検索できます。</string>
-  <string name='whats_new_packs'>評価を保持したままパックを更新できます。</string>
-  <string name='whats_new_features'>初期設定とグループ評価を改善しました。</string>
-  <string name='whats_new_bugs'>いくつかのバグを修正…新しいバグもあるかも。</string>
+  <string name='whats_new_visuals'>グループを別名（主に翻訳名）で検索できます。</string>
+  <string name='whats_new_packs'>パック更新用の新しい画面で、評価が消えたと心配せずに更新できます。</string>
+  <string name='whats_new_features'>小さな機能をいろいろ追加しました。</string>
+  <string name='whats_new_bugs'>いくつかのバグを修正しました…</string>
   <string name='whats_new_thanks'>RankOffline を使ってくれてありがとう！</string>
-  <string name='whats_new_contact'>問題があれば教えてね :D</string>
+  <string name='whats_new_contact'>問題・バグ・ご提案は GitHub で知らせてください。伝書鳩でもどうぞ :D</string>
   <string name='action_save'>保存</string>
   <string name='action_apply'>適用</string>
   <string name='action_back'>戻る</string>
@@ -212,7 +212,7 @@
   <string name='category_phase_installing'>インストール中…</string>
   <string name='category_phase_waiting_import'>インポート待機中…</string>
   <string name='category_phase_waiting_covers'>カバー待機中…</string>
-  <string name='category_phase_importing_catalog'>カタログを読み込み中… しばらくかかる場合があります。</string>
+  <string name='category_phase_importing_catalog'>カタログを読み込み中… 1分ほどかかる場合があります。</string>
   <string name='category_phase_downloading_covers'>カバーをダウンロード中：%1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>カバーの準備完了 · データベース待機中</string>
   <string name='category_deleting'>削除中…</string>

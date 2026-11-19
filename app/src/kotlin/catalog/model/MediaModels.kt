@@ -141,8 +141,7 @@ internal fun bestMatchingAliasTitle(
     rawQuery: String
 ): String? {
     val query = rawQuery.trim()
-    val codePoints = query.codePointCount(0, query.length)
-    if (codePoints < 3 && !(codePoints >= 2 && query.any { it.code > 127 })) return null
+    if (query.isEmpty()) return null
     val normalizedQuery = query.normalizedForAliasMatch()
     if (canonicalTitle.normalizedForAliasMatch().contains(normalizedQuery)) return null
 

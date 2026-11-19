@@ -18,12 +18,12 @@
   <string name='action_delete'>删除</string>
   <string name='action_continue'>继续</string>
   <string name='whats_new_title'>版本 %1$s 的新变化</string>
-  <string name='whats_new_visuals'>可通过别名搜索分组。</string>
-  <string name='whats_new_packs'>更新内容包时保留您的评分。</string>
-  <string name='whats_new_features'>简化首次使用流程并改进分组评分。</string>
-  <string name='whats_new_bugs'>修复了一些问题……也许又添了几个。</string>
+  <string name='whats_new_visuals'>可通过其他标题（主要是译名）搜索分组。</string>
+  <string name='whats_new_packs'>新增内容包更新弹窗，让你清楚知道评分并没有丢失。</string>
+  <string name='whats_new_features'>新增了许多小功能。</string>
+  <string name='whats_new_bugs'>修复了一些问题……</string>
   <string name='whats_new_thanks'>感谢使用 RankOffline！</string>
-  <string name='whats_new_contact'>遇到问题？告诉我吧 :D</string>
+  <string name='whats_new_contact'>遇到问题、错误或有建议？在 GitHub 告诉我，或者派只信鸽来 :D</string>
   <string name='action_save'>保存</string>
   <string name='action_apply'>应用</string>
   <string name='action_back'>返回</string>
@@ -213,7 +213,7 @@
   <string name='category_phase_installing'>正在安装…</string>
   <string name='category_phase_waiting_import'>等待导入…</string>
   <string name='category_phase_waiting_covers'>等待封面…</string>
-  <string name='category_phase_importing_catalog'>正在导入目录… 这可能需要一些时间。</string>
+  <string name='category_phase_importing_catalog'>正在导入目录… 这可能需要一分钟。</string>
   <string name='category_phase_downloading_covers'>正在下载封面：%1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>封面已就绪 · 等待数据库</string>
   <string name='category_deleting'>正在删除…</string>
