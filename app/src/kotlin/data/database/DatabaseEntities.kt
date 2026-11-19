@@ -94,6 +94,26 @@ data class MediaAliasEntity(
     val kind: String? = null
 )
 
+/** Pack-owned alternate names of a declared group, independent of its members. */
+@Entity(
+    tableName = "media_group_alias",
+    primaryKeys = ["pack_id", "group_id", "title"],
+    foreignKeys = [ForeignKey(
+        entity = MediaGroupEntity::class,
+        parentColumns = ["pack_id", "id"],
+        childColumns = ["pack_id", "group_id"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index(value = ["pack_id", "title"], name = "idx_media_group_alias_pack_title")]
+)
+data class MediaGroupAliasEntity(
+    @ColumnInfo(name = "pack_id") val packId: Long,
+    @ColumnInfo(name = "group_id") val groupId: String,
+    val title: String,
+    val language: String? = null,
+    val kind: String? = null
+)
+
 /**
  * A pack-defined collection/group. groupType is declared by the pack manifest.
  * Its optional representative is a separate relation; its member count is

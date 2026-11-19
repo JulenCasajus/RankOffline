@@ -71,7 +71,8 @@ data class PackManifest(
     val covers: List<String>,
     val attribution: PackAttributions,
     val files: List<PackManifestFile>,
-    val rating: PackRatingDefinition? = null
+    val rating: PackRatingDefinition? = null,
+    val slug: String? = null
 ) {
     val fieldSpecs: Map<String, CatalogFieldSpec>
         get() = fields.associate { it.id to it.toCatalogFieldSpec() }

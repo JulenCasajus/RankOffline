@@ -17,19 +17,14 @@ internal fun GroupDetailScreen(
     detail: MediaGroupDetail, settings: AppSettingsState,
     covers: CoverRepository, cache: CoverBitmapCache,
     subtitleFields: List<PackFieldDefinition> = emptyList(),
-    onBack: () -> Unit, onRate: (fromMembers: Boolean) -> Unit,
+    onBack: () -> Unit, onRate: () -> Unit,
     onMember: (MediaItem) -> Unit, onCoverDownload: (CatalogEntryKey) -> Unit,
     onCoverOpen: (MediaListEntry) -> Unit
 ) {
     BackHandler(onBack = onBack)
-    var askUseMembers by remember(detail.group.key) { mutableStateOf(false) }
     val explicit = detail.explicitRating?.finalScore
     val derived = detail.derivedRating.finalScore
     val shown = explicit ?: derived
-    val request = {
-        if (explicit == null && detail.derivedRating.ratedCount > 0) askUseMembers = true
-        else onRate(false)
-    }
     Scaffold(topBar = { RankOfflineTopAppBar(detail.group.displayTitle, onBack) }, containerColor = Bg) { inset ->
         Column(Modifier.fillMaxSize().padding(inset).padding(horizontal = 16.dp)) {
             Card(colors = CardDefaults.cardColors(containerColor = Panel), modifier = Modifier.fillMaxWidth()) {
@@ -41,8 +36,8 @@ internal fun GroupDetailScreen(
                         detail.derivedRating.ratedCount, detail.members.size))
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween) {
-                        ScoreValueBadge(shown, onClick = request)
-                        OutlinedButton(onClick = request) {
+                        ScoreValueBadge(shown, onClick = onRate)
+                        OutlinedButton(onClick = onRate) {
                             Text(stringResource(R.string.group_rate_together))
                         }
                     }
@@ -64,15 +59,4 @@ internal fun GroupDetailScreen(
             }
         }
     }
-    if (askUseMembers) AlertDialog(
-        onDismissRequest = { askUseMembers = false },
-        title = { Text(stringResource(R.string.group_rate_together)) },
-        text = { Text(stringResource(R.string.group_draft_choice)) },
-        confirmButton = { TextButton(onClick = { askUseMembers = false; onRate(true) }) {
-            Text(stringResource(R.string.group_use_member_ratings))
-        } },
-        dismissButton = { TextButton(onClick = { askUseMembers = false; onRate(false) }) {
-            Text(stringResource(R.string.group_start_fresh))
-        } }
-    )
 }

@@ -63,6 +63,7 @@ SOURCES=(
   "$KOTLIN_SOURCE_ROOT/packs/install/PackArchiveReader.kt"
   "$KOTLIN_SOURCE_ROOT/packs/install/TrustedHttpsHosts.kt"
   "$KOTLIN_SOURCE_ROOT/packs/install/RemotePackIndex.kt"
+  "$KOTLIN_SOURCE_ROOT/packs/install/PackUpdatePolicy.kt"
   "$SCRIPT_DIR/kotlin-validator/ContractStubs.kt"
   "$SCRIPT_DIR/kotlin-validator/ValidatePacks.kt"
 )

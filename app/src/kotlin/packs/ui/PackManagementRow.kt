@@ -49,7 +49,7 @@ import kotlinx.coroutines.flow.collect
 
 /** UI-only phase mapping; no status persistence or duplicate job state. */
 @Composable
-private fun packStatusText(state: PackState): String {
+internal fun packStatusText(state: PackState): String {
     if (state.status == PackRuntimeStatus.DELETING) return stringResource(R.string.category_deleting)
     val progress = state.progress
     return when (progress?.phase) {
@@ -91,6 +91,7 @@ internal fun PackManagementRow(
     selected: Boolean,
     onSelect: () -> Unit,
     onInstall: () -> Unit,
+    onUpdate: (() -> Unit)?,
     onCancelInitialCovers: () -> Unit,
     onRemove: () -> Unit,
     onRequestStorageDetails: () -> Unit,
@@ -120,6 +121,11 @@ internal fun PackManagementRow(
                     Text(
                         text = packStatusText(state), fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (state.canUpdate && onUpdate != null) Text(
+                        stringResource(R.string.pack_updates_available,
+                            state.manifest?.version ?: "—", state.updateVersion ?: "—"),
+                        fontSize = 11.sp, color = accent
                     )
                     state.progress?.takeIf { state.status != PackRuntimeStatus.DELETING &&
                         it.phase in setOf(PackInstallPhase.DOWNLOADING_COVERS,
@@ -160,6 +166,10 @@ internal fun PackManagementRow(
                             modifier = Modifier.offset(x = 6.dp))
                     }
                 }
+                if (state.canUpdate && onUpdate != null) IconButton(onClick = onUpdate) {
+                    Icon(Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.pack_updates_action), tint = accent)
+                }
                 when {
                     state.status == PackRuntimeStatus.DELETING -> UnavailablePackIcon()
                     state.progress?.phase == PackInstallPhase.DOWNLOADING_COVERS ->
@@ -172,12 +182,13 @@ internal fun PackManagementRow(
                         Icon(Icons.Default.Delete,
                             contentDescription = stringResource(R.string.category_remove_catalog), tint = accent)
                     }
-                    state.canDownload -> IconButton(onClick = onInstall) {
-                        Icon(
-                            if (state.status == PackRuntimeStatus.ERROR) Icons.Default.Refresh
-                            else Icons.Default.CloudDownload,
-                            contentDescription = stringResource(R.string.category_download), tint = accent)
-                    }
+                    state.canDownload -> if (state.status == PackRuntimeStatus.ERROR) {
+                        IconButton(onClick = onInstall) {
+                            Icon(Icons.Default.Refresh,
+                                contentDescription = stringResource(R.string.category_download), tint = accent)
+                        }
+                    } else PackCloudDownloadButton(onInstall, accent,
+                        stringResource(R.string.category_download))
                     else -> UnavailablePackIcon()
                 }
             }
@@ -223,6 +234,17 @@ private fun StorageBreakdownRow(label: String, size: String, modifier: Modifier 
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontSize = 12.sp)
         Text(size, fontSize = 12.sp)
+    }
+}
+
+@Composable
+internal fun PackCloudDownloadButton(
+    onClick: () -> Unit,
+    tint: Color,
+    contentDescription: String
+) {
+    IconButton(onClick = onClick) {
+        Icon(Icons.Default.CloudDownload, contentDescription = contentDescription, tint = tint)
     }
 }
 

@@ -15,7 +15,7 @@ internal class RatingUiController(
     private val ratings: RatingRepository,
     private val groups: GroupRepository,
     private val settings: StateFlow<AppSettingsState>,
-    private val onChanged: (CatalogEntryKey, RatingDraft) -> Unit,
+    private val onChanged: (CatalogEntryKey) -> Unit,
     private val onError: suspend (Throwable) -> Unit
 ) {
     private val editorState = MutableStateFlow<RatingEditorState?>(null)
@@ -30,7 +30,8 @@ internal class RatingUiController(
         editorState.value = null
         openJob = scope.launch {
             try {
-                val draft = ratings.loadRating(entry.key, fromMembers)
+                val profiles = if (fromMembers) settings.value.mediaSettings[entry.packId]?.ratingProfiles else null
+                val draft = ratings.loadRating(entry.key, fromMembers, profiles)
                 editorState.value = RatingEditorState(entry, draft)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { onError(failure) }
@@ -70,13 +71,12 @@ internal class RatingUiController(
         saveJob = scope.launch {
             try {
                 action(target.key)
-                // Reload from the single Room source of truth; no optimistic duplicate scores.
-                val persisted = ratings.loadRating(target.key)
+                // The write has committed; let visible pages requery Room while detail refreshes.
+                onChanged(target.key)
                 val detail = detailState.value
                 if (detail?.group?.key == target.key ||
                     detail?.members?.any { it.key == target.key } == true
                 ) detailState.value = groups.detail(detail.group.key)
-                onChanged(target.key, persisted)
                 if (editorState.value?.key == target.key) editorState.value = null
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) {

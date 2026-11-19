@@ -52,6 +52,11 @@ A release build uses the upload signing configuration only when all four
 keystores, passwords and `local.properties` out of Git. A locally built release APK
 without upload signing is not a publishable signed artifact.
 
+The manual `.github/workflows/sign-release-apk.yml` workflow builds a signed APK from
+the selected committed revision using repository signing secrets. The APK, prepared
+packs and index must come from matching source revisions; generate `SHA256SUMS.txt`
+from the final files that will actually be published.
+
 Before a public release, test the migration from a published 0.2.0 installation,
 installation and recovery with real packs, Search/MyRanking and Merge, backup and
 restore, cover fallback, sharing, and process restart on supported Android versions.

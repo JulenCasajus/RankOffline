@@ -13,6 +13,8 @@ data class GroupMemberAttributeRow(
 
 /** SQL contract extracted from MediaGroupDao; methods inherited by its @Dao facade. */
 interface GroupQueryDao {
+    @Query("SELECT * FROM media_group_alias WHERE pack_id = :packId AND group_id IN (:ids) ORDER BY group_id, title")
+    suspend fun aliasesForGroups(packId: Long, ids: List<String>): List<MediaGroupAliasEntity>
     @Query("SELECT * FROM media_group WHERE pack_id = :packId AND id = :id")
     suspend fun group(packId: Long, id: String): MediaGroupEntity?
 

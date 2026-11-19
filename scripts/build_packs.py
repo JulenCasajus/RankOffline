@@ -14,6 +14,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from packlib import build_pack, validate_pack  # noqa: E402
 from packlib.common import canonical_json  # noqa: E402
+from packlib.pack_identity import check_published_revision, validate_identity, validate_registry  # noqa: E402
 
 
 def deep_merge(base: dict, override: dict) -> dict:
@@ -28,12 +29,20 @@ def deep_merge(base: dict, override: dict) -> dict:
 
 def load_official_configs(path: Path) -> list[dict]:
     root = json.loads(path.read_text(encoding="utf-8"))
+    registry = json.loads((path.parent / "pack-registry.json").read_text(encoding="utf-8"))["packs"]
+    validate_registry(registry)
     fields = root["fieldDefinitions"]
     configs = []
     for pack in root["packs"]:
         config = deep_merge(root["common"], pack)
         config["fields"] = [fields[field_id] for field_id in config.pop("fieldIds")]
+        record = next((entry for entry in registry if entry["packId"] == config["packId"]), None)
+        if record is None or record["slug"] != config.get("slug"):
+            raise ValueError("Official pack identity differs from the shared registry")
+        validate_identity(config["packId"], config["slug"], config["version"])
         configs.append(config)
+    if len({config["packId"] for config in configs}) != len(configs) or len({config["slug"] for config in configs}) != len(configs):
+        raise ValueError("Duplicate official pack ID or slug")
     return configs
 
 
@@ -70,6 +79,9 @@ def main() -> int:
             legacy_root=args.legacy_root.resolve(),
         )
         validation = validate_pack(destination, expected_pack_id=config["packId"])
+        if not args.config:
+            registry = json.loads((SCRIPT_DIR / "packs" / "pack-registry.json").read_text())["packs"]
+            check_published_revision(built["manifest"], registry)
         builds.append(built)
         validations.append(validation)
         print(

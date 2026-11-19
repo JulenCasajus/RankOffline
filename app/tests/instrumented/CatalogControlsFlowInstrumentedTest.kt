@@ -174,7 +174,7 @@ class CatalogControlsFlowInstrumentedTest {
                 assertEquals(0, controller.searchByPack.value[manifest.packId]?.filters?.activeCount)
 
                 val editor = RatingUiController(work, ratings, GroupRepository(database, ratings),
-                    settings.state, { key, draft -> controller.ratingChanged(key, draft) },
+                    settings.state, controller::ratingChanged,
                     { throw it })
                 editor.openGroup(CatalogEntryKey(manifest.packId, "pair", CatalogEntryKind.GROUP))
                 withTimeout(8_000) { editor.groupDetail.first { it?.derivedRating?.finalScore == 8.5 } }
@@ -200,6 +200,37 @@ class CatalogControlsFlowInstrumentedTest {
                         page.result.items.firstOrNull()?.let { it.id == "pair" && it.finalScore == 4.5 } == true
                     }
                 }
+                val groupKey = CatalogEntryKey(manifest.packId, "pair", CatalogEntryKind.GROUP)
+                database.mediaGroupDao().upsertRating(MediaGroupRatingEntity(
+                    manifest.packId.value, "pair", 0.0, 9.0, 9.0, "", "", 10
+                ))
+                controller.ratingChanged(groupKey)
+                val explicitSearch = withTimeoutOrNull(8_000) { controller.searchPageState.first { page ->
+                    page.items.filterIsInstance<MediaListEntry.Group>()
+                        .singleOrNull()?.finalScore == 9.0
+                } }
+                assertTrue("Explicit group score missing from Search: ${controller.searchPageState.value.items}",
+                    explicitSearch != null)
+                val explicitRanking = withTimeoutOrNull(8_000) { controller.rankingPage.first { page ->
+                    page.result.items.firstOrNull { it.id == "pair" }?.finalScore == 9.0
+                } }
+                assertTrue("Explicit group score missing from Ranking: ${controller.rankingPage.value.result.items}",
+                    explicitRanking != null)
+                editor.open(controller.searchPageState.value.items
+                    .filterIsInstance<MediaListEntry.Group>().single())
+                withTimeout(8_000) { editor.editor.first { it?.key == groupKey } }
+                editor.delete()
+                val derivedSearch = withTimeoutOrNull(8_000) { controller.searchPageState.first { page ->
+                    page.items.filterIsInstance<MediaListEntry.Group>()
+                        .singleOrNull()?.finalScore == 4.5
+                } }
+                assertTrue("Derived group score missing from Search: ${controller.searchPageState.value.items}",
+                    derivedSearch != null)
+                val derivedRanking = withTimeoutOrNull(8_000) { controller.rankingPage.first { page ->
+                    page.result.items.firstOrNull { it.id == "pair" }?.finalScore == 4.5
+                } }
+                assertTrue("Derived group score missing from Ranking: ${controller.rankingPage.value.result.items}",
+                    derivedRanking != null)
                 Unit
             } finally {
                 searchCollector.cancel()

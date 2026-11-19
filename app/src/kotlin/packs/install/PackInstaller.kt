@@ -7,9 +7,9 @@ import java.util.UUID
 /** The manifest is the authority for the initially installed data-only payload. */
 data class PackInstallRequest(val manifestJson: String, val sourceRevision: String? = null)
 
-enum class PackRecoveryState { CLEAN, AWAITING_COMMIT }
+enum class PackRecoveryState { CLEAN, AWAITING_COMMIT, AWAITING_UPDATE_COMMIT }
 
-/** Installs a pack once. Updating/replacing an already installed pack is not supported. */
+/** Verified staging and crash-recoverable promotion of pack files. */
 class PackInstaller(
     internal val root: File,
     internal val maxInstalledBytes: Long = 2L * 1024 * 1024 * 1024
@@ -31,7 +31,7 @@ class PackInstaller(
             val payloadSize = manifest.files.fold(0L) { sum, spec -> Math.addExact(sum, spec.bytes) }
             require(payloadSize <= maxInstalledBytes) { "Pack exceeds size limit" }
             val packId = manifest.packId
-            check(!hasPendingDeletion(packId) && !hasPendingInstallation(packId)) {
+            check(!hasPendingDeletion(packId) && !hasPendingInstallation(packId) && !hasPendingUpdate(packId)) {
                 "Pack operation requires recovery"
             }
             val destination = packDirectory(packId)
@@ -74,10 +74,12 @@ class PackInstaller(
     fun packDirectory(packId: PackId) = File(root, packId.directoryName())
     fun hasPendingInstallation(packId: PackId) = pendingFile(packId).exists()
     fun hasPendingDeletion(packId: PackId) = deletionFile(packId).exists()
+    fun hasPendingUpdate(packId: PackId) = updateFile(packId).exists()
 
     /** User-removable cover files are optional; they do not invalidate the pack installation. */
     fun matchesInstalledManifest(expected: PackManifest, verifyPayloadHashes: Boolean = false): Boolean {
-        if (hasPendingInstallation(expected.packId) || hasPendingDeletion(expected.packId)) return false
+        if (hasPendingInstallation(expected.packId) || hasPendingDeletion(expected.packId) ||
+            hasPendingUpdate(expected.packId)) return false
         val directory = installedDirectory(expected.packId) ?: return false
         if (readInstalledManifest(directory) != expected) return false
         return expected.files.asSequence().filterNot { it.path.startsWith("covers/") }.all { spec ->
@@ -104,6 +106,24 @@ class PackInstaller(
 
     /** A complete pending install must replay its idempotent Room import at startup. */
     fun recover(packId: PackId): PackRecoveryState = root.withInstallLock {
+        if (hasPendingUpdate(packId)) {
+            val previous = previousDirectory(packId)
+            val destination = packDirectory(packId)
+            if (previous.exists()) {
+                check(isComplete(previous, packId)) { "Update backup is incomplete" }
+                check(deleteOwnedTree(destination)) { "Cannot discard interrupted update" }
+                moveAtomic(previous, destination)
+                check(deleteMarker(updateFile(packId))) { "Cannot clear update marker" }
+            } else if (stagingDirectories(packId).isEmpty() && isComplete(destination, packId)) {
+                return@withInstallLock PackRecoveryState.AWAITING_UPDATE_COMMIT
+            } else {
+                // Marker was written, but the old directory has not yet moved.
+                check(isComplete(destination, packId)) { "Interrupted update lost its old pack" }
+                check(stagingDirectories(packId).all(::deleteOwnedTree))
+                check(deleteMarker(updateFile(packId)))
+            }
+        }
+        check(!previousDirectory(packId).exists()) { "Orphaned update backup" }
         if (hasPendingDeletion(packId)) {
             check(deleteOwnedTree(packDirectory(packId))) { "Deletion recovery failed" }
             check(deleteMarker(pendingFile(packId)) && deleteMarker(deletionFile(packId)))
@@ -121,6 +141,7 @@ class PackInstaller(
 
     /** Removes files only, never personal ratings or preferences. */
     fun deleteInstalledPack(packId: PackId): Boolean = root.withInstallLock {
+        check(!hasPendingUpdate(packId)) { "Update requires recovery before deletion" }
         if (!deletionFile(packId).exists()) writeSynced(deletionFile(packId), "deleting")
         deleteOwnedTree(packDirectory(packId)) &&
             stagingDirectories(packId).all(::deleteOwnedTree) &&

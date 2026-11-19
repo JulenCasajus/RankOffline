@@ -8,6 +8,11 @@ import androidx.room.Update
 
 /** SQL contract extracted from MediaGroupDao; methods inherited by its @Dao facade. */
 interface GroupImportDao {
+    @Query("DELETE FROM media_group_alias WHERE pack_id = :packId AND group_id IN (:ids)")
+    suspend fun deleteAliases(packId: Long, ids: List<String>)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAliases(values: List<MediaGroupAliasEntity>)
     @Query("SELECT id FROM media_group WHERE pack_id = :packId AND id IN (:ids)")
     suspend fun existingGroupIds(packId: Long, ids: List<String>): List<String>
 

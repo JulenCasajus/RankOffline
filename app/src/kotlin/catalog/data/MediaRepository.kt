@@ -121,6 +121,8 @@ class MediaRepository(
             .flatMap { groups.preferredCoverGroups(packId.value, it) }
             .associate { it.mediaId to it.groupId }
         val groupEntities = groupIds.chunked(400).flatMap { groups.groupsByIds(packId.value, it) }.associateBy { it.id }
+        val groupAliases = groupIds.chunked(400)
+            .flatMap { groups.aliasesForGroups(packId.value, it) }.groupBy { it.groupId }
         val declaredGroupAttrs = groupIds.chunked(400)
             .flatMap { groups.attributesForGroups(packId.value, it) }.groupBy { it.groupId }
         val memberGroupAttrs = groupIds.chunked(400)
@@ -156,8 +158,17 @@ class MediaRepository(
                     ))
                 }
                 "GROUP" -> {
-                    val group = checkNotNull(groupEntities[row.id]).toDomain(
+                    val stored = checkNotNull(groupEntities[row.id]).toDomain(
                         representatives[row.id], groupAttrs[row.id].orEmpty())
+                    val aliasesForGroup = groupAliases[row.id].orEmpty().map {
+                        MediaItemAlias(it.title, it.language, it.kind)
+                    }
+                    val group = stored.copy(
+                        aliases = aliasesForGroup,
+                        searchDisplayTitle = bestMatchingAliasTitle(
+                            stored.displayTitle, aliasesForGroup.map { it.title }, query
+                        )
+                    )
                     MediaListEntry.Group(
                         value = group,
                         finalScore = row.finalScore,

@@ -16,6 +16,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from packlib import validate_pack  # noqa: E402
 from packlib.common import canonical_json  # noqa: E402
+from packlib.pack_identity import check_published_revision, validate_registry  # noqa: E402
 
 
 class ReleasePreparationError(ValueError):
@@ -31,7 +32,8 @@ def file_sha256(path: Path) -> str:
 
 
 def prepare_release(source: Path, output: Path, base_url: str,
-                    apk: Path | None = None, apk_name: str | None = None) -> dict:
+                    apk: Path | None = None, apk_name: str | None = None,
+                    registry: Path | None = None) -> dict:
     parsed = urlsplit(base_url.rstrip("/"))
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
         raise ReleasePreparationError("base URL must be anonymous HTTPS")
@@ -44,6 +46,15 @@ def prepare_release(source: Path, output: Path, base_url: str,
         raise ReleasePreparationError("unsupported source pack index")
     if not isinstance(root["packs"], list) or not root["packs"]:
         raise ReleasePreparationError("source pack index is empty")
+    if len({entry["packId"] for entry in root["packs"]}) != len(root["packs"]):
+        raise ReleasePreparationError("duplicate packId in source index")
+    slugs = [entry["manifest"].get("slug") for entry in root["packs"]]
+    declared_slugs = [slug for slug in slugs if slug is not None]
+    if len(set(declared_slugs)) != len(declared_slugs):
+        raise ReleasePreparationError("duplicate pack slug in source index")
+    records = json.loads(registry.read_text(encoding="utf-8"))["packs"] if registry else None
+    if records is not None:
+        validate_registry(records)
 
     output.mkdir(parents=True, exist_ok=True)
     prepared = []
@@ -63,6 +74,8 @@ def prepare_release(source: Path, output: Path, base_url: str,
         validation = validate_pack(archive, expected_pack_id=entry["packId"])
         with zipfile.ZipFile(archive) as package:
             embedded_manifest = json.loads(package.read("manifest.json"))
+        if records is not None:
+            check_published_revision(embedded_manifest, records)
         actual_hash = file_sha256(archive)
         if (archive.stat().st_size != entry["archiveBytes"] or
                 actual_hash != entry["archiveSha256"] or
@@ -98,11 +111,14 @@ def main() -> int:
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--apk", type=Path)
     parser.add_argument("--apk-name")
+    parser.add_argument("--registry", type=Path,
+                        default=PROJECT_ROOT / "scripts" / "packs" / "pack-registry.json")
     args = parser.parse_args()
     try:
         index = prepare_release(args.source.resolve(), args.output.resolve(), args.base_url,
-                                args.apk.resolve() if args.apk else None, args.apk_name)
-    except (OSError, KeyError, TypeError, json.JSONDecodeError, zipfile.BadZipFile,
+                                args.apk.resolve() if args.apk else None, args.apk_name,
+                                args.registry.resolve())
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError, zipfile.BadZipFile,
             ReleasePreparationError) as error:
         print(f"RELEASE PREPARATION FAILED: {error}", file=sys.stderr)
         return 1

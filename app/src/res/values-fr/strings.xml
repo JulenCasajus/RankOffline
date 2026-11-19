@@ -18,12 +18,12 @@
   <string name='action_delete'>Supprimer</string>
   <string name='action_continue'>Continuer</string>
   <string name='whats_new_title'>Nouveautés de la version %1$s</string>
-  <string name='whats_new_visuals'>Un nouveau look plus soigné dans toute l’application.</string>
-  <string name='whats_new_packs'>Anime, manga, films, séries et livres au même endroit.</string>
-  <string name='whats_new_features'>Filtres, Merge et gestion des couvertures améliorés.</string>
-  <string name='whats_new_bugs'>Quelques bugs corrigés… peut-être d’autres créés.</string>
+  <string name='whats_new_visuals'>Retrouvez les groupes grâce à leurs autres titres (surtout des traductions).</string>
+  <string name='whats_new_packs'>Nouvelle fenêtre de mise à jour des packs, pour éviter de croire que vos notes ont disparu.</string>
+  <string name='whats_new_features'>De nombreuses petites nouveautés.</string>
+  <string name='whats_new_bugs'>Quelques bugs corrigés…</string>
   <string name='whats_new_thanks'>Merci d’utiliser RankOffline !</string>
-  <string name='whats_new_contact'>Un problème ? Faites-le-moi savoir :D</string>
+  <string name='whats_new_contact'>Des problèmes, bugs ou suggestions ? Écrivez-moi sur GitHub ou envoyez un pigeon voyageur :D</string>
   <string name='action_save'>Enregistrer</string>
   <string name='action_apply'>Appliquer</string>
   <string name='action_back'>Retour</string>
@@ -183,12 +183,11 @@
   <string name='action_retry'>Réessayer</string>
   <string name='category_not_installed'>Non téléchargée</string>
   <string name='onboarding_welcome_title'>Bienvenue dans RankOffline!</string>
-  <string name='onboarding_choose_style'>Choisissez votre style</string>
-  <string name='onboarding_change_later'>Vous pourrez le modifier à tout moment dans les paramètres.</string>
-  <string name='onboarding_minimal'>Minimaliste</string>
-  <string name='onboarding_with_images'>Avec images</string>
-  <string name='onboarding_rating_simple'>Notation simple</string>
   <string name='onboarding_rating_elaborate'>Notation détaillée</string>
+  <string name='onboarding_rating_simple_description'>Désactivé : notez chaque titre directement de 0 à 10.</string>
+  <string name='onboarding_rating_elaborate_description'>Activé : notez plusieurs aspects pour calculer la note finale.</string>
+  <string name='onboarding_covers_hint'>Affichez ou masquez les couvertures dans les paramètres de chaque paquet.</string>
+  <string name='onboarding_offline_hint'>Téléchargez les catalogues par paquet. Vos notes restent sur cet appareil et les catalogues téléchargés fonctionnent hors ligne.</string>
   <string name='onboarding_start'>Commencer</string>
   <string name='onboarding_categories_title'>Par où voulez-vous commencer ?</string>
   <string name='onboarding_categories_subtitle'>
@@ -243,7 +242,7 @@
   <string name='category_phase_installing'>Installation…</string>
   <string name='category_phase_waiting_import'>En attente de l’importation…</string>
   <string name='category_phase_waiting_covers'>En attente des jaquettes…</string>
-  <string name='category_phase_importing_catalog'>Importation du catalogue… Cela peut prendre un moment.</string>
+  <string name='category_phase_importing_catalog'>Importation du catalogue… Cela peut prendre une minute.</string>
   <string name='category_phase_downloading_covers'>Téléchargement des jaquettes : %1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>Jaquettes prêtes · attente de la base de données</string>
   <string name='category_deleting'>Suppression…</string>
@@ -298,4 +297,14 @@
   </plurals>
   <string name="filter_match_any_description">OR · au choix</string>
   <string name="filter_match_all_description">AND · toutes</string>
+  <string name="pack_updates_title">Mises à jour des packs disponibles</string>
+  <string name="pack_updates_description">Certains packs installés ont de nouvelles révisions. Vous pouvez les mettre à jour maintenant ou plus tard dans les paramètres.</string>
+  <string name="pack_updates_personal_data">Vos notes et réglages personnels sont conservés lors des mises à jour.</string>
+  <string name="pack_updates_versions">Installée : %1$s · Disponible : %2$s</string>
+  <string name="pack_updates_done">Mis à jour</string>
+  <string name="pack_updates_action">Mettre à jour</string>
+  <string name="pack_updates_later">Plus tard</string>
+  <string name="pack_updates_all">Tout mettre à jour</string>
+  <string name="pack_updates_available">Mise à jour disponible : %1$s → %2$s</string>
+  <string name="pack_updates_error">Échec de la mise à jour. Réessayez.</string>
 </resources>

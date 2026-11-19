@@ -9,6 +9,7 @@ import zipfile
 from urllib.parse import urlparse
 
 from .common import FIELD_ID, ITEM_ID
+from .group_aliases import normalized
 from .validator_common import (
     GROUP_KEYS, ISO_DATE, MAX_SAFE_INTEGER, RECORD_KEYS, PackValidationError,
     _exact_keys, _fail, _https_url, _required_keys, _text,
@@ -168,6 +169,7 @@ def _validate_records(archive: zipfile.ZipFile, manifest: dict, fields: dict[str
     if len(item_ids) > 2_000_000:
         _fail("Catalog exceeds the engine item limit")
     group_ids: set[str] = set()
+    provider_group_ids: set[tuple[str, str, str]] = set()
     relationships = 0
     for path in manifest["groups"]:
         if not path.endswith((".jsonl", ".jsonl.gz")):
@@ -181,6 +183,22 @@ def _validate_records(archive: zipfile.ZipFile, manifest: dict, fields: dict[str
             if not isinstance(group_id, str) or not ITEM_ID.fullmatch(group_id) or group_id in group_ids:
                 _fail(f"Invalid or duplicate group ID at {path}:{line_number}")
             group_ids.add(group_id)
+            aliases = record.get("aliases", [])
+            if not isinstance(aliases, list) or len(aliases) > 64:
+                _fail(f"Invalid group aliases at {path}:{line_number}")
+            alias_titles: set[str] = set()
+            for alias in aliases:
+                if not isinstance(alias, dict):
+                    _fail(f"Malformed group alias at {path}:{line_number}")
+                _exact_keys(alias, {"title", "language", "kind"}, "group alias")
+                title = _text(alias.get("title"), 500, "group alias title")
+                if normalized(title) in alias_titles:
+                    _fail(f"Duplicate group alias at {path}:{line_number}")
+                alias_titles.add(normalized(title))
+                if alias.get("language") is not None:
+                    _text(alias["language"], 35, "group alias language")
+                if alias.get("kind") is not None:
+                    _text(alias["kind"], 64, "group alias kind")
             for key in ("displayTitle", "providerGroupId", "remoteCoverRef"):
                 if record.get(key) is not None:
                     _text(record[key], 500 if key == "displayTitle" else 1024, key)
@@ -189,6 +207,12 @@ def _validate_records(archive: zipfile.ZipFile, manifest: dict, fields: dict[str
                     _fail(f"Invalid {key} at {path}:{line_number}")
             if record.get("providerGroupId") is not None and record.get("provider") is None:
                 _fail(f"providerGroupId without provider at {path}:{line_number}")
+            if record.get("providerGroupId") is not None:
+                identity = (record.get("groupType") or "group", record["provider"],
+                            record["providerGroupId"])
+                if identity in provider_group_ids:
+                    _fail(f"Duplicate group provider identity at {path}:{line_number}: {identity}")
+                provider_group_ids.add(identity)
             popularity = record.get("popularity")
             if popularity is not None and (type(popularity) not in (int, float) or not math.isfinite(popularity) or popularity < 0):
                 _fail(f"Invalid group popularity at {path}:{line_number}")

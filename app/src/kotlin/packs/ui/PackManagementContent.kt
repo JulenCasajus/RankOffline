@@ -4,11 +4,8 @@ import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,7 +32,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -44,8 +40,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import java.text.Collator
 import java.util.Locale
 
@@ -92,24 +86,8 @@ internal fun PackOnboardingDialog(
     onRequestStorageDetails: (PackId) -> Unit,
     onComplete: () -> Unit
 ) {
-    Dialog(
-        onDismissRequest = {},
-        properties = DialogProperties(
-            dismissOnBackPress = false,
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
-        )
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.background,
-            shape = RectangleShape,
-            tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Column(Modifier.fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(20.dp)) {
+    WelcomeDialogBackground { availableHeight ->
+        Column(Modifier.heightIn(max = availableHeight).padding(20.dp)) {
                 Text(
                     stringResource(R.string.onboarding_categories_title),
                     fontSize = 24.sp,
@@ -133,7 +111,7 @@ internal fun PackOnboardingDialog(
                     onPurgePack = onPurgePack,
                     onPackSelected = onPackSelected,
                     onRequestStorageDetails = onRequestStorageDetails,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 Button(
                     onClick = onComplete,
@@ -142,7 +120,6 @@ internal fun PackOnboardingDialog(
                 ) {
                     Text(stringResource(R.string.onboarding_done), fontWeight = FontWeight.Bold)
                 }
-            }
         }
     }
 }
@@ -163,6 +140,7 @@ fun PackManagementContent(
     onPurgePack: (PackId) -> Unit,
     onPackSelected: (PackId) -> Unit,
     onRequestStorageDetails: (PackId) -> Unit,
+    onUpdatePack: ((PackId) -> Unit)? = null,
     modifier: Modifier = Modifier,
     isDiscovering: Boolean = false,
     selectedPackId: PackId? = null,
@@ -218,6 +196,7 @@ fun PackManagementContent(
                 selected = selectedPackId == entry.packId && entry.state.available,
                 onSelect = { onPackSelected(entry.packId) },
                 onInstall = { onInstallPack(entry.packId) },
+                onUpdate = onUpdatePack?.let { update -> { update(entry.packId) } },
                 onCancelInitialCovers = { onCancelInitialCovers(entry.packId) },
                 onRemove = { pendingRemovalId = entry.packId.value },
                 onRequestStorageDetails = { onRequestStorageDetails(entry.packId) },

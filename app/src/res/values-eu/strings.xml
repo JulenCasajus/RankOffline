@@ -18,12 +18,12 @@
   <string name='action_delete'>Ezabatu</string>
   <string name='action_continue'>Jarraitu</string>
   <string name='whats_new_title'>%1$s bertsioko berrikuntzak</string>
-  <string name='whats_new_visuals'>Aplikazio galanta ta ederra utzi dut.</string>
-  <string name='whats_new_packs'>Paqueteak orokorratu in ditut = tortilla patata baloratzeko paquetea incoming.</string>
-  <string name='whats_new_features'>Iragazki, Merge eta azal kontrol hobeak.</string>
-  <string name='whats_new_bugs'>Akats batzuk konpondu ditut… seguraski beste batzuk sortu ere.</string>
+  <string name='whats_new_visuals'>Bilatu taldeak beste izen batzuen bidez (gehienbat itzulpenak).</string>
+  <string name='whats_new_packs'>Paketeak eguneratzeko leiho berria, balorazioak galdu dituzula pentsa ez dezazun.</string>
+  <string name='whats_new_features'>Ezaugarri txiki asko gehitu dira.</string>
+  <string name='whats_new_bugs'>Akats batzuk konpondu dira…</string>
   <string name='whats_new_thanks'>Eskerrik asko RankOffline erabiltzeagatik!</string>
-  <string name='whats_new_contact'>Arazorik? Esan iezadazu :D</string>
+  <string name='whats_new_contact'>Arazorik, akatsik edo iradokizunik? Idatzi GitHuben edo bidali uso mezulari bat :D</string>
   <string name='action_save'>Gorde</string>
   <string name='action_apply'>Aplikatu</string>
   <string name='action_back'>Atzera</string>
@@ -183,12 +183,11 @@
   <string name='action_retry'>Saiatu berriro</string>
   <string name='category_not_installed'>Deskargatu gabe</string>
   <string name='onboarding_welcome_title'>Ongi etorri RankOfflinera!!</string>
-  <string name='onboarding_choose_style'>Aukeratu estiloa</string>
-  <string name='onboarding_change_later'>Ezarpenetan alda dezakezu.</string>
-  <string name='onboarding_minimal'>Minimalista</string>
-  <string name='onboarding_with_images'>Irudiekin</string>
-  <string name='onboarding_rating_simple'>Balorazio sinplea</string>
   <string name='onboarding_rating_elaborate'>Balorazio xehatua</string>
+  <string name='onboarding_rating_simple_description'>Desaktibatuta: baloratu izenburu bakoitza zuzenean 0tik 10era.</string>
+  <string name='onboarding_rating_elaborate_description'>Aktibatuta: baloratu hainbat alderdi azken nota kalkulatzeko.</string>
+  <string name='onboarding_covers_hint'>Azalak pakete bakoitzaren ezarpenetan erakutsi edo ezkuta ditzakezu.</string>
+  <string name='onboarding_offline_hint'>Katalogoak paketeka deskargatzen dira. Balorazioak gailuan geratzen dira, eta deskargatutako katalogoak konexiorik gabe erabil daitezke.</string>
   <string name='onboarding_start'>Hasi</string>
   <string name='onboarding_categories_title'>Nondik hasi nahi duzu?</string>
   <string name='onboarding_categories_subtitle'>
@@ -243,7 +242,7 @@
   <string name='category_phase_installing'>Instalatzen…</string>
   <string name='category_phase_waiting_import'>Inportatzeko zain…</string>
   <string name='category_phase_waiting_covers'>Azalen zain…</string>
-  <string name='category_phase_importing_catalog'>Katalogoa inportatzen… Baliteke pixka bat luzatzea.</string>
+  <string name='category_phase_importing_catalog'>Katalogoa inportatzen… Minutu bat iraun dezake.</string>
   <string name='category_phase_downloading_covers'>Azalak deskargatzen: %1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>Azalak prest · datu-basearen zain</string>
   <string name='category_deleting'>Ezabatzen…</string>
@@ -298,4 +297,14 @@
   </plurals>
   <string name="filter_match_any_description">OR · edozein</string>
   <string name="filter_match_all_description">AND · guztiak</string>
+  <string name="pack_updates_title">Paketeen eguneraketak eskuragarri</string>
+  <string name="pack_updates_description">Instalatutako pakete batzuek berrikuspen berriagoak dituzte. Orain edo geroago egunera ditzakezu Ezarpenetan.</string>
+  <string name="pack_updates_personal_data">Balorazioak eta ezarpen pertsonalak gordetzen dira paketeak eguneratzean.</string>
+  <string name="pack_updates_versions">Instalatuta: %1$s · Eskuragarri: %2$s</string>
+  <string name="pack_updates_done">Eguneratuta</string>
+  <string name="pack_updates_action">Eguneratu</string>
+  <string name="pack_updates_later">Geroago</string>
+  <string name="pack_updates_all">Eguneratu guztiak</string>
+  <string name="pack_updates_available">Eguneraketa eskuragarri: %1$s → %2$s</string>
+  <string name="pack_updates_error">Eguneratzeak huts egin du. Saiatu berriro.</string>
 </resources>

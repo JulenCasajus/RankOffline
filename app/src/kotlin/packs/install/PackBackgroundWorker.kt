@@ -95,6 +95,16 @@ class PackBackgroundWorker(
                         }
                     }.toWorkDisposition()
                 }
+                PackWorkAction.UPDATE -> {
+                    val sequence = inputData.getLong(PackWorkScheduler.KEY_QUEUE_SEQUENCE, 0L)
+                    if (sequence > 0L) {
+                        setProgress(Data.Builder().putString("phase", PackInstallPhase.QUEUED.name).build())
+                        awaitPersistentPackDownloadTurn(applicationContext, sequence)
+                    }
+                    manager.downloadAndUpdate(packId).also { result ->
+                        if (result == PackOperationResult.INSTALLED) runtime.onPackUpdated(packId)
+                    }.toWorkDisposition()
+                }
                 PackWorkAction.RECOVER -> if (manager.recover(packId)) {
                     PackWorkDisposition.SUCCESS
                 } else PackWorkDisposition.RETRYABLE

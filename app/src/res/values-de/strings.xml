@@ -18,12 +18,12 @@
   <string name='action_delete'>Löschen</string>
   <string name='action_continue'>Fortfahren</string>
   <string name='whats_new_title'>Neu in Version %1$s</string>
-  <string name='whats_new_visuals'>Ein stilvollerer Look in der ganzen App.</string>
-  <string name='whats_new_packs'>Generalisierte Pack-Unterstützung = Community-Packs in Kürze.</string>
-  <string name='whats_new_features'>Bessere Filter, Merge und Cover-Steuerung.</string>
-  <string name='whats_new_bugs'>Einige Fehler behoben… vielleicht neue eingebaut.</string>
+  <string name='whats_new_visuals'>Finde Gruppen über ihre alternativen Titel (meist Übersetzungen).</string>
+  <string name='whats_new_packs'>Neues Fenster für Pack-Updates, damit du deine Bewertungen nicht für verloren hältst.</string>
+  <string name='whats_new_features'>Viele kleine Neuerungen.</string>
+  <string name='whats_new_bugs'>Einige Fehler behoben…</string>
   <string name='whats_new_thanks'>Danke, dass du RankOffline nutzt!</string>
-  <string name='whats_new_contact'>Probleme? Sag mir Bescheid :D</string>
+  <string name='whats_new_contact'>Probleme, Fehler oder Vorschläge? Schreib mir auf GitHub oder schick eine Brieftaube :D</string>
   <string name='action_save'>Speichern</string>
   <string name='action_apply'>Anwenden</string>
   <string name='action_back'>Zurück</string>
@@ -183,12 +183,11 @@
   <string name='action_retry'>Erneut versuchen</string>
   <string name='category_not_installed'>Nicht heruntergeladen</string>
   <string name='onboarding_welcome_title'>Willkommen bei RankOffline!</string>
-  <string name='onboarding_choose_style'>Wähle deinen Stil</string>
-  <string name='onboarding_change_later'>Du kannst ihn jederzeit in den Einstellungen ändern.</string>
-  <string name='onboarding_minimal'>Minimalistisch</string>
-  <string name='onboarding_with_images'>Mit Bildern</string>
-  <string name='onboarding_rating_simple'>Einfache Bewertung</string>
   <string name='onboarding_rating_elaborate'>Detaillierte Bewertung</string>
+  <string name='onboarding_rating_simple_description'>Aus: Bewerte jeden Titel direkt von 0 bis 10.</string>
+  <string name='onboarding_rating_elaborate_description'>Ein: Bewerte mehrere Aspekte für die Endnote.</string>
+  <string name='onboarding_covers_hint'>Cover kannst du in den Einstellungen jedes Pakets ein- oder ausblenden.</string>
+  <string name='onboarding_offline_hint'>Lade Kataloge als Pakete herunter. Deine Bewertungen bleiben auf diesem Gerät; heruntergeladene Kataloge funktionieren offline.</string>
   <string name='onboarding_start'>Loslegen</string>
   <string name='onboarding_categories_title'>Womit möchtest du beginnen?</string>
   <string name='onboarding_categories_subtitle'>
@@ -243,7 +242,7 @@
   <string name='category_phase_installing'>Wird installiert…</string>
   <string name='category_phase_waiting_import'>Warten auf Import…</string>
   <string name='category_phase_waiting_covers'>Warten auf Cover…</string>
-  <string name='category_phase_importing_catalog'>Katalog wird importiert… Das kann etwas dauern.</string>
+  <string name='category_phase_importing_catalog'>Katalog wird importiert… Das kann eine Minute dauern.</string>
   <string name='category_phase_downloading_covers'>Cover werden heruntergeladen: %1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>Cover bereit · warte auf Datenbank</string>
   <string name='category_deleting'>Wird gelöscht…</string>
@@ -298,4 +297,14 @@
   </plurals>
   <string name="filter_match_any_description">OR · beliebig</string>
   <string name="filter_match_all_description">AND · alle</string>
+  <string name="pack_updates_title">Paketaktualisierungen verfügbar</string>
+  <string name="pack_updates_description">Für einige installierte Pakete gibt es neuere Versionen. Du kannst sie jetzt oder später in den Einstellungen aktualisieren.</string>
+  <string name="pack_updates_personal_data">Bewertungen und persönliche Einstellungen bleiben beim Aktualisieren erhalten.</string>
+  <string name="pack_updates_versions">Installiert: %1$s · Verfügbar: %2$s</string>
+  <string name="pack_updates_done">Aktualisiert</string>
+  <string name="pack_updates_action">Aktualisieren</string>
+  <string name="pack_updates_later">Später</string>
+  <string name="pack_updates_all">Alle aktualisieren</string>
+  <string name="pack_updates_available">Update verfügbar: %1$s → %2$s</string>
+  <string name="pack_updates_error">Aktualisierung fehlgeschlagen. Erneut versuchen.</string>
 </resources>

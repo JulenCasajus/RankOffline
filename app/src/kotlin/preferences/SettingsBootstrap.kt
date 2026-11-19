@@ -23,12 +23,9 @@ suspend fun SettingsRepository.loadInitialState() = lock.withLock {
         actualIcon ?: AppIcon.DARK
     }
     val onboardingDone = prefs[onboardingKey] == true
+    postponedUpdates.value = prefs[postponedUpdatesKey].orEmpty()
     val welcomeDone = onboardingDone || prefs[welcomeKey] == true
-    welcomeChoices = if (welcomeDone) {
-        val imageChoice = prefs[welcomeImagesKey]
-        val elaborateChoice = prefs[welcomeElaborateKey]
-        if (imageChoice != null && elaborateChoice != null) imageChoice to elaborateChoice else null
-    } else null
+    welcomeElaborateChoice = if (welcomeDone) prefs[welcomeElaborateKey] else null
     val preferredPack = prefs[activePackKey]
         ?.let { runCatching { PackId(it) }.getOrNull() }
     val storedRecent = prefs[recentPackKey].orEmpty().split(',')

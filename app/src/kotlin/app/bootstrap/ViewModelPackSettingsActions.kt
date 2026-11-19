@@ -1,7 +1,7 @@
 package org.rankoffline.app
 
 
-fun RankOfflineViewModel.completeWelcome(showImages: Boolean, elaborateRating: Boolean) = preferences.welcome(showImages, elaborateRating)
+fun RankOfflineViewModel.completeWelcome(elaborateRating: Boolean) = preferences.welcome(elaborateRating)
 
 
 fun RankOfflineViewModel.completeOnboarding() = preferences.onboardingComplete()

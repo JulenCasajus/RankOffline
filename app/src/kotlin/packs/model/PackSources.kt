@@ -34,6 +34,13 @@ class PackSourceRegistry {
         require(descriptors.map { it.packId }.distinct().size == descriptors.size) {
             "Duplicate pack identity in registry"
         }
+        require(descriptors.mapNotNull { it.manifest.slug }.distinct().size ==
+            descriptors.count { it.manifest.slug != null }) { "Duplicate pack slug in registry" }
+        require(descriptors.none { next ->
+            _descriptors.value[next.packId]?.manifest?.slug?.let { previous ->
+                previous != next.manifest.slug
+            } == true
+        }) { "Registered pack slug changed" }
         _descriptors.value = descriptors.associateBy { it.packId }
     }
 

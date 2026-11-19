@@ -17,7 +17,7 @@ class PackBuildReleaseTests(PackFixtureTestCase):
         source = Path(self.temporary.name) / "items.jsonl.gz"
         source.write_bytes(self.payloads["catalog/items.jsonl.gz"])
         config = {
-            "packId": 99, "displayName": "Fixture", "version": "fixture-1",
+            "packId": 99, "slug": "fixture", "displayName": "Fixture", "version": "fixture-v1",
             "minRankOfflineVersion": "0.2.2",
             "presentation": {"names": {"en": "Fixture"}, "accentColor": "#123456"},
             "capabilities": {"search": True, "filters": False, "covers": False, "popularity": False, "merge": False, "ratings": True},

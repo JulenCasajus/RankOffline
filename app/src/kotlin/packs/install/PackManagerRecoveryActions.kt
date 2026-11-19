@@ -11,7 +11,8 @@ suspend fun PackManager.recover(packId: PackId): Boolean = packLock(packId).with
     val directory = installer.installedDirectory(packId)
     val summary = summaries.read(packId)
     if (directory != null && !installer.hasPendingInstallation(packId) &&
-        !installer.hasPendingDeletion(packId) && summary?.catalogReady == true &&
+        !installer.hasPendingDeletion(packId) && !installer.hasPendingUpdate(packId) &&
+        summary?.catalogReady == true &&
         summary.matches(directory)) {
         val manifest = readInstalledManifest(directory)
         if (manifest != null && isCompatiblePackVersion(manifest.minRankOfflineVersion,
@@ -33,6 +34,9 @@ suspend fun PackManager.recover(packId: PackId): Boolean = packLock(packId).with
                 withImportTurn { synchronizer.sync(manifest, directory) }
                 if (phase == PackRecoveryState.AWAITING_COMMIT) withContext(Dispatchers.IO) {
                     installer.commitInstallation(packId)
+                }
+                if (phase == PackRecoveryState.AWAITING_UPDATE_COMMIT) withContext(Dispatchers.IO) {
+                    installer.commitUpdate(packId)
                 }
             } else withImportTurn { catalogCleaner.clear(packId) }
             true
@@ -137,6 +141,8 @@ internal fun PackManager.discoverIds(): Set<PackId> = packRoot.listFiles().orEmp
             !file.name.startsWith('.') -> file.name
         file.name.endsWith(".pending") -> file.name.removePrefix(".").removeSuffix(".pending")
         file.name.endsWith(".deleting") -> file.name.removePrefix(".").removeSuffix(".deleting")
+        file.name.endsWith(".updating") -> file.name.removePrefix(".").removeSuffix(".updating")
+        file.name.endsWith(".previous") -> file.name.removePrefix(".").removeSuffix(".previous")
         else -> PackManager.STAGING_NAME.matchEntire(file.name)?.groupValues?.get(1)
     } ?: return@mapNotNull null
     PackId.fromDirectoryName(value)

@@ -29,7 +29,8 @@ class PackRegistry(private val root: File) {
             .mapNotNull { directory ->
                 val packId = PackId.fromDirectoryName(directory.name) ?: return@mapNotNull null
                 if (File(root, ".${packId.directoryName()}.pending").exists() ||
-                    File(root, ".${packId.directoryName()}.deleting").exists()
+                    File(root, ".${packId.directoryName()}.deleting").exists() ||
+                    File(root, ".${packId.directoryName()}.updating").exists()
                 ) return@mapNotNull null
                 val marker = File(directory, PackInstaller.COMPLETE_MARKER)
                 if (!marker.isFile || marker.isSymbolicLink()) return@mapNotNull null

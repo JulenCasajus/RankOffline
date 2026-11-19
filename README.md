@@ -4,7 +4,7 @@
 
 RankOffline is a **free, open-source Android app** for discovering and ranking **Anime, Manga, Movies, Series, and Books**. Build a personal library with customizable ratings, beautiful rankings, and offline access to your installed catalogs — **no account, no cloud sync, no analytics**.
 
-**[Download RankOffline v0.2.2](https://github.com/JulenCasajus/RankOffline/releases/tag/v0.2.2)** · [Installation](#installation) · [Rating system](#rate-your-way) · [Privacy](#offline-first-and-private)
+**[Download RankOffline v0.2.3](https://github.com/JulenCasajus/RankOffline/releases/tag/v0.2.3)** · [Installation](#installation) · [Rating system](#rate-your-way) · [Privacy](#offline-first-and-private)
 
 **Project information:** [Privacy](docs/legal/PRIVACY.md) · [Changelog](docs/CHANGELOG.md) · [Development](docs/DEVELOPMENT.md)
 
@@ -42,7 +42,7 @@ Read the [scoring documentation](docs/SCORING.md) for the full formula and behav
 
 ## 🔎 Powerful search and sorting
 
-Browse completely offline by title, including supported **alternative titles and aliases**. For example, searching *Attack* and *Shingeki* can find the same series using different names, while preserving the underlying identity and ratings.
+Browse completely offline by title, including supported **alternative titles and aliases** for individual entries and groups. A matching alternative title appears in Search without changing the catalog entry or its rating. For example, searching *Attack* and *Shingeki* can find the same series using different names.
 
 | Search using an alias | Search using the main title |
 |:---:|:---:|
@@ -83,7 +83,7 @@ Switch **Merge** on or off without changing the original catalog data. RankOffli
 
 **Android 8.0 (API 26) or newer.**
 
-1. Get the signed APK from the **[RankOffline v0.2.2 GitHub Release](https://github.com/JulenCasajus/RankOffline/releases/tag/v0.2.2)** (`RankOffline-v0.2.2.apk`). Install it on Android.
+1. Get the signed APK from the **[RankOffline v0.2.3 GitHub Release](https://github.com/JulenCasajus/RankOffline/releases/tag/v0.2.3)** (`RankOffline-v0.2.3.apk`). Install it on Android.
 2. In RankOffline, install the catalog packs you want while connected to the internet.
 3. Optionally enable/download cover images. Your installed catalogs, ratings, notes, and downloaded covers then work offline.
 
@@ -112,7 +112,6 @@ Debug and stable builds use different Android application IDs. Release signing u
 
 Useful technical resources: [Architecture](docs/ARCHITECTURE.md) · [Pack format](docs/PACK_FORMAT.md) · [Manifest specification](docs/PACK_MANIFEST_SPEC.md) · [Pack generation](docs/PACK_GENERATION.md) · [Scoring](docs/SCORING.md) · [Backup format](docs/BACKUP_FORMAT.md).
 
-Version **0.2.2** adds RankOffline All, personal-data import/export, an upgrade path for 0.2.0 ratings, and durable background pack operations. See the [changelog](docs/CHANGELOG.md) for details.
 
 ## 📖 Data sources and attribution
 

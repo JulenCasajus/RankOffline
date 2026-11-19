@@ -65,23 +65,29 @@ private fun validatePageScope(scope: ViewingScope?, entries: List<MediaListEntry
     }
 }
 
-/** Search alias titles are transient and must not leak into a different query. */
-private fun MediaListEntry.withCanonicalSearchTitle(): MediaListEntry = when (this) {
-    is MediaListEntry.Item -> if (value.searchDisplayTitle == null) this else
-        copy(value = value.copy(searchDisplayTitle = null))
-    is MediaListEntry.Group -> this
+/** Recalculate the display title from the retained aliases while a new query is loading. */
+private fun MediaListEntry.withSearchTitle(query: String): MediaListEntry = when (this) {
+    is MediaListEntry.Item -> {
+        val matching = bestMatchingAliasTitle(value.title, value.aliases.map { it.title }, query)
+        if (value.searchDisplayTitle == matching) this else
+            copy(value = value.copy(searchDisplayTitle = matching))
+    }
+    is MediaListEntry.Group -> {
+        val matching = bestMatchingAliasTitle(value.displayTitle, value.aliases.map { it.title }, query)
+        if (value.searchDisplayTitle == matching) this else
+            copy(value = value.copy(searchDisplayTitle = matching))
+    }
 }
 
 internal fun SearchPageState.visibleItemsFor(
     activeScope: ViewingScope,
-    overrides: Map<CatalogEntryKey, RatingDisplayOverride> = emptyMap(),
     activeQuery: String? = null
 ): List<MediaListEntry> {
     if (scope != activeScope || loadingInitial) return emptyList()
     val visible = if (activeQuery != null && query != activeQuery) {
-        items.map(MediaListEntry::withCanonicalSearchTitle)
+        items.map { it.withSearchTitle(activeQuery) }
     } else items
-    return if (overrides.isEmpty()) visible else applyRatingOverrides(visible, overrides)
+    return visible
 }
 
 internal fun RankingResultState.visibleItemsFor(activeScope: ViewingScope): List<MediaListEntry> =

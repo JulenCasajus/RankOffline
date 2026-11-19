@@ -18,13 +18,13 @@
   <string name='action_cancel'>Cancel</string>
   <string name='action_delete'>Delete</string>
   <string name='action_continue'>Continue</string>
-  <string name='whats_new_title'>What’s new in version %1$s</string>
-  <string name='whats_new_visuals'>Polished the style of the app.</string>
-  <string name='whats_new_packs'>Generalised pack support = community packs soon.</string>
-  <string name='whats_new_features'>Better filters, Merge and cover controls.</string>
-  <string name='whats_new_bugs'>Fixed some bugs… probably created new ones.</string>
-  <string name='whats_new_thanks'>Thanks for using RankOffline!!</string>
-  <string name='whats_new_contact'>Any problems? Let me know :D</string>
+  <string name='whats_new_title'>What’s NEW in version %1$s</string>
+  <string name='whats_new_visuals'>Find groups by their alternative titles (Mostly translations).</string>
+  <string name='whats_new_packs'>New pop-up window to update packs... so you don’t think you lost your ratings.</string>
+  <string name='whats_new_features'>Many small features added.</string>
+  <string name='whats_new_bugs'>Fixed a few bugs…</string>
+  <string name='whats_new_thanks'>Thanks for using RankOffline!</string>
+  <string name='whats_new_contact'>Any problems/bugs/suggestions? Let me know on Github or send a carrier pigeon :D</string>
   <string name='action_save'>Save</string>
   <string name='action_apply'>Apply</string>
   <string name='action_back'>Back</string>
@@ -189,12 +189,11 @@
   <string name='download_pack'>Download pack</string>
   <string name='category_not_installed'>Not downloaded</string>
   <string name='onboarding_welcome_title'>Welcome to RankOffline</string>
-  <string name='onboarding_choose_style'>Choose your style</string>
-  <string name='onboarding_change_later'>You can change it whenever you want in Settings.</string>
-  <string name='onboarding_minimal'>Minimal</string>
-  <string name='onboarding_with_images'>With images</string>
-  <string name='onboarding_rating_simple'>Simple rating</string>
   <string name='onboarding_rating_elaborate'>Elaborate rating</string>
+  <string name='onboarding_rating_simple_description'>Off: rate each title directly from 0 to 10.</string>
+  <string name='onboarding_rating_elaborate_description'>On: rate different aspects to calculate the final score.</string>
+  <string name='onboarding_covers_hint'>Show or hide covers in the settings for each pack.</string>
+  <string name='onboarding_offline_hint'>Download catalogs by pack. Your ratings stay on this device, and downloaded catalogs work offline.</string>
   <string name='onboarding_start'>Get started</string>
   <string name='onboarding_categories_title'>Where would you like to start?</string>
   <string name='onboarding_categories_subtitle'>Choose the offline catalogs you want. You can manage them later in Settings.</string>
@@ -214,7 +213,7 @@
   <string name='category_phase_installing'>Installing…</string>
   <string name='category_phase_waiting_import'>Waiting to import…</string>
   <string name='category_phase_waiting_covers'>Waiting for covers…</string>
-  <string name='category_phase_importing_catalog'>Importing catalog… This might take a while.</string>
+  <string name='category_phase_importing_catalog'>Importing catalog… This might take a minute.</string>
   <string name='category_phase_downloading_covers'>Downloading covers: %1$d / %2$d</string>
   <string name='category_phase_covers_waiting_save'>Covers ready · waiting for database</string>
   <string name='category_deleting'>Deleting…</string>
@@ -293,4 +292,14 @@
   </plurals>
   <string name="filter_match_any_description">OR · any</string>
   <string name="filter_match_all_description">AND · all</string>
+  <string name="pack_updates_title">Pack updates available</string>
+  <string name="pack_updates_description">Some installed packs have newer revisions. Update them now or later in Settings.</string>
+  <string name="pack_updates_personal_data">Your ratings and personal settings are kept when packs are updated.</string>
+  <string name="pack_updates_versions">Installed: %1$s · Available: %2$s</string>
+  <string name="pack_updates_done">Updated</string>
+  <string name="pack_updates_action">Update</string>
+  <string name="pack_updates_later">Later</string>
+  <string name="pack_updates_all">Update all</string>
+  <string name="pack_updates_available">Update available: %1$s → %2$s</string>
+  <string name="pack_updates_error">Update failed. Try again.</string>
 </resources>

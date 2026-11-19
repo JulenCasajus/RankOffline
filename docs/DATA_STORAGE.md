@@ -22,6 +22,17 @@ and `covers/groups/`. Room records their paths and resolution state. A normal pa
 uninstall removes pack files and catalog rows but retains personal ratings and settings.
 Explicit purge is a separate user action.
 
+Pack updates stage verified files alongside the installed pack and retain the previous
+directory until the new catalog has been imported. Existing personal rows remain in
+Room; the new catalog can reconnect them when item and group IDs are unchanged. An
+interrupted update is reconciled on recovery before its temporary files are removed.
+
+The universal Room database uses schema version 2. Its `media_group_alias` table holds
+pack-owned names with `(pack_id, group_id)` membership in the existing group table.
+Migration from version 1 adds this table and preserves all catalog and personal rows.
+Previously installed packs remain usable without group aliases until an updated pack
+provides them.
+
 `PackId(0)` represents RankOffline All and never creates a `pack-0` directory. The 0.2.0
 database, if present during an upgrade, is read by the one-time personal-data migration;
 current catalog data uses the universal database above.

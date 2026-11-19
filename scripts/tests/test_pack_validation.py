@@ -13,6 +13,22 @@ from pack_fixtures import PackFixtureTestCase, base_manifest, encoded, make_pack
 
 
 class PackValidationTests(PackFixtureTestCase):
+    def test_duplicate_group_provider_identity_is_rejected(self) -> None:
+        groups = [
+            {"id": f"group:{number}", "members": [{"mediaId": "item:1"}],
+             "groupType": "relations", "provider": "fixture_provider",
+             "providerGroupId": "source:1"}
+            for number in (1, 2)
+        ]
+        payloads = dict(self.payloads)
+        payloads["groups/groups.jsonl.gz"] = gzip.compress(
+            b"\n".join(encoded(group) for group in groups) + b"\n", mtime=0)
+        manifest = base_manifest(payloads)
+        manifest["groups"] = ["groups/groups.jsonl.gz"]
+        make_pack(self.path, manifest, payloads)
+        with self.assertRaisesRegex(PackValidationError, "Duplicate group provider identity"):
+            validate_pack(self.path)
+
     def test_valid_minimal_pack_is_accepted(self) -> None:
         make_pack(self.path, self.manifest, self.payloads)
         self.assertEqual(1, validate_pack(self.path, expected_pack_id=99)["items"])

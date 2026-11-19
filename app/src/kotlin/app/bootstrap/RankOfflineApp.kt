@@ -18,6 +18,8 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val scope by viewModel.viewingScope.collectAsState()
     val packs by viewModel.packStates.collectAsState()
     val isDiscoveringPacks by viewModel.discoveringPacks.collectAsState()
+    val updateCheckFinished by viewModel.updateCheckFinished.collectAsState()
+    val postponedPackUpdates by viewModel.postponedPackUpdates.collectAsState()
     val editor by viewModel.ratingEditor.collectAsState()
     val group by viewModel.groupDetail.collectAsState()
     val searchPage by viewModel.searchPageState.collectAsState()
@@ -27,7 +29,6 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val searchByPack by viewModel.catalog.searchByPack.collectAsState()
     val rankingByPack by viewModel.catalog.rankingByPack.collectAsState()
     val recentPackIds by viewModel.settingsRepository.recentPackIds.collectAsState()
-    val ratingOverrides by viewModel.catalog.ratingDisplayOverrides.collectAsState()
     val filtersByPack by viewModel.filterOptions.collectAsState()
     val readyManifests = remember(packs) {
         packs.values.filter { it.available }.mapNotNull { it.manifest }
@@ -105,17 +106,23 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         if (exactSearchPage != null) previousSearchPage = exactSearchPage
         if (exactRankingPage != null) previousRankingPage = exactRankingPage
     }
-    val visibleSearchItems = visibleSearchPage.visibleItemsFor(scope,
-        ratingOverrides, visibleSearchState.query)
-    val visibleRankingItems = applyRatingOverrides(
-        visibleRankingPage.result.visibleItemsFor(scope),
-        ratingOverrides)
+    val visibleSearchItems = visibleSearchPage.visibleItemsFor(scope, visibleSearchState.query)
+    val visibleRankingItems = visibleRankingPage.result.visibleItemsFor(scope)
     val activeManifest = activePackId?.let { id -> readyManifests.firstOrNull { it.packId == id } }
     val allSelected = scope == ViewingScope.All
     val allAvailable = readyManifests.size >= 2
     var showPackManagement by rememberSaveable { mutableStateOf(false) }
     var settingsRootRequest by remember { mutableIntStateOf(0) }
     var viewerEntry by remember { mutableStateOf<MediaListEntry?>(null) }
+    var pendingGroupRating by remember { mutableStateOf<MediaListEntry.Group?>(null) }
+    var startedAsNewUser by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var updatePromptConsidered by rememberSaveable { mutableStateOf(false) }
+    var updatePromptTargets by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
+    val requestRating: (MediaListEntry) -> Unit = { entry ->
+        if (entry is MediaListEntry.Group && entry.needsGroupRatingChoice()) {
+            pendingGroupRating = entry
+        } else viewModel.openRating(entry)
+    }
     val services = remember(viewModel) { RankOfflineServices.get(viewModel.getApplication<android.app.Application>()) }
     val covers = remember(services) { services.mediaCoverRepository }
     val bitmapCache = viewModel.coverRepository
@@ -123,6 +130,24 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
     val rankingListState = viewModel.rankingListState(scope)
 
     LaunchedEffect(viewModel, context) { viewModel.messages.collect { snackbar.showSnackbar(it.resolve(context)) } }
+    LaunchedEffect(ready, settings.settingsLoaded) {
+        if (ready && settings.settingsLoaded && startedAsNewUser == null) {
+            startedAsNewUser = !settings.hasCompletedOnboarding
+        }
+    }
+    val whatsNewVisible = shouldShowWhatsNew(settings, BuildConfig.VERSION_NAME)
+    LaunchedEffect(startedAsNewUser, updateCheckFinished, whatsNewVisible,
+        settings.hasCompletedOnboarding, packs, postponedPackUpdates) {
+        if (shouldConsiderPackUpdatePrompt(startedAsNewUser, updateCheckFinished,
+                whatsNewVisible, settings.hasCompletedOnboarding) && !updatePromptConsidered) {
+            updatePromptTargets = ArrayList(packs.values.mapNotNull { state ->
+                state.updateVersion?.takeIf { state.installed &&
+                    packUpdateNoticeKey(state.packId, it) !in postponedPackUpdates }
+                    ?.let { packUpdateNoticeKey(state.packId, it) }
+            })
+            updatePromptConsidered = true
+        }
+    }
     LaunchedEffect(activeTab, scope) {
         val selectedPack = scope as? ViewingScope.Pack
         if (selectedPack != null && when (activeTab) {
@@ -154,7 +179,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
-    FirstRunOnboarding(settings, packs, isDiscoveringPacks,
+    if (!settings.hasCompletedOnboarding) FirstRunOnboarding(settings, packs, isDiscoveringPacks,
         onWelcomeComplete = viewModel::completeWelcome,
         onLanguageSelected = viewModel::updateLanguage,
         onThemeSelected = viewModel::updateThemePalette,
@@ -167,8 +192,30 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
         onRequestStorageDetails = { viewModel.refreshPackStatistics(it) },
         onOnboardingComplete = viewModel::completeOnboarding
     )
-    if (shouldShowWhatsNew(settings, BuildConfig.VERSION_NAME)) {
+    if (settings.hasCompletedOnboarding && whatsNewVisible) {
         WhatsNewDialog(onContinue = viewModel::completeWhatsNew)
+    } else if (startedAsNewUser == false && settings.hasCompletedOnboarding) {
+        updatePromptTargets?.takeIf { it.isNotEmpty() }?.let { keys ->
+            val targets = keys.mapNotNull { key ->
+                runCatching { PackId.parse(key.substringBefore(':')) }.getOrNull()
+                    ?.let { it to key.substringAfter(':') }
+            }
+            PackUpdateDialog(targets, packs, onUpdate = viewModel::updatePack,
+                onLater = {
+                    viewModel.postponePackUpdates(targets.filter { (id, version) ->
+                        packs[id]?.manifest?.version != version
+                    })
+                    updatePromptTargets = null
+                })
+        }
+    }
+
+    pendingGroupRating?.let { entry ->
+        GroupRatingChoiceDialog(
+            onDismiss = { pendingGroupRating = null },
+            onUseMembers = { pendingGroupRating = null; viewModel.openGroupRating(entry, true) },
+            onStartFresh = { pendingGroupRating = null; viewModel.openGroupRating(entry, false) }
+        )
     }
 
     // Editor is a full-screen overlay, not another eagerly loaded destination.
@@ -198,13 +245,16 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                 it.packId == current.group.packId
             }?.subtitleDefinitions().orEmpty(),
             onBack = viewModel::closeGroup,
-            onRate = { fromMembers ->
-                val candidate = visibleRankingItems.firstOrNull { it.key == current.group.key }
-                    ?: MediaListEntry.Group(current.group, current.explicitRating?.finalScore,
-                        current.explicitRating?.qualityScore, current.explicitRating?.additiveScore,
-                        null, current.members.size, current.derivedRating.ratedCount,
-                        derived = current.explicitRating == null)
-                viewModel.openGroupRating(candidate, fromMembers)
+            onRate = {
+                val explicit = current.explicitRating?.takeIf { it.finalScore != null }
+                requestRating(MediaListEntry.Group(
+                    current.group,
+                    explicit?.finalScore ?: current.derivedRating.finalScore,
+                    explicit?.qualityScore ?: current.derivedRating.qualityScore,
+                    explicit?.additiveScore ?: current.derivedRating.additiveScore,
+                    null, current.members.size, current.derivedRating.ratedCount,
+                    derived = explicit == null
+                ))
             },
             onMember = { viewModel.openRating(MediaListEntry.Item(it)) },
             onCoverDownload = viewModel::downloadCover,
@@ -237,8 +287,13 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     coverRepository = covers, bitmapCache = bitmapCache,
                     onPack = viewModel::updateActivePack, onAll = viewModel::selectAllPacks,
                     onManage = openManagement, onQuery = {
-                        viewModel.setSearchQuery(it)
-                        coroutines.launch { catalogListState.scrollToItem(0) }
+                        if (it != visibleSearchState.query) {
+                            if (catalogListState.firstVisibleItemIndex != 0 ||
+                                catalogListState.firstVisibleItemScrollOffset != 0) {
+                                catalogListState.requestScrollToItem(0)
+                            }
+                            viewModel.setSearchQuery(it)
+                        }
                     },
                     onSort = {
                         viewModel.setCatalogSortOrder(it)
@@ -254,7 +309,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     },
                     onLoadMore = viewModel::requestNextSearchPage,
                     onMerge = viewModel::updateMergeEnabled,
-                    onEntry = viewModel::openRating,
+                    onEntry = requestRating,
                     onGroup = { viewModel.openGroupDetails(it.key) },
                     onDownloadCover = viewModel::downloadCover, onOpenCover = { viewerEntry = it }
                 )
@@ -286,7 +341,7 @@ fun RankOfflineApp(viewModel: RankOfflineViewModel) {
                     },
                     onLoadMore = viewModel::requestNextRankingPage,
                     onMerge = viewModel::updateMergeEnabled,
-                    onEntry = viewModel::openRating, onGroup = { viewModel.openGroupDetails(it.key) },
+                    onEntry = requestRating, onGroup = { viewModel.openGroupDetails(it.key) },
                     onDownloadCover = viewModel::downloadCover, onOpenCover = { viewerEntry = it }
                 )
                 AppTab.SETTINGS -> SettingsScreen(settings, viewModel,

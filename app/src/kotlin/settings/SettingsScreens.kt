@@ -119,6 +119,7 @@ internal fun SettingsScreen(
             packs, packId,
             onDiscover = viewModel::refreshAvailablePacks,
             onInstall = viewModel::downloadPack,
+            onUpdate = viewModel::updatePack,
             onCancelInitialCovers = viewModel::cancelInitialCoverDownload,
             onUninstall = viewModel::uninstallPackKeepData,
             onPurge = viewModel::purgePack,

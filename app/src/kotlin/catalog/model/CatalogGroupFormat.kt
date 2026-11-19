@@ -4,6 +4,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.text.Normalizer
+import java.util.Locale
 
 /** Version of the group RECORD format, independent of PackManifest.schemaVersion. */
 const val MEDIA_GROUP_CATALOG_FORMAT_VERSION = 2
@@ -36,14 +38,16 @@ data class MediaGroupCatalogRecord(
     val providerGroupId: String? = null,
     val popularity: Double? = null,
     val popularityRank: Int? = null,
-    val remoteCoverRef: String? = null
+    val remoteCoverRef: String? = null,
+    val aliases: List<MediaCatalogAlias> = emptyList()
 )
 
 /** Insert these rows together in an importer transaction, after catalog items exist. */
 internal data class MediaGroupCatalogRows(
     val group: MediaGroupEntity,
     val members: List<MediaGroupMemberEntity>,
-    val representative: MediaGroupRepresentativeEntity?
+    val representative: MediaGroupRepresentativeEntity?,
+    val aliases: List<MediaGroupAliasEntity>
 )
 
 private val groupCatalogJson = Json {
@@ -113,6 +117,17 @@ internal fun validateMediaGroupCatalogRecord(
     require(record.remoteCoverRef == null || record.remoteCoverRef.isValidGroupText(MAX_REFERENCE_LENGTH)) {
         "Invalid remote cover reference"
     }
+    require(record.aliases.size <= 64) { "Too many group aliases" }
+    val aliasTitles = HashSet<String>()
+    record.aliases.forEach { alias ->
+        val normalized = Normalizer.normalize(alias.title, Normalizer.Form.NFKC)
+            .lowercase(Locale.ROOT).trim()
+        require(alias.title.isValidGroupText(MAX_TITLE_LENGTH) && aliasTitles.add(normalized)) {
+            "Invalid or duplicate group alias"
+        }
+        require(alias.language == null || alias.language.isValidGroupText(35)) { "Invalid group alias language" }
+        require(alias.kind == null || alias.kind.isValidGroupText(64)) { "Invalid group alias kind" }
+    }
 
     require(record.members.isNotEmpty()) { "A group requires at least one member" }
     require(record.members.size <= MAX_MEMBERS_PER_GROUP) { "Too many group members" }
@@ -160,6 +175,9 @@ internal fun MediaGroupCatalogRecord.toEntityRows(
                 mediaId = member.mediaId,
                 position = position
             )
+        },
+        aliases = aliases.map { alias ->
+            MediaGroupAliasEntity(packId, id, alias.title, alias.language, alias.kind)
         },
         representative = representativeMediaId?.let { mediaId ->
             MediaGroupRepresentativeEntity(

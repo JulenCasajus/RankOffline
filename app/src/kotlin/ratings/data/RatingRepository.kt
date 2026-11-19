@@ -21,16 +21,27 @@ class RatingRepository(
     }
 
     /** Optional group-member average is an editor suggestion; never saved automatically. */
-    suspend fun loadRating(key: CatalogEntryKey, fromMembers: Boolean = false): RatingDraft =
+    suspend fun loadRating(
+        key: CatalogEntryKey, fromMembers: Boolean = false,
+        availableProfiles: RatingProfilesConfig? = null
+    ): RatingDraft =
         withContext(Dispatchers.IO) {
-            explicitDraft(key) ?: if (fromMembers && key.kind == CatalogEntryKind.GROUP &&
+            val personal = explicitDraft(key)
+            if (fromMembers && key.kind == CatalogEntryKind.GROUP && personal?.finalScore == null &&
                 groups.group(key.packId.value, key.id) != null
             ) {
                 deriveMediaGroupRating(
                     groups.ratedMemberRatings(key.packId.value, key.id),
                     groups.ratedMemberScores(key.packId.value, key.id)
-                ).asDraft()
-            } else RatingDraft()
+                ).asDraft().let { draft ->
+                    val withMetadata = draft.copy(
+                        notes = personal?.notes.orEmpty(), status = personal?.status.orEmpty()
+                    )
+                    availableProfiles?.takeIf { it.profiles.isNotEmpty() }
+                        ?.let { withMetadata.copy(profileId = it.resolveProfile(withMetadata.profileId).id) }
+                        ?: withMetadata
+                }
+            } else personal ?: RatingDraft()
         }
 
     suspend fun ratingScores(key: CatalogEntryKey): List<CategoryScore> = withContext(Dispatchers.IO) {
