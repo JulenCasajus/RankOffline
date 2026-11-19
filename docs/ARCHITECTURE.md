@@ -32,6 +32,11 @@ import fingerprints support recovery without reimporting a valid READY catalog. 
 uses write-ahead logging. User ratings and editable settings remain under separate
 storage so a normal uninstall retains them.
 
+An update validates and stages the replacement before moving the existing pack to a
+recoverable directory. The importer then replaces that pack's catalog rows while
+leaving personal ratings and settings in place. Recovery reconciles the installed
+files, Room catalog and pending update state after an interruption.
+
 WorkManager persists pack and initial-cover operations. Archive transfers have FIFO
 priority over new cover transfers; local import does not reserve the archive network
 turn. Cover batches stage their Room updates and commit them after network work, so an

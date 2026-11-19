@@ -103,11 +103,13 @@ against the exact files to be uploaded. The release index must not be published 
 its referenced archives are available at those URLs. No generation script uploads files
 or creates a release.
 
-Debug 1 published `animes-v6`, `mangas-v4`, `movies-v4`, `series-v4` and
-`books-v4`. The Anime archive contains a duplicate provider group identity in a
-reviewed split; the corrected archive is `animes-v7`. The other four revisions
-remain unchanged. Books has only a normalized version spelling and an application
-compatibility bump relative to the stable `v4` content.
+The 0.2.3 official definitions currently build `animes-v8`, `mangas-v4`,
+`movies-v4`, `series-v4` and `books-v4`. Anime first used `v6` in a debug build;
+`v7` corrected a duplicate provider group identity in a reviewed split, and `v8`
+changed the default Merge setting. Rebuilding the same definitions does not consume
+another revision. Books retains its `v4` content revision after normalizing the
+version spelling and minimum app version.
+
 The published content fingerprint excludes the spelling and minimum app version, but
 includes payload hashes and presentation. A local build never consumes
 a revision. Release preparation rejects an older revision, a skipped revision or reuse
