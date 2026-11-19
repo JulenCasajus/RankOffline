@@ -28,3 +28,8 @@ __pycache__/
 
 # Personal files
 imagenes_temporales/
+
+# Root-level generated release artifacts
+/*.apk
+/pack-index.json
+/SHA256SUMS.txt
