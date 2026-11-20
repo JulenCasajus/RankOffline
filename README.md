@@ -28,11 +28,13 @@ Cover images are **optional and downloaded separately** when requested or enable
 
 RankOffline offers two independent ways to evaluate a work:
 
-**Simple rating:** choose a score from **0 to 10**, in **0.5-point steps**. The optional **personal taste bonus** adds **+0.0 to +1.0** in 0.1 steps when enabled; it is off by default.
+**Simple rating:** choose a score from **0 to 10**.
 
-**Elaborate rating:** evaluate categories and choose a reusable rating profile. Each pack declares its own default categories and profiles; the Anime pack includes **Writing, Characters, Visuals, Worldbuilding, and Audio** and profiles such as **General** and **Narrative**. Mark categories **N/A** to exclude them and renormalize the remaining weights. If enabled, personal taste is added after quality scoring; the final score is capped at 10.
+**Elaborate rating:** evaluate categories and choose a rating profile. Each pack declares its own default categories and profiles; the Anime pack includes **Writing, Characters, Visuals, Worldbuilding, and Audio** and profiles such as **General** and **Narrative**. Mark categories **N/A** to exclude them and renormalize the remaining weights. 
 
-Create and edit your own categories, category colors/descriptions, profiles, and weights. Add **personal notes** and keep a local status for each item. Saved scores are not silently recalculated just because you change a profile later.
+The optional **personal taste bonus** adds **+0.0 to +1.0** in 0.1 steps when enabled; it is off by default. If enabled, personal taste is added after quality scoring; the final score is capped at 10.
+
+Create and edit your own categories, category colors/descriptions, profiles, and weights. Add **personal notes** and keep a local status for each item.
 
 | Simple rating | Elaborated rating |
 |:---:|:---:|
@@ -48,11 +50,11 @@ Browse completely offline by title, including supported **alternative titles and
 |:---:|:---:|
 | <img src="docs/screenshots/anime-alias-search.webp" alt="Attack on Titan results found using the Attack alias" width="280"> | <img src="docs/screenshots/anime-primary-title-search.webp" alt="Shingeki no Kyojin results found by their main title" width="280"> |
 
-Use the **filters declared by each pack**, such as genre, format, year or studio where available. Filters support multiple values and OR/AND matching within a field. Sort by **popularity**, **name**, **final score** or individual rating categories, depending on the screen and available data. My Ranking can show a full scored list or a **Top 3 podium**, and its sort criterion changes who gets the gold, silver and bronze positions.
+Use the **filters declared by each pack**, such as genre, format, year or studio. Filters support multiple values and OR/AND matching within a field. Sort by **popularity**, **name**, **final score** or individual rating categories. My Ranking can show a full scored list or a **Top 3 podium**, and its sort criterion changes who gets the gold, silver and bronze positions.
 
 ## 🔗 Merge seasons, collections, and variants
 
-Switch **Merge** on or off without changing the original catalog data. RankOffline uses provider relationships prepared beforehand, not fuzzy matching on your phone. Supported examples include anime seasons, manga variants, movie collections, TV seasons, and conservatively identified book series.
+Switch **Merge** on or off without changing the original catalog data. RankOffline uses provider relationships prepared beforehand, not fuzzy matching on your phone. Supported examples include anime seasons, manga variants, movie collections, TV seasons, and book series.
 
 | Movies as individual entries | Movies grouped by collection |
 |:---:|:---:|
@@ -62,7 +64,7 @@ Switch **Merge** on or off without changing the original catalog data. RankOffli
 
 - **Theme palettes:** choose a built-in palette, customize supported themes, or save your own.
 - **Eight launcher icons:** switch the app icon from Settings.
-- **Nine interface languages:** English, Spanish, German, French, Russian, Japanese, Simplified Chinese, Basque, and Italian.
+- **Nine interface languages:** English, Spanish, German, French, Italian, Basque, Russian, Japanese and Simplified Chinese.
 - **Per-pack settings:** choose whether to show images, show titles on the podium, and keep the score header visible. The Merge button controls group presentation in Search and My Ranking.
 - **Cover management:** optionally download covers, show larger artwork, and remove downloaded covers.
 
